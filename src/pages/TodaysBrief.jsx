@@ -92,20 +92,28 @@ export default function TodaysBrief() {
   const [briefing, setBriefing] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [directionOpen, setDirectionOpen] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
-      base44.entities.Briefing.filter({}, '-created_date', 1),
-      base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 20),
-    ]).then(([briefs, arts]) => {
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [briefs, arts, picks] = await Promise.all([
+        base44.entities.Briefing.filter({}, '-created_date', 1),
+        base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 20),
+        base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 5),
+      ]);
       setBriefing(briefs[0] || null);
-      // Also get berna's picks
-      base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 5).then(picks => {
-        setArticles([...picks, ...arts]);
-      });
-    }).finally(() => setLoading(false));
-  }, []);
+      setArticles([...picks, ...arts]);
+    } catch (err) {
+      setError(err.message || 'Failed to load briefing');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -115,6 +123,23 @@ export default function TodaysBrief() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <FileText className="w-6 h-6 text-red-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-white mb-1">Couldn't load the brief</h2>
+          <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
+        </div>
+        <Button size="sm" onClick={loadData} className="bg-berna-purple hover:bg-berna-purple/90 text-white">
+          Try Again
+        </Button>
       </div>
     );
   }
