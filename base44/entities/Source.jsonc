@@ -1,0 +1,60 @@
+{
+  "name": "Source",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "major_news",
+        "wire_service",
+        "government",
+        "state_government",
+        "local_business",
+        "manufacturing",
+        "labor_workforce",
+        "ai_technology",
+        "agriculture_food",
+        "creator_economy",
+        "science_research",
+        "fact_checking",
+        "company_newsroom",
+        "university_research"
+      ]
+    },
+    "url": {
+      "type": "string"
+    },
+    "feed_url": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "trust_rating": {
+      "type": "number"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "paywall": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "source_type",
+    "url"
+  ]
+}

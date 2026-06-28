@@ -1,0 +1,91 @@
+{
+  "name": "Briefing",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "title": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "energy": {
+      "type": "string"
+    },
+    "mission": {
+      "type": "string"
+    },
+    "estimated_read_time": {
+      "type": "string"
+    },
+    "top_3_stories": {
+      "type": "string"
+    },
+    "berna_pick_title": {
+      "type": "string"
+    },
+    "berna_pick_summary": {
+      "type": "string"
+    },
+    "sections": {
+      "type": "string"
+    },
+    "monologue": {
+      "type": "string"
+    },
+    "poll": {
+      "type": "string"
+    },
+    "graphic_stat": {
+      "type": "string"
+    },
+    "broll": {
+      "type": "string"
+    },
+    "cta": {
+      "type": "string"
+    },
+    "source_library": {
+      "type": "string"
+    },
+    "conversation_starters": {
+      "type": "string"
+    },
+    "fact_check": {
+      "type": "string"
+    },
+    "tomorrow_watch": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "generating",
+        "ready",
+        "needs_review",
+        "failed",
+        "used",
+        "archived"
+      ],
+      "default": "generating"
+    },
+    "article_ids": {
+      "type": "string"
+    },
+    "archive_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "date",
+    "title"
+  ]
+}

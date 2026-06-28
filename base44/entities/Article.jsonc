@@ -1,0 +1,101 @@
+{
+  "name": "Article",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "source_name": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "publication": {
+      "type": "string"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "url": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "full_text_excerpt": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "ai_business",
+        "manufacturing",
+        "reshoring",
+        "supply_chain",
+        "state_economy",
+        "small_business",
+        "entrepreneurship",
+        "skilled_trades",
+        "hiring",
+        "food_agriculture",
+        "creator_economy",
+        "infrastructure",
+        "science",
+        "technology",
+        "general"
+      ]
+    },
+    "state": {
+      "type": "string"
+    },
+    "industry": {
+      "type": "string"
+    },
+    "companies": {
+      "type": "string"
+    },
+    "people": {
+      "type": "string"
+    },
+    "freshness_score": {
+      "type": "number"
+    },
+    "credibility_score": {
+      "type": "number"
+    },
+    "opportunity_score": {
+      "type": "number"
+    },
+    "usefulness_score": {
+      "type": "number"
+    },
+    "duplicate_score": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "saved_for_later",
+        "bernas_pick",
+        "needs_research",
+        "used"
+      ],
+      "default": "pending"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "thumbnail_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "url"
+  ]
+}

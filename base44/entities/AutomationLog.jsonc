@@ -1,0 +1,56 @@
+{
+  "name": "AutomationLog",
+  "type": "object",
+  "properties": {
+    "automation_name": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "success",
+        "failed",
+        "partial"
+      ],
+      "default": "running"
+    },
+    "sources_checked": {
+      "type": "number",
+      "default": 0
+    },
+    "articles_pulled": {
+      "type": "number",
+      "default": 0
+    },
+    "duplicates_removed": {
+      "type": "number",
+      "default": 0
+    },
+    "articles_selected": {
+      "type": "number",
+      "default": 0
+    },
+    "errors": {
+      "type": "string"
+    },
+    "notification_sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "duration_seconds": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "automation_name"
+  ]
+}
