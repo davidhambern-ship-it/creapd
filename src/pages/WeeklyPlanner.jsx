@@ -51,7 +51,7 @@ export default function WeeklyPlanner() {
   const loadWeek = useCallback(async () => {
     setLoading(true);
     const startStr = formatDate(weekStart);
-    const endStr = formatDate(weekEnd);
+    const endStr = formatDate(addDays(weekStart, 6));
     try {
       const [plans, srcs] = await Promise.all([
         base44.entities.WeeklyPlan.filter({ week_start_date: startStr }, '-created_date', 1),
@@ -75,7 +75,7 @@ export default function WeeklyPlanner() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, weekEnd]);
+  }, [weekStart]);
 
   useEffect(() => { loadWeek(); }, [loadWeek]);
 
