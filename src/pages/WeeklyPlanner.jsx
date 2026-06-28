@@ -41,6 +41,7 @@ export default function WeeklyPlanner() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorDay, setEditorDay] = useState(null);
   const [directionOpen, setDirectionOpen] = useState(false);
+  const [error, setError] = useState(null);
   const { toast } = useToast();
 
   const weekEnd = addDays(weekStart, 6);
@@ -50,6 +51,7 @@ export default function WeeklyPlanner() {
 
   const loadWeek = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const startStr = formatDate(weekStart);
     const endStr = formatDate(addDays(weekStart, 6));
     try {
@@ -72,6 +74,8 @@ export default function WeeklyPlanner() {
       const dayMap = {};
       days.forEach(d => { dayMap[d.day_name] = d; });
       setDayPlans(dayMap);
+    } catch (err) {
+      setError(err.message || 'Failed to load week data');
     } finally {
       setLoading(false);
     }
@@ -238,6 +242,23 @@ export default function WeeklyPlanner() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <Compass className="w-6 h-6 text-red-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-white mb-1">Couldn't load the planner</h2>
+          <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
+        </div>
+        <Button size="sm" onClick={() => loadWeek()} className="bg-berna-purple hover:bg-berna-purple/90 text-white">
+          Try Again
+        </Button>
       </div>
     );
   }
