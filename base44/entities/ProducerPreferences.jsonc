@@ -1,0 +1,39 @@
+{
+  "name": "ProducerPreferences",
+  "type": "object",
+  "properties": {
+    "default_schedule": {
+      "type": "string"
+    },
+    "default_categories": {
+      "type": "string"
+    },
+    "favorite_topics": {
+      "type": "string"
+    },
+    "blocked_topics": {
+      "type": "string"
+    },
+    "preferred_sources": {
+      "type": "string"
+    },
+    "blocked_sources": {
+      "type": "string"
+    },
+    "minimum_score": {
+      "type": "number",
+      "default": 2
+    },
+    "default_template": {
+      "type": "string"
+    },
+    "approval_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "notification_settings": {
+      "type": "string"
+    }
+  },
+  "required": []
+}

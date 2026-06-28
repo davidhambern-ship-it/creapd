@@ -4,17 +4,20 @@ import { Link } from 'react-router-dom';
 import {
   FileText, RefreshCw, Layers, Archive, Radio, Settings,
   Play, Clock, CheckCircle, AlertCircle, TrendingUp, Star,
-  Zap, ArrowRight, ChevronRight
+  Zap, ArrowRight, ChevronRight, Compass, CalendarDays,
+  Sparkles, Copy, BarChart3, RotateCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
+import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
 
 export default function Dashboard() {
   const [briefing, setBriefing] = useState(null);
   const [articles, setArticles] = useState([]);
   const [lastLog, setLastLog] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [directionOpen, setDirectionOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -29,6 +32,7 @@ export default function Dashboard() {
   }, []);
 
   const today = new Date();
+  const isSaturday = today.getDay() === 6;
   const approvedCount = articles.filter(a => a.status === 'approved' || a.status === 'bernas_pick' || a.status === 'used').length;
   const pendingCount = articles.filter(a => a.status === 'pending').length;
   const rejectedCount = articles.filter(a => a.status === 'rejected').length;
@@ -39,6 +43,114 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isSaturday) {
+    return (
+      <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
+        {/* Saturday Planning Day */}
+        <div className="glass-panel glow-orange p-6 lg:p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-berna-orange/10 to-transparent rounded-full -mr-20 -mt-20" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-2">
+              <CalendarDays className="w-5 h-5 text-berna-orange" />
+              <p className="text-[10px] text-berna-orange uppercase tracking-[0.2em] font-semibold">Saturday Planning Day</p>
+            </div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
+              Plan Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-berna-orange to-berna-purple">Week</span>.
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-2xl">
+              Plan next week's briefings, set daily themes, choose focus topics, and adjust automation before the week begins.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-6">
+              <Link to="/planner">
+                <Button className="bg-gradient-to-r from-berna-orange to-berna-orange/80 hover:from-berna-orange/90 text-white glow-orange">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Plan Next Week
+                </Button>
+              </Link>
+              <Link to="/planner">
+                <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
+                  <Copy className="w-4 h-4 mr-2" />Copy Last Week
+                </Button>
+              </Link>
+              <Link to="/planner">
+                <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
+                  <Sparkles className="w-4 h-4 mr-2" />Generate Suggested Week
+                </Button>
+              </Link>
+              <Link to="/archive">
+                <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
+                  <BarChart3 className="w-4 h-4 mr-2" />Review Source Performance
+                </Button>
+              </Link>
+              <Link to="/archive">
+                <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
+                  <RotateCw className="w-4 h-4 mr-2" />Review Archive Repeats
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick stats for planning context */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="glass-panel p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-white neon-underline">This Week's Status</h2>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
+                <span className="text-xs text-muted-foreground">Briefs Generated</span>
+                <span className="text-xs font-mono text-berna-emerald">{articles.filter(a => a.status === 'used').length}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
+                <span className="text-xs text-muted-foreground">Stories Approved</span>
+                <span className="text-xs font-mono text-white">{approvedCount}</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-xs text-muted-foreground">Pending Review</span>
+                <span className="text-xs font-mono text-yellow-400">{pendingCount}</span>
+              </div>
+            </div>
+          </div>
+          <div className="glass-panel p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-white neon-underline">Quick Actions</h2>
+            <div className="space-y-2">
+              <Link to="/planner" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
+                <CalendarDays className="w-4 h-4 text-berna-purple" />
+                <span className="text-sm text-white/80 group-hover:text-white">Open Weekly Planner</span>
+                <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
+              </Link>
+              <Link to="/sources" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
+                <Radio className="w-4 h-4 text-berna-emerald" />
+                <span className="text-sm text-white/80 group-hover:text-white">Manage Sources</span>
+                <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
+              </Link>
+              <Link to="/archive" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
+                <Archive className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-white/80 group-hover:text-white">Review Archive</span>
+                <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
+              </Link>
+            </div>
+          </div>
+          <div className="glass-panel p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-white neon-underline">Berna's Pick</h2>
+            {bernasPick ? (
+              <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
+                  <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Top Story</span>
+                </div>
+                <p className="text-xs text-white font-medium leading-snug">{bernasPick.title}</p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No pick selected yet.</p>
+            )}
+          </div>
+        </div>
+
+        <ChangeDirectionModal open={directionOpen} currentFocus={briefing?.theme} onClose={() => setDirectionOpen(false)} />
       </div>
     );
   }
@@ -71,7 +183,7 @@ export default function Dashboard() {
             )}
             <StatusBadge status={briefing?.status || 'pending'} />
           </div>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap gap-2">
             <Link to="/brief">
               <Button className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 hover:to-berna-purple/70 text-white glow-purple">
                 <FileText className="w-4 h-4 mr-2" />
@@ -79,6 +191,14 @@ export default function Dashboard() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
+            <Link to="/planner">
+              <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
+                <CalendarDays className="w-4 h-4 mr-2" />Weekly Planner
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={() => setDirectionOpen(true)} className="border-berna-orange/20 text-berna-orange hover:bg-berna-orange/10">
+              <Compass className="w-4 h-4 mr-2" />Change Direction
+            </Button>
           </div>
         </div>
       </div>
@@ -173,11 +293,11 @@ export default function Dashboard() {
           <h2 className="text-sm font-semibold text-white neon-underline">Quick Actions</h2>
           <div className="space-y-2">
             {[
+              { icon: CalendarDays, label: 'Weekly Planner', path: '/planner', color: 'text-berna-purple' },
               { icon: FileText, label: 'Generate Brief', path: '/brief', color: 'text-berna-purple' },
               { icon: RefreshCw, label: 'Refresh Sources', path: '/sources', color: 'text-berna-emerald' },
               { icon: Layers, label: 'Review Story Queue', path: '/queue', color: 'text-berna-orange' },
               { icon: Archive, label: 'Open Archive', path: '/archive', color: 'text-blue-400' },
-              { icon: Radio, label: 'Edit Sources', path: '/sources', color: 'text-cyan-400' },
               { icon: Settings, label: 'Automation Settings', path: '/automation', color: 'text-muted-foreground' },
             ].map(action => (
               <Link
@@ -219,6 +339,8 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <ChangeDirectionModal open={directionOpen} currentFocus={briefing?.theme} onClose={() => setDirectionOpen(false)} />
     </div>
   );
 }

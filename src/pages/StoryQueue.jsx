@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   CheckCircle, XCircle, Bookmark, Star, Search as SearchIcon,
-  ExternalLink, Filter, Clock, AlertTriangle
+  ExternalLink, Filter, Clock, AlertTriangle, Compass
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
 
 export default function StoryQueue() {
   const [articles, setArticles] = useState([]);
@@ -18,6 +19,7 @@ export default function StoryQueue() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [tab, setTab] = useState('active');
+  const [directionOpen, setDirectionOpen] = useState(false);
 
   useEffect(() => {
     loadArticles();
@@ -65,10 +67,15 @@ export default function StoryQueue() {
           <h1 className="text-xl font-bold text-white">Story Queue</h1>
           <p className="text-xs text-muted-foreground mt-1">Assignment desk — review and manage incoming stories</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{articles.length} total</span>
-          <span>·</span>
-          <span className="text-berna-emerald">{articles.filter(a => a.status === 'approved' || a.status === 'bernas_pick').length} approved</span>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => setDirectionOpen(true)} className="border-berna-orange/20 text-berna-orange text-xs hover:bg-berna-orange/10">
+            <Compass className="w-3 h-3 mr-1" />Change Direction
+          </Button>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{articles.length} total</span>
+            <span>·</span>
+            <span className="text-berna-emerald">{articles.filter(a => a.status === 'approved' || a.status === 'bernas_pick').length} approved</span>
+          </div>
         </div>
       </div>
 
@@ -222,6 +229,8 @@ export default function StoryQueue() {
           <p className="text-sm text-muted-foreground">No stories match your filters</p>
         </div>
       )}
+
+      <ChangeDirectionModal open={directionOpen} currentFocus="" onClose={() => setDirectionOpen(false)} />
     </div>
   );
 }

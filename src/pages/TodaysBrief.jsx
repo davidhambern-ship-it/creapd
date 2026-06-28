@@ -3,12 +3,13 @@ import { base44 } from '@/api/base44Client';
 import {
   FileText, Copy, RefreshCw, Archive, CheckCircle, Edit,
   Star, ChevronDown, ChevronUp, ExternalLink, Clock, Mic,
-  BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp
+  BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp, Compass
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
 
 function BriefSection({ icon: Icon, title, children, highlight, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -91,6 +92,7 @@ export default function TodaysBrief() {
   const [briefing, setBriefing] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [directionOpen, setDirectionOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -156,6 +158,10 @@ export default function TodaysBrief() {
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
           <RefreshCw className="w-3 h-3 mr-1" />
           Regenerate
+        </Button>
+        <Button variant="outline" size="sm" className="border-berna-orange/20 text-berna-orange text-xs hover:bg-berna-orange/10" onClick={() => setDirectionOpen(true)}>
+          <Compass className="w-3 h-3 mr-1" />
+          Change Direction
         </Button>
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
           <Archive className="w-3 h-3 mr-1" />
@@ -306,6 +312,8 @@ export default function TodaysBrief() {
           <p className="text-sm text-muted-foreground mb-4">The morning brief hasn't been generated yet. Click "Generate Brief" to create one.</p>
         </div>
       )}
+
+      <ChangeDirectionModal open={directionOpen} currentFocus={briefing?.theme} onClose={() => setDirectionOpen(false)} />
     </div>
   );
 }

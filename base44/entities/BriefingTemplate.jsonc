@@ -1,0 +1,56 @@
+{
+  "name": "BriefingTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "template_key": {
+      "type": "string",
+      "enum": [
+        "tnn_morning",
+        "breaking_news",
+        "music_radio",
+        "business_opportunity",
+        "state_spotlight",
+        "creator_economy",
+        "custom"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "included_sections": {
+      "type": "string"
+    },
+    "default_categories": {
+      "type": "string"
+    },
+    "scoring_weights": {
+      "type": "string"
+    },
+    "required_source_types": {
+      "type": "string"
+    },
+    "tone": {
+      "type": "string",
+      "enum": [
+        "professional",
+        "conversational",
+        "energetic"
+      ],
+      "default": "professional"
+    },
+    "default_read_time": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "template_key"
+  ]
+}

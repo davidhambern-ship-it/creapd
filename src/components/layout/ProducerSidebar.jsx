@@ -2,11 +2,12 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
-  Archive, Settings, Activity, ChevronLeft, ChevronRight
+  Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
   { icon: FileText, label: "Today's Brief", path: '/brief' },
   { icon: Layers, label: 'Story Queue', path: '/queue' },
   { icon: Search, label: 'Research Desk', path: '/research' },

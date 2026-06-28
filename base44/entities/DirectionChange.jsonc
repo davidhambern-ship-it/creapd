@@ -1,0 +1,28 @@
+{
+  "name": "DirectionChange",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "previous_focus": {
+      "type": "string"
+    },
+    "new_focus": {
+      "type": "string"
+    },
+    "changed_by": {
+      "type": "string"
+    },
+    "change_notes": {
+      "type": "string"
+    },
+    "regenerated_sections": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "new_focus"
+  ]
+}

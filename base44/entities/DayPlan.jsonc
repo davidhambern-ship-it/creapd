@@ -1,0 +1,119 @@
+{
+  "name": "DayPlan",
+  "type": "object",
+  "properties": {
+    "weekly_plan_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "day_name": {
+      "type": "string",
+      "enum": [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+      ]
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "automation_time": {
+      "type": "string",
+      "default": "06:00"
+    },
+    "briefing_template_id": {
+      "type": "string"
+    },
+    "briefing_type": {
+      "type": "string",
+      "enum": [
+        "tnn_morning",
+        "breaking_news",
+        "music_radio",
+        "business_opportunity",
+        "state_spotlight",
+        "creator_economy",
+        "custom"
+      ],
+      "default": "tnn_morning"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "energy": {
+      "type": "string"
+    },
+    "mission": {
+      "type": "string"
+    },
+    "producer_notes": {
+      "type": "string"
+    },
+    "selected_categories": {
+      "type": "string"
+    },
+    "priority_topics": {
+      "type": "string"
+    },
+    "avoid_topics": {
+      "type": "string"
+    },
+    "source_priority_mode": {
+      "type": "string",
+      "enum": [
+        "all_approved",
+        "prioritize_selected",
+        "exclude_selected"
+      ],
+      "default": "all_approved"
+    },
+    "prioritized_sources": {
+      "type": "string"
+    },
+    "excluded_sources": {
+      "type": "string"
+    },
+    "editorial_rules": {
+      "type": "string"
+    },
+    "brief_length": {
+      "type": "string",
+      "enum": [
+        "quick",
+        "standard",
+        "full"
+      ],
+      "default": "standard"
+    },
+    "approval_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_planned",
+        "planned",
+        "scheduled",
+        "generating",
+        "ready",
+        "needs_review",
+        "skipped",
+        "failed"
+      ],
+      "default": "not_planned"
+    }
+  },
+  "required": [
+    "date",
+    "day_name"
+  ]
+}
