@@ -1,0 +1,86 @@
+{
+  "name": "ShowProfile",
+  "type": "object",
+  "properties": {
+    "show_name": {
+      "type": "string"
+    },
+    "brand_profile_id": {
+      "type": "string"
+    },
+    "host_names": {
+      "type": "string"
+    },
+    "default_tone": {
+      "type": "string",
+      "enum": [
+        "professional",
+        "conversational",
+        "energetic",
+        "serious",
+        "investigative",
+        "educational",
+        "inspirational",
+        "neutral",
+        "urgent",
+        "humorous"
+      ],
+      "default": "professional"
+    },
+    "reading_style": {
+      "type": "string",
+      "enum": [
+        "broadcast_news",
+        "podcast",
+        "livestream",
+        "interview",
+        "documentary",
+        "educational_presentation",
+        "corporate_communication",
+        "storytelling"
+      ],
+      "default": "broadcast_news"
+    },
+    "audience": {
+      "type": "string",
+      "default": "General Public"
+    },
+    "target_runtime": {
+      "type": "string",
+      "default": "1 Minute"
+    },
+    "preferred_categories": {
+      "type": "string"
+    },
+    "preferred_assets": {
+      "type": "string"
+    },
+    "default_export_format": {
+      "type": "string",
+      "enum": [
+        "pdf",
+        "docx",
+        "markdown",
+        "html",
+        "text"
+      ],
+      "default": "pdf"
+    },
+    "opening_script": {
+      "type": "string"
+    },
+    "closing_script": {
+      "type": "string"
+    },
+    "producer_notes": {
+      "type": "string"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "show_name"
+  ]
+}

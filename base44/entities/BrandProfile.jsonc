@@ -1,0 +1,55 @@
+{
+  "name": "BrandProfile",
+  "type": "object",
+  "properties": {
+    "brand_name": {
+      "type": "string"
+    },
+    "organization_name": {
+      "type": "string"
+    },
+    "network_name": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "primary_color": {
+      "type": "string"
+    },
+    "secondary_color": {
+      "type": "string"
+    },
+    "typography": {
+      "type": "string"
+    },
+    "brand_guidelines": {
+      "type": "string"
+    },
+    "intro_text": {
+      "type": "string"
+    },
+    "outro_text": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "social_accounts": {
+      "type": "string"
+    },
+    "brand_description": {
+      "type": "string"
+    },
+    "brand_notes": {
+      "type": "string"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "brand_name"
+  ]
+}

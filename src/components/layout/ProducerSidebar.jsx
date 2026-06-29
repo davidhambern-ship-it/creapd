@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
-  Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package
+  Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv
 } from 'lucide-react';
 
 const navItems = [
@@ -11,6 +11,8 @@ const navItems = [
   { icon: FileText, label: "Today's Brief", path: '/brief' },
   { icon: Layers, label: 'Story Queue', path: '/queue' },
   { icon: Package, label: 'Production', path: '/production' },
+  { icon: Palette, label: 'Brand Profiles', path: '/brands' },
+  { icon: Tv, label: 'Show Profiles', path: '/shows' },
   { icon: Search, label: 'Research Desk', path: '/research' },
   { icon: Radio, label: 'Sources', path: '/sources' },
   { icon: Archive, label: 'Archive', path: '/archive' },

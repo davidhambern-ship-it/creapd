@@ -17,6 +17,8 @@ import WeeklyPlanner from '@/pages/WeeklyPlanner';
 import TodaysBrief from '@/pages/TodaysBrief';
 import StoryQueue from '@/pages/StoryQueue';
 import ProductionPackages from '@/pages/ProductionPackages';
+import BrandProfiles from '@/pages/BrandProfiles';
+import ShowProfiles from '@/pages/ShowProfiles';
 import ResearchDesk from '@/pages/ResearchDesk';
 import Sources from '@/pages/Sources';
 import ArchivePage from '@/pages/ArchivePage';
@@ -60,6 +62,8 @@ const AuthenticatedApp = () => {
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
           <Route path="/production" element={<ProductionPackages />} />
+          <Route path="/brands" element={<BrandProfiles />} />
+          <Route path="/shows" element={<ShowProfiles />} />
           <Route path="/research" element={<ResearchDesk />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/archive" element={<ArchivePage />} />
