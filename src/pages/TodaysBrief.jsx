@@ -159,6 +159,32 @@ export default function TodaysBrief() {
     await base44.entities.Briefing.update(briefing.id, { approved_sections: JSON.stringify(newApproved) });
   };
 
+  // Approve all stories + all sections, then send to production
+  const handleApproveAll = async () => {
+    if (!briefing) return;
+
+    // Approve all non-approved, non-rejected stories
+    const toApprove = articles.filter(a => a.status !== 'approved' && a.status !== 'bernas_pick' && a.status !== 'rejected');
+    if (toApprove.length > 0) {
+      await base44.entities.Article.bulkUpdate(toApprove.map(a => ({ id: a.id, status: 'approved' })));
+      setArticles(prev => prev.map(a =>
+        a.status !== 'approved' && a.status !== 'bernas_pick' && a.status !== 'rejected'
+          ? { ...a, status: 'approved' }
+          : a
+      ));
+      logActivity('approve', { entity_type: 'Article', entity_id: briefing.id, entity_name: briefing.title || '', details: `Approved ${toApprove.length} stories from brief (Approve All)` });
+    }
+
+    // Approve all active sections
+    const allApproved = {};
+    activeSections.forEach(s => { allApproved[s.field] = true; });
+    setApprovedSections(allApproved);
+    await base44.entities.Briefing.update(briefing.id, { approved_sections: JSON.stringify(allApproved) });
+
+    // Navigate to production
+    window.location.href = '/production';
+  };
+
   // Copy full brief
   const handleCopyBrief = () => {
     if (!briefing) return;
@@ -278,6 +304,7 @@ export default function TodaysBrief() {
           approvedStories={approvedStoryCount}
           totalSections={activeSections.length}
           approvedSections={approvedSectionCount}
+          onApproveAll={handleApproveAll}
         />
       )}
 
