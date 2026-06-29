@@ -21,8 +21,34 @@
         "science_research",
         "fact_checking",
         "company_newsroom",
-        "university_research"
+        "university_research",
+        "business_finance",
+        "technology",
+        "small_business",
+        "press_release",
+        "custom",
+        "local_news"
       ]
+    },
+    "source_layer": {
+      "type": "string",
+      "enum": [
+        "major_news",
+        "government",
+        "business_finance",
+        "technology",
+        "science",
+        "agriculture",
+        "local_news",
+        "creator_economy",
+        "small_business",
+        "press_releases",
+        "custom",
+        "manual_import"
+      ]
+    },
+    "source_group": {
+      "type": "string"
     },
     "url": {
       "type": "string"

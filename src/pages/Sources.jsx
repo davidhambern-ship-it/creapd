@@ -1,73 +1,90 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Edit, ToggleLeft, ToggleRight, RefreshCw, Globe,
-  Star, Shield, AlertCircle, Trash2, X, Check, Search
+  Plus, RefreshCw, Search, Loader2, AlertCircle, CheckCircle, X,
+  Globe, Landmark, TrendingUp, Cpu, FlaskConical, Wheat, MapPin,
+  Youtube, Store, Megaphone, Rss, FileInput, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import SortDropdown from '@/components/shared/SortDropdown';
+import SourceLayerSection from '@/components/sources/SourceLayerSection';
+
+const SOURCE_LAYERS = [
+  { value: 'major_news', label: 'Layer 1 — Major News', icon: Globe, desc: 'National & international news organizations' },
+  { value: 'government', label: 'Layer 2 — Government', icon: Landmark, desc: 'Official government sources' },
+  { value: 'business_finance', label: 'Layer 3 — Business & Finance', icon: TrendingUp, desc: 'Economic, financial & business news' },
+  { value: 'technology', label: 'Layer 4 — Technology', icon: Cpu, desc: 'Tech & AI news' },
+  { value: 'science', label: 'Layer 5 — Science', icon: FlaskConical, desc: 'Scientific discoveries & research' },
+  { value: 'agriculture', label: 'Layer 6 — Agriculture', icon: Wheat, desc: 'Agricultural & food production' },
+  { value: 'local_news', label: 'Layer 7 — Local News', icon: MapPin, desc: 'Location-aware story collection' },
+  { value: 'creator_economy', label: 'Layer 8 — Creator Economy', icon: Youtube, desc: 'Creators & digital entrepreneurs' },
+  { value: 'small_business', label: 'Layer 9 — Small Business', icon: Store, desc: 'Entrepreneurship & small business' },
+  { value: 'press_releases', label: 'Layer 10 — Press Releases', icon: Megaphone, desc: 'Official press release services' },
+  { value: 'custom', label: 'Layer 11 — Custom Sources', icon: Rss, desc: 'Your custom source library' },
+  { value: 'manual_import', label: 'Layer 12 — Manual Import', icon: FileInput, desc: 'Paste any URL to import' },
+];
 
 const sourceTypes = [
   { value: 'major_news', label: 'Major News' },
   { value: 'wire_service', label: 'Wire Service' },
   { value: 'government', label: 'Government' },
   { value: 'state_government', label: 'State Government' },
-  { value: 'local_business', label: 'Local Business' },
-  { value: 'manufacturing', label: 'Manufacturing' },
-  { value: 'labor_workforce', label: 'Labor/Workforce' },
-  { value: 'ai_technology', label: 'AI/Technology' },
-  { value: 'agriculture_food', label: 'Agriculture/Food' },
+  { value: 'business_finance', label: 'Business & Finance' },
+  { value: 'technology', label: 'Technology' },
+  { value: 'small_business', label: 'Small Business' },
+  { value: 'press_release', label: 'Press Release' },
+  { value: 'local_news', label: 'Local News' },
   { value: 'creator_economy', label: 'Creator Economy' },
   { value: 'science_research', label: 'Science/Research' },
-  { value: 'fact_checking', label: 'Fact-Checking' },
+  { value: 'agriculture_food', label: 'Agriculture/Food' },
   { value: 'company_newsroom', label: 'Company Newsroom' },
   { value: 'university_research', label: 'University/Research' },
+  { value: 'fact_checking', label: 'Fact-Checking' },
+  { value: 'custom', label: 'Custom' },
 ];
 
-const emptySource = { name: '', source_type: 'major_news', url: '', feed_url: '', category: '', trust_rating: 4, enabled: true, notes: '', paywall: false };
+const emptySource = { name: '', source_type: 'major_news', source_layer: 'major_news', url: '', feed_url: '', category: '', trust_rating: 4, enabled: true, notes: '', paywall: false };
 
 export default function Sources() {
+  const navigate = useNavigate();
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptySource);
-  const [sortBy, setSortBy] = useState(() => localStorage.getItem('sourceSort') || 'alphabetical');
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState(null);
 
-  useEffect(() => {
-    loadSources();
-  }, []);
+  useEffect(() => { loadSources(); }, []);
 
   const loadSources = () => {
     setLoading(true);
-    base44.entities.Source.filter({}, 'name', 50)
+    base44.entities.Source.filter({}, 'name', 200)
       .then(setSources)
       .finally(() => setLoading(false));
   };
 
-  const filteredSources = useMemo(() => {
-    let result = sources.filter(s => {
-      if (search && !s.name?.toLowerCase().includes(search.toLowerCase())) return false;
-      if (typeFilter !== 'all' && s.source_type !== typeFilter) return false;
-      return true;
+  const groupedByLayer = useMemo(() => {
+    const filtered = search
+      ? sources.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()))
+      : sources;
+    const groups = {};
+    SOURCE_LAYERS.forEach(l => { groups[l.value] = []; });
+    filtered.forEach(s => {
+      const layer = s.source_layer || 'major_news';
+      if (!groups[layer]) groups[layer] = [];
+      groups[layer].push(s);
     });
-    switch (sortBy) {
-      case 'newest': return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-      case 'trust': return result.sort((a, b) => (b.trust_rating || 0) - (a.trust_rating || 0));
-      case 'enabled': return result.sort((a, b) => (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0));
-      default: return result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    }
-  }, [sources, sortBy, search, typeFilter]);
+    return groups;
+  }, [sources, search]);
 
   const openAdd = () => { setEditing(null); setForm(emptySource); setDialogOpen(true); };
-  const openEdit = (source) => { setEditing(source); setForm(source); setDialogOpen(true); };
+  const openEdit = (source) => { setEditing(source); setForm({ ...source }); setDialogOpen(true); };
 
   const handleSave = async () => {
     if (editing) {
@@ -90,6 +107,19 @@ export default function Sources() {
     setSources(prev => prev.filter(s => s.id !== id));
   };
 
+  const handleFetch = async () => {
+    setFetching(true);
+    setFetchResult(null);
+    try {
+      const res = await base44.functions.invoke('fetchStories', {});
+      setFetchResult(res.data);
+    } catch (e) {
+      setFetchResult({ error: e.response?.data?.error || e.message });
+    } finally {
+      setFetching(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -99,15 +129,18 @@ export default function Sources() {
   }
 
   return (
-    <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">Sources</h1>
-          <p className="text-xs text-muted-foreground mt-1">Manage where Producer pulls stories from</p>
+          <h1 className="text-xl font-bold text-white">Story Source Engine</h1>
+          <p className="text-xs text-muted-foreground mt-1">12-layer aggregation engine — manage where Producer pulls stories from</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
-            <RefreshCw className="w-3 h-3 mr-1" />Refresh All
+          <Button variant="outline" size="sm" onClick={() => navigate('/import')} className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
+            <FileInput className="w-3 h-3 mr-1" />Import URL
+          </Button>
+          <Button size="sm" onClick={handleFetch} disabled={fetching} className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs">
+            {fetching ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Fetching...</> : <><RefreshCw className="w-3 h-3 mr-1" />Fetch Stories</>}
           </Button>
           <Button size="sm" onClick={openAdd} className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs">
             <Plus className="w-3 h-3 mr-1" />Add Source
@@ -115,75 +148,42 @@ export default function Sources() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search sources..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
-        </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-44 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9"><SelectValue placeholder="Type" /></SelectTrigger>
-          <SelectContent className="bg-card border-white/10">
-            <SelectItem value="all">All Types</SelectItem>
-            {sourceTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <SortDropdown value={sortBy} onChange={setSortBy} storageKey="sourceSort" options={[
-          { value: 'alphabetical', label: 'Alphabetical' },
-          { value: 'newest', label: 'Newest First' },
-          { value: 'oldest', label: 'Oldest First' },
-          { value: 'trust', label: 'Trust Rating' },
-          { value: 'enabled', label: 'Enabled First' },
-        ]} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {filteredSources.map(source => (
-          <div key={source.id} className={`glass-panel p-4 transition-all ${source.enabled ? '' : 'opacity-50'}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Globe className="w-4 h-4 text-berna-purple flex-shrink-0" />
-                  <h3 className="text-sm font-semibold text-white truncate">{source.name}</h3>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-muted-foreground">
-                    {sourceTypes.find(t => t.value === source.source_type)?.label || source.source_type}
-                  </span>
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <Shield key={i} className={`w-3 h-3 ${i <= (source.trust_rating || 0) ? 'text-berna-emerald' : 'text-white/10'}`} />
-                    ))}
-                  </div>
-                  {source.paywall && <span className="text-[10px] text-yellow-400">Paywall</span>}
-                </div>
-                {source.url && <p className="text-[10px] text-muted-foreground mt-1 truncate">{source.url}</p>}
-                {source.last_checked && <p className="text-[10px] text-muted-foreground font-mono mt-1">Last: {new Date(source.last_checked).toLocaleString()}</p>}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-white" onClick={() => toggleEnabled(source)}>
-                  {source.enabled ? <ToggleRight className="w-4 h-4 text-berna-emerald" /> : <ToggleLeft className="w-4 h-4" />}
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-white" onClick={() => openEdit(source)}>
-                  <Edit className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400" onClick={() => deleteSource(source.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
+      {fetchResult && (
+        <div className={`glass-panel p-3 flex items-start gap-2 ${fetchResult.error ? 'border-red-500/20' : 'border-berna-emerald/20'}`}>
+          {fetchResult.error ? <AlertCircle className="w-4 h-4 text-red-400 mt-0.5" /> : <CheckCircle className="w-4 h-4 text-berna-emerald mt-0.5" />}
+          <div className="flex-1 text-xs">
+            {fetchResult.error ? (
+              <p className="text-red-400">{fetchResult.error}</p>
+            ) : (
+              <p className="text-white/80">
+                Checked <span className="text-berna-purple font-mono">{fetchResult.sources_checked}</span> sources ·
+                Created <span className="text-berna-emerald font-mono">{fetchResult.articles_created}</span> new stories ·
+                Removed <span className="text-berna-orange font-mono">{fetchResult.duplicates_removed}</span> duplicates
+                {fetchResult.errors && <span className="text-yellow-400 block mt-1">Partial errors: {fetchResult.errors}</span>}
+              </p>
+            )}
           </div>
-        ))}
-      </div>
-
-      {sources.length === 0 && (
-        <div className="glass-panel p-12 text-center">
-          <Globe className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground mb-3">No sources configured yet</p>
-          <Button size="sm" onClick={openAdd} className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs">
-            <Plus className="w-3 h-3 mr-1" />Add Your First Source
-          </Button>
+          <button onClick={() => setFetchResult(null)} className="text-muted-foreground hover:text-white"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search sources..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
+      </div>
+
+      <div className="space-y-4">
+        {SOURCE_LAYERS.map(layer => (
+          <SourceLayerSection
+            key={layer.value}
+            layer={layer}
+            sources={groupedByLayer[layer.value] || []}
+            onToggle={toggleEnabled}
+            onEdit={openEdit}
+            onDelete={deleteSource}
+          />
+        ))}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-card border-white/10 text-white max-w-lg">
@@ -195,27 +195,36 @@ export default function Sources() {
               <label className="text-xs text-muted-foreground mb-1 block">Source Name</label>
               <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="bg-white/[0.03] border-white/[0.08] text-white text-sm" />
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Type</label>
-              <Select value={form.source_type} onValueChange={v => setForm(p => ({ ...p, source_type: v }))}>
-                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-white/10">
-                  {sourceTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Source Layer</label>
+                <Select value={form.source_layer} onValueChange={v => setForm(p => ({ ...p, source_layer: v }))}>
+                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-white/10">
+                    {SOURCE_LAYERS.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+                <Select value={form.source_type} onValueChange={v => setForm(p => ({ ...p, source_type: v }))}>
+                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-white/10">
+                    {sourceTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">URL</label>
               <Input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} className="bg-white/[0.03] border-white/[0.08] text-white text-sm" placeholder="https://" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Feed URL (RSS/API)</label>
-              <Input value={form.feed_url} onChange={e => setForm(p => ({ ...p, feed_url: e.target.value }))} className="bg-white/[0.03] border-white/[0.08] text-white text-sm" placeholder="Optional" />
+              <label className="text-xs text-muted-foreground mb-1 block">Feed URL (RSS/Atom)</label>
+              <Input value={form.feed_url} onChange={e => setForm(p => ({ ...p, feed_url: e.target.value }))} className="bg-white/[0.03] border-white/[0.08] text-white text-sm" placeholder="https://example.com/rss.xml" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Trust Rating (1-5)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Credibility Rating (1-5)</label>
               <Input type="number" min={1} max={5} value={form.trust_rating} onChange={e => setForm(p => ({ ...p, trust_rating: parseInt(e.target.value) || 1 }))} className="bg-white/[0.03] border-white/[0.08] text-white text-sm w-24" />
             </div>
             <div>

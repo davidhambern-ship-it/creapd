@@ -25,6 +25,7 @@ import ShowProfiles from '@/pages/ShowProfiles';
 import ExportCenter from '@/pages/ExportCenter';
 import ResearchDesk from '@/pages/ResearchDesk';
 import Sources from '@/pages/Sources';
+import ManualImport from '@/pages/ManualImport';
 import ArchivePage from '@/pages/ArchivePage';
 import AutomationCenter from '@/pages/AutomationCenter';
 import SettingsPage from '@/pages/SettingsPage';
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
           <Route path="/export" element={<ExportCenter />} />
           <Route path="/research" element={<ResearchDesk />} />
           <Route path="/sources" element={<Sources />} />
+          <Route path="/import" element={<ManualImport />} />
           <Route path="/archive" element={<ArchivePage />} />
           <Route path="/automation" element={<AutomationCenter />} />
           <Route path="/profile" element={<UserProfile />} />

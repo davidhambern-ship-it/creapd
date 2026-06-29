@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
-  Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList
+  Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList, FileInput
 } from 'lucide-react';
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { icon: Download, label: 'Export Center', path: '/export' },
   { icon: Search, label: 'Research Desk', path: '/research' },
   { icon: Radio, label: 'Sources', path: '/sources' },
+  { icon: FileInput, label: 'Import URL', path: '/import' },
   { icon: Archive, label: 'Archive', path: '/archive' },
   { icon: LayoutTemplate, label: 'Templates', path: '/templates' },
   { icon: Activity, label: 'Automation', path: '/automation' },
