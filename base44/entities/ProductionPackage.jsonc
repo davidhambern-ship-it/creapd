@@ -1,0 +1,97 @@
+{
+  "name": "ProductionPackage",
+  "type": "object",
+  "properties": {
+    "article_id": {
+      "type": "string"
+    },
+    "teleprompter_script": {
+      "type": "string"
+    },
+    "story_summary": {
+      "type": "string"
+    },
+    "talking_points": {
+      "type": "string"
+    },
+    "lower_third_text": {
+      "type": "string"
+    },
+    "headline_suggestions": {
+      "type": "string"
+    },
+    "image_prompt": {
+      "type": "string"
+    },
+    "thumbnail_prompt": {
+      "type": "string"
+    },
+    "visual_suggestions": {
+      "type": "string"
+    },
+    "broll_suggestions": {
+      "type": "string"
+    },
+    "social_caption": {
+      "type": "string"
+    },
+    "fact_check_notes": {
+      "type": "string"
+    },
+    "estimated_runtime": {
+      "type": "string"
+    },
+    "tone": {
+      "type": "string",
+      "enum": [
+        "professional",
+        "conversational",
+        "energetic",
+        "serious",
+        "investigative",
+        "educational",
+        "inspirational",
+        "neutral",
+        "urgent",
+        "humorous"
+      ],
+      "default": "professional"
+    },
+    "reading_style": {
+      "type": "string",
+      "enum": [
+        "broadcast_news",
+        "podcast",
+        "livestream",
+        "interview",
+        "documentary",
+        "educational_presentation",
+        "corporate_communication",
+        "storytelling"
+      ],
+      "default": "broadcast_news"
+    },
+    "audience": {
+      "type": "string",
+      "default": "General Public"
+    },
+    "target_runtime": {
+      "type": "string",
+      "default": "1 Minute"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_generated",
+        "generating",
+        "generated",
+        "edited",
+        "approved"
+      ],
+      "default": "not_generated"
+    }
+  },
+  "required": [
+    "article_id"
+  ]
+}
