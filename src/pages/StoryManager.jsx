@@ -384,6 +384,8 @@ export default function StoryManager() {
         storyCount={storyOrder.length}
         estimatedRuntime={estimatedRuntime}
         onUpdate={setProduction}
+        packages={packages}
+        articles={stories}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

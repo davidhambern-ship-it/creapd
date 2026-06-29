@@ -2,6 +2,7 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Clock, User, Calendar, Hash, Lock } from 'lucide-react';
+import RundownExportButton from '@/components/workspace/RundownExportButton';
 
 const PRODUCTION_STATUS_LABELS = {
   draft: 'Draft',
@@ -13,7 +14,7 @@ const PRODUCTION_STATUS_LABELS = {
   archived: 'Archived',
 };
 
-export default function WorkspaceHeader({ production, brands, shows, storyCount, estimatedRuntime, onUpdate }) {
+export default function WorkspaceHeader({ production, brands, shows, storyCount, estimatedRuntime, onUpdate, packages, articles }) {
   const brand = brands.find(b => b.id === production.brand_profile_id);
   const show = shows.find(s => s.id === production.show_profile_id);
 
@@ -32,16 +33,24 @@ export default function WorkspaceHeader({ production, brands, shows, storyCount,
             {show && <span className="text-[10px] text-muted-foreground">Show: <span className="text-white">{show.show_name}</span></span>}
           </div>
         </div>
-        <Select value={production.status} onValueChange={(v) => onUpdate({ ...production, status: v })}>
-          <SelectTrigger className="w-36 h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(PRODUCTION_STATUS_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <RundownExportButton
+            packages={packages || []}
+            articles={articles || []}
+            brandProfile={brand}
+            productionTitle={production.title}
+          />
+          <Select value={production.status} onValueChange={(v) => onUpdate({ ...production, status: v })}>
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(PRODUCTION_STATUS_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/[0.04]">
