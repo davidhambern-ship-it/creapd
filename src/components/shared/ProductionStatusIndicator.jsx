@@ -17,7 +17,7 @@ const STAGES = [
  *   package_generated, editing_complete, ready_for_export, exported
  * @param {string} size - 'sm' (default) or 'md'
  */
-export default function ProductionStatusIndicator({ currentStage, size = 'sm' }) {
+export default function ProductionStatusIndicator({ currentStage, size = 'sm', showLabels = true }) {
   const currentIndex = STAGES.findIndex(s => s.key === currentStage);
   const completed = currentIndex >= 0 ? currentIndex : -1;
 
@@ -45,9 +45,11 @@ export default function ProductionStatusIndicator({ currentStage, size = 'sm' })
               {isFuture && (
                 <Circle className={`${iconSize} text-muted-foreground/30`} />
               )}
-              <span className={`${textSize} mt-0.5 ${isComplete ? 'text-berna-emerald' : isCurrent ? 'text-berna-orange font-medium' : 'text-muted-foreground/40'} hidden sm:block`}>
-                {stage.label}
-              </span>
+              {showLabels && (
+                <span className={`${textSize} mt-0.5 ${isComplete ? 'text-berna-emerald' : isCurrent ? 'text-berna-orange font-medium' : 'text-muted-foreground/40'} hidden sm:block`}>
+                  {stage.label}
+                </span>
+              )}
             </div>
             {i < STAGES.length - 1 && (
               <div className={`flex-1 h-px mx-1 ${i < completed ? 'bg-berna-emerald/40' : 'bg-white/[0.06]'}`} />

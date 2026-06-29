@@ -342,7 +342,7 @@ export default function Dashboard() {
                 return (
                   <Link key={pkg.id} to="/production" className="block p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all">
                     <p className="text-xs text-white font-medium line-clamp-1 mb-2">{pkg.story_summary || pkg.teleprompter_script?.slice(0, 60) || 'Untitled Package'}</p>
-                    <ProductionStatusIndicator currentStage={stageMap[pkg.status] || 'briefing'} />
+                    <ProductionStatusIndicator currentStage={stageMap[pkg.status] || 'briefing'} showLabels={false} />
                   </Link>
                 );
               })}
