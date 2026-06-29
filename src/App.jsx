@@ -18,6 +18,7 @@ import TodaysBrief from '@/pages/TodaysBrief';
 import StoryQueue from '@/pages/StoryQueue';
 import StoryDetail from '@/pages/StoryDetail';
 import StoryLibrary from '@/pages/StoryLibrary';
+import StoryManager from '@/pages/StoryManager';
 import ProductionPackages from '@/pages/ProductionPackages';
 import BrandProfiles from '@/pages/BrandProfiles';
 import ShowProfiles from '@/pages/ShowProfiles';
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
           <Route path="/queue" element={<StoryQueue />} />
           <Route path="/story/:id" element={<StoryDetail />} />
           <Route path="/library" element={<StoryLibrary />} />
+          <Route path="/workspace" element={<StoryManager />} />
           <Route path="/production" element={<ProductionPackages />} />
           <Route path="/brands" element={<BrandProfiles />} />
           <Route path="/shows" element={<ShowProfiles />} />

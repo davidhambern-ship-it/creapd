@@ -151,6 +151,41 @@
     },
     "thumbnail_url": {
       "type": "string"
+    },
+    "production_id": {
+      "type": "string"
+    },
+    "production_priority": {
+      "type": "string",
+      "enum": [
+        "breaking",
+        "high",
+        "standard",
+        "feature",
+        "optional",
+        "archived"
+      ],
+      "default": "standard"
+    },
+    "production_status": {
+      "type": "string",
+      "enum": [
+        "selected",
+        "researching",
+        "generating_package",
+        "package_ready",
+        "editing",
+        "ready_for_review",
+        "approved",
+        "ready_for_export",
+        "exported",
+        "archived"
+      ],
+      "default": "selected"
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

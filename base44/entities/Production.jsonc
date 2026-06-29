@@ -1,0 +1,54 @@
+{
+  "name": "Production",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "brand_profile_id": {
+      "type": "string"
+    },
+    "show_profile_id": {
+      "type": "string"
+    },
+    "production_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "in_progress",
+        "ready_for_review",
+        "approved",
+        "ready_for_export",
+        "exported",
+        "archived"
+      ],
+      "default": "in_progress"
+    },
+    "story_order": {
+      "type": "string"
+    },
+    "global_notes": {
+      "type": "string"
+    },
+    "checklist": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "estimated_runtime": {
+      "type": "string"
+    },
+    "target_runtime": {
+      "type": "string",
+      "default": "30 Minutes"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
