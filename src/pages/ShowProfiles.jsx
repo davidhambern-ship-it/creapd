@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Star, Pencil, Trash2, Tv, Clock } from 'lucide-react';
+import { Plus, Star, Pencil, Trash2, Tv, Clock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ShowProfileEditor from '@/components/profiles/ShowProfileEditor';
+import SortDropdown from '@/components/shared/SortDropdown';
 
 export default function ShowProfiles() {
   const [shows, setShows] = useState([]);
@@ -12,6 +14,8 @@ export default function ShowProfiles() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [brandFilter, setBrandFilter] = useState('all');
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('showSort') || 'newest');
+  const [search, setSearch] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -52,7 +56,16 @@ export default function ShowProfiles() {
     load();
   };
 
-  const filtered = brandFilter === 'all' ? shows : shows.filter(s => s.brand_profile_id === brandFilter);
+  const filtered = useMemo(() => {
+    let result = brandFilter === 'all' ? shows : shows.filter(s => s.brand_profile_id === brandFilter);
+    result = result.filter(s => !search || s.show_name?.toLowerCase().includes(search.toLowerCase()));
+    switch (sortBy) {
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (a.show_name || '').localeCompare(b.show_name || ''));
+      case 'favorites': return result.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
+      default: return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  }, [shows, brandFilter, sortBy, search]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" /></div>;
@@ -70,15 +83,27 @@ export default function ShowProfiles() {
         </Button>
       </div>
 
-      {brands.length > 0 && (
-        <Select value={brandFilter} onValueChange={setBrandFilter}>
-          <SelectTrigger className="w-48 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Filter by brand" /></SelectTrigger>
-          <SelectContent className="bg-card border-white/10">
-            <SelectItem value="all" className="text-xs">All Brands</SelectItem>
-            {brands.map(b => <SelectItem key={b.id} value={b.id} className="text-xs">{b.brand_name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search shows..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
+        </div>
+        {brands.length > 0 && (
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="w-48 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Filter by brand" /></SelectTrigger>
+            <SelectContent className="bg-card border-white/10">
+              <SelectItem value="all" className="text-xs">All Brands</SelectItem>
+              {brands.map(b => <SelectItem key={b.id} value={b.id} className="text-xs">{b.brand_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        <SortDropdown value={sortBy} onChange={setSortBy} storageKey="showSort" options={[
+          { value: 'newest', label: 'Newest First' },
+          { value: 'oldest', label: 'Oldest First' },
+          { value: 'alphabetical', label: 'Alphabetical' },
+          { value: 'favorites', label: 'Favorites First' },
+        ]} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(show => {

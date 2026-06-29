@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   Plus, Edit, ToggleLeft, ToggleRight, RefreshCw, Globe,
-  Star, Shield, AlertCircle, Trash2, X, Check
+  Star, Shield, AlertCircle, Trash2, X, Check, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import SortDropdown from '@/components/shared/SortDropdown';
 
 const sourceTypes = [
   { value: 'major_news', label: 'Major News' },
@@ -35,6 +36,9 @@ export default function Sources() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptySource);
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('sourceSort') || 'alphabetical');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
     loadSources();
@@ -46,6 +50,21 @@ export default function Sources() {
       .then(setSources)
       .finally(() => setLoading(false));
   };
+
+  const filteredSources = useMemo(() => {
+    let result = sources.filter(s => {
+      if (search && !s.name?.toLowerCase().includes(search.toLowerCase())) return false;
+      if (typeFilter !== 'all' && s.source_type !== typeFilter) return false;
+      return true;
+    });
+    switch (sortBy) {
+      case 'newest': return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'trust': return result.sort((a, b) => (b.trust_rating || 0) - (a.trust_rating || 0));
+      case 'enabled': return result.sort((a, b) => (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0));
+      default: return result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+  }, [sources, sortBy, search, typeFilter]);
 
   const openAdd = () => { setEditing(null); setForm(emptySource); setDialogOpen(true); };
   const openEdit = (source) => { setEditing(source); setForm(source); setDialogOpen(true); };
@@ -96,8 +115,29 @@ export default function Sources() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search sources..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-44 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent className="bg-card border-white/10">
+            <SelectItem value="all">All Types</SelectItem>
+            {sourceTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <SortDropdown value={sortBy} onChange={setSortBy} storageKey="sourceSort" options={[
+          { value: 'alphabetical', label: 'Alphabetical' },
+          { value: 'newest', label: 'Newest First' },
+          { value: 'oldest', label: 'Oldest First' },
+          { value: 'trust', label: 'Trust Rating' },
+          { value: 'enabled', label: 'Enabled First' },
+        ]} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {sources.map(source => (
+        {filteredSources.map(source => (
           <div key={source.id} className={`glass-panel p-4 transition-all ${source.enabled ? '' : 'opacity-50'}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">

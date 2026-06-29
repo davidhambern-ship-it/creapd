@@ -1,14 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Star, Pencil, Trash2, Globe, Palette } from 'lucide-react';
+import { Plus, Star, Pencil, Trash2, Globe, Palette, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import BrandProfileEditor from '@/components/profiles/BrandProfileEditor';
+import SortDropdown from '@/components/shared/SortDropdown';
 
 export default function BrandProfiles() {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('brandSort') || 'newest');
+  const [search, setSearch] = useState('');
+
+  const sortedBrands = useMemo(() => {
+    let result = brands.filter(b => !search || b.brand_name?.toLowerCase().includes(search.toLowerCase()));
+    switch (sortBy) {
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (a.brand_name || '').localeCompare(b.brand_name || ''));
+      case 'favorites': return result.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
+      default: return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  }, [brands, sortBy, search]);
 
   const load = () => {
     setLoading(true);
@@ -50,13 +64,26 @@ export default function BrandProfiles() {
           <h1 className="text-xl font-bold text-white">Brand Profiles</h1>
           <p className="text-xs text-muted-foreground mt-1">Manage visual identity, logos, colors, and branding for your productions</p>
         </div>
-        <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={() => { setEditing(null); setEditorOpen(true); }}>
-          <Plus className="w-3 h-3 mr-1" />Create Brand
-        </Button>
+        <div className="flex items-center gap-2">
+          <SortDropdown value={sortBy} onChange={setSortBy} storageKey="brandSort" options={[
+            { value: 'newest', label: 'Newest First' },
+            { value: 'oldest', label: 'Oldest First' },
+            { value: 'alphabetical', label: 'Alphabetical' },
+            { value: 'favorites', label: 'Favorites First' },
+          ]} />
+          <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={() => { setEditing(null); setEditorOpen(true); }}>
+            <Plus className="w-3 h-3 mr-1" />Create Brand
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search brands..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {brands.map(brand => (
+        {sortedBrands.map(brand => (
           <div key={brand.id} className="glass-panel p-4 hover:border-white/[0.12] transition-all">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">

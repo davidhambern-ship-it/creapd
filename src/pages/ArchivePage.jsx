@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import {
@@ -6,11 +6,13 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import StatusBadge from '@/components/shared/StatusBadge';
+import SortDropdown from '@/components/shared/SortDropdown';
 
 export default function ArchivePage() {
   const [briefings, setBriefings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('archiveSort') || 'newest');
 
   useEffect(() => {
     base44.entities.Briefing.filter({}, '-created_date', 50)
@@ -18,16 +20,24 @@ export default function ArchivePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = briefings.filter(b => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      b.title?.toLowerCase().includes(term) ||
-      b.theme?.toLowerCase().includes(term) ||
-      b.berna_pick_title?.toLowerCase().includes(term) ||
-      b.date?.includes(term)
-    );
-  });
+  const filtered = useMemo(() => {
+    let result = briefings.filter(b => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        b.title?.toLowerCase().includes(term) ||
+        b.theme?.toLowerCase().includes(term) ||
+        b.berna_pick_title?.toLowerCase().includes(term) ||
+        b.date?.includes(term)
+      );
+    });
+    switch (sortBy) {
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'date': return result.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      default: return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  }, [briefings, searchTerm, sortBy]);
 
   if (loading) {
     return (
@@ -47,14 +57,22 @@ export default function ArchivePage() {
         <span className="text-xs text-muted-foreground">{briefings.length} briefings</span>
       </div>
 
-      <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by date, theme, keyword..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="pl-10 bg-white/[0.03] border-white/[0.08] text-white text-sm"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by date, theme, keyword..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="pl-10 bg-white/[0.03] border-white/[0.08] text-white text-sm"
+          />
+        </div>
+        <SortDropdown value={sortBy} onChange={setSortBy} storageKey="archiveSort" options={[
+          { value: 'newest', label: 'Newest First' },
+          { value: 'oldest', label: 'Oldest First' },
+          { value: 'alphabetical', label: 'Alphabetical' },
+          { value: 'date', label: 'Briefing Date' },
+        ]} />
       </div>
 
       <div className="space-y-3">

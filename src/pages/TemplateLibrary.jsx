@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { LayoutTemplate, Plus, Loader2, Trash2, Power, Copy, Check, X, Edit3 } from 'lucide-react';
+import { LayoutTemplate, Plus, Loader2, Trash2, Power, Copy, Check, X, Edit3, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { CATEGORIES, BRIEFING_TYPES, DEFAULT_TEMPLATES, parseJSON, stringifyJSON } from '@/lib/weeklyConstants';
 import { logActivity } from '@/lib/activityUtils';
+import SortDropdown from '@/components/shared/SortDropdown';
 
 const TONES = ['professional', 'conversational', 'energetic'];
 
@@ -17,7 +18,19 @@ export default function TemplateLibrary() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [showEditor, setShowEditor] = useState(false);
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('templateSort') || 'newest');
+  const [search, setSearch] = useState('');
   const { toast } = useToast();
+
+  const sortedTemplates = useMemo(() => {
+    let result = templates.filter(t => !search || t.name?.toLowerCase().includes(search.toLowerCase()));
+    switch (sortBy) {
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      case 'enabled': return result.sort((a, b) => (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0));
+      default: return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  }, [templates, sortBy, search]);
 
   const loadTemplates = async () => {
     setLoading(true);
@@ -110,13 +123,26 @@ export default function TemplateLibrary() {
           <h1 className="text-xl font-bold text-white">Template Library</h1>
           <p className="text-xs text-muted-foreground mt-1">Manage briefing templates — define sections, categories, scoring, and source rules</p>
         </div>
-        <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs" onClick={() => { setEditing(null); setShowEditor(true); }}>
-          <Plus className="w-3 h-3 mr-1" />New Template
-        </Button>
+        <div className="flex items-center gap-2">
+          <SortDropdown value={sortBy} onChange={setSortBy} storageKey="templateSort" options={[
+            { value: 'newest', label: 'Newest First' },
+            { value: 'oldest', label: 'Oldest First' },
+            { value: 'alphabetical', label: 'Alphabetical' },
+            { value: 'enabled', label: 'Enabled First' },
+          ]} />
+          <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs" onClick={() => { setEditing(null); setShowEditor(true); }}>
+            <Plus className="w-3 h-3 mr-1" />New Template
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search templates..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {templates.map(tpl => {
+        {sortedTemplates.map(tpl => {
           const sections = parseJSON(tpl.included_sections, []);
           const cats = parseJSON(tpl.default_categories, []);
           const typeInfo = BRIEFING_TYPES.find(b => b.key === tpl.template_key);

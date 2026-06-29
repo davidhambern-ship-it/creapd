@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Download, Package, Loader2, Check } from 'lucide-react';
+import { Download, Package, Loader2, Check, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import ExportSettings from '@/components/export/ExportSettings';
 import ExportHistory from '@/components/export/ExportHistory';
+import SortDropdown from '@/components/shared/SortDropdown';
 import {
   generateMarkdown, generateText, generateTeleprompter, generateHTML,
   generatePDF, downloadFile, downloadPDF, sanitizeFilename, getFileExtension, getMimeType
@@ -22,6 +24,22 @@ export default function ExportCenter() {
   const [includeBranding, setIncludeBranding] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [profileName, setProfileName] = useState('');
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('exportSort') || 'newest');
+  const [search, setSearch] = useState('');
+
+  const sortedPackages = useMemo(() => {
+    let result = packages.filter(p => {
+      if (!search) return true;
+      const article = articleMap[p.article_id];
+      return article?.title?.toLowerCase().includes(search.toLowerCase());
+    });
+    switch (sortBy) {
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (articleMap[a.article_id]?.title || '').localeCompare(articleMap[b.article_id]?.title || ''));
+      case 'status': return result.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
+      default: return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  }, [packages, sortBy, search, articles]);
 
   useEffect(() => {
     Promise.all([
@@ -145,7 +163,7 @@ export default function ExportCenter() {
         </div>
 
         <div className="lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
               {packages.length} packages available · {selectedIds.size} selected
             </p>
@@ -165,6 +183,19 @@ export default function ExportCenter() {
             </div>
           </div>
 
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search packages..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
+            </div>
+            <SortDropdown value={sortBy} onChange={setSortBy} storageKey="exportSort" options={[
+              { value: 'newest', label: 'Newest First' },
+              { value: 'oldest', label: 'Oldest First' },
+              { value: 'alphabetical', label: 'Alphabetical' },
+              { value: 'status', label: 'By Status' },
+            ]} />
+          </div>
+
           {packages.length === 0 ? (
             <div className="glass-panel p-12 text-center">
               <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -173,7 +204,7 @@ export default function ExportCenter() {
             </div>
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-              {packages.map(pkg => {
+              {sortedPackages.map(pkg => {
                 const article = articleMap[pkg.article_id];
                 const isSelected = selectedIds.has(pkg.id);
                 return (

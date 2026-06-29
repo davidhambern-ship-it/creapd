@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Package, Sparkles, ChevronRight, Loader2, CheckCircle, Clock } from 'lucide-react';
+import { Package, Sparkles, ChevronRight, Loader2, CheckCircle, Clock, Search, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import PackageDetailPanel from '@/components/production/PackageDetailPanel';
+import SortDropdown from '@/components/shared/SortDropdown';
 import { logActivity } from '@/lib/activityUtils';
 
 export default function ProductionPackages() {
@@ -13,6 +15,22 @@ export default function ProductionPackages() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('productionSort') || 'priority');
+  const [search, setSearch] = useState('');
+
+  const sortedArticles = useMemo(() => {
+    let result = articles.filter(a => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
+    switch (sortBy) {
+      case 'newest': return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'package_status': return result.sort((a, b) => {
+        const order = { approved: 0, edited: 1, generated: 2, generating: 3, not_generated: 4 };
+        return (order[packages[a.id]?.status] || 5) - (order[packages[b.id]?.status] || 5);
+      });
+      default: return result.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
+    }
+  }, [articles, sortBy, search, packages]);
 
   const loadData = async () => {
     setLoading(true);
@@ -92,6 +110,10 @@ export default function ProductionPackages() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">{articles.length} stories ready</span>
+          <span className="text-xs text-berna-emerald flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            {Object.values(packages).filter(p => p.status === 'approved' || p.status === 'edited').length} export-ready
+          </span>
           <Button
             size="sm"
             className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
@@ -104,14 +126,29 @@ export default function ProductionPackages() {
         </div>
       </div>
 
+      <div className="flex gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search stories..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
+        </div>
+        <SortDropdown value={sortBy} onChange={setSortBy} storageKey="productionSort" options={[
+          { value: 'priority', label: 'Story Priority' },
+          { value: 'newest', label: 'Newest First' },
+          { value: 'oldest', label: 'Oldest First' },
+          { value: 'alphabetical', label: 'Alphabetical' },
+          { value: 'package_status', label: 'Package Status' },
+        ]} />
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)]">
         {/* Story list */}
         <div className="w-full lg:w-72 flex-shrink-0 overflow-y-auto space-y-2 lg:max-h-full">
-          {articles.map(article => {
+          {sortedArticles.map(article => {
             const pkg = packages[article.id];
             const status = pkg?.status || 'not_generated';
             const st = statusStyles[status];
             const isSelected = article.id === selectedId;
+            const exportReady = status === 'approved' || status === 'edited';
             return (
               <button
                 key={article.id}
@@ -121,6 +158,11 @@ export default function ProductionPackages() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${st.dot} flex-shrink-0`} />
                   <span className={`text-[9px] uppercase tracking-wider ${st.color}`}>{st.label}</span>
+                  {exportReady && (
+                    <span className="text-[9px] text-berna-emerald flex items-center gap-0.5" title="Ready for export">
+                      <CheckCircle className="w-2.5 h-2.5" />Export Ready
+                    </span>
+                  )}
                   {pkg?.estimated_runtime && (
                     <span className="text-[9px] text-muted-foreground flex items-center gap-0.5 ml-auto">
                       <Clock className="w-2.5 h-2.5" />{pkg.estimated_runtime}
