@@ -73,6 +73,9 @@
     "tomorrow_watch": {
       "type": "string"
     },
+    "approved_sections": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
       "enum": [

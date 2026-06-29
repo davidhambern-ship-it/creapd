@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import {
-  FileText, Copy, RefreshCw, Archive, CheckCircle, Edit,
+  FileText, Copy, RefreshCw, Archive, CheckCircle,
   Star, ChevronDown, ChevronUp, ExternalLink, Clock, Mic,
   BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp, Compass, Layers, Zap, CalendarDays, Settings, Loader2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import OpportunityScore from '@/components/shared/OpportunityScore';
-import CategoryBadge from '@/components/shared/CategoryBadge';
+import BriefStoryCard from '@/components/brief/BriefStoryCard';
+import EditableSection from '@/components/brief/EditableSection';
+import BriefApprovalBar from '@/components/brief/BriefApprovalBar';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
+import { logActivity } from '@/lib/activityUtils';
 
 const BRIEFING_TYPES = [
   { value: 'daily', label: 'Daily Briefing', icon: FileText, desc: 'The day\u2019s most important stories' },
@@ -20,7 +22,18 @@ const BRIEFING_TYPES = [
   { value: 'custom', label: 'Custom Briefing', icon: Settings, desc: 'Custom criteria and filters' },
 ];
 
-function BriefSection({ icon: Icon, title, children, highlight, defaultOpen = false }) {
+const BRIEF_SECTIONS = [
+  { field: 'monologue', label: 'Opening Monologue (60–90 sec)', icon: Mic, highlight: false },
+  { field: 'poll', label: 'Chat Poll of the Day', icon: MessageSquare, highlight: false },
+  { field: 'graphic_stat', label: 'Graphic-Worthy Statistic', icon: BarChart3, highlight: true },
+  { field: 'broll', label: 'Suggested B-Roll Ideas', icon: Camera, highlight: false },
+  { field: 'cta', label: 'Call to Action', icon: Megaphone, highlight: true },
+  { field: 'conversation_starters', label: 'Conversation Starters', icon: MessageSquare, highlight: false },
+  { field: 'fact_check', label: 'Fact-Check Notes', icon: CheckCircle, highlight: false },
+  { field: 'tomorrow_watch', label: 'Tomorrow Watch', icon: Clock, highlight: false },
+];
+
+function StorySection({ icon: Icon, title, children, highlight, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className={`glass-panel overflow-hidden ${highlight ? 'glow-orange border-berna-orange/20' : ''}`}>
@@ -37,74 +50,6 @@ function BriefSection({ icon: Icon, title, children, highlight, defaultOpen = fa
   );
 }
 
-function StoryCard({ article, isBernasPick }) {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className={`mt-3 p-4 rounded-lg border ${isBernasPick ? 'bg-gradient-to-r from-berna-orange/5 to-berna-purple/5 border-berna-orange/20' : 'bg-white/[0.02] border-white/[0.06]'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          {isBernasPick && (
-            <div className="flex items-center gap-1 mb-1">
-              <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
-              <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Berna's Pick</span>
-            </div>
-          )}
-          <Link to={`/story/${article.id}`}>
-            <h4 className="text-sm font-semibold text-white leading-snug hover:text-berna-purple transition-colors">{article.title}</h4>
-          </Link>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            {article.category && <CategoryBadge category={article.category} />}
-            <OpportunityScore score={article.opportunity_score} />
-            <span className="text-[10px] text-muted-foreground font-mono">{article.source_name || article.publication}</span>
-            {article.geographic_relevance && <span className="text-[10px] text-muted-foreground">{article.geographic_relevance}</span>}
-          </div>
-        </div>
-      </div>
-      {article.summary && (
-        <p className="text-xs text-white/70 mt-3 leading-relaxed">{article.summary}</p>
-      )}
-      <div className="flex items-center gap-3 mt-2">
-        <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-berna-purple hover:underline">
-          {expanded ? 'Show less' : 'Show details'}
-        </button>
-        <Link to={`/story/${article.id}`} className="text-[10px] text-berna-emerald hover:underline">
-          View full story →
-        </Link>
-      </div>
-      {expanded && (
-        <div className="mt-3 space-y-3 text-xs">
-          {article.full_text_excerpt && (
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Why It Matters</p>
-              <p className="text-white/60 leading-relaxed">{article.full_text_excerpt}</p>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-4">
-            <div>
-              <p className="text-[10px] text-muted-foreground">Freshness</p>
-              <p className="text-white font-mono">{article.freshness_score || '-'}/5</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground">Credibility</p>
-              <p className="text-white font-mono">{article.credibility_score || '-'}/5</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-muted-foreground">Usefulness</p>
-              <p className="text-white font-mono">{article.usefulness_score || '-'}/5</p>
-            </div>
-          </div>
-          {article.url && (
-            <a href={article.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-berna-purple hover:underline">
-              <ExternalLink className="w-3 h-3" />
-              Open Source
-            </a>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function TodaysBrief() {
   const [briefing, setBriefing] = useState(null);
   const [articles, setArticles] = useState([]);
@@ -114,6 +59,7 @@ export default function TodaysBrief() {
   const [briefingType, setBriefingType] = useState('daily');
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [approvedSections, setApprovedSections] = useState({});
 
   const loadData = async () => {
     setLoading(true);
@@ -123,6 +69,12 @@ export default function TodaysBrief() {
       const briefs = await base44.entities.Briefing.filter(typeFilter, '-created_date', 1);
       const brief = briefs[0] || null;
       setBriefing(brief);
+
+      if (brief?.approved_sections) {
+        try { setApprovedSections(JSON.parse(brief.approved_sections)); } catch (e) { setApprovedSections({}); }
+      } else {
+        setApprovedSections({});
+      }
 
       if (brief?.article_ids) {
         let ids = [];
@@ -166,8 +118,73 @@ export default function TodaysBrief() {
 
   useEffect(() => { loadData(); }, [briefingType]);
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
+  // Story approval handlers
+  const handleApproveStory = async (id) => {
+    await base44.entities.Article.update(id, { status: 'approved' });
+    setArticles(prev => prev.map(a => a.id === id ? { ...a, status: 'approved' } : a));
+    const article = articles.find(a => a.id === id);
+    logActivity('approve', { entity_type: 'Article', entity_id: id, entity_name: article?.title || '', details: 'Approved from brief' });
+  };
+
+  const handleRejectStory = async (id) => {
+    await base44.entities.Article.update(id, { status: 'rejected', rejection_reason: 'Rejected from brief' });
+    setArticles(prev => prev.map(a => a.id === id ? { ...a, status: 'rejected' } : a));
+    const article = articles.find(a => a.id === id);
+    logActivity('reject', { entity_type: 'Article', entity_id: id, entity_name: article?.title || '', details: 'Rejected from brief' });
+  };
+
+  const handleSetBernasPick = async (id) => {
+    await base44.entities.Article.update(id, { status: 'bernas_pick' });
+    if (briefing) {
+      await base44.entities.Briefing.update(briefing.id, { berna_pick_id: id });
+    }
+    setArticles(prev => prev.map(a => a.id === id ? { ...a, status: 'bernas_pick' } : a));
+    setBriefing(prev => prev ? { ...prev, berna_pick_id: id } : prev);
+    const article = articles.find(a => a.id === id);
+    logActivity('approve', { entity_type: 'Article', entity_id: id, entity_name: article?.title || '', details: 'Set as Berna\'s Pick from brief' });
+  };
+
+  // Section edit/approve handlers
+  const handleSaveSection = async (field, content) => {
+    if (!briefing) return;
+    await base44.entities.Briefing.update(briefing.id, { [field]: content });
+    setBriefing(prev => ({ ...prev, [field]: content }));
+    logActivity('update', { entity_type: 'Briefing', entity_id: briefing.id, entity_name: briefing.title || '', details: `Edited section: ${field}` });
+  };
+
+  const handleApproveSection = async (field, isApproved) => {
+    if (!briefing) return;
+    const newApproved = { ...approvedSections, [field]: isApproved };
+    setApprovedSections(newApproved);
+    await base44.entities.Briefing.update(briefing.id, { approved_sections: JSON.stringify(newApproved) });
+  };
+
+  // Copy full brief
+  const handleCopyBrief = () => {
+    if (!briefing) return;
+    const lines = [
+      briefing.title || 'Daily Brief',
+      `Theme: ${briefing.theme || ''} | Energy: ${briefing.energy || ''}`,
+      '',
+      '--- STORIES ---',
+      ...articles.map(a => `• ${a.title} (${a.source_name || ''})`),
+      '',
+      '--- MONOLOGUE ---',
+      briefing.monologue || '',
+      '',
+      '--- POLL ---',
+      briefing.poll || '',
+      '',
+      '--- CTA ---',
+      briefing.cta || '',
+      '',
+      '--- B-ROLL ---',
+      briefing.broll || '',
+      '',
+      '--- CONVERSATION STARTERS ---',
+      briefing.conversation_starters || '',
+    ];
+    navigator.clipboard.writeText(lines.join('\n'));
   };
 
   if (loading) {
@@ -196,8 +213,14 @@ export default function TodaysBrief() {
   }
 
   const bernasPick = articles.find(a => a.id === briefing?.berna_pick_id);
-  const approvedArticles = articles.filter(a => a.id !== briefing?.berna_pick_id);
+  const otherArticles = articles.filter(a => a.id !== briefing?.berna_pick_id);
 
+  // Approval counts
+  const approvedStoryCount = articles.filter(a => a.status === 'approved' || a.status === 'bernas_pick').length;
+  const activeSections = BRIEF_SECTIONS.filter(s => briefing?.[s.field]);
+  const approvedSectionCount = activeSections.filter(s => approvedSections[s.field]).length;
+
+  // Group articles by section
   const sectionMap = {
     ai_business: { title: 'AI Win of the Day', icon: BarChart3 },
     manufacturing: { title: 'Made in America', icon: Star },
@@ -211,9 +234,8 @@ export default function TodaysBrief() {
     technology: { title: 'Science & Innovation', icon: Star },
   };
 
-  // Group articles by section
   const grouped = {};
-  approvedArticles.forEach(a => {
+  otherArticles.forEach(a => {
     const sec = sectionMap[a.category]?.title || 'General';
     if (!grouped[sec]) grouped[sec] = [];
     grouped[sec].push(a);
@@ -238,29 +260,26 @@ export default function TodaysBrief() {
         <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={handleGenerate} disabled={generating}>
           {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Brief</>}
         </Button>
-        <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
+        <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]" onClick={handleCopyBrief}>
           <Copy className="w-3 h-3 mr-1" />
           Copy Brief
-        </Button>
-        <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]" onClick={() => briefing?.monologue && copyToClipboard(briefing.monologue)}>
-          <Mic className="w-3 h-3 mr-1" />
-          Copy Monologue
         </Button>
         <Button variant="outline" size="sm" className="border-berna-orange/20 text-berna-orange text-xs hover:bg-berna-orange/10" onClick={() => setDirectionOpen(true)}>
           <Compass className="w-3 h-3 mr-1" />
           Change Direction
         </Button>
-        <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
-          <Archive className="w-3 h-3 mr-1" />
-          Archive
-        </Button>
         {briefing && <StatusBadge status={briefing.status} />}
-        <Link to="/production" className="ml-auto">
-          <Button size="sm" className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs h-8">
-            <Layers className="w-3 h-3 mr-1" />Begin Production
-          </Button>
-        </Link>
       </div>
+
+      {/* Approval Progress Bar */}
+      {briefing && articles.length > 0 && (
+        <BriefApprovalBar
+          totalStories={articles.length}
+          approvedStories={approvedStoryCount}
+          totalSections={activeSections.length}
+          approvedSections={approvedSectionCount}
+        />
+      )}
 
       {/* Cover Page */}
       <div className="glass-panel glow-purple p-6 lg:p-8 relative overflow-hidden">
@@ -271,7 +290,7 @@ export default function TodaysBrief() {
           <p className="text-sm text-muted-foreground">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
-          
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
             <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
               <p className="text-[10px] text-muted-foreground uppercase">Theme</p>
@@ -302,83 +321,62 @@ export default function TodaysBrief() {
 
       {/* Berna's Pick */}
       {bernasPick && (
-        <BriefSection icon={Star} title="Berna's Pick" highlight defaultOpen>
-          <StoryCard article={bernasPick} isBernasPick />
-        </BriefSection>
+        <StorySection icon={Star} title="Berna's Pick" highlight defaultOpen>
+          <BriefStoryCard
+            article={bernasPick}
+            isBernasPick
+            onApprove={handleApproveStory}
+            onReject={handleRejectStory}
+            onSetBernasPick={handleSetBernasPick}
+          />
+        </StorySection>
       )}
 
       {/* Top Story */}
-      {approvedArticles[0] && (
-        <BriefSection icon={TrendingUp} title="Top Story of the Day" defaultOpen>
-          <StoryCard article={approvedArticles[0]} />
-        </BriefSection>
+      {otherArticles[0] && (
+        <StorySection icon={TrendingUp} title="Top Story of the Day" defaultOpen>
+          <BriefStoryCard
+            article={otherArticles[0]}
+            onApprove={handleApproveStory}
+            onReject={handleRejectStory}
+            onSetBernasPick={handleSetBernasPick}
+          />
+        </StorySection>
       )}
 
       {/* Category sections */}
-      {Object.entries(grouped).map(([section, sectionArticles]) => (
-        <BriefSection key={section} icon={sectionMap[sectionArticles[0]?.category]?.icon || Star} title={section}>
+      {Object.entries(grouped).slice(1).map(([section, sectionArticles]) => (
+        <StorySection key={section} icon={sectionMap[sectionArticles[0]?.category]?.icon || Star} title={section}>
           {sectionArticles.map(a => (
-            <StoryCard key={a.id} article={a} />
+            <BriefStoryCard
+              key={a.id}
+              article={a}
+              onApprove={handleApproveStory}
+              onReject={handleRejectStory}
+              onSetBernasPick={handleSetBernasPick}
+            />
           ))}
-        </BriefSection>
+        </StorySection>
       ))}
 
-      {/* Monologue */}
-      {briefing?.monologue && (
-        <BriefSection icon={Mic} title="Opening Monologue (60–90 sec)">
-          <div className="mt-3 p-4 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-            <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{briefing.monologue}</p>
-          </div>
-        </BriefSection>
-      )}
-
-      {/* Poll */}
-      {briefing?.poll && (
-        <BriefSection icon={MessageSquare} title="Chat Poll of the Day">
-          <div className="mt-3 p-4 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-            <p className="text-sm text-white/80">{briefing.poll}</p>
-          </div>
-        </BriefSection>
-      )}
-
-      {/* Graphic Stat */}
-      {briefing?.graphic_stat && (
-        <BriefSection icon={BarChart3} title="Graphic-Worthy Statistic">
-          <div className="mt-3 p-4 rounded-lg bg-gradient-to-r from-berna-purple/5 to-berna-orange/5 border border-berna-purple/10">
-            <p className="text-lg font-bold text-white">{briefing.graphic_stat}</p>
-          </div>
-        </BriefSection>
-      )}
-
-      {/* B-Roll */}
-      {briefing?.broll && (
-        <BriefSection icon={Camera} title="Suggested B-Roll Ideas">
-          <div className="mt-3 p-4 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-            <p className="text-sm text-white/80 whitespace-pre-wrap">{briefing.broll}</p>
-          </div>
-        </BriefSection>
-      )}
-
-      {/* CTA */}
-      {briefing?.cta && (
-        <BriefSection icon={Megaphone} title="Call to Action">
-          <div className="mt-3 p-4 rounded-lg bg-berna-orange/5 border border-berna-orange/10">
-            <p className="text-sm text-white font-medium">{briefing.cta}</p>
-          </div>
-        </BriefSection>
-      )}
-
-      {/* Conversation Starters */}
-      {briefing?.conversation_starters && (
-        <BriefSection icon={MessageSquare} title="Conversation Starters">
-          <div className="mt-3 p-4 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-            <p className="text-sm text-white/80 whitespace-pre-wrap">{briefing.conversation_starters}</p>
-          </div>
-        </BriefSection>
-      )}
+      {/* Editable Brief Sections */}
+      {activeSections.map(sec => (
+        <EditableSection
+          key={sec.field}
+          icon={sec.icon}
+          title={sec.label}
+          content={briefing?.[sec.field]}
+          field={sec.field}
+          isApproved={!!approvedSections[sec.field]}
+          onSave={handleSaveSection}
+          onApprove={handleApproveSection}
+          highlight={sec.highlight}
+          defaultOpen={sec.field === 'monologue'}
+        />
+      ))}
 
       {/* Source Library */}
-      <BriefSection icon={BookOpen} title="Source Library">
+      <StorySection icon={BookOpen} title="Source Library">
         <div className="mt-3 space-y-2">
           {articles.map(a => (
             <div key={a.id} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
@@ -394,7 +392,7 @@ export default function TodaysBrief() {
             </div>
           ))}
         </div>
-      </BriefSection>
+      </StorySection>
 
       {/* Empty state */}
       {!briefing && articles.length === 0 && (
