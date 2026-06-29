@@ -12,7 +12,8 @@
         "markdown",
         "text",
         "teleprompter",
-        "html"
+        "html",
+        "docx"
       ]
     },
     "file_name": {

@@ -4,7 +4,7 @@ import {
   FileText, AlignLeft, MessageSquare, Type, Heading,
   Image, ImageIcon, Eye, Film, Share2, CheckSquare, Volume2,
   Sparkles, Loader2, Clock, ExternalLink, Save, CheckCircle,
-  StickyNote, BookMarked, MessageSquareCode, Cpu
+  StickyNote, BookMarked, MessageSquareCode, Cpu, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -157,6 +157,21 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
 
   const hasEdits = Object.keys(edits).length > 0;
 
+  const handleQuickExport = async () => {
+    if (!pkg) return;
+    const { generatePDF, downloadPDF, sanitizeFilename } = await import('@/lib/exportUtils');
+    const assets = new Set(['teleprompter_script', 'story_summary', 'talking_points', 'lower_third_text']);
+    const filename = `${sanitizeFilename(article.title)}.pdf`;
+    const doc = await generatePDF(pkg, article, assets, true, null);
+    downloadPDF(doc, filename);
+    await base44.entities.ExportLog.create({ package_ids: pkg.id, format: 'pdf', file_name: filename, asset_count: 4, status: 'success' });
+    logActivity('export', {
+      entity_type: 'ExportLog',
+      entity_name: `PDF quick export — ${article.title}`,
+      details: `Quick exported package as PDF from Production page`,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -175,13 +190,27 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
               )}
             </div>
           </div>
-          {article.url && (
-            <a href={article.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-              <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-white text-xs h-7">
-                <ExternalLink className="w-3 h-3 mr-1" />Source
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {pkg && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-berna-purple hover:text-berna-purple hover:bg-berna-purple/10 text-xs h-7"
+                onClick={() => handleQuickExport()}
+                disabled={!pkg.teleprompter_script}
+                title="Quick export as PDF"
+              >
+                <Download className="w-3 h-3 mr-1" />Export
               </Button>
-            </a>
-          )}
+            )}
+            {article.url && (
+              <a href={article.url} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-white text-xs h-7">
+                  <ExternalLink className="w-3 h-3 mr-1" />Source
+                </Button>
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Customization controls */}

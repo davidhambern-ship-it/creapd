@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Save, Star } from 'lucide-react';
+import { FileText, Save, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,9 +12,14 @@ const FORMATS = [
   { value: 'text', label: 'Plain Text' },
   { value: 'teleprompter', label: 'Teleprompter' },
   { value: 'html', label: 'HTML' },
+  { value: 'docx', label: 'Word (DOCX)' },
 ];
 
-export default function ExportSettings({ format, setFormat, selectedAssets, toggleAsset, includeBranding, setIncludeBranding, profiles, profileName, setProfileName, onSaveProfile, onLoadProfile }) {
+export default function ExportSettings({
+  format, setFormat, selectedAssets, toggleAsset, includeBranding, setIncludeBranding,
+  combinedExport, setCombinedExport,
+  profiles, profileName, setProfileName, onSaveProfile, onLoadProfile, onDeleteProfile, onToggleFavorite
+}) {
   return (
     <div className="glass-panel p-4 space-y-4">
       <div>
@@ -26,6 +31,16 @@ export default function ExportSettings({ format, setFormat, selectedAssets, togg
           </SelectContent>
         </Select>
       </div>
+
+      <label className="flex items-center gap-2 cursor-pointer text-xs text-white/70">
+        <input
+          type="checkbox"
+          checked={combinedExport}
+          onChange={e => setCombinedExport(e.target.checked)}
+          className="w-3.5 h-3.5 rounded border-white/20 bg-white/[0.05] accent-berna-purple"
+        />
+        Combined export (single document for all selected packages)
+      </label>
 
       <div>
         <Label className="text-xs text-muted-foreground mb-1.5 block">Included Assets</Label>
@@ -51,23 +66,38 @@ export default function ExportSettings({ format, setFormat, selectedAssets, togg
           onChange={e => setIncludeBranding(e.target.checked)}
           className="w-3.5 h-3.5 rounded border-white/20 bg-white/[0.05] accent-berna-purple"
         />
-        Include metadata & branding
+        Include brand identity & metadata
       </label>
 
       {profiles.length > 0 && (
         <div>
-          <Label className="text-xs text-muted-foreground mb-1.5 block">Load Export Profile</Label>
-          <Select value="" onValueChange={onLoadProfile}>
-            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Select a saved profile..." /></SelectTrigger>
-            <SelectContent className="bg-card border-white/10">
-              {profiles.map(p => (
-                <SelectItem key={p.id} value={p.id} className="text-xs">
-                  {p.is_favorite && <Star className="w-3 h-3 inline mr-1 text-berna-orange fill-berna-orange" />}
-                  {p.name} ({p.format})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="text-xs text-muted-foreground mb-1.5 block">Saved Export Profiles</Label>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {profiles.map(p => (
+              <div key={p.id} className="flex items-center gap-1.5 py-1.5 px-2 rounded hover:bg-white/[0.03]">
+                <button
+                  onClick={() => onToggleFavorite(p.id)}
+                  className="flex-shrink-0"
+                  title="Toggle favorite"
+                >
+                  <Star className={`w-3.5 h-3.5 ${p.is_favorite ? 'text-berna-orange fill-berna-orange' : 'text-muted-foreground'}`} />
+                </button>
+                <button
+                  onClick={() => onLoadProfile(p.id)}
+                  className="flex-1 text-left text-xs text-white/70 hover:text-white truncate"
+                >
+                  {p.name} <span className="text-[10px] text-muted-foreground uppercase">({p.format})</span>
+                </button>
+                <button
+                  onClick={() => onDeleteProfile(p.id)}
+                  className="flex-shrink-0 text-muted-foreground hover:text-red-400"
+                  title="Delete profile"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
