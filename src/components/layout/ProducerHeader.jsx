@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import NotificationDropdown from '@/components/shared/NotificationDropdown';
+import GlobalSearch from '@/components/shared/GlobalSearch';
 
 export default function ProducerHeader({ onGenerateBrief }) {
   const [time, setTime] = useState(new Date());
@@ -65,8 +66,9 @@ export default function ProducerHeader({ onGenerateBrief }) {
         </Link>
       </div>
 
-      {/* Center: Clock & Status */}
-      <div className="flex-1 flex items-center justify-center gap-6">
+      {/* Center: Search & Status */}
+      <div className="flex-1 flex items-center justify-center gap-4 px-4">
+        <GlobalSearch />
         <div className="hidden md:flex items-center gap-4 text-center">
           <div>
             <p className="text-lg font-mono font-semibold text-white tracking-wider">
