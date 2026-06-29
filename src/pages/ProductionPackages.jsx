@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Package, Sparkles, ChevronRight, Loader2, CheckCircle, Clock, Search, CheckCircle2 } from 'lucide-react';
+import { Package, Sparkles, ChevronRight, Loader2, CheckCircle, Clock, Search, CheckCircle2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import PackageDetailPanel from '@/components/production/PackageDetailPanel';
+import ShowStartupModal from '@/components/profiles/ShowStartupModal';
 import SortDropdown from '@/components/shared/SortDropdown';
 import { logActivity } from '@/lib/activityUtils';
 
@@ -17,6 +18,7 @@ export default function ProductionPackages() {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('productionSort') || 'priority');
   const [search, setSearch] = useState('');
+  const [showStartupOpen, setShowStartupOpen] = useState(false);
 
   const sortedArticles = useMemo(() => {
     let result = articles.filter(a => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
@@ -116,6 +118,14 @@ export default function ProductionPackages() {
           </span>
           <Button
             size="sm"
+            variant="outline"
+            className="border-berna-purple/30 text-berna-purple hover:bg-berna-purple/10 text-xs h-8"
+            onClick={() => setShowStartupOpen(true)}
+          >
+            <Play className="w-3 h-3 mr-1" />Start Production
+          </Button>
+          <Button
+            size="sm"
             className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
             onClick={handleGenerateAllStories}
             disabled={generatingAll || articles.length === 0}
@@ -197,6 +207,8 @@ export default function ProductionPackages() {
           )}
         </div>
       </div>
+
+      <ShowStartupModal open={showStartupOpen} onClose={() => setShowStartupOpen(false)} />
     </div>
   );
 }

@@ -55,6 +55,26 @@
     "preferred_assets": {
       "type": "string"
     },
+    "preferred_image_provider": {
+      "type": "string",
+      "enum": [
+        "default",
+        "dalle",
+        "midjourney",
+        "stable_diffusion",
+        "custom"
+      ],
+      "default": "default"
+    },
+    "preferred_image_style": {
+      "type": "string"
+    },
+    "default_ai_settings": {
+      "type": "string"
+    },
+    "default_template_ids": {
+      "type": "string"
+    },
     "default_export_format": {
       "type": "string",
       "enum": [

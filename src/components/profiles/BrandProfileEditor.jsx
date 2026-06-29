@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import BrandAssetSection from '@/components/profiles/BrandAssetSection';
 
 export default function BrandProfileEditor({ open, profile, onClose, onSave }) {
   const [form, setForm] = useState({});
@@ -70,6 +71,22 @@ export default function BrandProfileEditor({ open, profile, onClose, onSave }) {
           <div><Label className="text-xs text-muted-foreground">Social Accounts (comma-separated)</Label><Input value={form.social_accounts || ''} onChange={e => set('social_accounts', e.target.value)} placeholder="@TexasNomad, youtube.com/..." className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
           <div><Label className="text-xs text-muted-foreground">Brand Guidelines</Label><Textarea value={form.brand_guidelines || ''} onChange={e => set('brand_guidelines', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
           <div><Label className="text-xs text-muted-foreground">Brand Notes</Label><Textarea value={form.brand_notes || ''} onChange={e => set('brand_notes', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
+
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Brand Asset Library</Label>
+            <BrandAssetSection assets={form.brand_assets || '[]'} onChange={v => set('brand_assets', v)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs text-muted-foreground">Alternate Logos (comma-separated URLs)</Label><Input value={form.alternate_logos || ''} onChange={e => set('alternate_logos', e.target.value)} placeholder="https://logo2.png, ..." className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            <div><Label className="text-xs text-muted-foreground">Default Template IDs (comma-separated)</Label><Input value={form.default_template_ids || ''} onChange={e => set('default_template_ids', e.target.value)} placeholder="template-id-1, ..." className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label className="text-xs text-muted-foreground">Intro Graphics (URLs)</Label><Input value={form.intro_graphics || ''} onChange={e => set('intro_graphics', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            <div><Label className="text-xs text-muted-foreground">Outro Graphics (URLs)</Label><Input value={form.outro_graphics || ''} onChange={e => set('outro_graphics', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            <div><Label className="text-xs text-muted-foreground">Sponsor Graphics (URLs)</Label><Input value={form.sponsor_graphics || ''} onChange={e => set('sponsor_graphics', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" className="border-white/10 text-white text-xs" onClick={onClose}>Cancel</Button>

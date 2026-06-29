@@ -12,6 +12,18 @@ const STYLES = ['broadcast_news', 'podcast', 'livestream', 'interview', 'documen
 const AUDIENCES = ['General Public', 'Local Community', 'National Audience', 'Business Professionals', 'Students', 'Families', 'Church Congregations', 'Sports Fans', 'Industry Professionals'];
 const RUNTIMES = ['15 Seconds', '30 Seconds', '45 Seconds', '1 Minute', '2 Minutes', '5 Minutes', 'Custom'];
 const FORMATS = ['pdf', 'docx', 'markdown', 'html', 'text'];
+const IMAGE_PROVIDERS = ['default', 'dalle', 'midjourney', 'stable_diffusion', 'custom'];
+const PRODUCTION_ASSETS = [
+  { value: 'teleprompter_script', label: 'Teleprompter Script' },
+  { value: 'talking_points', label: 'Talking Points' },
+  { value: 'lower_thirds', label: 'Lower Thirds' },
+  { value: 'headline_graphics', label: 'Headline Graphics' },
+  { value: 'ai_images', label: 'AI Images' },
+  { value: 'social_captions', label: 'Social Captions' },
+  { value: 'fact_check_notes', label: 'Fact Check Notes' },
+  { value: 'visual_suggestions', label: 'Visual Suggestions' },
+  { value: 'broll_suggestions', label: 'B-roll Suggestions' },
+];
 
 export default function ShowProfileEditor({ open, profile, brands, onClose, onSave }) {
   const [form, setForm] = useState({});
@@ -22,6 +34,12 @@ export default function ShowProfileEditor({ open, profile, brands, onClose, onSa
   }, [open, profile]);
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+  const toggleAsset = (asset) => {
+    const current = (form.preferred_assets || '').split(',').map(s => s.trim()).filter(Boolean);
+    const next = current.includes(asset) ? current.filter(a => a !== asset) : [...current, asset];
+    set('preferred_assets', next.join(', '));
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -86,9 +104,23 @@ export default function ShowProfileEditor({ open, profile, brands, onClose, onSa
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs text-muted-foreground">Preferred Categories (comma-separated)</Label><Input value={form.preferred_categories || ''} onChange={e => set('preferred_categories', e.target.value)} placeholder="ai_business, manufacturing" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
-            <div><Label className="text-xs text-muted-foreground">Preferred Assets (comma-separated)</Label><Input value={form.preferred_assets || ''} onChange={e => set('preferred_assets', e.target.value)} placeholder="teleprompter_script, talking_points" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+          <div><Label className="text-xs text-muted-foreground">Preferred Categories (comma-separated)</Label><Input value={form.preferred_categories || ''} onChange={e => set('preferred_categories', e.target.value)} placeholder="ai_business, manufacturing" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Default Production Assets ({(form.preferred_assets || '').split(',').filter(Boolean).length} selected)</Label>
+            <p className="text-[10px] text-muted-foreground mb-2">Assets generated automatically for this show — producer may modify at any time</p>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 p-2 rounded-lg bg-white/[0.02]">
+              {PRODUCTION_ASSETS.map(a => {
+                const current = (form.preferred_assets || '').split(',').map(s => s.trim()).filter(Boolean);
+                const checked = current.includes(a.value);
+                return (
+                  <label key={a.value} className="flex items-center gap-1.5 p-1 rounded cursor-pointer hover:bg-white/[0.04]">
+                    <input type="checkbox" checked={checked} onChange={() => toggleAsset(a.value)} className="w-3 h-3 rounded accent-berna-purple" />
+                    <span className="text-[10px] text-white/70">{a.label}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Default Export Format</Label>
@@ -100,6 +132,27 @@ export default function ShowProfileEditor({ open, profile, brands, onClose, onSa
           <div><Label className="text-xs text-muted-foreground">Opening Script</Label><Textarea value={form.opening_script || ''} onChange={e => set('opening_script', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
           <div><Label className="text-xs text-muted-foreground">Closing Script</Label><Textarea value={form.closing_script || ''} onChange={e => set('closing_script', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
           <div><Label className="text-xs text-muted-foreground">Producer Notes</Label><Textarea value={form.producer_notes || ''} onChange={e => set('producer_notes', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
+
+          <div className="glass-panel p-3 space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">AI Preferences</Label>
+              <p className="text-[10px] text-muted-foreground mb-2">Default AI behavior — may be overridden per production</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Image Generation Provider</Label>
+                  <Select value={form.preferred_image_provider || 'default'} onValueChange={v => set('preferred_image_provider', v)}>
+                    <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-white/10">
+                      {IMAGE_PROVIDERS.map(p => <SelectItem key={p} value={p} className="text-xs capitalize">{p.replace(/_/g, ' ')}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label className="text-[10px] text-muted-foreground">Preferred Image Style</Label><Input value={form.preferred_image_style || ''} onChange={e => set('preferred_image_style', e.target.value)} placeholder="e.g. photorealistic, illustrative" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              </div>
+              <div className="mt-2"><Label className="text-[10px] text-muted-foreground">Default AI Settings (JSON)</Label><Textarea value={form.default_ai_settings || ''} onChange={e => set('default_ai_settings', e.target.value)} placeholder='{"creativity": "balanced"}' className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-12 font-mono text-[10px]" /></div>
+            </div>
+            <div><Label className="text-xs text-muted-foreground">Default Template IDs (comma-separated)</Label><Input value={form.default_template_ids || ''} onChange={e => set('default_template_ids', e.target.value)} placeholder="template-id-1, template-id-2" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" className="border-white/10 text-white text-xs" onClick={onClose}>Cancel</Button>

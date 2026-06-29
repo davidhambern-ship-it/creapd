@@ -14,6 +14,18 @@
     "logo_url": {
       "type": "string"
     },
+    "alternate_logos": {
+      "type": "string"
+    },
+    "intro_graphics": {
+      "type": "string"
+    },
+    "outro_graphics": {
+      "type": "string"
+    },
+    "sponsor_graphics": {
+      "type": "string"
+    },
     "primary_color": {
       "type": "string"
     },
@@ -42,6 +54,12 @@
       "type": "string"
     },
     "brand_notes": {
+      "type": "string"
+    },
+    "brand_assets": {
+      "type": "string"
+    },
+    "default_template_ids": {
       "type": "string"
     },
     "is_favorite": {
