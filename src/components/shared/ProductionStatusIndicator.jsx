@@ -17,7 +17,7 @@ const STAGES = [
  *   package_generated, editing_complete, ready_for_export, exported
  * @param {string} size - 'sm' (default) or 'md'
  */
-export default function ProductionStatusIndicator({ currentStage, size = 'sm', showLabels = true }) {
+export default function ProductionStatusIndicator({ currentStage, size = 'sm', showLabels = true, compactLabel = false }) {
   const currentIndex = STAGES.findIndex(s => s.key === currentStage);
   const completed = currentIndex >= 0 ? currentIndex : -1;
 
@@ -25,38 +25,47 @@ export default function ProductionStatusIndicator({ currentStage, size = 'sm', s
   const textSize = size === 'md' ? 'text-[10px]' : 'text-[9px]';
   const gap = size === 'md' ? 'gap-1' : 'gap-0.5';
 
+  const currentStageObj = currentIndex >= 0 ? STAGES[currentIndex] : STAGES[0];
+
   return (
-    <div className="flex items-center w-full">
-      {STAGES.map((stage, i) => {
-        const isComplete = i < completed || i === completed;
-        const isCurrent = i === completed;
-        const isFuture = i > completed;
-        return (
-          <React.Fragment key={stage.key}>
-            <div className="flex flex-col items-center flex-shrink-0">
-              {isComplete && !isCurrent && (
-                <CheckCircle className={`${iconSize} text-berna-emerald`} />
+    <div className="w-full">
+      <div className="flex items-center w-full">
+        {STAGES.map((stage, i) => {
+          const isComplete = i < completed || i === completed;
+          const isCurrent = i === completed;
+          const isFuture = i > completed;
+          return (
+            <React.Fragment key={stage.key}>
+              <div className="flex flex-col items-center flex-shrink-0">
+                {isComplete && !isCurrent && (
+                  <CheckCircle className={`${iconSize} text-berna-emerald`} />
+                )}
+                {isCurrent && (
+                  <div className={`${iconSize} relative`}>
+                    <Clock className={`${iconSize} text-berna-orange animate-pulse`} />
+                  </div>
+                )}
+                {isFuture && (
+                  <Circle className={`${iconSize} text-muted-foreground/30`} />
+                )}
+                {showLabels && (
+                  <span className={`${textSize} mt-0.5 ${isComplete ? 'text-berna-emerald' : isCurrent ? 'text-berna-orange font-medium' : 'text-muted-foreground/40'} hidden sm:block`}>
+                    {stage.label}
+                  </span>
+                )}
+              </div>
+              {i < STAGES.length - 1 && (
+                <div className={`flex-1 h-px mx-1 ${i < completed ? 'bg-berna-emerald/40' : 'bg-white/[0.06]'}`} />
               )}
-              {isCurrent && (
-                <div className={`${iconSize} relative`}>
-                  <Clock className={`${iconSize} text-berna-orange animate-pulse`} />
-                </div>
-              )}
-              {isFuture && (
-                <Circle className={`${iconSize} text-muted-foreground/30`} />
-              )}
-              {showLabels && (
-                <span className={`${textSize} mt-0.5 ${isComplete ? 'text-berna-emerald' : isCurrent ? 'text-berna-orange font-medium' : 'text-muted-foreground/40'} hidden sm:block`}>
-                  {stage.label}
-                </span>
-              )}
-            </div>
-            {i < STAGES.length - 1 && (
-              <div className={`flex-1 h-px mx-1 ${i < completed ? 'bg-berna-emerald/40' : 'bg-white/[0.06]'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
+            </React.Fragment>
+          );
+        })}
+      </div>
+      {compactLabel && (
+        <p className={`${textSize} mt-1.5 text-berna-orange font-medium`}>
+          {currentStageObj.label}
+        </p>
+      )}
     </div>
   );
 }
