@@ -34,6 +34,9 @@
     "top_3_stories": {
       "type": "string"
     },
+    "berna_pick_id": {
+      "type": "string"
+    },
     "berna_pick_title": {
       "type": "string"
     },

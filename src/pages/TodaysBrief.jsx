@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   FileText, Copy, RefreshCw, Archive, CheckCircle, Edit,
   Star, ChevronDown, ChevronUp, ExternalLink, Clock, Mic,
-  BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp, Compass, Layers, Zap, CalendarDays, Settings
+  BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp, Compass, Layers, Zap, CalendarDays, Settings, Loader2, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -113,23 +113,48 @@ export default function TodaysBrief() {
   const [directionOpen, setDirectionOpen] = useState(false);
   const [briefingType, setBriefingType] = useState('daily');
   const [refreshing, setRefreshing] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
       const typeFilter = briefingType === 'daily' ? {} : { briefing_type: briefingType };
-      const [briefs, arts, picks] = await Promise.all([
-        base44.entities.Briefing.filter(typeFilter, '-created_date', 1),
-        base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 20),
-        base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 5),
-      ]);
-      setBriefing(briefs[0] || null);
-      setArticles([...picks, ...arts]);
+      const briefs = await base44.entities.Briefing.filter(typeFilter, '-created_date', 1);
+      const brief = briefs[0] || null;
+      setBriefing(brief);
+
+      if (brief?.article_ids) {
+        let ids = [];
+        try { ids = JSON.parse(brief.article_ids); } catch (e) {}
+        if (ids.length > 0) {
+          const allArticles = await base44.entities.Article.list('-created_date', 200);
+          const briefingArticles = allArticles.filter(a => ids.includes(a.id));
+          briefingArticles.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
+          setArticles(briefingArticles);
+        } else {
+          setArticles([]);
+        }
+      } else {
+        setArticles([]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to load briefing');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      await base44.functions.invoke('generateBriefing', {});
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -170,8 +195,8 @@ export default function TodaysBrief() {
     );
   }
 
-  const bernasPick = articles.find(a => a.status === 'bernas_pick');
-  const approvedArticles = articles.filter(a => a.status === 'approved');
+  const bernasPick = articles.find(a => a.id === briefing?.berna_pick_id);
+  const approvedArticles = articles.filter(a => a.id !== briefing?.berna_pick_id);
 
   const sectionMap = {
     ai_business: { title: 'AI Win of the Day', icon: BarChart3 },
@@ -209,6 +234,9 @@ export default function TodaysBrief() {
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]" onClick={handleRefresh} disabled={refreshing}>
           <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
+        </Button>
+        <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={handleGenerate} disabled={generating}>
+          {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Brief</>}
         </Button>
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
           <Copy className="w-3 h-3 mr-1" />
@@ -373,7 +401,10 @@ export default function TodaysBrief() {
         <div className="glass-panel p-12 text-center">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-white mb-2">No Brief Yet</h2>
-          <p className="text-sm text-muted-foreground mb-4">The morning brief hasn't been generated yet. Click "Generate Brief" to create one.</p>
+          <p className="text-sm text-muted-foreground mb-4">The morning brief hasn't been generated yet.</p>
+          <Button size="sm" onClick={handleGenerate} disabled={generating} className="bg-berna-purple hover:bg-berna-purple/90 text-white">
+            {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Today's Brief</>}
+          </Button>
         </div>
       )}
 

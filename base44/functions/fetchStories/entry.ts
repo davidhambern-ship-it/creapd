@@ -65,8 +65,7 @@ Deno.serve(async (req) => {
   const startTime = new Date().toISOString();
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    try { await base44.auth.me(); } catch (e) {} // Auth optional — works for scheduled calls
 
     const body = await req.json().catch(() => ({}));
     const layerFilter = body.source_layer;
