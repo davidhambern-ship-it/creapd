@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Play, User } from 'lucide-react';
+import { Play, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
@@ -55,14 +55,13 @@ export default function ProducerHeader({ onGenerateBrief }) {
 
       {/* Left: Logo */}
       <div className="flex items-center gap-3 min-w-0">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-berna-purple to-berna-orange flex items-center justify-center">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <div className="hidden sm:block">
-            <h1 className="text-sm font-bold tracking-wide text-white leading-none">PRODUCER</h1>
-            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">by BERNA · TexasNomad Network</p>
-          </div>
+        <Link to="/" className="flex items-center">
+          <img
+            src="https://media.base44.com/images/public/6a4126962e5804304cc84b12/3a30f6e3d_Producer.png"
+            alt="Producer — Plan. Produce. Publish."
+            className="h-10 w-auto"
+            style={{ mixBlendMode: 'screen' }}
+          />
         </Link>
       </div>
 
