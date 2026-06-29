@@ -1,0 +1,40 @@
+{
+  "name": "ExportLog",
+  "type": "object",
+  "properties": {
+    "package_ids": {
+      "type": "string"
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "pdf",
+        "markdown",
+        "text",
+        "teleprompter",
+        "html"
+      ]
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "asset_count": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed"
+      ],
+      "default": "success"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "format"
+  ]
+}

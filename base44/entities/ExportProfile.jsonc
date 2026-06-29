@@ -1,0 +1,38 @@
+{
+  "name": "ExportProfile",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "pdf",
+        "markdown",
+        "text",
+        "teleprompter",
+        "html"
+      ],
+      "default": "pdf"
+    },
+    "included_assets": {
+      "type": "string"
+    },
+    "include_branding": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_metadata": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

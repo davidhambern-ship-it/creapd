@@ -19,6 +19,7 @@ import StoryQueue from '@/pages/StoryQueue';
 import ProductionPackages from '@/pages/ProductionPackages';
 import BrandProfiles from '@/pages/BrandProfiles';
 import ShowProfiles from '@/pages/ShowProfiles';
+import ExportCenter from '@/pages/ExportCenter';
 import ResearchDesk from '@/pages/ResearchDesk';
 import Sources from '@/pages/Sources';
 import ArchivePage from '@/pages/ArchivePage';
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
           <Route path="/production" element={<ProductionPackages />} />
           <Route path="/brands" element={<BrandProfiles />} />
           <Route path="/shows" element={<ShowProfiles />} />
+          <Route path="/export" element={<ExportCenter />} />
           <Route path="/research" element={<ResearchDesk />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/archive" element={<ArchivePage />} />
