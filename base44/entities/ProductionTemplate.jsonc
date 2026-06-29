@@ -1,0 +1,81 @@
+{
+  "name": "ProductionTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "story_cards",
+        "lower_thirds",
+        "headline_graphics",
+        "breaking_news_graphics",
+        "sponsor_graphics",
+        "fullscreen_graphics",
+        "social_media_graphics",
+        "video_end_cards",
+        "opening_graphics",
+        "closing_graphics",
+        "quote_cards",
+        "statistics_graphics",
+        "infographics",
+        "advertisement_graphics",
+        "promotional_graphics",
+        "custom"
+      ],
+      "default": "custom"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_format": {
+      "type": "string",
+      "enum": [
+        "png",
+        "svg",
+        "jpeg",
+        "jpg",
+        "pdf",
+        "other"
+      ],
+      "default": "png"
+    },
+    "placeholders": {
+      "type": "string"
+    },
+    "brand_profile_id": {
+      "type": "string"
+    },
+    "show_profile_id": {
+      "type": "string"
+    },
+    "assignment_level": {
+      "type": "string",
+      "enum": [
+        "organization_default",
+        "brand_default",
+        "show_default",
+        "production_default",
+        "story_specific"
+      ],
+      "default": "organization_default"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "file_url"
+  ]
+}
