@@ -33,7 +33,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
     <>
       {/* Desktop sidebar */}
       <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-16' : 'w-56'} transition-all duration-300 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-r border-white/[0.06] relative z-40`}>
-        <nav className="flex-1 py-4 space-y-1 px-2">
+        <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto overflow-x-hidden">
           {navItems.map(item => {
             const isActive = location.pathname === item.path;
             return (
