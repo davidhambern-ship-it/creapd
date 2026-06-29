@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { Link } from 'react-router-dom';
 import {
   FileText, Copy, RefreshCw, Archive, CheckCircle, Edit,
   Star, ChevronDown, ChevronUp, ExternalLink, Clock, Mic,
-  BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp, Compass
+  BarChart3, MessageSquare, Camera, Megaphone, BookOpen, TrendingUp, Compass, Layers, Zap, CalendarDays, Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
+
+const BRIEFING_TYPES = [
+  { value: 'daily', label: 'Daily Briefing', icon: FileText, desc: 'The day\u2019s most important stories' },
+  { value: 'breaking_news', label: 'Breaking News', icon: Zap, desc: 'Real-time developing stories' },
+  { value: 'weekly_planning', label: 'Weekly Planning', icon: CalendarDays, desc: 'Forward-looking upcoming events' },
+  { value: 'custom', label: 'Custom Briefing', icon: Settings, desc: 'Custom criteria and filters' },
+];
 
 function BriefSection({ icon: Icon, title, children, highlight, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -40,20 +49,28 @@ function StoryCard({ article, isBernasPick }) {
               <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Berna's Pick</span>
             </div>
           )}
-          <h4 className="text-sm font-semibold text-white leading-snug">{article.title}</h4>
+          <Link to={`/story/${article.id}`}>
+            <h4 className="text-sm font-semibold text-white leading-snug hover:text-berna-purple transition-colors">{article.title}</h4>
+          </Link>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             {article.category && <CategoryBadge category={article.category} />}
             <OpportunityScore score={article.opportunity_score} />
             <span className="text-[10px] text-muted-foreground font-mono">{article.source_name || article.publication}</span>
+            {article.geographic_relevance && <span className="text-[10px] text-muted-foreground">{article.geographic_relevance}</span>}
           </div>
         </div>
       </div>
       {article.summary && (
         <p className="text-xs text-white/70 mt-3 leading-relaxed">{article.summary}</p>
       )}
-      <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-berna-purple mt-2 hover:underline">
-        {expanded ? 'Show less' : 'Show details'}
-      </button>
+      <div className="flex items-center gap-3 mt-2">
+        <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-berna-purple hover:underline">
+          {expanded ? 'Show less' : 'Show details'}
+        </button>
+        <Link to={`/story/${article.id}`} className="text-[10px] text-berna-emerald hover:underline">
+          View full story →
+        </Link>
+      </div>
       {expanded && (
         <div className="mt-3 space-y-3 text-xs">
           {article.full_text_excerpt && (
@@ -94,13 +111,16 @@ export default function TodaysBrief() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [directionOpen, setDirectionOpen] = useState(false);
+  const [briefingType, setBriefingType] = useState('daily');
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
+      const typeFilter = briefingType === 'daily' ? {} : { briefing_type: briefingType };
       const [briefs, arts, picks] = await Promise.all([
-        base44.entities.Briefing.filter({}, '-created_date', 1),
+        base44.entities.Briefing.filter(typeFilter, '-created_date', 1),
         base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 20),
         base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 5),
       ]);
@@ -113,7 +133,13 @@ export default function TodaysBrief() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  useEffect(() => { loadData(); }, [briefingType]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -172,6 +198,18 @@ export default function TodaysBrief() {
     <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">
       {/* Top Controls */}
       <div className="flex flex-wrap items-center gap-2">
+        <Select value={briefingType} onValueChange={(v) => { setBriefingType(v); }}>
+          <SelectTrigger className="w-44 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-white/10">
+            {BRIEFING_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
           <Copy className="w-3 h-3 mr-1" />
           Copy Brief
@@ -179,10 +217,6 @@ export default function TodaysBrief() {
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]" onClick={() => briefing?.monologue && copyToClipboard(briefing.monologue)}>
           <Mic className="w-3 h-3 mr-1" />
           Copy Monologue
-        </Button>
-        <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
-          <RefreshCw className="w-3 h-3 mr-1" />
-          Regenerate
         </Button>
         <Button variant="outline" size="sm" className="border-berna-orange/20 text-berna-orange text-xs hover:bg-berna-orange/10" onClick={() => setDirectionOpen(true)}>
           <Compass className="w-3 h-3 mr-1" />
@@ -193,6 +227,11 @@ export default function TodaysBrief() {
           Archive
         </Button>
         {briefing && <StatusBadge status={briefing.status} />}
+        <Link to="/production" className="ml-auto">
+          <Button size="sm" className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs h-8">
+            <Layers className="w-3 h-3 mr-1" />Begin Production
+          </Button>
+        </Link>
       </div>
 
       {/* Cover Page */}

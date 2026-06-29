@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
-  Building2, UserCircle, Bell, LayoutTemplate
+  Building2, UserCircle, Bell, LayoutTemplate, Bookmark
 } from 'lucide-react';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
   { icon: FileText, label: "Today's Brief", path: '/brief' },
   { icon: Layers, label: 'Story Queue', path: '/queue' },
+  { icon: Bookmark, label: 'Story Library', path: '/library' },
   { icon: Package, label: 'Production', path: '/production' },
   { icon: Palette, label: 'Brand Profiles', path: '/brands' },
   { icon: Tv, label: 'Show Profiles', path: '/shows' },

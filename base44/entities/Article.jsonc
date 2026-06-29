@@ -30,20 +30,41 @@
     "category": {
       "type": "string",
       "enum": [
+        "top_story",
+        "politics",
+        "world",
+        "national",
+        "state",
+        "local",
+        "business",
+        "markets",
         "ai_business",
-        "manufacturing",
-        "reshoring",
-        "supply_chain",
-        "state_economy",
+        "ai",
+        "technology",
+        "science",
+        "health",
+        "environment",
+        "education",
+        "entertainment",
+        "sports",
+        "weather",
+        "crime_safety",
+        "military",
+        "food_agriculture",
         "small_business",
         "entrepreneurship",
         "skilled_trades",
         "hiring",
-        "food_agriculture",
         "creator_economy",
+        "good_news",
+        "fact_check",
+        "community",
+        "opinion",
+        "manufacturing",
+        "reshoring",
+        "supply_chain",
+        "state_economy",
         "infrastructure",
-        "science",
-        "technology",
         "general"
       ]
     },
@@ -58,6 +79,34 @@
     },
     "people": {
       "type": "string"
+    },
+    "geographic_relevance": {
+      "type": "string"
+    },
+    "why_it_matters": {
+      "type": "string"
+    },
+    "estimated_reading_time": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "priority_score": {
+      "type": "number"
+    },
+    "key_facts": {
+      "type": "string"
+    },
+    "timeline": {
+      "type": "string"
+    },
+    "additional_sources": {
+      "type": "string"
+    },
+    "is_saved": {
+      "type": "boolean",
+      "default": false
     },
     "freshness_score": {
       "type": "number"
@@ -74,6 +123,9 @@
     "duplicate_score": {
       "type": "number"
     },
+    "duplicate_group_id": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -83,7 +135,14 @@
         "saved_for_later",
         "bernas_pick",
         "needs_research",
-        "used"
+        "used",
+        "available",
+        "selected",
+        "in_production",
+        "package_generated",
+        "edited",
+        "ready_for_export",
+        "archived"
       ],
       "default": "pending"
     },

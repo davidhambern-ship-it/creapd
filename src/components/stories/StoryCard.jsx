@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   CheckCircle, XCircle, Bookmark, Star, Search as SearchIcon,
   ExternalLink, Clock, AlertTriangle, ChevronDown, ChevronUp,
-  FileText, Package, StickyNote, Archive, Trash2, Edit3
+  FileText, Package, StickyNote, Archive, Trash2, Edit3, MapPin, Tag, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import OpportunityScore from '@/components/shared/OpportunityScore';
@@ -89,7 +90,9 @@ export default function StoryCard({
           </div>
 
           {/* Headline */}
-          <h3 className="text-sm font-semibold text-white leading-snug mb-2">{article.title}</h3>
+          <Link to={`/story/${article.id}`}>
+            <h3 className="text-sm font-semibold text-white leading-snug mb-2 hover:text-berna-purple transition-colors">{article.title}</h3>
+          </Link>
 
           {/* Metadata row */}
           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -103,7 +106,30 @@ export default function StoryCard({
                 {new Date(article.published_at).toLocaleDateString()}
               </span>
             )}
+            {article.estimated_reading_time && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <BookOpen className="w-3 h-3" />
+                {article.estimated_reading_time}
+              </span>
+            )}
+            {article.geographic_relevance && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {article.geographic_relevance}
+              </span>
+            )}
           </div>
+
+          {/* Tags */}
+          {article.tags && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {article.tags.split(',').map(t => t.trim()).filter(Boolean).map(tag => (
+                <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-berna-purple/10 border border-berna-purple/20 text-[9px] text-berna-purple">
+                  <Tag className="w-2 h-2" />{tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Summary */}
           {article.summary && (
@@ -178,6 +204,11 @@ export default function StoryCard({
           <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-400 text-xs h-7" onClick={() => onDelete(article.id)}>
             <Trash2 className="w-3 h-3 mr-1" />Delete
           </Button>
+          <Link to={`/story/${article.id}`}>
+            <Button size="sm" variant="ghost" className="text-berna-purple hover:bg-berna-purple/10 text-xs h-7">
+              <FileText className="w-3 h-3 mr-1" />Details
+            </Button>
+          </Link>
         </div>
       )}
     </div>

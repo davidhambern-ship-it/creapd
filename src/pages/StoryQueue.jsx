@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   Search as SearchIcon, Compass, ArrowUpDown, CheckSquare,
-  Square, Layers
+  Square, Layers, RefreshCw, Bookmark, Copy
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,12 @@ const SORT_OPTIONS = [
   { value: 'alphabetical', label: 'Alphabetical' },
   { value: 'recently_edited', label: 'Recently Edited' },
   { value: 'publication_date', label: 'Publication Date' },
-  { value: 'priority', label: 'Story Priority' },
+  { value: 'priority', label: 'Highest Priority' },
+  { value: 'source', label: 'Source' },
+  { value: 'custom', label: 'Custom Order' },
 ];
 
-function sortArticles(articles, sortBy) {
+function sortArticles(articles, sortBy, selectedIds = []) {
   const sorted = [...articles];
   switch (sortBy) {
     case 'oldest': return sorted.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
@@ -29,6 +31,15 @@ function sortArticles(articles, sortBy) {
     case 'recently_edited': return sorted.sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date));
     case 'publication_date': return sorted.sort((a, b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
     case 'priority': return sorted.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
+    case 'source': return sorted.sort((a, b) => (a.source_name || '').localeCompare(b.source_name || ''));
+    case 'custom': return sorted.sort((a, b) => {
+      const aIdx = selectedIds.indexOf(a.id);
+      const bIdx = selectedIds.indexOf(b.id);
+      if (aIdx === -1 && bIdx === -1) return 0;
+      if (aIdx === -1) return 1;
+      if (bIdx === -1) return -1;
+      return aIdx - bIdx;
+    });
     default: return sorted.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
   }
 }
@@ -50,9 +61,12 @@ export default function StoryQueue() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [selectionFilter, setSelectionFilter] = useState('all');
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('storyQueueSort') || 'newest');
   const [tab, setTab] = useState('active');
   const [directionOpen, setDirectionOpen] = useState(false);
+  const [groupDuplicates, setGroupDuplicates] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('selectedStoryIds') || '[]'); } catch { return []; }
   });
@@ -90,6 +104,7 @@ export default function StoryQueue() {
   const updateStatus = async (id, status, reason) => {
     const update = { status };
     if (reason) update.rejection_reason = reason;
+    if (status === 'saved_for_later') update.is_saved = true;
     await base44.entities.Article.update(id, update);
     setArticles(prev => prev.map(a => a.id === id ? { ...a, ...update } : a));
     const article = articles.find(a => a.id === id);
@@ -122,6 +137,19 @@ export default function StoryQueue() {
   const selectAll = () => setSelectedIds(filtered.map(a => a.id));
   const deselectAll = () => setSelectedIds([]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadArticles();
+    setRefreshing(false);
+  };
+
+  const handleSave = async (id) => {
+    await base44.entities.Article.update(id, { is_saved: true, status: 'saved_for_later' });
+    setArticles(prev => prev.map(a => a.id === id ? { ...a, is_saved: true, status: 'saved_for_later' } : a));
+    const article = articles.find(a => a.id === id);
+    logActivity('update', { entity_type: 'Article', entity_id: id, entity_name: article?.title || '', details: 'Story saved to library' });
+  };
+
   const activeStatuses = ['pending', 'approved', 'bernas_pick', 'needs_research', 'saved_for_later'];
   const rejectedStatuses = ['rejected'];
 
@@ -130,22 +158,59 @@ export default function StoryQueue() {
     return Array.from(set).sort();
   }, [articles]);
 
+  const categoryOptions = useMemo(() => {
+    const set = new Set(articles.map(a => a.category).filter(Boolean));
+    return Array.from(set).sort();
+  }, [articles]);
+
   const filtered = useMemo(() => {
     let result = articles.filter(a => {
       if (tab === 'active' && !activeStatuses.includes(a.status)) return false;
       if (tab === 'rejected' && !rejectedStatuses.includes(a.status)) return false;
       if (tab === 'used' && a.status !== 'used') return false;
-      if (searchTerm && !a.title?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const haystack = [a.title, a.summary, a.source_name, a.publication, a.author, a.tags, a.companies, a.people, a.state, a.industry].filter(Boolean).join(' ').toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
       if (categoryFilter !== 'all' && a.category !== categoryFilter) return false;
       if (statusFilter !== 'all' && a.status !== statusFilter) return false;
       if (sourceFilter !== 'all' && a.source_name !== sourceFilter) return false;
       if (dateFilter === 'today' && !isWithinDays(a.published_at, 1)) return false;
       if (dateFilter === 'week' && !isWithinDays(a.published_at, 7)) return false;
       if (dateFilter === 'month' && !isWithinDays(a.published_at, 30)) return false;
+      if (selectionFilter === 'selected' && !selectedIds.includes(a.id)) return false;
+      if (selectionFilter === 'unselected' && selectedIds.includes(a.id)) return false;
+      if (selectionFilter === 'saved' && !a.is_saved && a.status !== 'saved_for_later') return false;
       return true;
     });
-    return sortArticles(result, sortBy);
-  }, [articles, tab, searchTerm, categoryFilter, statusFilter, sourceFilter, dateFilter, sortBy]);
+    return sortArticles(result, sortBy, selectedIds);
+  }, [articles, tab, searchTerm, categoryFilter, statusFilter, sourceFilter, dateFilter, selectionFilter, sortBy, selectedIds]);
+
+  // Group duplicate stories (duplicate_score > 3, same category or similar title)
+  const groupedFiltered = useMemo(() => {
+    if (!groupDuplicates) return filtered.map(a => ({ primary: a, duplicates: [] }));
+    const used = new Set();
+    const groups = [];
+    filtered.forEach(a => {
+      if (used.has(a.id)) return;
+      if ((a.duplicate_score || 0) <= 3) {
+        groups.push({ primary: a, duplicates: [] });
+        used.add(a.id);
+        return;
+      }
+      const dups = filtered.filter(b =>
+        b.id !== a.id &&
+        !used.has(b.id) &&
+        (b.duplicate_score || 0) > 3 &&
+        b.category === a.category &&
+        (a.duplicate_group_id ? a.duplicate_group_id === b.duplicate_group_id : true)
+      );
+      dups.forEach(d => used.add(d.id));
+      groups.push({ primary: a, duplicates: dups });
+    });
+    return groups;
+  }, [filtered, groupDuplicates]);
 
   if (loading) {
     return (
@@ -163,6 +228,9 @@ export default function StoryQueue() {
           <p className="text-xs text-muted-foreground mt-1">Assignment desk — review and manage incoming stories</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
+            <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />Refresh
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setDirectionOpen(true)} className="border-berna-orange/20 text-berna-orange text-xs hover:bg-berna-orange/10">
             <Compass className="w-3 h-3 mr-1" />Change Direction
           </Button>
@@ -210,17 +278,9 @@ export default function StoryQueue() {
           <SelectTrigger className="w-40 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
-          <SelectContent className="bg-card border-white/10">
+          <SelectContent className="bg-card border-white/10 max-h-60">
             <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="ai_business">AI & Business</SelectItem>
-            <SelectItem value="manufacturing">Manufacturing</SelectItem>
-            <SelectItem value="small_business">Small Business</SelectItem>
-            <SelectItem value="state_economy">State Economy</SelectItem>
-            <SelectItem value="hiring">Hiring</SelectItem>
-            <SelectItem value="food_agriculture">Food & Agriculture</SelectItem>
-            <SelectItem value="creator_economy">Creator Economy</SelectItem>
-            <SelectItem value="science">Science</SelectItem>
-            <SelectItem value="technology">Technology</SelectItem>
+            {categoryOptions.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g, ' ')}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -258,6 +318,27 @@ export default function StoryQueue() {
             <SelectItem value="month">This Month</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={selectionFilter} onValueChange={setSelectionFilter}>
+          <SelectTrigger className="w-36 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9">
+            <SelectValue placeholder="Selection" />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-white/10">
+            <SelectItem value="all">All Stories</SelectItem>
+            <SelectItem value="selected">Selected Only</SelectItem>
+            <SelectItem value="unselected">Unselected Only</SelectItem>
+            <SelectItem value="saved">Saved Stories</SelectItem>
+          </SelectContent>
+        </Select>
+        <button
+          onClick={() => setGroupDuplicates(!groupDuplicates)}
+          className={`px-3 h-9 rounded-md text-xs font-medium border transition-colors ${
+            groupDuplicates ? 'bg-berna-purple/10 border-berna-purple/30 text-berna-purple' : 'bg-white/[0.03] border-white/[0.08] text-muted-foreground'
+          }`}
+          title="Group duplicate stories"
+        >
+          <Copy className="w-3 h-3 inline mr-1" />
+          Group Duplicates
+        </button>
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-40 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9">
             <ArrowUpDown className="w-3 h-3 mr-1" />
@@ -295,24 +376,34 @@ export default function StoryQueue() {
 
       {/* Story Cards */}
       <div className="space-y-3">
-        {filtered.map(article => (
-          <StoryCard
-            key={article.id}
-            article={article}
-            pkg={packages[article.id]}
-            hasNotes={!!notesMap[article.id]}
-            isSelected={selectedIds.includes(article.id)}
-            onSelect={handleSelect}
-            onDeselect={handleDeselect}
-            onStatusChange={updateStatus}
-            onArchive={handleArchive}
-            onDelete={handleDelete}
-            tab={tab}
-          />
+        {groupedFiltered.map(({ primary, duplicates }) => (
+          <div key={primary.id} className="space-y-1">
+            <StoryCard
+              article={primary}
+              pkg={packages[primary.id]}
+              hasNotes={!!notesMap[primary.id]}
+              isSelected={selectedIds.includes(primary.id)}
+              onSelect={handleSelect}
+              onDeselect={handleDeselect}
+              onStatusChange={updateStatus}
+              onArchive={handleArchive}
+              onDelete={handleDelete}
+              tab={tab}
+            />
+            {duplicates.length > 0 && (
+              <div className="ml-8 px-3 py-1.5 rounded-lg bg-yellow-400/[0.04] border border-yellow-400/10 flex items-center gap-2">
+                <Copy className="w-3 h-3 text-yellow-400" />
+                <span className="text-[10px] text-yellow-400">{duplicates.length} additional source{duplicates.length > 1 ? 's' : ''} reporting same story</span>
+                <Link to={`/story/${primary.id}`} className="text-[10px] text-berna-purple hover:underline ml-auto">
+                  View all sources →
+                </Link>
+              </div>
+            )}
+          </div>
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {groupedFiltered.length === 0 && (
         <div className="glass-panel p-12 text-center">
           <SearchIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No stories match your filters</p>

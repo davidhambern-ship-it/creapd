@@ -9,6 +9,16 @@
     "title": {
       "type": "string"
     },
+    "briefing_type": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "breaking_news",
+        "weekly_planning",
+        "custom"
+      ],
+      "default": "daily"
+    },
     "theme": {
       "type": "string"
     },
