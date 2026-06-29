@@ -25,6 +25,9 @@ import Sources from '@/pages/Sources';
 import ArchivePage from '@/pages/ArchivePage';
 import AutomationCenter from '@/pages/AutomationCenter';
 import SettingsPage from '@/pages/SettingsPage';
+import UserProfile from '@/pages/UserProfile';
+import Organizations from '@/pages/Organizations';
+import ActivityCenter from '@/pages/ActivityCenter';
 import ProducerLayout from '@/components/layout/ProducerLayout';
 
 const AuthenticatedApp = () => {
@@ -70,6 +73,9 @@ const AuthenticatedApp = () => {
           <Route path="/sources" element={<Sources />} />
           <Route path="/archive" element={<ArchivePage />} />
           <Route path="/automation" element={<AutomationCenter />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/organizations" element={<Organizations />} />
+          <Route path="/activity" element={<ActivityCenter />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Zap, Play, User } from 'lucide-react';
+import { Zap, Play, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
+import NotificationDropdown from '@/components/shared/NotificationDropdown';
 
 export default function ProducerHeader({ onGenerateBrief }) {
   const [time, setTime] = useState(new Date());
@@ -96,12 +97,12 @@ export default function ProducerHeader({ onGenerateBrief }) {
           <div className="w-1.5 h-1.5 rounded-full bg-berna-emerald pulse-glow" />
           <span className="text-[10px] text-berna-emerald font-medium">Echo Online</span>
         </div>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-8 w-8">
-          <Bell className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-8 w-8">
-          <User className="w-4 h-4" />
-        </Button>
+        <NotificationDropdown />
+        <Link to="/profile">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-8 w-8">
+            <User className="w-4 h-4" />
+          </Button>
+        </Link>
         <Button
           onClick={onGenerateBrief}
           size="sm"

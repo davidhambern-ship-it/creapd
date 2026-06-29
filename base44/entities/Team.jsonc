@@ -1,0 +1,31 @@
+{
+  "name": "Team",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string"
+    },
+    "organization_name": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "member_ids": {
+      "type": "string"
+    },
+    "team_lead_id": {
+      "type": "string"
+    },
+    "team_lead_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "organization_id",
+    "name"
+  ]
+}
