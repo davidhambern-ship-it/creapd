@@ -35,6 +35,9 @@
     "social_caption": {
       "type": "string"
     },
+    "producer_notes": {
+      "type": "string"
+    },
     "fact_check_notes": {
       "type": "string"
     },

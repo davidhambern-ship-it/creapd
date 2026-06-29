@@ -3,7 +3,7 @@ import { RefreshCw, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
-export default function AssetEditor({ assetKey, label, icon: Icon, value, onChange, onRegenerate, generating }) {
+export default function AssetEditor({ assetKey, label, icon: Icon, value, onChange, onRegenerate, generating, manual }) {
   const [localValue, setLocalValue] = useState(value || '');
   const [saved, setSaved] = useState(false);
 
@@ -26,16 +26,18 @@ export default function AssetEditor({ assetKey, label, icon: Icon, value, onChan
         </div>
         <div className="flex items-center gap-1">
           {saved && <span className="text-[10px] text-berna-emerald flex items-center gap-0.5"><Check className="w-3 h-3" />Saved</span>}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-[10px] text-muted-foreground hover:text-berna-purple hover:bg-berna-purple/10"
-            onClick={() => onRegenerate(assetKey)}
-            disabled={isGenerating}
-          >
-            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            {isGenerating ? 'Generating...' : 'Regenerate'}
-          </Button>
+          {!manual && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[10px] text-muted-foreground hover:text-berna-purple hover:bg-berna-purple/10"
+              onClick={() => onRegenerate(assetKey)}
+              disabled={isGenerating}
+            >
+              {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              {isGenerating ? 'Generating...' : 'Regenerate'}
+            </Button>
+          )}
         </div>
       </div>
       <div className="p-3">

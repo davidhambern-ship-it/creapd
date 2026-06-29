@@ -77,7 +77,10 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
 
     const updateFields = {};
     requestedAssets.forEach(a => { updateFields[a] = llmResponse[a] || ''; });
-    updateFields.estimated_runtime = llmResponse.estimated_runtime || '';
+    // Per PRD 7.19: runtime estimate only updates when the teleprompter script is generated or edited
+    if (requestedAssets.includes('teleprompter_script')) {
+      updateFields.estimated_runtime = llmResponse.estimated_runtime || '';
+    }
     updateFields.tone = tone || 'professional';
     updateFields.reading_style = reading_style || 'broadcast_news';
     updateFields.audience = audience || 'General Public';
