@@ -1,0 +1,70 @@
+{
+  "name": "PromptTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "script_writing",
+        "image_generation",
+        "thumbnail_generation",
+        "headline_suggestions",
+        "talking_points",
+        "fact_check",
+        "translation",
+        "social_caption",
+        "lower_thirds",
+        "story_summary",
+        "visual_suggestions",
+        "broll_suggestions",
+        "custom"
+      ],
+      "default": "script_writing"
+    },
+    "content": {
+      "type": "string"
+    },
+    "variables": {
+      "type": "string"
+    },
+    "brand_profile_id": {
+      "type": "string"
+    },
+    "show_profile_id": {
+      "type": "string"
+    },
+    "assignment_level": {
+      "type": "string",
+      "enum": [
+        "organization_default",
+        "brand_default",
+        "show_default",
+        "production_default",
+        "story_specific"
+      ],
+      "default": "organization_default"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "task_type",
+    "content"
+  ]
+}

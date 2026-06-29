@@ -75,6 +75,36 @@
     "onboarding_complete": {
       "type": "boolean",
       "default": false
+    },
+    "preferred_text_model": {
+      "type": "string",
+      "enum": [
+        "automatic",
+        "gpt_5_mini",
+        "gemini_3_flash",
+        "gpt_5_4",
+        "gpt_5_5",
+        "gemini_3_1_pro",
+        "claude_sonnet_4_6",
+        "claude_opus_4_6"
+      ],
+      "default": "automatic"
+    },
+    "preferred_image_provider": {
+      "type": "string",
+      "default": "default"
+    },
+    "preferred_video_provider": {
+      "type": "string",
+      "default": "default"
+    },
+    "preferred_audio_voice": {
+      "type": "string",
+      "default": "river"
+    },
+    "preferred_translation_language": {
+      "type": "string",
+      "default": "en"
     }
   },
   "required": [

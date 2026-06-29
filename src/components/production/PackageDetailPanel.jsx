@@ -4,14 +4,16 @@ import {
   FileText, AlignLeft, MessageSquare, Type, Heading,
   Image, ImageIcon, Eye, Film, Share2, CheckSquare, Volume2,
   Sparkles, Loader2, Clock, ExternalLink, Save, CheckCircle,
-  StickyNote, BookMarked
+  StickyNote, BookMarked, MessageSquareCode, Cpu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import AssetEditor from '@/components/production/AssetEditor';
 import MediaGenerator from '@/components/production/MediaGenerator';
+import TranslationPanel from '@/components/production/TranslationPanel';
 import { logActivity } from '@/lib/activityUtils';
 
 const ASSET_DEFS = [
@@ -44,6 +46,11 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState({});
+  const [promptTemplates, setPromptTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [preferredTextModel, setPreferredTextModel] = useState('automatic');
 
   useEffect(() => {
     if (pkg) {
@@ -53,15 +60,32 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
         audience: pkg.audience || 'General Public',
         target_runtime: pkg.target_runtime || '1 Minute',
       });
+      setSelectedTemplateId(pkg.prompt_template_id || '');
+      setCustomPrompt(pkg.custom_prompt || '');
     }
   }, [pkg?.id]);
 
+  useEffect(() => {
+    base44.entities.PromptTemplate.filter({ is_active: true }, '-created_date', 50).then(setPromptTemplates).catch(() => {});
+    base44.entities.ProducerSettings.filter({}, '-created_date', 1).then(res => {
+      if (res.length > 0) setPreferredTextModel(res[0].preferred_text_model || 'automatic');
+    }).catch(() => {});
+  }, []);
+
   const callGenerate = async (assetTypes) => {
-    const res = await base44.functions.invoke('generateProductionPackage', {
+    const params = {
       article_id: article.id,
       asset_types: assetTypes,
       ...config,
-    });
+      preferred_text_model: preferredTextModel,
+    };
+    // PRD 9.12-9.13: Pass custom prompt or prompt template if set
+    if (customPrompt.trim()) {
+      params.custom_prompt = customPrompt;
+    } else if (selectedTemplateId) {
+      params.prompt_template_id = selectedTemplateId;
+    }
+    const res = await base44.functions.invoke('generateProductionPackage', params);
     return res.data.package;
   };
 
@@ -103,7 +127,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
     if (!pkg || Object.keys(edits).length === 0) return;
     setSaving(true);
     try {
-      const updated = await base44.entities.ProductionPackage.update(pkg.id, { ...edits, status: 'edited' });
+      const updated = await base44.entities.ProductionPackage.update(pkg.id, { ...edits, status: 'edited', is_edited: true });
       onPackageUpdate(updated);
       setEdits({});
       logActivity('update', {
@@ -179,6 +203,60 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
             <SelectContent className="bg-card border-white/10">{RUNTIMES.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+
+        {/* PRD 9.12-9.13: Prompt Template & Custom Prompt */}
+        <div className="mt-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] space-y-2">
+          <div className="flex items-center gap-2">
+            <MessageSquareCode className="w-3.5 h-3.5 text-berna-purple" />
+            <span className="text-[10px] font-semibold text-white">Prompt Template</span>
+            <span className="text-[9px] text-muted-foreground">— edit or override the AI prompt before generation</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={selectedTemplateId || 'none'} onValueChange={v => { setSelectedTemplateId(v === 'none' ? '' : v); setCustomPrompt(''); }}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8 flex-1"><SelectValue placeholder="Default system prompt" /></SelectTrigger>
+              <SelectContent className="bg-card border-white/10">
+                <SelectItem value="none" className="text-xs">Default system prompt</SelectItem>
+                {promptTemplates.map(t => <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" className="h-8 text-[10px] border-white/10 text-white hover:bg-white/[0.04]" onClick={() => setShowPromptEditor(!showPromptEditor)}>
+              {showPromptEditor ? 'Hide' : 'Custom'}
+            </Button>
+          </div>
+          {showPromptEditor && (
+            <div className="space-y-1.5">
+              <p className="text-[9px] text-muted-foreground">Write a custom prompt. Use variables: {'{title}'}, {'{summary}'}, {'{tone}'}, {'{audience}'}</p>
+              <Textarea
+                value={customPrompt}
+                onChange={e => setCustomPrompt(e.target.value)}
+                placeholder="Leave empty to use the default or selected template prompt..."
+                className="bg-white/[0.02] border-white/[0.06] text-white text-[10px] min-h-20 font-mono resize-y"
+              />
+              {customPrompt && <p className="text-[9px] text-berna-emerald">Custom prompt active — overrides template and default</p>}
+            </div>
+          )}
+          {/* PRD 9.8: AI Provider display */}
+          <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
+            <Cpu className="w-3 h-3" />
+            <span>Text model: <span className="text-white">{preferredTextModel}</span></span>
+          </div>
+        </div>
+
+        {/* PRD 9.21: AI Transparency badges */}
+        {pkg?.generated_at && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span className="text-[9px] text-muted-foreground">AI:</span>
+            <span className="text-[9px] text-berna-purple bg-berna-purple/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+              <Cpu className="w-2.5 h-2.5" />{pkg.generation_provider || 'automatic'}
+            </span>
+            <span className="text-[9px] text-muted-foreground bg-white/[0.04] px-1.5 py-0.5 rounded">
+              {new Date(pkg.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            {pkg.is_regenerated && <span className="text-[9px] text-berna-orange bg-berna-orange/10 px-1.5 py-0.5 rounded">Regenerated ×{pkg.generation_count || 1}</span>}
+            {pkg.is_edited && <span className="text-[9px] text-berna-emerald bg-berna-emerald/10 px-1.5 py-0.5 rounded">Edited</span>}
+            {pkg.translation_language && <span className="text-[9px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">Translated</span>}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -315,6 +393,13 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
                 onMediaUpdate={onPackageUpdate}
               />
             </div>
+          </div>
+        )}
+
+        {/* PRD 9.19: Translation */}
+        {pkg && (
+          <div className="pt-2">
+            <TranslationPanel pkg={pkg} onPackageUpdate={onPackageUpdate} />
           </div>
         )}
       </div>

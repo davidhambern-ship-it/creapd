@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import TagInput from '@/components/weekly/TagInput';
+import AISettingsPanel from '@/components/settings/AISettingsPanel';
 import { CATEGORIES, BRIEFING_TYPES, BRIEF_LENGTHS, stringifyJSON, parseJSON } from '@/lib/weeklyConstants';
 
 export default function SettingsPage() {
@@ -220,6 +221,9 @@ export default function SettingsPage() {
           </Select>
         </div>
       </div>
+
+      {/* AI Services */}
+      <AISettingsPanel settings={settings} onUpdate={update} />
 
       {/* Producer Preferences */}
       <div className="glass-panel p-5 space-y-4">

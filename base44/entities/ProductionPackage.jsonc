@@ -104,6 +104,50 @@
     },
     "generated_audio_url": {
       "type": "string"
+    },
+    "image_variations": {
+      "type": "string"
+    },
+    "thumbnail_variations": {
+      "type": "string"
+    },
+    "custom_prompt": {
+      "type": "string"
+    },
+    "prompt_template_id": {
+      "type": "string"
+    },
+    "generation_provider": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_edited": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_regenerated": {
+      "type": "boolean",
+      "default": false
+    },
+    "generation_count": {
+      "type": "number",
+      "default": 0
+    },
+    "translation_language": {
+      "type": "string"
+    },
+    "translated_script": {
+      "type": "string"
+    },
+    "translated_caption": {
+      "type": "string"
+    },
+    "translated_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

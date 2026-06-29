@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { article_id, asset_types, tone, reading_style, audience, target_runtime } = body;
+    const { article_id, asset_types, tone, reading_style, audience, target_runtime, custom_prompt, prompt_template_id, preferred_text_model } = body;
 
     if (!article_id) return Response.json({ error: 'article_id is required' }, { status: 400 });
 
@@ -31,10 +31,44 @@ Deno.serve(async (req) => {
     if (!article) return Response.json({ error: 'Article not found' }, { status: 404 });
 
     const requestedAssets = (asset_types && asset_types.length > 0) ? asset_types : ALL_ASSETS;
-
     const assetListText = requestedAssets.map(a => `- ${a}: ${ASSET_DESCRIPTIONS[a] || a}`).join('\n');
 
-    const prompt = `You are a professional broadcast producer. Generate production assets for the following news story.
+    // PRD 9.12: If a prompt template or custom prompt is provided, use it instead of the default
+    let prompt;
+    let promptTemplate = null;
+
+    if (prompt_template_id) {
+      try {
+        promptTemplate = await base44.entities.PromptTemplate.get(prompt_template_id);
+      } catch {}
+    }
+
+    if (custom_prompt && custom_prompt.trim()) {
+      // PRD 9.12: Producer may edit/replace prompts before generation
+      prompt = custom_prompt
+        .replace(/\{title\}/g, article.title || '')
+        .replace(/\{summary\}/g, article.summary || 'No summary available')
+        .replace(/\{excerpt\}/g, article.full_text_excerpt || 'No excerpt available')
+        .replace(/\{source\}/g, article.source_name || article.publication || 'Unknown')
+        .replace(/\{category\}/g, article.category || 'general')
+        .replace(/\{tone\}/g, tone || 'professional')
+        .replace(/\{reading_style\}/g, reading_style || 'broadcast_news')
+        .replace(/\{audience\}/g, audience || 'General Public')
+        .replace(/\{target_runtime\}/g, target_runtime || '1 Minute');
+    } else if (promptTemplate && promptTemplate.content) {
+      // PRD 9.13: Use prompt template content
+      prompt = promptTemplate.content
+        .replace(/\{title\}/g, article.title || '')
+        .replace(/\{summary\}/g, article.summary || 'No summary available')
+        .replace(/\{excerpt\}/g, article.full_text_excerpt || 'No excerpt available')
+        .replace(/\{source\}/g, article.source_name || article.publication || 'Unknown')
+        .replace(/\{category\}/g, article.category || 'general')
+        .replace(/\{tone\}/g, tone || 'professional')
+        .replace(/\{reading_style\}/g, reading_style || 'broadcast_news')
+        .replace(/\{audience\}/g, audience || 'General Public')
+        .replace(/\{target_runtime\}/g, target_runtime || '1 Minute');
+    } else {
+      prompt = `You are a professional broadcast producer. Generate production assets for the following news story.
 
 STORY DETAILS:
 Title: ${article.title}
@@ -56,6 +90,7 @@ ${assetListText}
 Also estimate the reading time of the teleprompter script as "estimated_runtime" (e.g. "45 seconds", "1 minute 30 seconds").
 
 Return a JSON object with these exact string keys: ${[...requestedAssets, 'estimated_runtime'].join(', ')}. Each value should be a string with the generated content.`;
+    }
 
     const responseSchema = {
       type: 'object',
@@ -66,18 +101,22 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
       required: [...requestedAssets, 'estimated_runtime']
     };
 
-    const llmResponse = await base44.integrations.Core.InvokeLLM({
+    const llmOptions = {
       prompt,
       response_json_schema: responseSchema,
-      model: 'gpt_5_mini'
-    });
+    };
+    // PRD 9.8: Use preferred text model if specified
+    if (preferred_text_model && preferred_text_model !== 'automatic') {
+      llmOptions.model = preferred_text_model;
+    }
+
+    const llmResponse = await base44.integrations.Core.InvokeLLM(llmOptions);
 
     const existing = await base44.entities.ProductionPackage.filter({ article_id });
     let pkg;
 
     const updateFields = {};
     requestedAssets.forEach(a => { updateFields[a] = llmResponse[a] || ''; });
-    // Per PRD 7.19: runtime estimate only updates when the teleprompter script is generated or edited
     if (requestedAssets.includes('teleprompter_script')) {
       updateFields.estimated_runtime = llmResponse.estimated_runtime || '';
     }
@@ -87,9 +126,23 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
     updateFields.target_runtime = target_runtime || '1 Minute';
     updateFields.status = 'generated';
 
+    // PRD 9.21: AI Transparency — track generation metadata
+    const now = new Date().toISOString();
     if (existing && existing.length > 0) {
+      updateFields.is_regenerated = true;
+      updateFields.generation_count = (existing[0].generation_count || 0) + 1;
+      updateFields.is_edited = false;
+      updateFields.generation_provider = preferred_text_model || 'automatic';
+      updateFields.generated_at = now;
+      if (prompt_template_id) updateFields.prompt_template_id = prompt_template_id;
+      if (custom_prompt) updateFields.custom_prompt = custom_prompt;
       pkg = await base44.entities.ProductionPackage.update(existing[0].id, updateFields);
     } else {
+      updateFields.generation_provider = preferred_text_model || 'automatic';
+      updateFields.generated_at = now;
+      updateFields.generation_count = 1;
+      if (prompt_template_id) updateFields.prompt_template_id = prompt_template_id;
+      if (custom_prompt) updateFields.custom_prompt = custom_prompt;
       pkg = await base44.entities.ProductionPackage.create({
         article_id,
         ...updateFields

@@ -34,6 +34,7 @@ import Organizations from '@/pages/Organizations';
 import ActivityCenter from '@/pages/ActivityCenter';
 import TemplateLibrary from '@/pages/TemplateLibrary';
 import ProductionTemplates from '@/pages/ProductionTemplates';
+import PromptTemplates from '@/pages/PromptTemplates';
 import ProducerLayout from '@/components/layout/ProducerLayout';
 
 const AuthenticatedApp = () => {
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
           <Route path="/activity" element={<ActivityCenter />} />
           <Route path="/templates" element={<TemplateLibrary />} />
           <Route path="/graphics-templates" element={<ProductionTemplates />} />
+          <Route path="/prompt-templates" element={<PromptTemplates />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
