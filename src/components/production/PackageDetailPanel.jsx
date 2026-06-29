@@ -11,6 +11,7 @@ import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import AssetEditor from '@/components/production/AssetEditor';
 import MediaGenerator from '@/components/production/MediaGenerator';
+import { logActivity } from '@/lib/activityUtils';
 
 const ASSET_DEFS = [
   { key: 'teleprompter_script', label: 'Teleprompter Script', icon: FileText },
@@ -68,6 +69,12 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
     try {
       const updated = await callGenerate(ASSET_DEFS.map(a => a.key));
       onPackageUpdate(updated);
+      logActivity('generate', {
+        entity_type: 'ProductionPackage',
+        entity_id: updated?.id || '',
+        entity_name: article.title,
+        details: `Generated full package (${updated?.tone || 'professional'}, ${updated?.reading_style || 'broadcast_news'})`,
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -98,6 +105,12 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
       const updated = await base44.entities.ProductionPackage.update(pkg.id, { ...edits, status: 'edited' });
       onPackageUpdate(updated);
       setEdits({});
+      logActivity('update', {
+        entity_type: 'ProductionPackage',
+        entity_id: pkg.id,
+        entity_name: article.title,
+        details: `Edited ${Object.keys(edits).length} asset(s): ${Object.keys(edits).join(', ')}`,
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -109,6 +122,12 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
     if (!pkg) return;
     const updated = await base44.entities.ProductionPackage.update(pkg.id, { status: 'approved' });
     onPackageUpdate(updated);
+    logActivity('approve', {
+      entity_type: 'ProductionPackage',
+      entity_id: pkg.id,
+      entity_name: article.title,
+      details: 'Package approved for production',
+    });
   };
 
   const hasEdits = Object.keys(edits).length > 0;

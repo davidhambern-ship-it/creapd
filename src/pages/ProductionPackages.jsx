@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import PackageDetailPanel from '@/components/production/PackageDetailPanel';
+import { logActivity } from '@/lib/activityUtils';
 
 export default function ProductionPackages() {
   const [articles, setArticles] = useState([]);
@@ -56,6 +57,11 @@ export default function ProductionPackages() {
       } catch (err) { console.error(err); }
     }
     setGeneratingAll(false);
+    logActivity('generate', {
+      entity_type: 'ProductionPackage',
+      entity_name: `Bulk generate — ${articles.length} stories`,
+      details: `Generated production packages for ${articles.length} approved stories`,
+    });
   };
 
   const selectedArticle = articles.find(a => a.id === selectedId);

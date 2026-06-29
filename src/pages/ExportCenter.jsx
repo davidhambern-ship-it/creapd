@@ -8,6 +8,7 @@ import {
   generateMarkdown, generateText, generateTeleprompter, generateHTML,
   generatePDF, downloadFile, downloadPDF, sanitizeFilename, getFileExtension, getMimeType
 } from '@/lib/exportUtils';
+import { logActivity } from '@/lib/activityUtils';
 
 export default function ExportCenter() {
   const [packages, setPackages] = useState([]);
@@ -87,6 +88,11 @@ export default function ExportCenter() {
     const newLogs = await base44.entities.ExportLog.list('-created_date', 20);
     setLogs(newLogs);
     setExporting(false);
+    logActivity('export', {
+      entity_type: 'ExportLog',
+      entity_name: `${format.toUpperCase()} export — ${selected.length} package(s)`,
+      details: `Exported ${selected.length} package(s) as ${format.toUpperCase()} with ${assets.length} asset(s) each`,
+    });
   };
 
   const saveProfile = async () => {

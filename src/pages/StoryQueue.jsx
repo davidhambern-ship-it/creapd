@@ -11,6 +11,7 @@ import OpportunityScore from '@/components/shared/OpportunityScore';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
+import { logActivity } from '@/lib/activityUtils';
 
 export default function StoryQueue() {
   const [articles, setArticles] = useState([]);
@@ -37,6 +38,14 @@ export default function StoryQueue() {
     if (reason) update.rejection_reason = reason;
     await base44.entities.Article.update(id, update);
     setArticles(prev => prev.map(a => a.id === id ? { ...a, ...update } : a));
+    const article = articles.find(a => a.id === id);
+    const actionMap = { approved: 'approve', rejected: 'reject', saved_for_later: 'update', bernas_pick: 'approve', needs_research: 'update' };
+    logActivity(actionMap[status] || 'update', {
+      entity_type: 'Article',
+      entity_id: id,
+      entity_name: article?.title || '',
+      details: `Status changed to "${status}"${reason ? `: ${reason}` : ''}`,
+    });
   };
 
   const activeStatuses = ['pending', 'approved', 'bernas_pick', 'needs_research', 'saved_for_later'];
