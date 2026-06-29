@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   FileText, AlignLeft, MessageSquare, Type, Heading,
-  Image, ImageIcon, Eye, Film, Share2, CheckSquare,
+  Image, ImageIcon, Eye, Film, Share2, CheckSquare, Volume2,
   Sparkles, Loader2, Clock, ExternalLink, Save, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import AssetEditor from '@/components/production/AssetEditor';
+import MediaGenerator from '@/components/production/MediaGenerator';
 
 const ASSET_DEFS = [
   { key: 'teleprompter_script', label: 'Teleprompter Script', icon: FileText },
@@ -200,6 +201,54 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
             generating={generating}
           />
         ))}
+
+        {/* AI Media Generation */}
+        {pkg && (
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <Sparkles className="w-3.5 h-3.5 text-berna-orange" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">AI Media Generation</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="image"
+                promptField="thumbnail_prompt"
+                urlField="generated_thumbnail_url"
+                label="Thumbnail Image"
+                icon={ImageIcon}
+                onMediaUpdate={onPackageUpdate}
+              />
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="image"
+                promptField="image_prompt"
+                urlField="generated_image_url"
+                label="Story Image"
+                icon={Image}
+                onMediaUpdate={onPackageUpdate}
+              />
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="audio"
+                promptField="teleprompter_script"
+                urlField="generated_audio_url"
+                label="Voiceover Audio"
+                icon={Volume2}
+                onMediaUpdate={onPackageUpdate}
+              />
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="video"
+                promptField="image_prompt"
+                urlField="generated_video_url"
+                label="Promo Video"
+                icon={Film}
+                onMediaUpdate={onPackageUpdate}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -89,6 +89,18 @@
         "approved"
       ],
       "default": "not_generated"
+    },
+    "generated_image_url": {
+      "type": "string"
+    },
+    "generated_thumbnail_url": {
+      "type": "string"
+    },
+    "generated_video_url": {
+      "type": "string"
+    },
+    "generated_audio_url": {
+      "type": "string"
     }
   },
   "required": [
