@@ -13,6 +13,14 @@ import GlobalNotes from '@/components/workspace/GlobalNotes';
 import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
 
+function getSelectedStoryIds() {
+  try {
+    return JSON.parse(localStorage.getItem('selectedStoryIds') || '[]');
+  } catch {
+    return [];
+  }
+}
+
 function parseRuntime(str) {
   if (!str) return 60;
   if (str.includes(':')) {
@@ -185,7 +193,9 @@ export default function StoryManager() {
     setCreating(true);
     skipSave.current = true;
     try {
-      const selectedArticles = await base44.entities.Article.filter({ status: 'selected' });
+      const selectedIds = getSelectedStoryIds();
+      const allArticles = await base44.entities.Article.list('-created_date', 100);
+      const selectedArticles = allArticles.filter(a => selectedIds.includes(a.id));
       const order = selectedArticles.map(a => a.id);
       const prod = await base44.entities.Production.create({
         title: newProd.title,
@@ -269,8 +279,10 @@ export default function StoryManager() {
   };
 
   const handleOpenAddModal = async () => {
-    const available = await base44.entities.Article.filter({ status: 'selected' });
-    setAvailableStories(available.filter(a => !storyOrder.includes(a.id)));
+    const selectedIds = getSelectedStoryIds();
+    const allArticles = await base44.entities.Article.list('-created_date', 100);
+    const available = allArticles.filter(a => selectedIds.includes(a.id) && !storyOrder.includes(a.id));
+    setAvailableStories(available);
     setShowAddModal(true);
   };
 
