@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { User, Save, Loader2, Building2, Globe, Clock, Mail, Briefcase, Camera, Check, ClipboardCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { User, Save, Loader2, Building2, Globe, Clock, Mail, Briefcase, Camera, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -176,26 +175,6 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
-
-      {/* Admin Dashboard Access */}
-      {user.role === 'admin' && (
-        <div className="glass-panel p-4 border-berna-purple/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-berna-purple/15 flex items-center justify-center">
-                <ClipboardCheck className="w-4.5 h-4.5 text-berna-purple" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Requirements & Acceptance Checklist</p>
-                <p className="text-xs text-muted-foreground">PRD Section 14 compliance dashboard — admin only</p>
-              </div>
-            </div>
-            <Button asChild size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs">
-              <Link to="/checklist">Open Dashboard</Link>
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Preferences */}
       <div className="glass-panel p-5 space-y-4">

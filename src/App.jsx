@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -31,17 +31,6 @@ import ArchivePage from '@/pages/ArchivePage';
 import AutomationCenter from '@/pages/AutomationCenter';
 import SecurityCenter from '@/pages/SecurityCenter';
 import AcceptanceChecklist from '@/pages/AcceptanceChecklist';
-
-function AdminRoute({ children }) {
-  const { user, isLoadingAuth } = useAuth();
-  const navigate = useNavigate();
-  if (isLoadingAuth) return null;
-  if (!user || user.role !== 'admin') {
-    navigate('/', { replace: true });
-    return null;
-  }
-  return children;
-}
 import SettingsPage from '@/pages/SettingsPage';
 import UserProfile from '@/pages/UserProfile';
 import Organizations from '@/pages/Organizations';
@@ -106,7 +95,7 @@ const AuthenticatedApp = () => {
           <Route path="/graphics-templates" element={<ProductionTemplates />} />
           <Route path="/prompt-templates" element={<PromptTemplates />} />
           <Route path="/security" element={<SecurityCenter />} />
-          <Route path="/checklist" element={<AdminRoute><AcceptanceChecklist /></AdminRoute>} />
+          <Route path="/checklist" element={<AcceptanceChecklist />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

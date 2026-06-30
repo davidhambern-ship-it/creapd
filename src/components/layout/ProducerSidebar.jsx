@@ -4,7 +4,8 @@ import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck
+  ShieldCheck,
+  ClipboardCheck
 } from 'lucide-react';
 
 const navItems = [
@@ -27,6 +28,7 @@ const navItems = [
   { icon: ImageIcon, label: 'Graphics Templates', path: '/graphics-templates' },
   { icon: MessageSquareCode, label: 'Prompt Templates', path: '/prompt-templates' },
   { icon: ShieldCheck, label: 'Security & Privacy', path: '/security' },
+  { icon: ClipboardCheck, label: 'Acceptance Checklist', path: '/checklist' },
   { icon: Activity, label: 'Automation', path: '/automation' },
   { icon: Building2, label: 'Organizations', path: '/organizations' },
   { icon: Bell, label: 'Activity Center', path: '/activity' },
