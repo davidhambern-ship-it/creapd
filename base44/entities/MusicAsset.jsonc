@@ -1,0 +1,67 @@
+{
+  "name": "MusicAsset",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the MusicProductionConfiguration this asset belongs to"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "host_banter",
+        "song_intro",
+        "song_outro",
+        "artist_bio",
+        "artist_fact",
+        "music_trivia",
+        "topic_talking_points",
+        "sponsor_read",
+        "station_id",
+        "audience_prompt",
+        "social_caption",
+        "hashtag",
+        "thumbnail_prompt",
+        "ai_image",
+        "video_prompt",
+        "production_notes"
+      ],
+      "default": "host_banter"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "associated_song_id": {
+      "type": "string",
+      "description": "PlaylistItem ID if this asset is tied to a specific song"
+    },
+    "associated_song_title": {
+      "type": "string"
+    },
+    "associated_topic": {
+      "type": "string",
+      "description": "Topic name if this asset is tied to a specific topic"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_generated",
+        "generating",
+        "ready",
+        "needs_review",
+        "approved"
+      ],
+      "default": "not_generated"
+    },
+    "generated_image_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "asset_type"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "name": "ShowRundownItem",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the MusicProductionConfiguration this rundown item belongs to"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "segment_type": {
+      "type": "string",
+      "enum": [
+        "intro",
+        "song",
+        "talk_break",
+        "topic_segment",
+        "sponsor_break",
+        "station_id",
+        "outro"
+      ],
+      "default": "talk_break"
+    },
+    "title": {
+      "type": "string"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Estimated start time (HH:MM)"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "description": "Duration in seconds"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Estimated end time (HH:MM)"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "ready",
+        "approved"
+      ],
+      "default": "planned"
+    },
+    "associated_song_id": {
+      "type": "string"
+    },
+    "associated_topic": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "segment_type"
+  ]
+}

@@ -39,6 +39,19 @@ import TemplateLibrary from '@/pages/TemplateLibrary';
 import ProductionTemplates from '@/pages/ProductionTemplates';
 import PromptTemplates from '@/pages/PromptTemplates';
 import ProducerLayout from '@/components/layout/ProducerLayout';
+import MusicLayout from '@/components/layout/MusicLayout';
+import DashboardRouter from '@/components/DashboardRouter';
+import Onboarding from '@/pages/Onboarding';
+import ProductionTypes from '@/pages/ProductionTypes';
+import MusicConfigure from '@/pages/MusicConfigure';
+import MusicDashboard from '@/pages/MusicDashboard';
+import MusicResearch from '@/pages/MusicResearch';
+import MusicPlaylist from '@/pages/MusicPlaylist';
+import MusicTopics from '@/pages/MusicTopics';
+import MusicRundown from '@/pages/MusicRundown';
+import MusicAssets from '@/pages/MusicAssets';
+import MusicExport from '@/pages/MusicExport';
+import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -71,7 +84,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<ProducerLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<DashboardRouter />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
@@ -97,6 +110,23 @@ const AuthenticatedApp = () => {
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/checklist" element={<AcceptanceChecklist />} />
           <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+
+        {/* Onboarding & Production Type Selection */}
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/production-types" element={<ProductionTypes />} />
+
+        {/* Music Production */}
+        <Route element={<MusicLayout />}>
+          <Route path="/music/configure" element={<MusicConfigure />} />
+          <Route path="/music/dashboard" element={<MusicDashboard />} />
+          <Route path="/music/research" element={<MusicResearch />} />
+          <Route path="/music/playlist" element={<MusicPlaylist />} />
+          <Route path="/music/topics" element={<MusicTopics />} />
+          <Route path="/music/rundown" element={<MusicRundown />} />
+          <Route path="/music/assets" element={<MusicAssets />} />
+          <Route path="/music/export" element={<MusicExport />} />
+          <Route path="/settings/default-production" element={<DefaultProductionSettings />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

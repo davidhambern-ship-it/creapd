@@ -1,0 +1,47 @@
+{
+  "name": "MusicTopic",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the MusicProductionConfiguration this topic belongs to"
+    },
+    "topic_name": {
+      "type": "string"
+    },
+    "generated_summary": {
+      "type": "string"
+    },
+    "talking_points": {
+      "type": "string",
+      "description": "3-5 talking points for the host"
+    },
+    "sources": {
+      "type": "string",
+      "description": "Sources used for this topic"
+    },
+    "suggested_placement": {
+      "type": "string",
+      "description": "Where in the show this topic fits best"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_generated",
+        "generating",
+        "ready",
+        "needs_review",
+        "approved"
+      ],
+      "default": "not_generated"
+    },
+    "added_to_rundown": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "configuration_id",
+    "topic_name"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "PlaylistItem",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the MusicProductionConfiguration this playlist belongs to"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "song_title": {
+      "type": "string"
+    },
+    "artist": {
+      "type": "string"
+    },
+    "length_seconds": {
+      "type": "number",
+      "description": "Song length in seconds"
+    },
+    "genre": {
+      "type": "string"
+    },
+    "mood": {
+      "type": "string"
+    },
+    "era_year": {
+      "type": "string"
+    },
+    "album": {
+      "type": "string"
+    },
+    "release_year": {
+      "type": "string"
+    },
+    "reason_selected": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "locked",
+        "approved",
+        "removed"
+      ],
+      "default": "suggested"
+    },
+    "note": {
+      "type": "string"
+    },
+    "intro_generated": {
+      "type": "boolean",
+      "default": false
+    },
+    "artist_fact_generated": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "configuration_id",
+    "song_title",
+    "artist"
+  ]
+}

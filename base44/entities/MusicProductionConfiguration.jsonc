@@ -1,0 +1,158 @@
+{
+  "name": "MusicProductionConfiguration",
+  "type": "object",
+  "properties": {
+    "production_name": {
+      "type": "string"
+    },
+    "host_name": {
+      "type": "string"
+    },
+    "co_host_name": {
+      "type": "string"
+    },
+    "show_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "show_start_time": {
+      "type": "string"
+    },
+    "live_or_recorded": {
+      "type": "string",
+      "enum": [
+        "live",
+        "recorded"
+      ],
+      "default": "live"
+    },
+    "station_name": {
+      "type": "string"
+    },
+    "show_description": {
+      "type": "string"
+    },
+    "total_show_runtime": {
+      "type": "number",
+      "description": "Total show runtime in minutes"
+    },
+    "required_music_runtime": {
+      "type": "number",
+      "description": "Required music runtime in minutes \u2014 controls playlist length"
+    },
+    "talk_segment_runtime": {
+      "type": "number",
+      "description": "Talk/segment runtime in minutes"
+    },
+    "commercial_sponsor_runtime": {
+      "type": "number",
+      "description": "Commercial/sponsor runtime in minutes"
+    },
+    "intro_runtime": {
+      "type": "number",
+      "description": "Intro runtime in minutes"
+    },
+    "outro_runtime": {
+      "type": "number",
+      "description": "Outro runtime in minutes"
+    },
+    "genres": {
+      "type": "string",
+      "description": "JSON array of selected genres"
+    },
+    "moods": {
+      "type": "string",
+      "description": "JSON array of selected moods"
+    },
+    "show_tone": {
+      "type": "string"
+    },
+    "music_topics": {
+      "type": "string",
+      "description": "JSON array of selected music topics"
+    },
+    "research_sources": {
+      "type": "string",
+      "description": "JSON array of enabled research sources"
+    },
+    "must_play_songs": {
+      "type": "string",
+      "description": "Songs that must be included in the playlist"
+    },
+    "blocked_songs": {
+      "type": "string",
+      "description": "Songs that must never appear"
+    },
+    "blocked_artists": {
+      "type": "string",
+      "description": "Artists that must never appear"
+    },
+    "recently_played_songs": {
+      "type": "string",
+      "description": "Songs to avoid unless repeats allowed"
+    },
+    "max_songs_per_artist": {
+      "type": "number",
+      "default": 2
+    },
+    "min_artist_variety": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_indie": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_local": {
+      "type": "boolean",
+      "default": false
+    },
+    "include_new_releases": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_throwbacks": {
+      "type": "boolean",
+      "default": true
+    },
+    "clean_only": {
+      "type": "boolean",
+      "default": false
+    },
+    "explicit_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "preferred_eras": {
+      "type": "string",
+      "description": "Preferred eras/decades"
+    },
+    "playlist_energy_flow": {
+      "type": "string",
+      "default": "Build Energy Gradually"
+    },
+    "ai_automation": {
+      "type": "string",
+      "description": "JSON array of selected AI automation options"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "configuring",
+        "building",
+        "ready",
+        "refreshing",
+        "failed"
+      ],
+      "default": "configuring"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "production_name",
+    "show_date"
+  ]
+}
