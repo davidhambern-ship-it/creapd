@@ -5,7 +5,7 @@ import { CheckCircle } from 'lucide-react';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 
-export default function AddStoriesModal({ open, onClose, availableStories, onAdd, itemLabel = 'Story', itemLabelPlural = 'Stories' }) {
+export default function AddStoriesModal({ open, onClose, availableStories, onAdd }) {
   const [selected, setSelected] = useState([]);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function AddStoriesModal({ open, onClose, availableStories, onAdd
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add {itemLabelPlural} to Rundown</DialogTitle>
+          <DialogTitle>Add Stories to Rundown</DialogTitle>
         </DialogHeader>
         {availableStories.length > 0 ? (
           <div className="space-y-2">
@@ -48,13 +48,13 @@ export default function AddStoriesModal({ open, onClose, availableStories, onAdd
           </div>
         ) : (
           <p className="text-sm text-muted-foreground text-center py-8">
-            No selected {itemLabelPlural.toLowerCase()} available. Select {itemLabelPlural.toLowerCase()} from the queue first.
+            No selected stories available. Select stories from the Story Queue first.
           </p>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={() => onAdd(selected)} disabled={selected.length === 0}>
-            Add{selected.length > 0 ? ` ${selected.length}` : ''} {itemLabelPlural}
+            Add{selected.length > 0 ? ` ${selected.length}` : ''} Stories
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Home } from 'lucide-react';
+import { ClipboardList, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import ProductionRundown from '@/components/workspace/ProductionRundown';
 import WorkspaceProgress from '@/components/workspace/WorkspaceProgress';
@@ -10,7 +12,6 @@ import WorkspaceChecklist from '@/components/workspace/WorkspaceChecklist';
 import GlobalNotes from '@/components/workspace/GlobalNotes';
 import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
-import { PRODUCTION_PROFILES } from '@/lib/productionProfiles';
 
 function getSelectedStoryIds() {
   try {
@@ -58,15 +59,18 @@ export default function StoryManager() {
   const [history, setHistory] = useState([]);
   const [brands, setBrands] = useState([]);
   const [shows, setShows] = useState([]);
-
-  const [currentProfile, setCurrentProfile] = useState(null);
   const [globalNotes, setGlobalNotes] = useState('');
   const [checklist, setChecklist] = useState(DEFAULT_CHECKLIST);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [availableStories, setAvailableStories] = useState([]);
-
-
+  const [creating, setCreating] = useState(false);
+  const [newProd, setNewProd] = useState({
+    title: '',
+    brand_profile_id: '',
+    show_profile_id: '',
+    production_date: new Date().toISOString().split('T')[0],
+  });
   const skipSave = useRef(true);
 
   useEffect(() => {
@@ -75,11 +79,10 @@ export default function StoryManager() {
 
   const loadData = async () => {
     try {
-      const [prods, brandList, showList, profileList] = await Promise.all([
+      const [prods, brandList, showList] = await Promise.all([
         base44.entities.Production.filter({ status: 'in_progress' }, '-created_date', 1),
         base44.entities.BrandProfile.list(),
         base44.entities.ShowProfile.list(),
-        base44.entities.ProductionProfile.filter({ is_active: true }, 'sort_order', 50),
       ]);
       setBrands(brandList);
       setShows(showList);
@@ -89,23 +92,7 @@ export default function StoryManager() {
         setStoryOrder(JSON.parse(prod.story_order || '[]'));
         setGlobalNotes(prod.global_notes || '');
         setChecklist({ ...DEFAULT_CHECKLIST, ...JSON.parse(prod.checklist || '{}') });
-        if (prod.production_profile_id) {
-          const dbProfile = profileList.find(p => p.id === prod.production_profile_id);
-          if (dbProfile) {
-            // Merge with centralized config to get full profile configuration
-            const baseConfig = PRODUCTION_PROFILES[dbProfile.profile_type] || PRODUCTION_PROFILES.custom;
-            setCurrentProfile({
-              ...baseConfig,
-              ...dbProfile,
-              id: dbProfile.id,
-            });
-          }
-        }
         await loadStoriesData(prod);
-      } else {
-        // No production in progress - redirect to setup
-        navigate('/production/new');
-        return;
       }
     } catch (e) {
       console.error('Failed to load production:', e);
@@ -201,11 +188,40 @@ export default function StoryManager() {
     } catch (e) { /* ignore */ }
   };
 
-
-
-  // Get profile-specific terminology
-  const getItemLabel = () => currentProfile?.item_type_label || 'Story';
-  const getItemLabelPlural = () => currentProfile?.item_type_label_plural || 'Stories';
+  const handleCreate = async () => {
+    if (!newProd.title) return;
+    setCreating(true);
+    skipSave.current = true;
+    try {
+      const selectedIds = getSelectedStoryIds();
+      const allArticles = await base44.entities.Article.list('-created_date', 100);
+      const selectedArticles = allArticles.filter(a => selectedIds.includes(a.id));
+      const order = selectedArticles.map(a => a.id);
+      const prod = await base44.entities.Production.create({
+        title: newProd.title,
+        brand_profile_id: newProd.brand_profile_id,
+        show_profile_id: newProd.show_profile_id,
+        production_date: newProd.production_date,
+        status: 'in_progress',
+        story_order: JSON.stringify(order),
+        target_runtime: '30 Minutes',
+        checklist: JSON.stringify(DEFAULT_CHECKLIST),
+      });
+      await Promise.all(selectedArticles.map(a =>
+        base44.entities.Article.update(a.id, { production_id: prod.id, production_status: 'selected' })
+      ));
+      setProduction(prod);
+      setStoryOrder(order);
+      setChecklist(DEFAULT_CHECKLIST);
+      await loadStoriesData(prod);
+      await logActivity('create', `Production created with ${order.length} stories`);
+    } catch (e) {
+      console.error('Failed to create production:', e);
+    } finally {
+      setCreating(false);
+      setTimeout(() => { skipSave.current = false; }, 200);
+    }
+  };
 
   const handleReorder = (newOrder) => {
     setStoryOrder(newOrder);
@@ -298,23 +314,69 @@ export default function StoryManager() {
   }
 
   if (!production) {
-    // Redirect to ProductionSetup page for profile-aware creation
-    navigate('/production/new');
-    return null;
+    return (
+      <div className="p-4 lg:p-6 max-w-2xl mx-auto">
+        <div className="glass-panel glow-purple p-6 lg:p-8 space-y-4">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-berna-purple" />
+            <h1 className="text-2xl font-bold text-white">Create Production</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Create a new production workspace. All selected stories from the Story Queue will be added automatically.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Production Title</label>
+              <Input
+                value={newProd.title}
+                onChange={(e) => setNewProd({ ...newProd, title: e.target.value })}
+                placeholder="e.g. TNN Morning Brief - June 29"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Brand Profile</label>
+                <Select value={newProd.brand_profile_id} onValueChange={(v) => setNewProd({ ...newProd, brand_profile_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                  <SelectContent>
+                    {brands.map(b => <SelectItem key={b.id} value={b.id}>{b.brand_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Show Profile</label>
+                <Select value={newProd.show_profile_id} onValueChange={(v) => setNewProd({ ...newProd, show_profile_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select show" /></SelectTrigger>
+                  <SelectContent>
+                    {shows.map(s => <SelectItem key={s.id} value={s.id}>{s.show_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Production Date</label>
+              <Input
+                type="date"
+                value={newProd.production_date}
+                onChange={(e) => setNewProd({ ...newProd, production_date: e.target.value })}
+              />
+            </div>
+          </div>
+          <Button
+            className="w-full bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple"
+            onClick={handleCreate}
+            disabled={creating || !newProd.title}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {creating ? 'Creating...' : 'Create Production'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
-      {/* Navigation */}
-      <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="text-muted-foreground hover:text-white">
-          <Home className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-muted-foreground hover:text-white">
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-      </div>
-
       <WorkspaceHeader
         production={production}
         brands={brands}
@@ -329,9 +391,7 @@ export default function StoryManager() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white neon-underline">
-              {currentProfile?.profile_type === 'news' ? 'Production Rundown' : `${getItemLabelPlural()} Rundown`}
-            </h2>
+            <h2 className="text-sm font-semibold text-white neon-underline">Production Rundown</h2>
             <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
           </div>
           <ProductionRundown
@@ -364,8 +424,6 @@ export default function StoryManager() {
         onClose={() => setShowAddModal(false)}
         availableStories={availableStories}
         onAdd={handleAddStories}
-        itemLabel={getItemLabel()}
-        itemLabelPlural={getItemLabelPlural()}
       />
     </div>
   );

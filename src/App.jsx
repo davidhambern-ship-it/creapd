@@ -20,7 +20,6 @@ import StoryDetail from '@/pages/StoryDetail';
 import StoryLibrary from '@/pages/StoryLibrary';
 import StoryManager from '@/pages/StoryManager';
 import ProductionPackages from '@/pages/ProductionPackages';
-import ProductionProfiles from '@/pages/ProductionProfiles';
 import BrandProfiles from '@/pages/BrandProfiles';
 import ShowProfiles from '@/pages/ShowProfiles';
 import ExportCenter from '@/pages/ExportCenter';
@@ -39,7 +38,6 @@ import ActivityCenter from '@/pages/ActivityCenter';
 import TemplateLibrary from '@/pages/TemplateLibrary';
 import ProductionTemplates from '@/pages/ProductionTemplates';
 import PromptTemplates from '@/pages/PromptTemplates';
-import ProductionSetup from '@/pages/ProductionSetup';
 import ProducerLayout from '@/components/layout/ProducerLayout';
 
 const AuthenticatedApp = () => {
@@ -80,9 +78,7 @@ const AuthenticatedApp = () => {
           <Route path="/story/:id" element={<StoryDetail />} />
           <Route path="/library" element={<StoryLibrary />} />
           <Route path="/workspace" element={<StoryManager />} />
-          <Route path="/production/new" element={<ProductionSetup />} />
           <Route path="/production" element={<ProductionPackages />} />
-          <Route path="/production-profiles" element={<ProductionProfiles />} />
           <Route path="/brands" element={<BrandProfiles />} />
           <Route path="/shows" element={<ShowProfiles />} />
           <Route path="/images" element={<ImageLibrary />} />
