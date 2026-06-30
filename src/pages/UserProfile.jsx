@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { User, Save, Loader2, Building2, Globe, Clock, Mail, Briefcase, Camera, Check } from 'lucide-react';
+import { User, Save, Loader2, Building2, Globe, Clock, Mail, Briefcase, Camera, Check, ClipboardCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -144,6 +145,19 @@ export default function UserProfile() {
           </div>
         </div>
       </div>
+
+      {/* Admin tools */}
+      {user.role === 'admin' && (
+        <div className="glass-panel p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-white neon-underline">Admin Tools</h3>
+          <Link to="/checklist">
+            <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
+              <ClipboardCheck className="w-4 h-4 text-berna-purple" />
+              Requirements & Acceptance Checklist
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Personal info */}
       <div className="glass-panel p-5 space-y-4">
