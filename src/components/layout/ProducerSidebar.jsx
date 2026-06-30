@@ -53,10 +53,15 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
     
     if (profileType === 'music_show') {
       return navItems.map(item => {
+        if (item.path === '/select-production-type') return { ...item, label: 'Production Setup', path: '/production-setup' };
         if (item.path === '/queue') return { ...item, label: 'Songs Queue', path: '/item-queue' };
         if (item.path === '/library') return { ...item, label: 'Songs Library', path: '/item-library' };
         if (item.path === '/workspace') return { ...item, label: 'Playlist Builder' };
         if (item.path === '/research') return { ...item, label: 'Music Research', path: '/music-research' };
+        if (item.path === '/brands') return { ...item, label: 'Artist Library', path: '/artist-library' };
+        if (item.path === '/sources') return { ...item, label: 'Sponsor Manager', path: '/sponsor-manager' };
+        if (item.path === '/import') return { ...item, label: 'Segment Builder', path: '/segment-builder' };
+        if (item.path === '/templates') return { ...item, label: 'AI Studio', path: '/ai-studio' };
         return item;
       });
     }

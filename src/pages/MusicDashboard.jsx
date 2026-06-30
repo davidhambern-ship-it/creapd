@@ -102,8 +102,8 @@ export default function MusicDashboard() {
         </div>
       </div>
 
-      {/* Today's Playlist & Show Clock */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+      {/* Today's Playlist, Show Clock, Music Research */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Today's Playlist */}
         <div className="glass-panel p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -162,6 +162,43 @@ export default function MusicDashboard() {
           ) : (
             <p className="text-xs text-muted-foreground">No songs in playlist. Add songs from the Item Queue.</p>
           )}
+        </div>
+
+        {/* Show Clock */}
+        <div className="glass-panel p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-white neon-underline flex items-center gap-2">
+            <Clock className="w-4 h-4 text-pink-500" />
+            Show Clock
+          </h2>
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase">Total Show Length</span>
+                <Clock className="w-3 h-3 text-purple-500" />
+              </div>
+              <p className="text-2xl font-bold text-white mt-1">60:00</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                <p className="text-[9px] text-muted-foreground uppercase">Music</p>
+                <p className="text-lg font-bold text-pink-400">{musicRuntime}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <p className="text-[9px] text-muted-foreground uppercase">Talk</p>
+                <p className="text-lg font-bold text-blue-400">10:00</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <p className="text-[9px] text-muted-foreground uppercase">Commercial</p>
+                <p className="text-lg font-bold text-orange-400">5:00</p>
+              </div>
+              <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <p className="text-[9px] text-muted-foreground uppercase">Remaining</p>
+                <p className="text-lg font-bold text-emerald-400">45:00</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Music Research */}

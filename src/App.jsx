@@ -45,6 +45,11 @@ import ProducerLayout from '@/components/layout/ProducerLayout';
 import MusicDashboard from '@/pages/MusicDashboard';
 import MusicResearchCenter from '@/pages/MusicResearchCenter';
 import PlaylistBuilder from '@/pages/PlaylistBuilder';
+import ProductionSetup from '@/pages/ProductionSetup';
+import ArtistLibrary from '@/pages/ArtistLibrary';
+import SponsorManager from '@/pages/SponsorManager';
+import SegmentBuilder from '@/pages/SegmentBuilder';
+import AIStudio from '@/pages/AIStudio';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -81,6 +86,11 @@ const AuthenticatedApp = () => {
           <Route path="/music-dashboard" element={<MusicDashboard />} />
           <Route path="/music-research" element={<MusicResearchCenter />} />
           <Route path="/workspace" element={<PlaylistBuilder />} />
+          <Route path="/production-setup" element={<ProductionSetup />} />
+          <Route path="/artist-library" element={<ArtistLibrary />} />
+          <Route path="/sponsor-manager" element={<SponsorManager />} />
+          <Route path="/segment-builder" element={<SegmentBuilder />} />
+          <Route path="/ai-studio" element={<AIStudio />} />
           <Route path="/select-type" element={<ProductionTypeSelector />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
