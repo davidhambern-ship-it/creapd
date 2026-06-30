@@ -268,20 +268,14 @@ export default function ProductionProfiles() {
         {filteredProfiles.map(profile => (
           <div
             key={profile.id}
-            className="glass-panel p-5 hover:bg-white/[0.08] transition-all group"
+            className="glass-panel p-5 hover:bg-white/[0.08] transition-all group cursor-pointer"
+            onClick={() => setEditingProfile(profile)}
           >
             <div className="flex items-start justify-between mb-3">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${PROFILE_COLORS[profile.color] || PROFILE_COLORS['berna-purple']} flex items-center justify-center text-xl`}>
                 {ICON_MAP[profile.icon] || '⚙️'}
               </div>
-              <div className="flex gap-1">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setEditingProfile(profile); }}
-                  className="p-1.5 rounded-lg hover:bg-white/10"
-                  title="Edit"
-                >
-                  <Edit className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDuplicate(profile); }}
                   className="p-1.5 rounded-lg hover:bg-white/10"
@@ -301,24 +295,16 @@ export default function ProductionProfiles() {
               </div>
             </div>
             <h3 className="text-sm font-semibold text-white mb-1">{profile.profile_name}</h3>
-            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{profile.description}</p>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
-                  {profile.item_type_label_plural || 'Items'}
+            <p className="text-xs text-muted-foreground line-clamp-2">{profile.description}</p>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
+                {profile.item_type_label_plural || 'Items'}
+              </span>
+              {profile.is_custom && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-berna-purple/20 border border-berna-purple/30 text-berna-purple">
+                  Custom
                 </span>
-                {profile.is_custom && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-berna-purple/20 border border-berna-purple/30 text-berna-purple">
-                    Custom
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => setEditingProfile(profile)}
-                className="text-xs text-berna-purple hover:text-berna-purple/80 font-medium"
-              >
-                Edit →
-              </button>
+              )}
             </div>
           </div>
         ))}
