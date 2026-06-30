@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Upload, Loader2, Tag } from 'lucide-react';
+import { Upload, Loader2, Tag, Image as ImageIcon, Film } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ export default function ImageUploadModal({ open, onClose, onUploaded }) {
   const [preview, setPreview] = useState(null);
   const [title, setTitle] = useState('');
   const [imageType, setImageType] = useState('uploaded');
+  const [assetType, setAssetType] = useState('image');
   const [tags, setTags] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -39,10 +40,13 @@ export default function ImageUploadModal({ open, onClose, onUploaded }) {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const formatMap = { jpg: 'jpg', jpeg: 'jpeg', png: 'png', webp: 'webp', svg: 'svg' };
+      const imgFormats = { jpg: 'jpg', jpeg: 'jpeg', png: 'png', webp: 'webp', svg: 'svg' };
+      const vidFormats = { mp4: 'mp4', webm: 'webm', mov: 'mov' };
+      const formatMap = assetType === 'video' ? vidFormats : imgFormats;
       await base44.entities.ImageAsset.create({
         title,
         image_url: file_url,
+        asset_type: assetType,
         image_type: imageType,
         tags,
         file_format: formatMap[ext] || 'other',
@@ -54,6 +58,7 @@ export default function ImageUploadModal({ open, onClose, onUploaded }) {
       setTitle('');
       setTags('');
       setImageType('uploaded');
+      setAssetType('image');
       onUploaded();
     } catch (e) {
       toast({ title: 'Upload failed', description: e.message, variant: 'destructive' });
@@ -68,20 +73,47 @@ export default function ImageUploadModal({ open, onClose, onUploaded }) {
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
             <Upload className="w-4 h-4 text-berna-purple" />
-            Upload Image
+            Upload Media
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           {preview && (
             <div className="rounded-lg overflow-hidden bg-black/20 max-h-48 flex items-center justify-center">
-              <img src={preview} alt="Preview" className="max-h-48 w-auto" />
+              {assetType === 'video' ? (
+                <video src={preview} controls className="max-h-48 w-auto" />
+              ) : (
+                <img src={preview} alt="Preview" className="max-h-48 w-auto" />
+              )}
             </div>
           )}
           <div>
-            <Label className="text-xs text-muted-foreground">Image File</Label>
+            <Label className="text-xs text-muted-foreground">Asset Type</Label>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setAssetType('image')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all ${
+                  assetType === 'image' ? 'bg-berna-purple text-white' : 'bg-white/[0.03] text-muted-foreground border border-white/[0.08]'
+                }`}
+              >
+                <ImageIcon className="w-3.5 h-3.5" /> Image
+              </button>
+              <button
+                type="button"
+                onClick={() => setAssetType('video')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all ${
+                  assetType === 'video' ? 'bg-berna-purple text-white' : 'bg-white/[0.03] text-muted-foreground border border-white/[0.08]'
+                }`}
+              >
+                <Film className="w-3.5 h-3.5" /> Video
+              </button>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">{assetType === 'video' ? 'Video File' : 'Image File'}</Label>
             <Input
               type="file"
-              accept="image/*"
+              accept={assetType === 'video' ? 'video/*' : 'image/*'}
               onChange={handleFileChange}
               className="bg-white/[0.03] border-white/[0.08] text-white text-xs cursor-pointer"
             />

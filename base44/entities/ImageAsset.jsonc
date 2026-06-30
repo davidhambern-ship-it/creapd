@@ -8,6 +8,14 @@
     "image_url": {
       "type": "string"
     },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video"
+      ],
+      "default": "image"
+    },
     "image_type": {
       "type": "string",
       "enum": [
@@ -76,9 +84,15 @@
         "jpeg",
         "webp",
         "svg",
+        "mp4",
+        "webm",
+        "mov",
         "other"
       ],
       "default": "png"
+    },
+    "duration": {
+      "type": "number"
     },
     "width": {
       "type": "number"

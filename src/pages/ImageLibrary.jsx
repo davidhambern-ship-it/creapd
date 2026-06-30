@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Image as ImageIcon, Upload, Search, Trash2, Archive, Star, X, Loader2, Tag, Filter, Download, CheckCircle, Clock } from 'lucide-react';
+import { Image as ImageIcon, Upload, Search, Trash2, Archive, Star, X, Loader2, Tag, Filter, Download, CheckCircle, Clock, Film } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -34,6 +34,7 @@ export default function ImageLibrary() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showUpload, setShowUpload] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [assetTab, setAssetTab] = useState('all');
 
   useEffect(() => {
     loadImages();
@@ -59,6 +60,7 @@ export default function ImageLibrary() {
           (img.source_prompt || '').toLowerCase().includes(term);
         if (!matchesSearch) return false;
       }
+      if (assetTab !== 'all' && (img.asset_type || 'image') !== assetTab) return false;
       if (typeFilter !== 'all' && img.image_type !== typeFilter) return false;
       if (statusFilter !== 'all' && img.approval_status !== statusFilter) return false;
       return true;
@@ -109,14 +111,36 @@ export default function ImageLibrary() {
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-berna-purple" />
-            Image Library
+            Image/Video Library
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">Centralized management for all production images and graphics</p>
+          <p className="text-xs text-muted-foreground mt-1">Centralized management for all production images, graphics, and videos</p>
         </div>
         <Button onClick={() => setShowUpload(true)} className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white text-xs h-8">
           <Upload className="w-3.5 h-3.5 mr-1.5" />
-          Upload Image
+          Upload
         </Button>
+      </div>
+
+      {/* Asset Type Tabs */}
+      <div className="flex gap-1.5">
+        {[
+          { value: 'all', label: 'All Media', icon: null },
+          { value: 'image', label: 'Images', icon: ImageIcon },
+          { value: 'video', label: 'Videos', icon: Film },
+        ].map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => setAssetTab(tab.value)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              assetTab === tab.value
+                ? 'bg-white/[0.08] text-white border border-white/[0.1]'
+                : 'bg-white/[0.02] text-muted-foreground border border-white/[0.04] hover:text-white'
+            }`}
+          >
+            {tab.icon && <tab.icon className="w-3 h-3" />}
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Stats Bar */}
@@ -175,9 +199,9 @@ export default function ImageLibrary() {
         <div className="glass-panel p-12 text-center">
           <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
-            {search || typeFilter !== 'all' || statusFilter !== 'all'
-              ? 'No images match your filters'
-              : 'No images yet. Upload images or generate them from production packages.'}
+            {search || typeFilter !== 'all' || statusFilter !== 'all' || assetTab !== 'all'
+              ? 'No media matches your filters'
+              : 'No media yet. Upload images/videos or generate them from production packages.'}
           </p>
         </div>
       )}
@@ -198,7 +222,11 @@ export default function ImageLibrary() {
           {selectedImage && (
             <div className="space-y-3">
               <div className="rounded-lg overflow-hidden bg-black/20">
-                <img src={selectedImage.image_url} alt={selectedImage.title} className="w-full max-h-80 object-contain" />
+                {selectedImage.asset_type === 'video' ? (
+                  <video src={selectedImage.image_url} controls className="w-full max-h-80 object-contain" />
+                ) : (
+                  <img src={selectedImage.image_url} alt={selectedImage.title} className="w-full max-h-80 object-contain" />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>

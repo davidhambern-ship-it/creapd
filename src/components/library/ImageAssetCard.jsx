@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Archive, Clock } from 'lucide-react';
+import { Star, Archive, Clock, Film } from 'lucide-react';
 
 const STATUS_STYLES = {
   pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -25,13 +25,29 @@ export default function ImageAssetCard({ image, onClick, onToggleFavorite }) {
     >
       <div className="aspect-square bg-black/20 relative overflow-hidden">
         {image.image_url ? (
-          <img
-            src={image.image_url}
-            alt={image.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          image.asset_type === 'video' ? (
+            <>
+              <video
+                src={image.image_url}
+                muted
+                preload="metadata"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                  <Film className="w-4 h-4 text-white ml-0.5" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <img
+              src={image.image_url}
+              alt={image.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          )
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">No image</div>
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">No media</div>
         )}
 
         {/* Top overlay badges */}

@@ -11,7 +11,7 @@ const SEARCH_SOURCES = [
   { entity: 'ShowProfile', label: 'Shows', icon: Tv, path: '/shows', titleField: 'show_name', subField: 'host_names' },
   { entity: 'BriefingTemplate', label: 'Templates', icon: LayoutTemplate, path: '/templates', titleField: 'name', subField: 'template_key' },
   { entity: 'ExportProfile', label: 'Exports', icon: Download, path: '/export', titleField: 'name', subField: 'format' },
-  { entity: 'ImageAsset', label: 'Images', icon: ImageIcon, path: '/images', titleField: 'title', subField: 'tags' },
+  { entity: 'ImageAsset', label: 'Media', icon: ImageIcon, path: '/images', titleField: 'title', subField: 'tags' },
   { entity: 'Organization', label: 'Organizations', icon: Briefcase, path: '/organizations', titleField: 'name', subField: 'industry' },
 ];
 

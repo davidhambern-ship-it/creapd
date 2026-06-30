@@ -73,20 +73,22 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
       const updated = await base44.entities.ProductionPackage.update(pkg.id, updateData);
       onMediaUpdate(updated);
 
-      // PRD 12: Auto-sync generated images to Image Library
-      if (mediaType === 'image') {
+      // PRD 12: Auto-sync generated images/videos to Image Library
+      if (mediaType === 'image' || mediaType === 'video') {
         const isThumbnail = urlField === 'generated_thumbnail_url';
+        const isVideo = mediaType === 'video';
         try {
           await base44.entities.ImageAsset.create({
-            title: `${pkg.story_summary || 'Production'} — ${isThumbnail ? 'Thumbnail' : 'Image'}`,
+            title: `${pkg.story_summary || 'Production'} — ${isThumbnail ? 'Thumbnail' : isVideo ? 'Video' : 'Image'}`,
             image_url: url,
+            asset_type: isVideo ? 'video' : 'image',
             image_type: isThumbnail ? 'thumbnail' : 'ai_generated',
             source_prompt: usePrompt,
             associated_production_id: pkg.id,
             associated_production_title: pkg.story_summary || '',
             associated_story_id: pkg.article_id,
             approval_status: 'pending',
-            file_format: 'png',
+            file_format: isVideo ? 'mp4' : 'png',
             version_number: pkg.generation_count || 1,
           });
         } catch (e) {
