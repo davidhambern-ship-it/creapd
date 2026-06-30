@@ -66,7 +66,7 @@ const iconMap = {
 
 export default function ProducerSidebar({ collapsed, onToggle }) {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [profileKey, setProfileKey] = useState('news');
   const [profile, setProfile] = useState(null);
   const [navItems, setNavItems] = useState(defaultNavItems);
@@ -86,6 +86,15 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
       loadProductionProfile(productionId);
     }
   }, [searchParams]);
+
+  const getLinkWithParams = (path) => {
+    const profileFromUrl = searchParams.get('profile');
+    const productionId = searchParams.get('productionId');
+    const params = new URLSearchParams();
+    if (profileFromUrl) params.set('profile', profileFromUrl);
+    if (productionId) params.set('productionId', productionId);
+    return params.toString() ? `${path}?${params.toString()}` : path;
+  };
 
   const loadProductionProfile = async (productionId) => {
     try {
@@ -121,11 +130,12 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
           {navItems.map(item => {
             const isActive = location.pathname === item.path;
             const IconComponent = typeof item.icon === 'string' ? iconMap[item.icon] : item.icon;
+            const to = getLinkWithParams(item.path);
             
             return (
               <Link
                 key={item.path}
-                to={item.path}
+                to={to}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative ${
                   isActive
                     ? 'bg-white/[0.06] text-white'

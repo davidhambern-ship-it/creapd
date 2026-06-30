@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { getProfileConfig } from '@/lib/productionProfiles';
 import { 
@@ -14,7 +14,7 @@ const iconMap = {
 };
 
 export default function Dashboard() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [profile, setProfile] = useState(null);
   const [production, setProduction] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,15 +63,19 @@ export default function Dashboard() {
           });
         }
       } else {
-        // Load recent productions
-        const productions = await base44.entities.Production.list('-created_date', 10);
-        if (productions.length > 0) {
-          setProduction(productions[0]);
-          const prodId = productions[0].id;
-          const prodProfileKey = productions[0].profile_key || 'news';
+        // Load most recent in_progress production for this profile
+        const allProductions = await base44.entities.Production.filter({ status: 'in_progress' }, '-created_date', 10);
+        const filteredProductions = allProductions.filter(p => p.profile_key === profileKey);
+        if (filteredProductions.length > 0) {
+          const prod = filteredProductions[0];
+          setProduction(prod);
+          // Update URL params to maintain context
+          const newParams = new URLSearchParams(searchParams);
+          newParams.set('productionId', prod.id);
+          setSearchParams(newParams);
           
-          if (prodProfileKey === 'news') {
-            const articles = await base44.entities.Article.filter({ production_id: prodId });
+          if (profileKey === 'news') {
+            const articles = await base44.entities.Article.filter({ production_id: prod.id });
             setStats({
               totalItems: articles.length,
               inProgress: articles.filter(a => a.production_status === 'in_production').length,
@@ -79,7 +83,7 @@ export default function Dashboard() {
               todayCount: articles.filter(a => a.created_date && new Date(a.created_date).toDateString() === new Date().toDateString()).length
             });
           } else {
-            const items = await base44.entities.ContentItem.filter({ production_id: prodId });
+            const items = await base44.entities.ContentItem.filter({ production_id: prod.id });
             setStats({
               totalItems: items.length,
               inProgress: items.filter(i => i.status === 'in_rundown').length,
