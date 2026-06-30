@@ -43,6 +43,7 @@ import ResearchCenter from '@/pages/ResearchCenter';
 import ProductionProfileManager from '@/pages/ProductionProfileManager';
 import ProducerLayout from '@/components/layout/ProducerLayout';
 import MusicDashboard from '@/pages/MusicDashboard';
+import MusicResearchCenter from '@/pages/MusicResearchCenter';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
         <Route element={<ProducerLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/music-dashboard" element={<MusicDashboard />} />
+          <Route path="/music-research" element={<MusicResearchCenter />} />
           <Route path="/select-type" element={<ProductionTypeSelector />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />

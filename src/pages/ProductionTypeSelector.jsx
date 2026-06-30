@@ -157,7 +157,7 @@ export default function ProductionTypeSelector() {
 
       // Navigate to appropriate research center based on profile type
       if (profile.profile_type === 'music_show') {
-        navigate('/research-center');
+        navigate('/music-research');
       } else {
         navigate('/research');
       }
@@ -194,7 +194,7 @@ export default function ProductionTypeSelector() {
   const handleContinueToResearch = () => {
     const activeProfile = JSON.parse(sessionStorage.getItem('activeProductionProfile'));
     if (activeProfile?.type === 'music_show') {
-      navigate('/research-center');
+      navigate('/music-research');
     } else {
       navigate('/research');
     }

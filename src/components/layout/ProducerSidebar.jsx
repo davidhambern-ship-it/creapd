@@ -56,6 +56,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
         if (item.path === '/queue') return { ...item, label: 'Songs Queue' };
         if (item.path === '/library') return { ...item, label: 'Songs Library' };
         if (item.path === '/workspace') return { ...item, label: 'Playlist Builder' };
+        if (item.path === '/research') return { ...item, label: 'Music Research', path: '/music-research' };
         return item;
       });
     }
