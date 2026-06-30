@@ -61,6 +61,7 @@ export default function StoryManager() {
   const [brands, setBrands] = useState([]);
   const [shows, setShows] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [globalNotes, setGlobalNotes] = useState('');
   const [checklist, setChecklist] = useState(DEFAULT_CHECKLIST);
   const [loading, setLoading] = useState(true);
@@ -98,6 +99,10 @@ export default function StoryManager() {
         setStoryOrder(JSON.parse(prod.story_order || '[]'));
         setGlobalNotes(prod.global_notes || '');
         setChecklist({ ...DEFAULT_CHECKLIST, ...JSON.parse(prod.checklist || '{}') });
+        if (prod.production_profile_id) {
+          const profile = profileList.find(p => p.id === prod.production_profile_id);
+          setCurrentProfile(profile || null);
+        }
         await loadStoriesData(prod);
       } else if (profileList.length > 0) {
         setShowProfileSelector(true);
@@ -234,8 +239,13 @@ export default function StoryManager() {
 
   const handleProfileSelect = (profile) => {
     setNewProd(prev => ({ ...prev, production_profile_id: profile.id }));
+    setCurrentProfile(profile);
     setShowProfileSelector(false);
   };
+
+  // Get profile-specific terminology
+  const getItemLabel = () => currentProfile?.item_type_label || 'Story';
+  const getItemLabelPlural = () => currentProfile?.item_type_label_plural || 'Stories';
 
   const handleReorder = (newOrder) => {
     setStoryOrder(newOrder);
@@ -344,7 +354,7 @@ export default function StoryManager() {
               <h1 className="text-2xl font-bold text-white">Create Production</h1>
             </div>
             <p className="text-sm text-muted-foreground">
-              Create a new production workspace. All selected items from the Story Queue will be added automatically.
+              Create a new production workspace. All selected {getItemLabelPlural().toLowerCase()} from the queue will be added automatically.
             </p>
             <div className="space-y-3">
               <div>
@@ -421,7 +431,9 @@ export default function StoryManager() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white neon-underline">Production Rundown</h2>
+            <h2 className="text-sm font-semibold text-white neon-underline">
+              {currentProfile?.profile_type === 'news' ? 'Production Rundown' : `${getItemLabelPlural()} Rundown`}
+            </h2>
             <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
           </div>
           <ProductionRundown
@@ -454,6 +466,8 @@ export default function StoryManager() {
         onClose={() => setShowAddModal(false)}
         availableStories={availableStories}
         onAdd={handleAddStories}
+        itemLabel={getItemLabel()}
+        itemLabelPlural={getItemLabelPlural()}
       />
     </div>
   );
