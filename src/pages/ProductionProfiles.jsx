@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, RefreshCw, Settings, Copy, Trash2, Edit, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ const ICON_MAP = {
 };
 
 export default function ProductionProfiles() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -269,7 +271,7 @@ export default function ProductionProfiles() {
           <div
             key={profile.id}
             className="glass-panel p-5 hover:bg-white/[0.08] transition-all group cursor-pointer"
-            onClick={() => setEditingProfile(profile)}
+            onClick={() => navigate(`/production/new?profile=${profile.profile_type || profile.id}`)}
           >
             <div className="flex items-start justify-between mb-3">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${PROFILE_COLORS[profile.color] || PROFILE_COLORS['berna-purple']} flex items-center justify-center text-xl`}>
