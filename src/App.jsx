@@ -23,6 +23,7 @@ import ProductionPackages from '@/pages/ProductionPackages';
 import BrandProfiles from '@/pages/BrandProfiles';
 import ShowProfiles from '@/pages/ShowProfiles';
 import ExportCenter from '@/pages/ExportCenter';
+import ImageLibrary from '@/pages/ImageLibrary';
 import ResearchDesk from '@/pages/ResearchDesk';
 import Sources from '@/pages/Sources';
 import ManualImport from '@/pages/ManualImport';
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
           <Route path="/production" element={<ProductionPackages />} />
           <Route path="/brands" element={<BrandProfiles />} />
           <Route path="/shows" element={<ShowProfiles />} />
+          <Route path="/images" element={<ImageLibrary />} />
           <Route path="/export" element={<ExportCenter />} />
           <Route path="/research" element={<ResearchDesk />} />
           <Route path="/sources" element={<Sources />} />

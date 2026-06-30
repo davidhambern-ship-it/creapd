@@ -1,0 +1,97 @@
+{
+  "name": "ImageAsset",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "image_type": {
+      "type": "string",
+      "enum": [
+        "ai_generated",
+        "uploaded",
+        "approved_graphic",
+        "archived_graphic",
+        "brand_asset",
+        "thumbnail"
+      ],
+      "default": "ai_generated"
+    },
+    "source_prompt": {
+      "type": "string"
+    },
+    "associated_production_id": {
+      "type": "string"
+    },
+    "associated_production_title": {
+      "type": "string"
+    },
+    "associated_story_id": {
+      "type": "string"
+    },
+    "associated_story_title": {
+      "type": "string"
+    },
+    "associated_brand_id": {
+      "type": "string"
+    },
+    "associated_brand_name": {
+      "type": "string"
+    },
+    "associated_show_id": {
+      "type": "string"
+    },
+    "associated_show_name": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "archived"
+      ],
+      "default": "pending"
+    },
+    "version_number": {
+      "type": "number",
+      "default": 1
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    },
+    "file_format": {
+      "type": "string",
+      "enum": [
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "svg",
+        "other"
+      ],
+      "default": "png"
+    },
+    "width": {
+      "type": "number"
+    },
+    "height": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "image_url"
+  ]
+}

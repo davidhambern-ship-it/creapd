@@ -16,6 +16,7 @@ const navItems = [
   { icon: Package, label: 'Production', path: '/production' },
   { icon: Palette, label: 'Brand Profiles', path: '/brands' },
   { icon: Tv, label: 'Show Profiles', path: '/shows' },
+  { icon: ImageIcon, label: 'Image Library', path: '/images' },
   { icon: Download, label: 'Export Center', path: '/export' },
   { icon: Search, label: 'Research Desk', path: '/research' },
   { icon: Radio, label: 'Sources', path: '/sources' },
