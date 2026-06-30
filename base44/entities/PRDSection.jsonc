@@ -1,0 +1,23 @@
+{
+  "name": "PRDSection",
+  "type": "object",
+  "properties": {
+    "section_number": {
+      "type": "string"
+    },
+    "section_title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "subsection_count": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "section_number",
+    "section_title",
+    "content"
+  ]
+}
