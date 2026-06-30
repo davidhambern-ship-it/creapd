@@ -5,6 +5,11 @@
     "name": {
       "type": "string"
     },
+    "content_domain": {
+      "type": "string",
+      "description": "The production domain this source belongs to (e.g. 'news', 'radio_music', 'cooking', 'spiritual'). Sources are only fetched when their domain matches the active show.",
+      "default": "news"
+    },
     "source_type": {
       "type": "string",
       "enum": [
@@ -27,7 +32,16 @@
         "small_business",
         "press_release",
         "custom",
-        "local_news"
+        "local_news",
+        "music_industry",
+        "concert_tours",
+        "artist_news",
+        "recipe_blog",
+        "food_publication",
+        "spiritual_blog",
+        "sermon_feed",
+        "devotional",
+        "podcast_feed"
       ]
     },
     "source_layer": {
@@ -44,7 +58,10 @@
         "small_business",
         "press_releases",
         "custom",
-        "manual_import"
+        "manual_import",
+        "music",
+        "culinary",
+        "spiritual"
       ]
     },
     "source_group": {

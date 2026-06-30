@@ -47,7 +47,7 @@ const sourceTypes = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const emptySource = { name: '', source_type: 'major_news', source_layer: 'major_news', url: '', feed_url: '', category: '', trust_rating: 4, enabled: true, notes: '', paywall: false };
+const emptySource = { name: '', source_type: 'major_news', source_layer: 'major_news', content_domain: 'news', url: '', feed_url: '', category: '', trust_rating: 4, enabled: true, notes: '', paywall: false };
 
 export default function Sources() {
   const navigate = useNavigate();
@@ -59,8 +59,13 @@ export default function Sources() {
   const [search, setSearch] = useState('');
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState(null);
+  const [contentDomains, setContentDomains] = useState([]);
+  const [domainFilter, setDomainFilter] = useState('all');
 
-  useEffect(() => { loadSources(); }, []);
+  useEffect(() => {
+    loadSources();
+    base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
+  }, []);
 
   const loadSources = () => {
     setLoading(true);
@@ -70,9 +75,13 @@ export default function Sources() {
   };
 
   const groupedByLayer = useMemo(() => {
-    const filtered = search
-      ? sources.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()))
-      : sources;
+    let filtered = sources;
+    if (domainFilter !== 'all') {
+      filtered = filtered.filter(s => (s.content_domain || 'news') === domainFilter);
+    }
+    if (search) {
+      filtered = filtered.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
+    }
     const groups = {};
     SOURCE_LAYERS.forEach(l => { groups[l.value] = []; });
     filtered.forEach(s => {
@@ -81,7 +90,7 @@ export default function Sources() {
       groups[layer].push(s);
     });
     return groups;
-  }, [sources, search]);
+  }, [sources, search, domainFilter]);
 
   const openAdd = () => { setEditing(null); setForm(emptySource); setDialogOpen(true); };
   const openEdit = (source) => { setEditing(source); setForm({ ...source }); setDialogOpen(true); };
@@ -111,7 +120,8 @@ export default function Sources() {
     setFetching(true);
     setFetchResult(null);
     try {
-      const res = await base44.functions.invoke('fetchStories', {});
+      const payload = domainFilter !== 'all' ? { content_domain: domainFilter } : {};
+      const res = await base44.functions.invoke('fetchStories', payload);
       setFetchResult(res.data);
     } catch (e) {
       setFetchResult({ error: e.response?.data?.error || e.message });
@@ -167,9 +177,20 @@ export default function Sources() {
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search sources..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={domainFilter} onValueChange={setDomainFilter}>
+          <SelectTrigger className="w-48 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9">
+            <SelectValue placeholder="All production types" />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-white/10">
+            <SelectItem value="all" className="text-xs">All Production Types</SelectItem>
+            {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key} className="text-xs">{d.display_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search sources..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9" />
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -194,6 +215,15 @@ export default function Sources() {
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Source Name</label>
               <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="bg-white/[0.03] border-white/[0.08] text-white text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Production Type</label>
+              <Select value={form.content_domain || 'news'} onValueChange={v => setForm(p => ({ ...p, content_domain: v }))}>
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-card border-white/10">
+                  {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key}>{d.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

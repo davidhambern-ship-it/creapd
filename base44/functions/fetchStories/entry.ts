@@ -69,9 +69,11 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const layerFilter = body.source_layer;
+    const domainFilter = body.content_domain;
 
     let sources = await base44.asServiceRole.entities.Source.filter({ enabled: true });
     if (layerFilter) sources = sources.filter(s => s.source_layer === layerFilter);
+    if (domainFilter) sources = sources.filter(s => (s.content_domain || 'news') === domainFilter);
     const feedSources = sources.filter(s => s.feed_url);
 
     const existing = await base44.asServiceRole.entities.Article.list('-created_date', 500);

@@ -1,0 +1,79 @@
+{
+  "name": "ContentDomain",
+  "type": "object",
+  "properties": {
+    "domain_key": {
+      "type": "string",
+      "description": "Unique identifier for this domain (e.g. 'news', 'radio_music', 'cooking', 'spiritual')"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable name shown in the UI (e.g. 'News Production', 'Radio / Music Production')"
+    },
+    "description": {
+      "type": "string"
+    },
+    "icon_name": {
+      "type": "string",
+      "description": "Lucide icon name for UI display"
+    },
+    "system_persona": {
+      "type": "string",
+      "description": "The AI persona/instructions for this domain. Replaces hard-coded 'You are a professional broadcast producer' etc."
+    },
+    "rating_criteria": {
+      "type": "string",
+      "description": "Instructions for how to rate and select stories for this domain"
+    },
+    "asset_types": {
+      "type": "string",
+      "description": "JSON array of asset keys to generate for production packages in this domain"
+    },
+    "asset_descriptions": {
+      "type": "string",
+      "description": "JSON object mapping asset keys to descriptions for the LLM"
+    },
+    "briefing_prompt": {
+      "type": "string",
+      "description": "Full prompt template for briefing generation. Supports {articles}, {article_count}, {host_pick_label}"
+    },
+    "production_prompt": {
+      "type": "string",
+      "description": "Default prompt template for production package generation. Supports {title}, {summary}, {source}, {category}, {tone}, {reading_style}, {audience}, {target_runtime}, {asset_list}"
+    },
+    "briefing_schema": {
+      "type": "string",
+      "description": "JSON schema for the briefing response (fields like theme, monologue, etc.)"
+    },
+    "host_pick_label": {
+      "type": "string",
+      "description": "Label for the host's top pick (e.g. 'Berna\\u2019s Pick' for news, 'Featured Track' for radio)",
+      "default": "Top Pick"
+    },
+    "default_categories": {
+      "type": "string",
+      "description": "Comma-separated category list for articles in this domain"
+    },
+    "default_audience": {
+      "type": "string",
+      "default": "General Public"
+    },
+    "default_target_runtime": {
+      "type": "string",
+      "default": "1 Minute"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "domain_key",
+    "display_name",
+    "system_persona"
+  ]
+}

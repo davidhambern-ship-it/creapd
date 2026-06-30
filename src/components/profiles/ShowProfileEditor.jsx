@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const TONES = ['professional', 'conversational', 'energetic', 'serious', 'investigative', 'educational', 'inspirational', 'neutral', 'urgent', 'humorous'];
 const STYLES = ['broadcast_news', 'podcast', 'livestream', 'interview', 'documentary', 'educational_presentation', 'corporate_communication', 'storytelling'];
@@ -28,10 +29,18 @@ const PRODUCTION_ASSETS = [
 export default function ShowProfileEditor({ open, profile, brands, onClose, onSave }) {
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [contentDomains, setContentDomains] = useState([]);
 
   useEffect(() => {
-    if (open) setForm(profile || { default_tone: 'professional', reading_style: 'broadcast_news', audience: 'General Public', target_runtime: '1 Minute', default_export_format: 'pdf' });
+    if (open) {
+      setForm(profile || { content_domain: 'news', default_tone: 'professional', reading_style: 'broadcast_news', audience: 'General Public', target_runtime: '1 Minute', default_export_format: 'pdf' });
+      base44.entities.ContentDomain.list().then(domains => {
+        setContentDomains(domains.filter(d => d.is_active).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+      }).catch(() => {});
+    }
   }, [open, profile]);
+
+  const selectedDomain = contentDomains.find(d => d.domain_key === (form.content_domain || 'news'));
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
@@ -60,6 +69,24 @@ export default function ShowProfileEditor({ open, profile, brands, onClose, onSa
           <DialogTitle className="text-white">{profile ? 'Edit Show Profile' : 'Create Show Profile'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {/* Content Domain Selector */}
+          <div className="glass-panel p-3 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-berna-purple" />
+              <Label className="text-xs text-white font-semibold">Production Type</Label>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Determines how Producer fetches stories, rates content, and generates assets for this show</p>
+            <Select value={form.content_domain || 'news'} onValueChange={v => set('content_domain', v)}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs"><SelectValue placeholder="Select production type" /></SelectTrigger>
+              <SelectContent className="bg-card border-white/10">
+                {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key} className="text-xs">{d.display_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {selectedDomain && selectedDomain.description && (
+              <p className="text-[10px] text-muted-foreground italic">{selectedDomain.description}</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div><Label className="text-xs text-muted-foreground">Show Name *</Label><Input value={form.show_name || ''} onChange={e => set('show_name', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
             <div>

@@ -60,6 +60,14 @@ export default function TodaysBrief() {
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [approvedSections, setApprovedSections] = useState({});
+  const [contentDomains, setContentDomains] = useState([]);
+  const [selectedDomain, setSelectedDomain] = useState('news');
+
+  useEffect(() => {
+    base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
+  }, []);
+
+  const currentDomain = contentDomains.find(d => d.domain_key === selectedDomain);
 
   const loadData = async () => {
     setLoading(true);
@@ -101,7 +109,7 @@ export default function TodaysBrief() {
     setGenerating(true);
     setError(null);
     try {
-      await base44.functions.invoke('generateBriefing', {});
+      await base44.functions.invoke('generateBriefing', { content_domain: selectedDomain });
       await loadData();
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -271,6 +279,14 @@ export default function TodaysBrief() {
     <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">
       {/* Top Controls */}
       <div className="flex flex-wrap items-center gap-2">
+        <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+          <SelectTrigger className="w-48 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-white/10">
+            {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key}>{d.display_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={briefingType} onValueChange={(v) => { setBriefingType(v); }}>
           <SelectTrigger className="w-44 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8">
             <SelectValue />
@@ -312,7 +328,7 @@ export default function TodaysBrief() {
       <div className="glass-panel glow-purple p-6 lg:p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-berna-purple/10 to-transparent rounded-full -mr-12 -mt-12" />
         <div className="relative space-y-4">
-          <p className="text-[10px] text-berna-purple uppercase tracking-[0.2em] font-semibold">TexasNomad Network · Producer Brief</p>
+          <p className="text-[10px] text-berna-purple uppercase tracking-[0.2em] font-semibold">{currentDomain?.display_name || 'Producer Brief'}</p>
           <h1 className="text-2xl lg:text-3xl font-bold text-white">Good Morning, Berna.</h1>
           <p className="text-sm text-muted-foreground">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -346,9 +362,9 @@ export default function TodaysBrief() {
         </div>
       </div>
 
-      {/* Berna's Pick */}
+      {/* Host Pick */}
       {bernasPick && (
-        <StorySection icon={Star} title="Berna's Pick" highlight defaultOpen>
+        <StorySection icon={Star} title={currentDomain?.host_pick_label || 'Top Pick'} highlight defaultOpen>
           <BriefStoryCard
             article={bernasPick}
             isBernasPick

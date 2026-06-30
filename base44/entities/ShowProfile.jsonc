@@ -5,6 +5,11 @@
     "show_name": {
       "type": "string"
     },
+    "content_domain": {
+      "type": "string",
+      "description": "The production domain key (e.g. 'news', 'radio_music', 'cooking', 'spiritual'). Determines how the AI fetches, rates, and generates content for this show.",
+      "default": "news"
+    },
     "brand_profile_id": {
       "type": "string"
     },

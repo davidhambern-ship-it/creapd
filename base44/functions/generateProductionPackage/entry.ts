@@ -1,21 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const ASSET_DESCRIPTIONS = {
-  teleprompter_script: 'A broadcast-ready teleprompter script written for on-air reading. Use natural pacing, clear sentences, and broadcast formatting.',
-  story_summary: 'A concise internal story summary (not for publication) giving the producer a quick understanding of the story.',
-  talking_points: '3-5 discussion talking points for the host, emphasizing conversation rather than scripted reading.',
-  lower_third_text: 'Suggested lower-third graphic text with a primary headline, secondary headline, and optional supporting line.',
-  headline_suggestions: '2-3 alternative headline suggestions that are accurate, clear, and engaging without sensationalizing.',
-  image_prompt: 'A detailed prompt suitable for AI image generation systems to create a headline graphic or story illustration.',
-  thumbnail_prompt: 'A detailed prompt for generating a thumbnail image for this story.',
-  visual_suggestions: 'Visual production suggestions including opening shot, supporting footage, charts, maps, or infographics.',
-  broll_suggestions: 'B-roll footage suggestions such as establishing shots, close-ups, wide-angle footage, environmental footage, or product demonstrations.',
-  social_caption: 'A social media caption aligned with the story and production style.',
-  fact_check_notes: 'Factual elements requiring verification including statistics, dates, names, locations, organizations, and claims.'
-};
-
-const ALL_ASSETS = Object.keys(ASSET_DESCRIPTIONS);
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -23,28 +7,69 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { article_id, asset_types, tone, reading_style, audience, target_runtime, custom_prompt, prompt_template_id, preferred_text_model } = body;
+    const { article_id, asset_types, tone, reading_style, audience, target_runtime, custom_prompt, prompt_template_id, preferred_text_model, content_domain } = body;
 
     if (!article_id) return Response.json({ error: 'article_id is required' }, { status: 400 });
 
     const article = await base44.entities.Article.get(article_id);
     if (!article) return Response.json({ error: 'Article not found' }, { status: 404 });
 
+    // Look up content domain configuration (defaults to 'news')
+    const domainKey = content_domain || 'news';
+    const domains = await base44.asServiceRole.entities.ContentDomain.filter({ domain_key: domainKey });
+    const domain = domains && domains.length > 0 ? domains[0] : null;
+
+    // Parse asset types and descriptions from domain config, or fall back to news defaults
+    let ALL_ASSETS, ASSET_DESCRIPTIONS;
+    if (domain && domain.asset_types && domain.asset_descriptions) {
+      try {
+        ALL_ASSETS = JSON.parse(domain.asset_types);
+        ASSET_DESCRIPTIONS = JSON.parse(domain.asset_descriptions);
+      } catch {
+        ALL_ASSETS = ['teleprompter_script', 'story_summary', 'talking_points', 'lower_third_text', 'headline_suggestions', 'image_prompt', 'thumbnail_prompt', 'visual_suggestions', 'broll_suggestions', 'social_caption', 'fact_check_notes'];
+        ASSET_DESCRIPTIONS = {
+          teleprompter_script: 'A broadcast-ready teleprompter script written for on-air reading.',
+          story_summary: 'A concise internal story summary.',
+          talking_points: '3-5 discussion talking points for the host.',
+          lower_third_text: 'Suggested lower-third graphic text.',
+          headline_suggestions: '2-3 alternative headline suggestions.',
+          image_prompt: 'A detailed prompt for AI image generation.',
+          thumbnail_prompt: 'A detailed prompt for generating a thumbnail image.',
+          visual_suggestions: 'Visual production suggestions.',
+          broll_suggestions: 'B-roll footage suggestions.',
+          social_caption: 'A social media caption.',
+          fact_check_notes: 'Factual elements requiring verification.'
+        };
+      }
+    } else {
+      ALL_ASSETS = ['teleprompter_script', 'story_summary', 'talking_points', 'lower_third_text', 'headline_suggestions', 'image_prompt', 'thumbnail_prompt', 'visual_suggestions', 'broll_suggestions', 'social_caption', 'fact_check_notes'];
+      ASSET_DESCRIPTIONS = {
+        teleprompter_script: 'A broadcast-ready teleprompter script written for on-air reading.',
+        story_summary: 'A concise internal story summary.',
+        talking_points: '3-5 discussion talking points for the host.',
+        lower_third_text: 'Suggested lower-third graphic text.',
+        headline_suggestions: '2-3 alternative headline suggestions.',
+        image_prompt: 'A detailed prompt for AI image generation.',
+        thumbnail_prompt: 'A detailed prompt for generating a thumbnail image.',
+        visual_suggestions: 'Visual production suggestions.',
+        broll_suggestions: 'B-roll footage suggestions.',
+        social_caption: 'A social media caption.',
+        fact_check_notes: 'Factual elements requiring verification.'
+      };
+    }
+
     const requestedAssets = (asset_types && asset_types.length > 0) ? asset_types : ALL_ASSETS;
     const assetListText = requestedAssets.map(a => `- ${a}: ${ASSET_DESCRIPTIONS[a] || a}`).join('\n');
 
-    // PRD 9.12: If a prompt template or custom prompt is provided, use it instead of the default
+    // Build the prompt — custom prompt > prompt template > domain default
     let prompt;
     let promptTemplate = null;
 
     if (prompt_template_id) {
-      try {
-        promptTemplate = await base44.entities.PromptTemplate.get(prompt_template_id);
-      } catch {}
+      try { promptTemplate = await base44.entities.PromptTemplate.get(prompt_template_id); } catch {}
     }
 
     if (custom_prompt && custom_prompt.trim()) {
-      // PRD 9.12: Producer may edit/replace prompts before generation
       prompt = custom_prompt
         .replace(/\{title\}/g, article.title || '')
         .replace(/\{summary\}/g, article.summary || 'No summary available')
@@ -54,9 +79,9 @@ Deno.serve(async (req) => {
         .replace(/\{tone\}/g, tone || 'professional')
         .replace(/\{reading_style\}/g, reading_style || 'broadcast_news')
         .replace(/\{audience\}/g, audience || 'General Public')
-        .replace(/\{target_runtime\}/g, target_runtime || '1 Minute');
+        .replace(/\{target_runtime\}/g, target_runtime || '1 Minute')
+        .replace(/\{asset_list\}/g, assetListText);
     } else if (promptTemplate && promptTemplate.content) {
-      // PRD 9.13: Use prompt template content
       prompt = promptTemplate.content
         .replace(/\{title\}/g, article.title || '')
         .replace(/\{summary\}/g, article.summary || 'No summary available')
@@ -66,15 +91,28 @@ Deno.serve(async (req) => {
         .replace(/\{tone\}/g, tone || 'professional')
         .replace(/\{reading_style\}/g, reading_style || 'broadcast_news')
         .replace(/\{audience\}/g, audience || 'General Public')
-        .replace(/\{target_runtime\}/g, target_runtime || '1 Minute');
+        .replace(/\{target_runtime\}/g, target_runtime || '1 Minute')
+        .replace(/\{asset_list\}/g, assetListText);
+    } else if (domain && domain.production_prompt) {
+      // Use domain-specific default prompt
+      prompt = domain.production_prompt
+        .replace(/\{title\}/g, article.title || '')
+        .replace(/\{summary\}/g, article.summary || 'No summary available')
+        .replace(/\{source\}/g, article.source_name || article.publication || 'Unknown')
+        .replace(/\{category\}/g, article.category || 'general')
+        .replace(/\{tone\}/g, tone || 'professional')
+        .replace(/\{reading_style\}/g, reading_style || 'broadcast_news')
+        .replace(/\{audience\}/g, audience || domain.default_audience || 'General Public')
+        .replace(/\{target_runtime\}/g, target_runtime || domain.default_target_runtime || '1 Minute')
+        .replace(/\{asset_list\}/g, assetListText);
     } else {
-      prompt = `You are a professional broadcast producer. Generate production assets for the following news story.
+      // Ultimate fallback — news-style prompt
+      prompt = `You are a professional broadcast producer. Generate production assets for the following story.
 
 STORY DETAILS:
 Title: ${article.title}
 Source: ${article.source_name || article.publication || 'Unknown'}
 Summary: ${article.summary || 'No summary available'}
-Excerpt: ${article.full_text_excerpt || 'No excerpt available'}
 Category: ${article.category || 'general'}
 
 PRODUCTION SETTINGS:
@@ -83,11 +121,11 @@ Reading Style: ${reading_style || 'broadcast_news'}
 Audience: ${audience || 'General Public'}
 Target Runtime: ${target_runtime || '1 Minute'}
 
-Generate the following production assets. Each asset must be production-ready, accurate, and professional:
+Generate the following production assets:
 
 ${assetListText}
 
-Also estimate the reading time of the teleprompter script as "estimated_runtime" (e.g. "45 seconds", "1 minute 30 seconds").
+Also estimate the reading time of the script as "estimated_runtime".
 
 Return a JSON object with these exact string keys: ${[...requestedAssets, 'estimated_runtime'].join(', ')}. Each value should be a string with the generated content.`;
     }
@@ -105,7 +143,6 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
       prompt,
       response_json_schema: responseSchema,
     };
-    // PRD 9.8: Use preferred text model if specified
     if (preferred_text_model && preferred_text_model !== 'automatic') {
       llmOptions.model = preferred_text_model;
     }
@@ -117,16 +154,13 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
 
     const updateFields = {};
     requestedAssets.forEach(a => { updateFields[a] = llmResponse[a] || ''; });
-    if (requestedAssets.includes('teleprompter_script')) {
-      updateFields.estimated_runtime = llmResponse.estimated_runtime || '';
-    }
+    updateFields.estimated_runtime = llmResponse.estimated_runtime || '';
     updateFields.tone = tone || 'professional';
     updateFields.reading_style = reading_style || 'broadcast_news';
-    updateFields.audience = audience || 'General Public';
-    updateFields.target_runtime = target_runtime || '1 Minute';
+    updateFields.audience = audience || (domain ? domain.default_audience : 'General Public') || 'General Public';
+    updateFields.target_runtime = target_runtime || (domain ? domain.default_target_runtime : '1 Minute') || '1 Minute';
     updateFields.status = 'generated';
 
-    // PRD 9.21: AI Transparency — track generation metadata
     const now = new Date().toISOString();
     if (existing && existing.length > 0) {
       updateFields.is_regenerated = true;

@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Package, Sparkles, ChevronRight, Loader2, CheckCircle, Clock, Search, CheckCircle2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import PackageDetailPanel from '@/components/production/PackageDetailPanel';
@@ -19,6 +20,8 @@ export default function ProductionPackages() {
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('productionSort') || 'priority');
   const [search, setSearch] = useState('');
   const [showStartupOpen, setShowStartupOpen] = useState(false);
+  const [contentDomains, setContentDomains] = useState([]);
+  const [bulkDomain, setBulkDomain] = useState('news');
 
   const sortedArticles = useMemo(() => {
     let result = articles.filter(a => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
@@ -55,7 +58,10 @@ export default function ProductionPackages() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
+  }, []);
 
   const handlePackageUpdate = (updatedPkg) => {
     setPackages(prev => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
@@ -68,6 +74,7 @@ export default function ProductionPackages() {
         const res = await base44.functions.invoke('generateProductionPackage', {
           article_id: article.id,
           asset_types: null,
+          content_domain: bulkDomain,
           tone: 'professional',
           reading_style: 'broadcast_news',
           audience: 'General Public',
@@ -124,6 +131,14 @@ export default function ProductionPackages() {
           >
             <Play className="w-3 h-3 mr-1" />Start Production
           </Button>
+          <Select value={bulkDomain} onValueChange={setBulkDomain}>
+            <SelectTrigger className="w-40 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-white/10">
+              {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key}>{d.display_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button
             size="sm"
             className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"

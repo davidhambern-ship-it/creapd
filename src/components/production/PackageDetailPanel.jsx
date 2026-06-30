@@ -51,6 +51,8 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   const [customPrompt, setCustomPrompt] = useState('');
   const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [preferredTextModel, setPreferredTextModel] = useState('automatic');
+  const [contentDomains, setContentDomains] = useState([]);
+  const [selectedDomain, setSelectedDomain] = useState('news');
 
   useEffect(() => {
     if (pkg) {
@@ -70,6 +72,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
     base44.entities.ProducerSettings.filter({}, '-created_date', 1).then(res => {
       if (res.length > 0) setPreferredTextModel(res[0].preferred_text_model || 'automatic');
     }).catch(() => {});
+    base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
   }, []);
 
   const callGenerate = async (assetTypes) => {
@@ -77,6 +80,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
       article_id: article.id,
       asset_types: assetTypes,
       ...config,
+      content_domain: selectedDomain,
       preferred_text_model: preferredTextModel,
     };
     // PRD 9.12-9.13: Pass custom prompt or prompt template if set
@@ -214,7 +218,11 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
         </div>
 
         {/* Customization controls */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Type" /></SelectTrigger>
+            <SelectContent className="bg-card border-white/10">{contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key} className="text-xs">{d.display_name}</SelectItem>)}</SelectContent>
+          </Select>
           <Select value={config.tone} onValueChange={v => setConfig(p => ({ ...p, tone: v }))}>
             <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Tone" /></SelectTrigger>
             <SelectContent className="bg-card border-white/10">{TONES.map(t => <SelectItem key={t} value={t} className="text-xs capitalize">{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>

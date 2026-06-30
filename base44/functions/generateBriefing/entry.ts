@@ -3,9 +3,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-
-    // Auth optional — works for both user-initiated and scheduled calls
     try { await base44.auth.me(); } catch (e) {}
+
+    const body = await req.json().catch(() => ({}));
+    const domainKey = body.content_domain || 'news';
+
+    // Look up content domain configuration
+    const domains = await base44.asServiceRole.entities.ContentDomain.filter({ domain_key: domainKey });
+    const domain = domains && domains.length > 0 ? domains[0] : null;
 
     // Get pending articles from last 48 hours, most recent first
     const allPending = await base44.asServiceRole.entities.Article.filter({ status: 'pending' });
@@ -31,36 +36,36 @@ Deno.serve(async (req) => {
       credibility: a.credibility_score || 3,
     }));
 
-    // Call LLM to rate, select, and generate briefing
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are the Producer AI for the TexasNomad Network, a daily news show hosted by Berna. The show focuses on American innovation, manufacturing, reshoring, small business, AI/technology, skilled trades, agriculture, and the creator economy — with an optimistic, pro-American tone.
+    // Build prompt from domain config, or fall back to news default
+    let prompt;
+    let responseSchema;
 
-Here are ${articleList.length} pending news articles from today's sources. Rate each one, select the best stories for today's briefing, and generate a complete briefing.
+    if (domain && domain.briefing_prompt) {
+      prompt = domain.briefing_prompt
+        .replace(/\{article_count\}/g, String(articleList.length))
+        .replace(/\{articles\}/g, JSON.stringify(articleList, null, 2));
+    } else {
+      prompt = `You are the Producer AI for a daily show. Here are ${articleList.length} pending items from today's sources. Rate each one, select the best stories for today's briefing, and generate a complete briefing.
 
 ARTICLES:
 ${JSON.stringify(articleList, null, 2)}
 
 INSTRUCTIONS:
 1. Rate each article: opportunity_score (1-5), freshness_score (1-5), usefulness_score (1-5)
-2. Select the best 10-15 stories for the briefing (set "selected": true). Prioritize: breaking news, American manufacturing/reshoring, small business success, AI/tech innovation, skilled trades, agriculture, creator economy, and positive economic news.
-3. Pick ONE story as "Berna's Pick" — the most important/compelling story of the day
-4. Generate a complete briefing:
-   - theme: 2-4 word theme (e.g., "American Innovation & Opportunity")
-   - energy: emotional energy (e.g., "Optimistic & Energized")
-   - mission: one sentence describing today's mission
-   - monologue: 60-90 second opening monologue in Berna's voice — conversational, optimistic, pro-American, referencing the top stories
-   - poll: chat poll question with 3-4 options labeled A) B) C) D)
-   - graphic_stat: one striking statistic worth showing on screen
-   - broll: suggested B-roll footage ideas (comma-separated)
-   - cta: call to action for the audience
-   - conversation_starters: 3-4 conversation starter questions (numbered)
-   - fact_check: key fact-checking notes for the selected stories
-   - tomorrow_watch: what to watch for tomorrow
-   - estimated_read_time: estimated total read time (e.g., "12 min")
-   - top_3_stories: the top 3 story headlines (comma-separated)
+2. Select the best 10-15 stories for the briefing (set "selected": true).
+3. Pick ONE story as the host's top pick
+4. Generate a complete briefing with: theme, energy, mission, monologue, poll, graphic_stat, broll, cta, conversation_starters, fact_check, tomorrow_watch, estimated_read_time, top_3_stories
 
-Use the "id" field from the articles above for article_id and berna_pick_id.`,
-      response_json_schema: {
+Use the "id" field from the articles above for article_id and host_pick_id.`;
+    }
+
+    // Parse schema from domain config, or fall back to default
+    if (domain && domain.briefing_schema) {
+      try { responseSchema = JSON.parse(domain.briefing_schema); } catch { responseSchema = null; }
+    }
+
+    if (!responseSchema) {
+      responseSchema = {
         type: "object",
         properties: {
           rated_articles: {
@@ -76,7 +81,7 @@ Use the "id" field from the articles above for article_id and berna_pick_id.`,
               }
             }
           },
-          berna_pick_id: { type: "string" },
+          host_pick_id: { type: "string" },
           theme: { type: "string" },
           energy: { type: "string" },
           mission: { type: "string" },
@@ -91,7 +96,12 @@ Use the "id" field from the articles above for article_id and berna_pick_id.`,
           estimated_read_time: { type: "string" },
           top_3_stories: { type: "string" }
         }
-      }
+      };
+    }
+
+    const result = await base44.integrations.Core.InvokeLLM({
+      prompt,
+      response_json_schema: responseSchema,
     });
 
     // Validate article IDs against actual articles, deduplicate
@@ -108,7 +118,10 @@ Use the "id" field from the articles above for article_id and berna_pick_id.`,
       const sorted = [...ratedArticles].sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
       selectedIds = sorted.slice(0, 12).map(r => r.article_id);
     }
-    const bernaPick = recent.find(a => a.id === result.berna_pick_id);
+
+    // Support both host_pick_id (new) and berna_pick_id (legacy LLM response)
+    const hostPickId = result.host_pick_id || result.berna_pick_id;
+    const hostPick = recent.find(a => a.id === hostPickId);
 
     // Bulk update article scores (status stays "pending")
     if (ratedArticles.length > 0) {
@@ -125,7 +138,7 @@ Use the "id" field from the articles above for article_id and berna_pick_id.`,
     const today = new Date().toISOString().split('T')[0];
     const briefing = await base44.asServiceRole.entities.Briefing.create({
       date: today,
-      title: `Good Morning, Berna — ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`,
+      title: `${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`,
       briefing_type: 'daily',
       theme: result.theme,
       energy: result.energy,
@@ -140,9 +153,10 @@ Use the "id" field from the articles above for article_id and berna_pick_id.`,
       tomorrow_watch: result.tomorrow_watch,
       estimated_read_time: result.estimated_read_time || '12 min',
       top_3_stories: result.top_3_stories,
-      berna_pick_id: result.berna_pick_id || '',
-      berna_pick_title: bernaPick?.title || '',
-      berna_pick_summary: bernaPick?.summary || '',
+      // Map host_pick to the entity's berna_pick fields for backward compatibility
+      berna_pick_id: hostPickId || '',
+      berna_pick_title: hostPick?.title || '',
+      berna_pick_summary: hostPick?.summary || '',
       article_ids: JSON.stringify(selectedIds),
       source_library: [...new Set(recent.map(a => a.source_name))].join(', '),
       status: 'ready',
@@ -152,7 +166,8 @@ Use the "id" field from the articles above for article_id and berna_pick_id.`,
       briefing,
       articles_rated: ratedArticles.length,
       articles_selected: selectedIds.length,
-      berna_pick_id: result.berna_pick_id,
+      host_pick_id: hostPickId,
+      content_domain: domainKey,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
