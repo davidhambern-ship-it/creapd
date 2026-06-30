@@ -72,6 +72,27 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
 
       const updated = await base44.entities.ProductionPackage.update(pkg.id, updateData);
       onMediaUpdate(updated);
+
+      // PRD 12: Auto-sync generated images to Image Library
+      if (mediaType === 'image') {
+        const isThumbnail = urlField === 'generated_thumbnail_url';
+        try {
+          await base44.entities.ImageAsset.create({
+            title: `${pkg.story_summary || 'Production'} — ${isThumbnail ? 'Thumbnail' : 'Image'}`,
+            image_url: url,
+            image_type: isThumbnail ? 'thumbnail' : 'ai_generated',
+            source_prompt: usePrompt,
+            associated_production_id: pkg.id,
+            associated_production_title: pkg.story_summary || '',
+            associated_story_id: pkg.article_id,
+            approval_status: 'pending',
+            file_format: 'png',
+            version_number: pkg.generation_count || 1,
+          });
+        } catch (e) {
+          console.error('Image Library sync failed:', e);
+        }
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || 'Generation failed');
