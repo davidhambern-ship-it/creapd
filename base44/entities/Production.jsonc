@@ -5,12 +5,6 @@
     "title": {
       "type": "string"
     },
-    "profile_id": {
-      "type": "string"
-    },
-    "profile_key": {
-      "type": "string"
-    },
     "brand_profile_id": {
       "type": "string"
     },
@@ -34,7 +28,7 @@
       ],
       "default": "in_progress"
     },
-    "rundown_order": {
+    "story_order": {
       "type": "string"
     },
     "global_notes": {
@@ -52,14 +46,9 @@
     "target_runtime": {
       "type": "string",
       "default": "30 Minutes"
-    },
-    "setup_data": {
-      "type": "string"
     }
   },
   "required": [
-    "title",
-    "profile_id",
-    "profile_key"
+    "title"
   ]
 }
