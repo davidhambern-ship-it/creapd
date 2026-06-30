@@ -44,26 +44,49 @@ export default function Dashboard() {
         const prod = await base44.entities.Production.get(productionId);
         setProduction(prod);
         
-        // Load content items for this production
-        const items = await base44.entities.ContentItem.filter({ production_id: productionId });
-        setStats({
-          totalItems: items.length,
-          inProgress: items.filter(i => i.status === 'in_rundown').length,
-          completed: items.filter(i => i.status === 'approved').length,
-          todayCount: items.filter(i => i.created_date && new Date(i.created_date).toDateString() === new Date().toDateString()).length
-        });
-      } else {
-        // Load recent productions
-        const productions = await base44.entities.Production.list('-created_date', 10);
-        if (productions.length > 0) {
-          setProduction(productions[0]);
-          const items = await base44.entities.ContentItem.filter({ production_id: productions[0].id });
+        // Load content based on profile type
+        if (profileKey === 'news') {
+          const articles = await base44.entities.Article.filter({ production_id: productionId });
+          setStats({
+            totalItems: articles.length,
+            inProgress: articles.filter(a => a.production_status === 'in_production').length,
+            completed: articles.filter(a => a.production_status === 'approved').length,
+            todayCount: articles.filter(a => a.created_date && new Date(a.created_date).toDateString() === new Date().toDateString()).length
+          });
+        } else {
+          const items = await base44.entities.ContentItem.filter({ production_id: productionId });
           setStats({
             totalItems: items.length,
             inProgress: items.filter(i => i.status === 'in_rundown').length,
             completed: items.filter(i => i.status === 'approved').length,
             todayCount: items.filter(i => i.created_date && new Date(i.created_date).toDateString() === new Date().toDateString()).length
           });
+        }
+      } else {
+        // Load recent productions
+        const productions = await base44.entities.Production.list('-created_date', 10);
+        if (productions.length > 0) {
+          setProduction(productions[0]);
+          const prodId = productions[0].id;
+          const prodProfileKey = productions[0].profile_key || 'news';
+          
+          if (prodProfileKey === 'news') {
+            const articles = await base44.entities.Article.filter({ production_id: prodId });
+            setStats({
+              totalItems: articles.length,
+              inProgress: articles.filter(a => a.production_status === 'in_production').length,
+              completed: articles.filter(a => a.production_status === 'approved').length,
+              todayCount: articles.filter(a => a.created_date && new Date(a.created_date).toDateString() === new Date().toDateString()).length
+            });
+          } else {
+            const items = await base44.entities.ContentItem.filter({ production_id: prodId });
+            setStats({
+              totalItems: items.length,
+              inProgress: items.filter(i => i.status === 'in_rundown').length,
+              completed: items.filter(i => i.status === 'approved').length,
+              todayCount: items.filter(i => i.created_date && new Date(i.created_date).toDateString() === new Date().toDateString()).length
+            });
+          }
         }
       }
     } catch (error) {
