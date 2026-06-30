@@ -15,9 +15,9 @@ import ResetPassword from '@/pages/ResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import WeeklyPlanner from '@/pages/WeeklyPlanner';
 import TodaysBrief from '@/pages/TodaysBrief';
-import ItemQueue from '@/pages/ItemQueue';
+import StoryQueue from '@/pages/StoryQueue';
 import StoryDetail from '@/pages/StoryDetail';
-import ItemLibrary from '@/pages/ItemLibrary';
+import StoryLibrary from '@/pages/StoryLibrary';
 import StoryManager from '@/pages/StoryManager';
 import ProductionPackages from '@/pages/ProductionPackages';
 import BrandProfiles from '@/pages/BrandProfiles';
@@ -38,18 +38,7 @@ import ActivityCenter from '@/pages/ActivityCenter';
 import TemplateLibrary from '@/pages/TemplateLibrary';
 import ProductionTemplates from '@/pages/ProductionTemplates';
 import PromptTemplates from '@/pages/PromptTemplates';
-import ProductionTypeSelector from '@/pages/ProductionTypeSelector';
-import ResearchCenter from '@/pages/ResearchCenter';
-import ProductionProfileManager from '@/pages/ProductionProfileManager';
 import ProducerLayout from '@/components/layout/ProducerLayout';
-import MusicDashboard from '@/pages/MusicDashboard';
-import MusicResearchCenter from '@/pages/MusicResearchCenter';
-import PlaylistBuilder from '@/pages/PlaylistBuilder';
-import ProductionSetup from '@/pages/ProductionSetup';
-import ArtistLibrary from '@/pages/ArtistLibrary';
-import SponsorManager from '@/pages/SponsorManager';
-import SegmentBuilder from '@/pages/SegmentBuilder';
-import AIStudio from '@/pages/AIStudio';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -83,29 +72,18 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<ProducerLayout />}>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/music-dashboard" element={<MusicDashboard />} />
-          <Route path="/music-research" element={<MusicResearchCenter />} />
-          <Route path="/playlist-builder" element={<PlaylistBuilder />} />
-          <Route path="/production-setup" element={<ProductionSetup />} />
-          <Route path="/artist-library" element={<ArtistLibrary />} />
-          <Route path="/sponsor-manager" element={<SponsorManager />} />
-          <Route path="/segment-builder" element={<SegmentBuilder />} />
-          <Route path="/ai-studio" element={<AIStudio />} />
-          <Route path="/select-type" element={<ProductionTypeSelector />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
-          <Route path="/queue" element={<ItemQueue />} />
+          <Route path="/queue" element={<StoryQueue />} />
           <Route path="/story/:id" element={<StoryDetail />} />
-          <Route path="/library" element={<ItemLibrary />} />
+          <Route path="/library" element={<StoryLibrary />} />
           <Route path="/workspace" element={<StoryManager />} />
-          <Route path="/research-center" element={<ResearchCenter />} />
           <Route path="/production" element={<ProductionPackages />} />
           <Route path="/brands" element={<BrandProfiles />} />
           <Route path="/shows" element={<ShowProfiles />} />
           <Route path="/images" element={<ImageLibrary />} />
           <Route path="/export" element={<ExportCenter />} />
           <Route path="/research" element={<ResearchDesk />} />
-          <Route path="/research-center" element={<ResearchCenter />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/import" element={<ManualImport />} />
           <Route path="/archive" element={<ArchivePage />} />
@@ -119,8 +97,6 @@ const AuthenticatedApp = () => {
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/checklist" element={<AcceptanceChecklist />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/select-production-type" element={<ProductionTypeSelector />} />
-          <Route path="/profile-manager" element={<ProductionProfileManager />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
