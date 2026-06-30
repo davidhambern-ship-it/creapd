@@ -1,0 +1,100 @@
+{
+  "name": "ResearchModule",
+  "type": "object",
+  "properties": {
+    "module_name": {
+      "type": "string"
+    },
+    "module_type": {
+      "type": "string",
+      "enum": [
+        "news_sources",
+        "government_sources",
+        "press_releases",
+        "business_finance",
+        "technology",
+        "science",
+        "agriculture",
+        "local_news",
+        "creator_economy",
+        "small_business",
+        "topic_research",
+        "guest_research",
+        "industry_news",
+        "audience_questions",
+        "trending_discussions",
+        "user_links",
+        "music_charts",
+        "weather",
+        "local_events",
+        "artist_updates",
+        "community_announcements",
+        "traffic_reports",
+        "new_releases",
+        "music_history",
+        "artist_birthdays",
+        "concert_announcements",
+        "genre_trends",
+        "recipes",
+        "ingredients",
+        "seasonal_foods",
+        "nutrition_facts",
+        "food_history",
+        "kitchen_tips",
+        "grocery_info",
+        "scores",
+        "schedules",
+        "standings",
+        "player_stats",
+        "team_news",
+        "injury_reports",
+        "historical_matchups",
+        "guest_background",
+        "current_events",
+        "platform_trends",
+        "audience_prompts",
+        "game_info",
+        "community_updates",
+        "scripture",
+        "sermon_research",
+        "historical_context",
+        "devotionals",
+        "announcements",
+        "prayer_topics",
+        "learning_objectives",
+        "reference_materials",
+        "examples",
+        "exercises",
+        "company_updates",
+        "market_data",
+        "competitor_news",
+        "internal_notes",
+        "game_updates",
+        "patch_notes",
+        "esports_news",
+        "developer_posts",
+        "community_trends",
+        "upcoming_releases",
+        "custom_rss",
+        "youtube_channels",
+        "podcasts",
+        "blogs",
+        "websites"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "configuration": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "module_name",
+    "module_type"
+  ]
+}

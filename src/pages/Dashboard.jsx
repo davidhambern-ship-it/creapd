@@ -23,8 +23,15 @@ export default function Dashboard() {
   const [recentPackages, setRecentPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [directionOpen, setDirectionOpen] = useState(false);
+  const [activeProfile, setActiveProfile] = useState(null);
 
   useEffect(() => {
+    // Get active production profile
+    const storedProfile = sessionStorage.getItem('activeProductionProfile');
+    if (storedProfile) {
+      setActiveProfile(JSON.parse(storedProfile));
+    }
+
     Promise.all([
       base44.entities.Briefing.filter({}, '-created_date', 1),
       base44.entities.Article.filter({}, '-created_date', 20),
@@ -178,9 +185,16 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-sm mb-1">
             {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
-          <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
-            Good Morning, <span className="text-transparent bg-clip-text bg-gradient-to-r from-berna-purple to-berna-orange">Berna</span>.
-          </h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-3xl lg:text-4xl font-bold text-white">
+              Good Morning, <span className="text-transparent bg-clip-text bg-gradient-to-r from-berna-purple to-berna-orange">Berna</span>.
+            </h1>
+            {activeProfile && (
+              <div className="px-3 py-1 rounded-full bg-berna-purple/10 border border-berna-purple/20">
+                <span className="text-xs text-berna-purple font-medium">{activeProfile.name}</span>
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-3 mt-4">
             {briefing && (
               <>
@@ -212,6 +226,11 @@ export default function Dashboard() {
             <Button variant="outline" onClick={() => setDirectionOpen(true)} className="border-berna-orange/20 text-berna-orange hover:bg-berna-orange/10">
               <Compass className="w-4 h-4 mr-2" />Change Direction
             </Button>
+            <Link to="/select-production-type">
+              <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
+                <Layers className="w-4 h-4 mr-2" />Change Production Type
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

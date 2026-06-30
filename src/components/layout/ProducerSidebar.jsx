@@ -1,19 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck
+  ShieldCheck, Sparkles, Mic, ChefHat, Trophy, MessageCircle, Video, Church, GraduationCap, Briefcase, Gamepad2
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: Sparkles, label: 'Select Production Type', path: '/select-production-type', highlight: true },
   { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
   { icon: FileText, label: "Today's Brief", path: '/brief' },
-  { icon: Layers, label: 'Story Queue', path: '/queue' },
-  { icon: Bookmark, label: 'Story Library', path: '/library' },
-  { icon: ClipboardList, label: 'Story Manager', path: '/workspace' },
+  { icon: Layers, label: 'Item Queue', path: '/queue' },
+  { icon: Bookmark, label: 'Item Library', path: '/library' },
+  { icon: ClipboardList, label: 'Item Manager', path: '/workspace' },
   { icon: Package, label: 'Production', path: '/production' },
   { icon: Palette, label: 'Brand Profiles', path: '/brands' },
   { icon: Tv, label: 'Show Profiles', path: '/shows' },
@@ -36,14 +38,34 @@ const navItems = [
 
 export default function ProducerSidebar({ collapsed, onToggle }) {
   const location = useLocation();
+  const [activeProfile, setActiveProfile] = useState(null);
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('activeProductionProfile');
+    if (stored) {
+      setActiveProfile(JSON.parse(stored));
+    }
+  }, []);
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-16' : 'w-56'} transition-all duration-300 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-r border-white/[0.06] relative z-40`}>
+        {/* Active Profile Badge */}
+        {!collapsed && activeProfile && (
+          <div className="px-3 py-2 mb-2">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Production Type</div>
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-berna-purple/10 border border-berna-purple/20">
+              <Sparkles className="w-3 h-3 text-berna-purple" />
+              <span className="text-xs font-medium text-white truncate">{activeProfile.name}</span>
+            </div>
+          </div>
+        )}
+
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto overflow-x-hidden">
           {navItems.map(item => {
             const isActive = location.pathname === item.path;
+            const isHighlight = item.highlight;
             return (
               <Link
                 key={item.path}
@@ -51,13 +73,19 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative ${
                   isActive
                     ? 'bg-white/[0.06] text-white'
-                    : 'text-muted-foreground hover:text-white hover:bg-white/[0.04]'
+                    : isHighlight 
+                      ? 'bg-gradient-to-r from-berna-purple/10 to-berna-orange/10 border border-berna-purple/20 text-white'
+                      : 'text-muted-foreground hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-berna-orange rounded-r" />
                 )}
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-berna-purple' : 'group-hover:text-berna-purple/70'}`} />
+                <item.icon className={`w-4 h-4 flex-shrink-0 ${
+                  isActive ? 'text-berna-purple' : 
+                  isHighlight ? 'text-berna-purple' :
+                  'group-hover:text-berna-purple/70'
+                }`} />
                 {!collapsed && (
                   <span className="text-sm font-medium truncate">{item.label}</span>
                 )}

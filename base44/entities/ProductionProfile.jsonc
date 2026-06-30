@@ -1,0 +1,73 @@
+{
+  "name": "ProductionProfile",
+  "type": "object",
+  "properties": {
+    "profile_name": {
+      "type": "string"
+    },
+    "profile_type": {
+      "type": "string",
+      "enum": [
+        "news",
+        "podcast",
+        "radio_show",
+        "music_show",
+        "cooking_show",
+        "sports_show",
+        "talk_show",
+        "livestream",
+        "church_service",
+        "educational_content",
+        "business_briefing",
+        "gaming_stream",
+        "custom"
+      ],
+      "default": "news"
+    },
+    "description": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string"
+    },
+    "research_modules": {
+      "type": "string"
+    },
+    "production_modules": {
+      "type": "string"
+    },
+    "output_modules": {
+      "type": "string"
+    },
+    "default_templates": {
+      "type": "string"
+    },
+    "ai_preferences": {
+      "type": "string"
+    },
+    "export_settings": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "custom_fields": {
+      "type": "string"
+    },
+    "created_by_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile_name",
+    "profile_type"
+  ]
+}

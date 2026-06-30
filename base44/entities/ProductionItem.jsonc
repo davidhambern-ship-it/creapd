@@ -1,0 +1,103 @@
+{
+  "name": "ProductionItem",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "article",
+        "story",
+        "song",
+        "recipe",
+        "topic",
+        "segment",
+        "guest",
+        "question",
+        "game",
+        "player",
+        "team",
+        "scripture",
+        "slide",
+        "announcement",
+        "custom"
+      ],
+      "default": "article"
+    },
+    "category": {
+      "type": "string"
+    },
+    "production_profile_id": {
+      "type": "string"
+    },
+    "production_profile_type": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewing",
+        "selected",
+        "in_production",
+        "completed",
+        "archived"
+      ],
+      "default": "new"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "is_selected": {
+      "type": "boolean",
+      "default": false
+    },
+    "selected_for_production_id": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "string"
+    },
+    "production_assets": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "breaking"
+      ],
+      "default": "medium"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "title",
+    "item_type"
+  ]
+}

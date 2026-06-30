@@ -38,6 +38,9 @@ import ActivityCenter from '@/pages/ActivityCenter';
 import TemplateLibrary from '@/pages/TemplateLibrary';
 import ProductionTemplates from '@/pages/ProductionTemplates';
 import PromptTemplates from '@/pages/PromptTemplates';
+import ProductionTypeSelector from '@/pages/ProductionTypeSelector';
+import ResearchCenter from '@/pages/ResearchCenter';
+import ProductionProfileManager from '@/pages/ProductionProfileManager';
 import ProducerLayout from '@/components/layout/ProducerLayout';
 
 const AuthenticatedApp = () => {
@@ -72,6 +75,7 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<ProducerLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/select-type" element={<ProductionTypeSelector />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
@@ -84,6 +88,7 @@ const AuthenticatedApp = () => {
           <Route path="/images" element={<ImageLibrary />} />
           <Route path="/export" element={<ExportCenter />} />
           <Route path="/research" element={<ResearchDesk />} />
+          <Route path="/research-center" element={<ResearchCenter />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/import" element={<ManualImport />} />
           <Route path="/archive" element={<ArchivePage />} />
@@ -97,6 +102,8 @@ const AuthenticatedApp = () => {
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/checklist" element={<AcceptanceChecklist />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/select-production-type" element={<ProductionTypeSelector />} />
+          <Route path="/profile-manager" element={<ProductionProfileManager />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
