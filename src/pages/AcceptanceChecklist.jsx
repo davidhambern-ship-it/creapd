@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
 import { ClipboardCheck, Search, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -15,18 +14,10 @@ export default function AcceptanceChecklist() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('functional');
-  const [accessDenied, setAccessDenied] = useState(false);
-
-  const { user } = useAuth();
 
   useEffect(() => {
-    if (user && user.role !== 'admin') {
-      setAccessDenied(true);
-      setLoading(false);
-      return;
-    }
     loadRequirements();
-  }, [user]);
+  }, []);
 
   const loadRequirements = async () => {
     try {
@@ -82,15 +73,6 @@ export default function AcceptanceChecklist() {
     }
     return Object.entries(groups).map(([category, items]) => ({ category, items }));
   };
-
-  if (accessDenied) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <ClipboardCheck className="w-12 h-12 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">This area is restricted to administrators only.</p>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
