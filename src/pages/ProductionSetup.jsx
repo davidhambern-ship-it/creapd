@@ -1,93 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Check, Loader2, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { Sparkles, Check, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ProductionProfileSelector from '@/components/production/ProductionProfileSelector';
 import { useToast } from '@/components/ui/use-toast';
-
-// Profile configurations
-const PROFILE_CONFIGS = {
-  news: {
-    profile_type: 'news',
-    profile_name: 'News Production',
-    description: 'Daily news briefings, breaking news, and news segments',
-    icon: 'newspaper',
-    color: 'berna-purple',
-    item_type_label: 'Story',
-    item_type_label_plural: 'Stories',
-    research_label: 'News Research',
-    rundown_label: 'News Rundown',
-  },
-  music_show: {
-    profile_type: 'music_show',
-    profile_name: 'Music Show',
-    description: 'Radio shows, music programs, and playlist-based content',
-    icon: 'music',
-    color: 'berna-orange',
-    item_type_label: 'Song',
-    item_type_label_plural: 'Playlist',
-    research_label: 'Music Research',
-    rundown_label: 'Show Clock',
-  },
-  cooking_show: {
-    profile_type: 'cooking_show',
-    profile_name: 'Cooking Show',
-    description: 'Recipe demonstrations, cooking segments, and food content',
-    icon: 'chef-hat',
-    color: 'berna-emerald',
-    item_type_label: 'Recipe',
-    item_type_label_plural: 'Recipes',
-    research_label: 'Recipe Research',
-    rundown_label: 'Cooking Rundown',
-  },
-  podcast: {
-    profile_type: 'podcast',
-    profile_name: 'Podcast',
-    description: 'Podcast episodes, interviews, and audio content',
-    icon: 'mic',
-    color: 'berna-purple',
-    item_type_label: 'Topic',
-    item_type_label_plural: 'Topics',
-    research_label: 'Topic Research',
-    rundown_label: 'Episode Rundown',
-  },
-  sports_show: {
-    profile_type: 'sports_show',
-    profile_name: 'Sports Show',
-    description: 'Sports coverage, game analysis, and sports commentary',
-    icon: 'trophy',
-    color: 'berna-navy',
-    item_type_label: 'Game',
-    item_type_label_plural: 'Games',
-    research_label: 'Sports Research',
-    rundown_label: 'Sports Rundown',
-  },
-  talk_show: {
-    profile_type: 'talk_show',
-    profile_name: 'Talk Show',
-    description: 'Interview shows, panel discussions, and talk formats',
-    icon: 'message-circle',
-    color: 'berna-purple',
-    item_type_label: 'Segment',
-    item_type_label_plural: 'Segments',
-    research_label: 'Topic Research',
-    rundown_label: 'Show Rundown',
-  },
-  livestream: {
-    profile_type: 'livestream',
-    profile_name: 'Livestream',
-    description: 'Live streaming content, webinars, and live events',
-    icon: 'video',
-    color: 'berna-orange',
-    item_type_label: 'Segment',
-    item_type_label_plural: 'Segments',
-    research_label: 'Content Research',
-    rundown_label: 'Stream Rundown',
-  },
-};
+import { PRODUCTION_PROFILES, getProfileConfig, getProfileLabels } from '@/lib/productionProfiles';
 
 const ICON_MAP = {
   newspaper: '📰',
@@ -129,13 +49,17 @@ export default function ProductionSetup() {
     loadData();
   }, []);
 
-  // Check for profile parameter in URL
+  // Check for profile parameter in URL - load from centralized config or database
   useEffect(() => {
     const profileParam = searchParams.get('profile');
-    if (profileParam && PROFILE_CONFIGS[profileParam]) {
-      setSelectedProfile(PROFILE_CONFIGS[profileParam]);
+    if (profileParam && profiles.length > 0) {
+      // Use the helper to load the full config (works with profile type or ID)
+      const fullConfig = getProfileConfig(profileParam, profiles);
+      if (fullConfig) {
+        setSelectedProfile(fullConfig);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, profiles]);
 
   const loadData = async () => {
     try {
@@ -156,8 +80,12 @@ export default function ProductionSetup() {
   };
 
   const handleProfileSelect = (profile) => {
-    setSelectedProfile(profile);
+    // Load the full configuration using the helper function
+    const fullConfig = getProfileConfig(profile, profiles);
+    setSelectedProfile(fullConfig);
     setShowProfileSelector(false);
+    // Update URL to reflect the selected profile
+    navigate(`/production/new?profile=${profile.profile_type || profile.id}`);
   };
 
   const handleCreate = async () => {
@@ -230,15 +158,8 @@ export default function ProductionSetup() {
     }
   };
 
-  // Get labels from selected profile
-  const labels = selectedProfile
-    ? {
-        item: selectedProfile.item_type_label || 'Item',
-        items: selectedProfile.item_type_label_plural || 'Items',
-        research: selectedProfile.research_label || 'Research',
-        rundown: selectedProfile.rundown_label || 'Rundown',
-      }
-    : { item: 'Item', items: 'Items', research: 'Research', rundown: 'Rundown' };
+  // Get labels from selected profile using the helper
+  const labels = selectedProfile ? getProfileLabels(selectedProfile) : { item: 'Item', items: 'Items', research: 'Research', rundown: 'Rundown' };
 
   if (loading) {
     return (
@@ -341,8 +262,17 @@ export default function ProductionSetup() {
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder={
                     selectedProfile.profile_type === 'news' ? 'TNN Morning Brief - June 29' :
-                    selectedProfile.profile_type === 'music' ? 'The Morning Show - June 29' :
-                    selectedProfile.profile_type === 'cooking' ? 'Cooking with Style - Episode 5' :
+                    selectedProfile.profile_type === 'music_show' ? 'The Morning Show - June 29' :
+                    selectedProfile.profile_type === 'cooking_show' ? 'Cooking with Style - Episode 5' :
+                    selectedProfile.profile_type === 'podcast' ? 'Podcast Episode - June 29' :
+                    selectedProfile.profile_type === 'sports_show' ? 'Sports Update - June 29' :
+                    selectedProfile.profile_type === 'talk_show' ? 'Talk Show - June 29' :
+                    selectedProfile.profile_type === 'livestream' ? 'Live Stream - June 29' :
+                    selectedProfile.profile_type === 'church_service' ? 'Sunday Service - June 29' :
+                    selectedProfile.profile_type === 'educational_content' ? 'Lesson Plan - June 29' :
+                    selectedProfile.profile_type === 'business_briefing' ? 'Business Briefing - June 29' :
+                    selectedProfile.profile_type === 'gaming_stream' ? 'Gaming Stream - June 29' :
+                    selectedProfile.profile_type === 'radio_show' ? 'Radio Show - June 29' :
                     'Production Title'
                   }
                   className="bg-white/[0.03] border-white/[0.08]"

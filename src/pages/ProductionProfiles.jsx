@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { PRODUCTION_PROFILES } from '@/lib/productionProfiles';
 
 const PROFILE_COLORS = {
   'berna-purple': 'from-berna-purple to-purple-600',
@@ -271,7 +272,10 @@ export default function ProductionProfiles() {
           <div
             key={profile.id}
             className="glass-panel p-5 hover:bg-white/[0.08] transition-all group cursor-pointer"
-            onClick={() => navigate(`/production/new?profile=${profile.profile_type || profile.id}`)}
+            onClick={() => {
+              // Navigate with profile type to load the full configuration
+              navigate(`/production/new?profile=${profile.profile_type || profile.id}`);
+            }}
           >
             <div className="flex items-start justify-between mb-3">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${PROFILE_COLORS[profile.color] || PROFILE_COLORS['berna-purple']} flex items-center justify-center text-xl`}>

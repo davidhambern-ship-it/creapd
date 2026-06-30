@@ -10,6 +10,7 @@ import WorkspaceChecklist from '@/components/workspace/WorkspaceChecklist';
 import GlobalNotes from '@/components/workspace/GlobalNotes';
 import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
+import { PRODUCTION_PROFILES } from '@/lib/productionProfiles';
 
 function getSelectedStoryIds() {
   try {
@@ -89,8 +90,16 @@ export default function StoryManager() {
         setGlobalNotes(prod.global_notes || '');
         setChecklist({ ...DEFAULT_CHECKLIST, ...JSON.parse(prod.checklist || '{}') });
         if (prod.production_profile_id) {
-          const profile = profileList.find(p => p.id === prod.production_profile_id);
-          setCurrentProfile(profile || null);
+          const dbProfile = profileList.find(p => p.id === prod.production_profile_id);
+          if (dbProfile) {
+            // Merge with centralized config to get full profile configuration
+            const baseConfig = PRODUCTION_PROFILES[dbProfile.profile_type] || PRODUCTION_PROFILES.custom;
+            setCurrentProfile({
+              ...baseConfig,
+              ...dbProfile,
+              id: dbProfile.id,
+            });
+          }
         }
         await loadStoriesData(prod);
       } else {
