@@ -30,6 +30,7 @@ import ManualImport from '@/pages/ManualImport';
 import ArchivePage from '@/pages/ArchivePage';
 import AutomationCenter from '@/pages/AutomationCenter';
 import SecurityCenter from '@/pages/SecurityCenter';
+import AcceptanceChecklist from '@/pages/AcceptanceChecklist';
 import SettingsPage from '@/pages/SettingsPage';
 import UserProfile from '@/pages/UserProfile';
 import Organizations from '@/pages/Organizations';
@@ -94,6 +95,7 @@ const AuthenticatedApp = () => {
           <Route path="/graphics-templates" element={<ProductionTemplates />} />
           <Route path="/prompt-templates" element={<PromptTemplates />} />
           <Route path="/security" element={<SecurityCenter />} />
+          <Route path="/checklist" element={<AcceptanceChecklist />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
