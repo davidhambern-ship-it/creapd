@@ -11,6 +11,9 @@
     "show_profile_id": {
       "type": "string"
     },
+    "production_profile_id": {
+      "type": "string"
+    },
     "production_date": {
       "type": "string",
       "format": "date"

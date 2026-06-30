@@ -20,6 +20,7 @@ import StoryDetail from '@/pages/StoryDetail';
 import StoryLibrary from '@/pages/StoryLibrary';
 import StoryManager from '@/pages/StoryManager';
 import ProductionPackages from '@/pages/ProductionPackages';
+import ProductionProfiles from '@/pages/ProductionProfiles';
 import BrandProfiles from '@/pages/BrandProfiles';
 import ShowProfiles from '@/pages/ShowProfiles';
 import ExportCenter from '@/pages/ExportCenter';
@@ -79,6 +80,7 @@ const AuthenticatedApp = () => {
           <Route path="/library" element={<StoryLibrary />} />
           <Route path="/workspace" element={<StoryManager />} />
           <Route path="/production" element={<ProductionPackages />} />
+          <Route path="/production-profiles" element={<ProductionProfiles />} />
           <Route path="/brands" element={<BrandProfiles />} />
           <Route path="/shows" element={<ShowProfiles />} />
           <Route path="/images" element={<ImageLibrary />} />

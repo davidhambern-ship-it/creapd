@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Sparkles } from 'lucide-react';
+import { ClipboardList, Sparkles, Clapperboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +12,7 @@ import WorkspaceChecklist from '@/components/workspace/WorkspaceChecklist';
 import GlobalNotes from '@/components/workspace/GlobalNotes';
 import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
+import ProductionProfileSelector from '@/components/production/ProductionProfileSelector';
 
 function getSelectedStoryIds() {
   try {
@@ -59,16 +60,19 @@ export default function StoryManager() {
   const [history, setHistory] = useState([]);
   const [brands, setBrands] = useState([]);
   const [shows, setShows] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   const [globalNotes, setGlobalNotes] = useState('');
   const [checklist, setChecklist] = useState(DEFAULT_CHECKLIST);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [availableStories, setAvailableStories] = useState([]);
   const [creating, setCreating] = useState(false);
+  const [showProfileSelector, setShowProfileSelector] = useState(false);
   const [newProd, setNewProd] = useState({
     title: '',
     brand_profile_id: '',
     show_profile_id: '',
+    production_profile_id: '',
     production_date: new Date().toISOString().split('T')[0],
   });
   const skipSave = useRef(true);
@@ -79,13 +83,15 @@ export default function StoryManager() {
 
   const loadData = async () => {
     try {
-      const [prods, brandList, showList] = await Promise.all([
+      const [prods, brandList, showList, profileList] = await Promise.all([
         base44.entities.Production.filter({ status: 'in_progress' }, '-created_date', 1),
         base44.entities.BrandProfile.list(),
         base44.entities.ShowProfile.list(),
+        base44.entities.ProductionProfile.filter({ is_active: true }, 'sort_order', 50),
       ]);
       setBrands(brandList);
       setShows(showList);
+      setProfiles(profileList);
       if (prods.length > 0) {
         const prod = prods[0];
         setProduction(prod);
@@ -93,6 +99,8 @@ export default function StoryManager() {
         setGlobalNotes(prod.global_notes || '');
         setChecklist({ ...DEFAULT_CHECKLIST, ...JSON.parse(prod.checklist || '{}') });
         await loadStoriesData(prod);
+      } else if (profileList.length > 0) {
+        setShowProfileSelector(true);
       }
     } catch (e) {
       console.error('Failed to load production:', e);
@@ -201,6 +209,7 @@ export default function StoryManager() {
         title: newProd.title,
         brand_profile_id: newProd.brand_profile_id,
         show_profile_id: newProd.show_profile_id,
+        production_profile_id: newProd.production_profile_id,
         production_date: newProd.production_date,
         status: 'in_progress',
         story_order: JSON.stringify(order),
@@ -221,6 +230,11 @@ export default function StoryManager() {
       setCreating(false);
       setTimeout(() => { skipSave.current = false; }, 200);
     }
+  };
+
+  const handleProfileSelect = (profile) => {
+    setNewProd(prev => ({ ...prev, production_profile_id: profile.id }));
+    setShowProfileSelector(false);
   };
 
   const handleReorder = (newOrder) => {
@@ -315,63 +329,79 @@ export default function StoryManager() {
 
   if (!production) {
     return (
-      <div className="p-4 lg:p-6 max-w-2xl mx-auto">
-        <div className="glass-panel glow-purple p-6 lg:p-8 space-y-4">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-berna-purple" />
-            <h1 className="text-2xl font-bold text-white">Create Production</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Create a new production workspace. All selected stories from the Story Queue will be added automatically.
-          </p>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Production Title</label>
-              <Input
-                value={newProd.title}
-                onChange={(e) => setNewProd({ ...newProd, title: e.target.value })}
-                placeholder="e.g. TNN Morning Brief - June 29"
-              />
+      <>
+        {showProfileSelector && profiles.length > 0 && (
+          <ProductionProfileSelector
+            profiles={profiles}
+            onSelect={handleProfileSelect}
+            onClose={() => setShowProfileSelector(false)}
+          />
+        )}
+        <div className="p-4 lg:p-6 max-w-2xl mx-auto">
+          <div className="glass-panel glow-purple p-6 lg:p-8 space-y-4">
+            <div className="flex items-center gap-2">
+              <Clapperboard className="w-5 h-5 text-berna-purple" />
+              <h1 className="text-2xl font-bold text-white">Create Production</h1>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <p className="text-sm text-muted-foreground">
+              Create a new production workspace. All selected items from the Story Queue will be added automatically.
+            </p>
+            <div className="space-y-3">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Brand Profile</label>
-                <Select value={newProd.brand_profile_id} onValueChange={(v) => setNewProd({ ...newProd, brand_profile_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
-                  <SelectContent>
-                    {brands.map(b => <SelectItem key={b.id} value={b.id}>{b.brand_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs text-muted-foreground mb-1 block">Production Title</label>
+                <Input
+                  value={newProd.title}
+                  onChange={(e) => setNewProd({ ...newProd, title: e.target.value })}
+                  placeholder="e.g. TNN Morning Brief - June 29"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Brand Profile</label>
+                  <Select value={newProd.brand_profile_id} onValueChange={(v) => setNewProd({ ...newProd, brand_profile_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                    <SelectContent>
+                      {brands.map(b => <SelectItem key={b.id} value={b.id}>{b.brand_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Show Profile</label>
+                  <Select value={newProd.show_profile_id} onValueChange={(v) => setNewProd({ ...newProd, show_profile_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select show" /></SelectTrigger>
+                    <SelectContent>
+                      {shows.map(s => <SelectItem key={s.id} value={s.id}>{s.show_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Show Profile</label>
-                <Select value={newProd.show_profile_id} onValueChange={(v) => setNewProd({ ...newProd, show_profile_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select show" /></SelectTrigger>
-                  <SelectContent>
-                    {shows.map(s => <SelectItem key={s.id} value={s.id}>{s.show_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs text-muted-foreground mb-1 block">Production Date</label>
+                <Input
+                  type="date"
+                  value={newProd.production_date}
+                  onChange={(e) => setNewProd({ ...newProd, production_date: e.target.value })}
+                />
               </div>
+              {newProd.production_profile_id && (
+                <div className="p-3 rounded-lg bg-berna-purple/10 border border-berna-purple/20">
+                  <p className="text-xs text-berna-purple">
+                    ✓ Production type selected
+                  </p>
+                </div>
+              )}
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Production Date</label>
-              <Input
-                type="date"
-                value={newProd.production_date}
-                onChange={(e) => setNewProd({ ...newProd, production_date: e.target.value })}
-              />
-            </div>
+            <Button
+              className="w-full bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple"
+              onClick={handleCreate}
+              disabled={creating || !newProd.title}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {creating ? 'Creating...' : 'Create Production'}
+            </Button>
           </div>
-          <Button
-            className="w-full bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple"
-            onClick={handleCreate}
-            disabled={creating || !newProd.title}
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {creating ? 'Creating...' : 'Create Production'}
-          </Button>
         </div>
-      </div>
+      </>
     );
   }
 
