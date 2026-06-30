@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import {
@@ -47,6 +47,22 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
     }
   }, []);
 
+  // Update nav items based on profile type
+  const currentNavItems = useMemo(() => {
+    const profileType = activeProfile?.type;
+    
+    if (profileType === 'music_show') {
+      return navItems.map(item => {
+        if (item.path === '/queue') return { ...item, label: 'Songs Queue' };
+        if (item.path === '/library') return { ...item, label: 'Songs Library' };
+        if (item.path === '/workspace') return { ...item, label: 'Playlist Builder' };
+        return item;
+      });
+    }
+    
+    return navItems;
+  }, [activeProfile]);
+
   return (
     <>
       {/* Desktop sidebar */}
@@ -63,7 +79,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
         )}
 
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto overflow-x-hidden">
-          {navItems.map(item => {
+          {currentNavItems.map(item => {
             const isActive = location.pathname === item.path;
             const isHighlight = item.highlight;
             return (
@@ -103,7 +119,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 glass-panel-navy border-t border-white/[0.06] flex items-center justify-around px-1 py-1 safe-area-bottom">
-        {navItems.slice(0, 5).map(item => {
+        {currentNavItems.slice(0, 5).map(item => {
           const isActive = location.pathname === item.path;
           return (
             <Link

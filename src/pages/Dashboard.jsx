@@ -29,7 +29,14 @@ export default function Dashboard() {
     // Get active production profile
     const storedProfile = sessionStorage.getItem('activeProductionProfile');
     if (storedProfile) {
-      setActiveProfile(JSON.parse(storedProfile));
+      const parsed = JSON.parse(storedProfile);
+      setActiveProfile(parsed);
+      
+      // Redirect to music dashboard if music show is active
+      if (parsed.type === 'music_show') {
+        window.location.href = '/music-dashboard';
+        return;
+      }
     }
 
     Promise.all([
