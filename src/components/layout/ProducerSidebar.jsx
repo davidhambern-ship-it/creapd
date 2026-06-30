@@ -15,7 +15,7 @@ const navItems = [
   { icon: FileText, label: "Today's Brief", path: '/brief' },
   { icon: Layers, label: 'Item Queue', path: '/queue' },
   { icon: Bookmark, label: 'Item Library', path: '/library' },
-  { icon: ClipboardList, label: 'Item Manager', path: '/workspace' },
+  { icon: ClipboardList, label: 'Production Manager', path: '/workspace' },
   { icon: Package, label: 'Production', path: '/production' },
   { icon: Palette, label: 'Brand Profiles', path: '/brands' },
   { icon: Tv, label: 'Show Profiles', path: '/shows' },
