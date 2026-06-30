@@ -211,18 +211,13 @@ export default function ProductionSetup() {
         details: `Production created with ${selectedStoryIds.length} stories using ${selectedProfile.profile_name} profile`,
       });
 
-      const toastId = toast({
+      toast({
         title: 'Production created',
         description: `${production.title} is ready`,
       });
 
       // Navigate to Story Manager (workspace)
       navigate('/workspace');
-      
-      // Auto-dismiss toast after 3 seconds
-      setTimeout(() => {
-        toast.dismiss(toastId);
-      }, 3000);
     } catch (error) {
       console.error('Failed to create production:', error);
       toast({
