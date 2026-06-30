@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Sparkles, label: 'Select Production Type', path: '/select-production-type', highlight: true },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
   { icon: FileText, label: "Today's Brief", path: '/brief' },
   { icon: Layers, label: 'Item Queue', path: '/queue' },
