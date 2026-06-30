@@ -85,7 +85,7 @@ const AuthenticatedApp = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/music-dashboard" element={<MusicDashboard />} />
           <Route path="/music-research" element={<MusicResearchCenter />} />
-          <Route path="/workspace" element={<PlaylistBuilder />} />
+          <Route path="/playlist-builder" element={<PlaylistBuilder />} />
           <Route path="/production-setup" element={<ProductionSetup />} />
           <Route path="/artist-library" element={<ArtistLibrary />} />
           <Route path="/sponsor-manager" element={<SponsorManager />} />
