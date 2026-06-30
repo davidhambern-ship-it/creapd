@@ -155,8 +155,12 @@ export default function ProductionTypeSelector() {
         name: profile.profile_name
       }));
 
-      // Navigate to research center
-      navigate('/research');
+      // Navigate to appropriate research center based on profile type
+      if (profile.profile_type === 'music_show') {
+        navigate('/research-center');
+      } else {
+        navigate('/research');
+      }
     } catch (error) {
       console.error('Error selecting production type:', error);
     }
@@ -184,6 +188,15 @@ export default function ProductionTypeSelector() {
       navigate('/research');
     } catch (error) {
       console.error('Error creating custom profile:', error);
+    }
+  };
+
+  const handleContinueToResearch = () => {
+    const activeProfile = JSON.parse(sessionStorage.getItem('activeProductionProfile'));
+    if (activeProfile?.type === 'music_show') {
+      navigate('/research-center');
+    } else {
+      navigate('/research');
     }
   };
 
@@ -282,7 +295,7 @@ export default function ProductionTypeSelector() {
         {/* Continue Button */}
         <div className="text-center mt-12">
           <Button
-            onClick={() => navigate('/research')}
+            onClick={handleContinueToResearch}
             size="lg"
             className="px-8 h-12 text-lg"
           >
