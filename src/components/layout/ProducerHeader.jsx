@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Play, User } from 'lucide-react';
+import { Play, User, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 import NotificationDropdown from '@/components/shared/NotificationDropdown';
 import GlobalSearch from '@/components/shared/GlobalSearch';
 
 export default function ProducerHeader({ onGenerateBrief }) {
+  const { user } = useAuth();
   const [time, setTime] = useState(new Date());
   const [briefingStatus, setBriefingStatus] = useState(null);
 
@@ -94,6 +96,13 @@ export default function ProducerHeader({ onGenerateBrief }) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {user?.role === 'admin' && (
+          <Link to="/checklist" title="Acceptance Checklist">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-berna-purple h-8 w-8">
+              <ClipboardCheck className="w-4 h-4" />
+            </Button>
+          </Link>
+        )}
         <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-berna-emerald/10 border border-berna-emerald/20">
           <div className="w-1.5 h-1.5 rounded-full bg-berna-emerald pulse-glow" />
           <span className="text-[10px] text-berna-emerald font-medium">Echo Online</span>
