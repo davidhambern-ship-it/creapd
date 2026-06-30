@@ -6,7 +6,12 @@
       "type": "string"
     },
     "teleprompter_script": {
-      "type": "string"
+      "type": "string",
+      "description": "News domain: broadcast-ready teleprompter script"
+    },
+    "show_script": {
+      "type": "string",
+      "description": "Radio domain: radio-ready host script for on-air delivery"
     },
     "story_summary": {
       "type": "string"
@@ -30,15 +35,41 @@
       "type": "string"
     },
     "broll_suggestions": {
-      "type": "string"
+      "type": "string",
+      "description": "News domain: B-roll footage suggestions"
     },
     "social_caption": {
       "type": "string"
     },
-    "producer_notes": {
-      "type": "string"
-    },
     "fact_check_notes": {
+      "type": "string",
+      "description": "News domain: factual verification notes"
+    },
+    "artist_facts": {
+      "type": "string",
+      "description": "Radio domain: key facts about artists involved"
+    },
+    "playlist_segment": {
+      "type": "string",
+      "description": "Radio domain: suggested songs/tracks to pair with segment"
+    },
+    "cooking_notes": {
+      "type": "string",
+      "description": "Cooking domain: temperatures, times, technique tips"
+    },
+    "ingredient_list": {
+      "type": "string",
+      "description": "Cooking domain: ingredient list with quantities"
+    },
+    "scripture_references": {
+      "type": "string",
+      "description": "Spiritual domain: relevant scripture passages"
+    },
+    "reflection_notes": {
+      "type": "string",
+      "description": "Spiritual domain: discussion questions, prayer points"
+    },
+    "producer_notes": {
       "type": "string"
     },
     "estimated_runtime": {

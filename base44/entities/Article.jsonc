@@ -65,7 +65,19 @@
         "supply_chain",
         "state_economy",
         "infrastructure",
-        "general"
+        "general",
+        "new_release",
+        "tour_announcement",
+        "artist_news",
+        "chart_movement",
+        "festival_lineup",
+        "album_review",
+        "interview",
+        "music_industry",
+        "streaming",
+        "local_concert",
+        "genre_spotlight",
+        "classic_track"
       ]
     },
     "state": {

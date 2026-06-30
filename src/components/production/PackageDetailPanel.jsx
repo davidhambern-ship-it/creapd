@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   FileText, AlignLeft, MessageSquare, Type, Heading,
   Image, ImageIcon, Eye, Film, Share2, CheckSquare, Volume2,
   Sparkles, Loader2, Clock, ExternalLink, Save, CheckCircle,
-  StickyNote, BookMarked, MessageSquareCode, Cpu, Download
+  StickyNote, BookMarked, MessageSquareCode, Cpu, Download,
+  Music, Mic2, ChefHat, BookOpen, Lightbulb, ListOrdered
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,19 +17,26 @@ import MediaGenerator from '@/components/production/MediaGenerator';
 import TranslationPanel from '@/components/production/TranslationPanel';
 import { logActivity } from '@/lib/activityUtils';
 
-const ASSET_DEFS = [
-  { key: 'teleprompter_script', label: 'Teleprompter Script', icon: FileText },
-  { key: 'story_summary', label: 'Story Summary', icon: AlignLeft },
-  { key: 'talking_points', label: 'Talking Points', icon: MessageSquare },
-  { key: 'lower_third_text', label: 'Lower Third Text', icon: Type },
-  { key: 'headline_suggestions', label: 'Headline Suggestions', icon: Heading },
-  { key: 'image_prompt', label: 'Image Generation Prompt', icon: Image },
-  { key: 'thumbnail_prompt', label: 'Thumbnail Prompt', icon: ImageIcon },
-  { key: 'visual_suggestions', label: 'Visual Suggestions', icon: Eye },
-  { key: 'broll_suggestions', label: 'B-roll Suggestions', icon: Film },
-  { key: 'social_caption', label: 'Social Media Caption', icon: Share2 },
-  { key: 'fact_check_notes', label: 'Fact Check Notes', icon: CheckSquare },
-];
+const ALL_ASSET_DEFS = {
+  teleprompter_script: { label: 'Teleprompter Script', icon: FileText },
+  show_script: { label: 'Show Script', icon: FileText },
+  story_summary: { label: 'Story Summary', icon: AlignLeft },
+  talking_points: { label: 'Talking Points', icon: MessageSquare },
+  lower_third_text: { label: 'Lower Third Text', icon: Type },
+  headline_suggestions: { label: 'Headline Suggestions', icon: Heading },
+  image_prompt: { label: 'Image Generation Prompt', icon: Image },
+  thumbnail_prompt: { label: 'Thumbnail Prompt', icon: ImageIcon },
+  visual_suggestions: { label: 'Visual Suggestions', icon: Eye },
+  broll_suggestions: { label: 'B-roll Suggestions', icon: Film },
+  social_caption: { label: 'Social Media Caption', icon: Share2 },
+  fact_check_notes: { label: 'Fact Check Notes', icon: CheckSquare },
+  artist_facts: { label: 'Artist Facts', icon: Mic2 },
+  playlist_segment: { label: 'Playlist Segment', icon: Music },
+  cooking_notes: { label: 'Cooking Notes', icon: ChefHat },
+  ingredient_list: { label: 'Ingredient List', icon: ListOrdered },
+  scripture_references: { label: 'Scripture References', icon: BookOpen },
+  reflection_notes: { label: 'Reflection Notes', icon: Lightbulb },
+};
 
 const TONES = ['professional', 'conversational', 'energetic', 'serious', 'investigative', 'educational', 'inspirational', 'neutral', 'urgent', 'humorous'];
 const READING_STYLES = ['broadcast_news', 'podcast', 'livestream', 'interview', 'documentary', 'educational_presentation', 'corporate_communication', 'storytelling'];
@@ -53,6 +61,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   const [preferredTextModel, setPreferredTextModel] = useState('automatic');
   const [contentDomains, setContentDomains] = useState([]);
   const [selectedDomain, setSelectedDomain] = useState('news');
+  const [activeDomainConfig, setActiveDomainConfig] = useState(null);
 
   useEffect(() => {
     if (pkg) {
@@ -75,6 +84,33 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
     base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const domain = contentDomains.find(d => d.domain_key === selectedDomain);
+    setActiveDomainConfig(domain || null);
+  }, [selectedDomain, contentDomains]);
+
+  const assetDefs = useMemo(() => {
+    let keys;
+    if (activeDomainConfig?.asset_types) {
+      try { keys = JSON.parse(activeDomainConfig.asset_types); } catch { keys = null; }
+    }
+    if (!keys || !Array.isArray(keys)) {
+      keys = ['teleprompter_script', 'story_summary', 'talking_points', 'lower_third_text', 'headline_suggestions', 'image_prompt', 'thumbnail_prompt', 'visual_suggestions', 'broll_suggestions', 'social_caption', 'fact_check_notes'];
+    }
+    return keys.map(k => ({ key: k, label: ALL_ASSET_DEFS[k]?.label || k.replace(/_/g, ' '), icon: ALL_ASSET_DEFS[k]?.icon || FileText }));
+  }, [activeDomainConfig]);
+
+  const scriptField = useMemo(() => {
+    if (activeDomainConfig?.asset_types) {
+      try {
+        const types = JSON.parse(activeDomainConfig.asset_types);
+        if (types.includes('show_script')) return 'show_script';
+        if (types.includes('teleprompter_script')) return 'teleprompter_script';
+      } catch {}
+    }
+    return 'teleprompter_script';
+  }, [activeDomainConfig]);
+
   const callGenerate = async (assetTypes) => {
     const params = {
       article_id: article.id,
@@ -96,7 +132,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   const handleGenerateAll = async () => {
     setGeneratingAll(true);
     try {
-      const updated = await callGenerate(ASSET_DEFS.map(a => a.key));
+      const updated = await callGenerate(assetDefs.map(a => a.key));
       onPackageUpdate(updated);
       logActivity('generate', {
         entity_type: 'ProductionPackage',
@@ -164,7 +200,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   const handleQuickExport = async () => {
     if (!pkg) return;
     const { generatePDF, downloadPDF, sanitizeFilename } = await import('@/lib/exportUtils');
-    const assets = new Set(['teleprompter_script', 'story_summary', 'talking_points', 'lower_third_text']);
+    const assets = new Set([scriptField, 'story_summary', 'talking_points', 'lower_third_text']);
     const filename = `${sanitizeFilename(article.title)}.pdf`;
     const doc = await generatePDF(pkg, article, assets, true, null);
     downloadPDF(doc, filename);
@@ -324,7 +360,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
 
       {/* Assets */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-        {ASSET_DEFS.map(def => (
+        {assetDefs.map(def => (
           <AssetEditor
             key={def.key}
             assetKey={def.key}
@@ -414,7 +450,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
               <MediaGenerator
                 pkg={pkg}
                 mediaType="audio"
-                promptField="teleprompter_script"
+                promptField={scriptField}
                 urlField="generated_audio_url"
                 label="Voiceover Audio"
                 icon={Volume2}
