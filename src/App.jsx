@@ -12,6 +12,8 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import ProfileSelection from '@/pages/ProfileSelection';
+import ProductionSetup from '@/pages/ProductionSetup';
 import Dashboard from '@/pages/Dashboard';
 import WeeklyPlanner from '@/pages/WeeklyPlanner';
 import TodaysBrief from '@/pages/TodaysBrief';
@@ -70,8 +72,10 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route path="/" element={<ProfileSelection />} />
+        <Route path="/setup" element={<ProductionSetup />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
