@@ -45,8 +45,10 @@
       "type": "string",
       "enum": [
         "pdf",
-        "text",
-        "markdown"
+        "docx",
+        "markdown",
+        "html",
+        "text"
       ],
       "default": "pdf"
     },
