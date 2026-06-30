@@ -29,6 +29,7 @@ import Sources from '@/pages/Sources';
 import ManualImport from '@/pages/ManualImport';
 import ArchivePage from '@/pages/ArchivePage';
 import AutomationCenter from '@/pages/AutomationCenter';
+import SecurityCenter from '@/pages/SecurityCenter';
 import SettingsPage from '@/pages/SettingsPage';
 import UserProfile from '@/pages/UserProfile';
 import Organizations from '@/pages/Organizations';
@@ -92,6 +93,7 @@ const AuthenticatedApp = () => {
           <Route path="/templates" element={<TemplateLibrary />} />
           <Route path="/graphics-templates" element={<ProductionTemplates />} />
           <Route path="/prompt-templates" element={<PromptTemplates />} />
+          <Route path="/security" element={<SecurityCenter />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

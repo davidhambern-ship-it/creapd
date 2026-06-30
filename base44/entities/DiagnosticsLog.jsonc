@@ -1,0 +1,47 @@
+{
+  "name": "DiagnosticsLog",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": [
+        "application_error",
+        "sync_failure",
+        "export_failure",
+        "connection_error",
+        "ai_generation_error"
+      ],
+      "default": "application_error"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ],
+      "default": "error"
+    },
+    "message": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string"
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "resolved": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "category",
+    "message"
+  ]
+}
