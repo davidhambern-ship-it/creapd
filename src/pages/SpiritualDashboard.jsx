@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSpiritualProduction } from '@/hooks/useSpiritualProduction';
 import { base44 } from '@/api/base44Client';
@@ -9,13 +9,6 @@ import { SECTION_TYPE_LABELS, ASSET_TYPE_LABELS, formatDuration } from '@/lib/sp
 export default function SpiritualDashboard() {
   const { config, setConfig, research, topics, messageSections, assets, packageItems, loading, refresh } = useSpiritualProduction();
   const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    if (config?.status === 'building') {
-      const timer = setTimeout(() => refresh(), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [config?.status, refresh]);
 
   const handleRefresh = async () => {
     if (!config) return;
