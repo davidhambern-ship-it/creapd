@@ -58,11 +58,11 @@ export default function SpiritualResearch() {
         </div>
 
         <div className="space-y-4">
-          {research.map(item => (
-            <div key={item.id} className="glass-panel p-5">
+           {research.map(item => (
+            <Link key={item.id} to={`/spiritual/research/${item.id}`} className="block glass-panel p-5 hover:border-primary/30 transition-colors group">
               <div className="flex items-start justify-between gap-4 mb-2">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-heading font-semibold text-lg mb-1">{item.title}</h3>
+                  <h3 className="font-heading font-semibold text-lg mb-1 group-hover:text-primary transition-colors">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">{item.source} · {item.date}</p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -74,7 +74,7 @@ export default function SpiritualResearch() {
                   </span>
                 </div>
               </div>
-              <p className="text-sm text-foreground/90 mb-3">{item.summary}</p>
+              <p className="text-sm text-foreground/90 mb-3 line-clamp-3">{item.summary}</p>
               {item.associated_topic && (
                 <p className="text-xs text-muted-foreground mb-2">Topic: {item.associated_topic}</p>
               )}
@@ -84,7 +84,10 @@ export default function SpiritualResearch() {
                   <p className="text-xs text-muted-foreground">{item.citation}</p>
                 </div>
               )}
-            </div>
+              <div className="flex items-center gap-1 text-xs text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ExternalLink className="w-3 h-3" /> View Details
+              </div>
+            </Link>
           ))}
         </div>
       </div>

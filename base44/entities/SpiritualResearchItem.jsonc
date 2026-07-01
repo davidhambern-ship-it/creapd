@@ -10,7 +10,8 @@
       "type": "string"
     },
     "source": {
-      "type": "string"
+      "type": "string",
+      "description": "Source name or publication"
     },
     "source_type": {
       "type": "string",
@@ -28,10 +29,35 @@
       "type": "string"
     },
     "summary": {
-      "type": "string"
+      "type": "string",
+      "description": "Full extracted summary of the research item"
+    },
+    "full_text": {
+      "type": "string",
+      "description": "Full article text when legally and technically available"
+    },
+    "excerpt": {
+      "type": "string",
+      "description": "Short representative excerpt from the source"
+    },
+    "key_points": {
+      "type": "string",
+      "description": "JSON array of key points extracted from the source"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or organization of the source"
     },
     "date": {
       "type": "string"
+    },
+    "publication_date": {
+      "type": "string",
+      "description": "Publication date of the source material"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "URL to the original source"
     },
     "relevance": {
       "type": "string",
@@ -49,6 +75,31 @@
     "associated_topic": {
       "type": "string"
     },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated tags"
+    },
+    "related_topics": {
+      "type": "string",
+      "description": "JSON array of related topic strings"
+    },
+    "related_study_questions": {
+      "type": "string",
+      "description": "JSON array of related study question strings"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Producer's personal notes on this research item"
+    },
+    "full_text_available": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether full article text is available"
+    },
+    "full_text_unavailable_reason": {
+      "type": "string",
+      "description": "Reason full text is unavailable (paywall, removed, etc.)"
+    },
     "added_to_study": {
       "type": "boolean",
       "default": false
@@ -60,6 +111,21 @@
     "added_to_package": {
       "type": "boolean",
       "default": false
+    },
+    "is_saved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Saved to research library"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewed",
+        "saved",
+        "archived"
+      ],
+      "default": "new"
     }
   },
   "required": [

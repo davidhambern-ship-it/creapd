@@ -45,18 +45,52 @@ export default function SpiritualStudy() {
     loadFaithSettings();
   }, [loadSessions, loadFaithSettings]);
 
-  // Auto-run research when arriving from a Related Study click (?query=...&autoRun=true&sourceSession=...)
+  // Auto-run research when arriving from a Related Study click, Dashboard topic, or Research item
   useEffect(() => {
     if (autoRunTriggered.current || !faithSettingsLoaded) return;
     const params = new URLSearchParams(window.location.search);
     const query = params.get('query');
     const autoRun = params.get('autoRun') === 'true';
     const sourceSession = params.get('sourceSession');
+    const researchItemId = params.get('researchItem');
+
     if (autoRun && query) {
       autoRunTriggered.current = true;
       handleSearch(query, sourceSession);
+    } else if (autoRun && researchItemId) {
+      autoRunTriggered.current = true;
+      handleStartStudyFromResearch(researchItemId);
     }
   }, [faithSettingsLoaded]);
+
+  const handleStartStudyFromResearch = async (researchItemId) => {
+    setResearching(true);
+    try {
+      const item = await base44.entities.SpiritualResearchItem.get(researchItemId);
+      if (!item) { setResearching(false); return; }
+
+      const question = item.title;
+      const notebookContent = `**Research Source:** ${item.title}\nSource: ${item.source || 'N/A'}\nAuthor: ${item.author || 'N/A'}\nCitation: ${item.citation || 'N/A'}\nSummary: ${item.summary || ''}\nURL: ${item.source_url || 'N/A'}\n\n---`;
+
+      const sessionData = {
+        title: question.length > 60 ? question.substring(0, 60) + '...' : question,
+        research_question: question,
+        status: 'researching',
+        faith_tradition: faithSettings?.faith_tradition || 'Christianity',
+        branch_denomination: faithSettings?.branch_denomination || 'No Preference',
+        sacred_texts: faithSettings?.sacred_texts || JSON.stringify([]),
+        research_sources: faithSettings?.research_sources || JSON.stringify([]),
+        notebook_content: notebookContent
+      };
+
+      const session = await base44.entities.ResearchSession.create(sessionData);
+      await base44.entities.SpiritualResearchItem.update(researchItemId, { added_to_study: true });
+      base44.functions.invoke('conductResearch', { session_id: session.id }).catch(() => {});
+      navigate(`/spiritual/study/${session.id}`);
+    } catch (err) {
+      setResearching(false);
+    }
+  };
 
   const handleSearch = async (question, sourceSessionId) => {
     setResearching(true);

@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSpiritualProduction } from '@/hooks/useSpiritualProduction';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, Church, BookOpen, Search, PenTool, Sparkles, Package, Download, RefreshCw, GraduationCap, ListChecks, Clock, FileText, CheckCircle2 } from 'lucide-react';
+import { Loader2, Church, BookOpen, Search, PenTool, Sparkles, Package, Download, RefreshCw, GraduationCap, ListChecks, Clock, FileText, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { SECTION_TYPE_LABELS, ASSET_TYPE_LABELS, formatDuration } from '@/lib/spiritualConstants';
 
 export default function SpiritualDashboard() {
   const { config, setConfig, research, topics, messageSections, assets, packageItems, loading, refresh } = useSpiritualProduction();
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedTopic, setExpandedTopic] = useState(null);
+  const navigate = useNavigate();
+
+  const handleTopicClick = (topic) => {
+    const query = encodeURIComponent(topic.topic_name);
+    navigate(`/spiritual/study?query=${query}&autoRun=true&source=dashboard-topic&productionId=${config?.id || ''}`);
+  };
 
   const handleRefresh = async () => {
     if (!config) return;
@@ -173,14 +180,51 @@ export default function SpiritualDashboard() {
               <p className="text-sm text-muted-foreground">No topics generated yet.</p>
             ) : (
               <div className="space-y-2">
-                {topics.slice(0, 5).map(topic => (
-                  <div key={topic.id} className="flex items-center justify-between p-2 rounded-lg bg-secondary/30">
-                    <span className="text-sm font-medium truncate">{topic.topic_name}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${topic.status === 'approved' ? 'bg-emerald/20 text-berna-emerald' : 'bg-primary/20 text-primary'}`}>
-                      {topic.status}
-                    </span>
-                  </div>
-                ))}
+                {topics.slice(0, 5).map(topic => {
+                  const isExpanded = expandedTopic === topic.id;
+                  const summary = topic.generated_summary || '';
+                  const isLong = summary.length > 120;
+                  return (
+                    <div
+                      key={topic.id}
+                      className="p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 hover:border-primary/30 border border-transparent transition-all cursor-pointer"
+                      onClick={() => handleTopicClick(topic)}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <span className="text-sm font-medium">{topic.topic_name}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${topic.status === 'approved' ? 'bg-berna-emerald/20 text-berna-emerald' : 'bg-primary/20 text-primary'}`}>
+                          {topic.status}
+                        </span>
+                      </div>
+                      {summary && (
+                        <p className="text-xs text-muted-foreground">
+                          {isExpanded || !isLong ? summary : summary.substring(0, 120) + '...'}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        {topic.suggested_placement && (
+                          <span className="text-xs text-muted-foreground">{topic.suggested_placement}</span>
+                        )}
+                        <div className="flex items-center gap-1 ml-auto">
+                          {isLong && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setExpandedTopic(isExpanded ? null : topic.id); }}
+                              className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                            >
+                              {isExpanded ? <><ChevronUp className="w-3 h-3" /> Less</> : <><ChevronDown className="w-3 h-3" /> More</>}
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTopicClick(topic); }}
+                            className="text-xs px-2 py-0.5 rounded-md bg-primary/20 text-primary hover:bg-primary/30 transition-colors flex items-center gap-1"
+                          >
+                            <GraduationCap className="w-3 h-3" /> Start Study
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -195,7 +239,11 @@ export default function SpiritualDashboard() {
             ) : (
               <div className="space-y-2">
                 {research.slice(0, 5).map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-secondary/30">
+                  <Link
+                    key={item.id}
+                    to={`/spiritual/research/${item.id}`}
+                    className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 hover:border-primary/30 border border-transparent transition-all"
+                  >
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{item.title}</p>
                       <p className="text-xs text-muted-foreground truncate">{item.source}</p>
@@ -203,7 +251,7 @@ export default function SpiritualDashboard() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${item.relevance === 'high' ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}>
                       {item.relevance}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

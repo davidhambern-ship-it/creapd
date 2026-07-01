@@ -106,7 +106,7 @@ SYSTEM RULES:
 
 TASKS:
 
-1. RESEARCH: For each selected study topic, find relevant and current information from the listed research sources. Generate 3-5 research items per topic. Each item must include: title, source, source_type (one of: primary_source, secondary_source, historical_reference, language_study, current_event, ai_suggestion), category, summary, date, relevance (high/medium/low), citation (full citation info), and associated_topic. If current events are enabled, include relevant current events. Respect the faith tradition — do not mix unrelated traditions.
+1. RESEARCH: For each selected study topic, find relevant and current information from the listed research sources. Generate 3-5 research items per topic. Each item must include: title, source (source name/publication), source_type (one of: primary_source, secondary_source, historical_reference, language_study, current_event, ai_suggestion), category, summary (a comprehensive 2-3 paragraph summary of the source content), full_text (the full article text when available from the web search results — if full text is not available, leave empty string), excerpt (a short representative quote or excerpt from the source, 1-2 sentences), key_points (JSON array of 3-5 key points as strings), author (author or organization), date, publication_date, source_url (the URL to the original source if available), relevance (high/medium/low), citation (full citation info), associated_topic, tags (comma-separated tags), related_topics (JSON array of related topic strings), related_study_questions (JSON array of 2-3 related study questions as strings), full_text_available (boolean — true only if you included actual full_text content), full_text_unavailable_reason (string explaining why full text is unavailable, e.g. "paywall", "subscription required", "content behind login", "summary only available from search results" — leave empty if full_text_available is true). If current events are enabled, include relevant current events. Respect the faith tradition — do not mix unrelated traditions.
 
 2. STUDY TOPICS: For each selected topic, generate a comprehensive study summary including: topic_name, generated_summary (2-3 paragraphs), talking_points (3-5 points as a single string with line breaks), key_passages (relevant scripture/sacred text references with full citations), sources (sources consulted), historical_context (relevant historical background), discussion_questions (3-5 questions for the audience), multiple_perspectives (if applicable, different viewpoints from selected resources — each attributed), and suggested_placement (where in the production this topic fits).
 
@@ -125,10 +125,21 @@ Return a JSON object with exactly these keys: research (array), topics (array).`
               source_type: { type: 'string' },
               category: { type: 'string' },
               summary: { type: 'string' },
+              full_text: { type: 'string' },
+              excerpt: { type: 'string' },
+              key_points: { type: 'array', items: { type: 'string' } },
+              author: { type: 'string' },
               date: { type: 'string' },
+              publication_date: { type: 'string' },
+              source_url: { type: 'string' },
               relevance: { type: 'string' },
               citation: { type: 'string' },
-              associated_topic: { type: 'string' }
+              associated_topic: { type: 'string' },
+              tags: { type: 'string' },
+              related_topics: { type: 'array', items: { type: 'string' } },
+              related_study_questions: { type: 'array', items: { type: 'string' } },
+              full_text_available: { type: 'boolean' },
+              full_text_unavailable_reason: { type: 'string' }
             }
           }
         },
@@ -167,10 +178,22 @@ Return a JSON object with exactly these keys: research (array), topics (array).`
       source_type: ['primary_source', 'secondary_source', 'historical_reference', 'language_study', 'current_event', 'ai_suggestion'].includes(item.source_type) ? item.source_type : 'secondary_source',
       category: item.category || '',
       summary: item.summary || '',
+      full_text: item.full_text || '',
+      excerpt: item.excerpt || '',
+      key_points: JSON.stringify(item.key_points || []),
+      author: item.author || '',
       date: item.date || new Date().toISOString().split('T')[0],
+      publication_date: item.publication_date || item.date || '',
+      source_url: item.source_url || '',
       relevance: ['high', 'medium', 'low'].includes(item.relevance) ? item.relevance : 'medium',
       citation: item.citation || '',
-      associated_topic: item.associated_topic || ''
+      associated_topic: item.associated_topic || '',
+      tags: item.tags || '',
+      related_topics: JSON.stringify(item.related_topics || []),
+      related_study_questions: JSON.stringify(item.related_study_questions || []),
+      full_text_available: !!item.full_text_available,
+      full_text_unavailable_reason: item.full_text_unavailable_reason || '',
+      status: 'new'
     }));
     if (researchData.length > 0) {
       await base44.entities.SpiritualResearchItem.bulkCreate(researchData);
