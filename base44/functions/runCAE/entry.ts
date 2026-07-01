@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
-    let stats = { discovered: 0, imported: 0, published: 0, failed: 0, providersChecked: 0, errors: [] };
+    let stats = { discovered: 0, imported: 0, published: 0, failed: 0, providersChecked: 0, processed: 0, errors: [] };
 
     // 1. Get or create engine config
     let configResults = await base44.asServiceRole.entities.CAEEngineConfig.list();
@@ -22,11 +22,13 @@ Deno.serve(async (req) => {
         operating_mode: 'passive',
         started_at: now,
         last_run: now,
-        next_scheduled_run: new Date(Date.now() + 30 * 60000).toISOString(),
+        next_scheduled_run: new Date(Date.now() + 5 * 60000).toISOString(),
         cae_identity_email: 'cae@producer.com',
         cae_identity_name: 'Producer Content Acquisition Engine',
         wallet_balance: 0,
-        scan_interval_minutes: 30
+        scan_interval_minutes: 5,
+        processing_rate: 0,
+        max_concurrent_jobs: 10
       });
     }
 
@@ -35,7 +37,13 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'skipped', reason: `Engine is ${config.engine_status}` });
     }
 
-    // 2. Update subsystem statuses to running
+    // Mark engine as actively running
+    await base44.asServiceRole.entities.CAEEngineConfig.update(config.id, {
+      current_job: 'Mining cycle in progress',
+      last_run: now
+    });
+
+    // 2. Initialize subsystems if needed
     const subsystems = await base44.asServiceRole.entities.CAESubsystemStatus.list();
     if (subsystems.length === 0) {
       const SUBSYSTEM_NAMES = [
@@ -65,46 +73,66 @@ Deno.serve(async (req) => {
     }
 
     // 4. Get approved providers
-    const providers = await base44.asServiceRole.entities.CAESourceProvider.filter({ approval_state: 'approved', is_archived: false });
-    const providerNames = providers.map(p => p.name).join(', ') || 'general open-access repositories';
+    const providers = await base44.asServiceRole.entities.CAESourceProvider.filter({ is_archived: false });
+    const approvedProviders = providers.filter(p => p.approval_state === 'approved');
+    const providerNames = approvedProviders.map(p => p.name).join(', ') || 'general open-access repositories';
 
-    // 5. DISCOVERY PHASE — Use LLM with web search to discover new resources
+    // 5. VARY DISCOVERY TOPICS — rotate through search focus areas each cycle to avoid duplicates
+    const DISCOVERY_FOCUSES = [
+      'public domain sacred texts and holy books from all world religions',
+      'newly digitized ancient manuscripts from museums and university archives',
+      'open-access academic dissertations and theses in theology and religious studies',
+      'public domain translations of the Bible, Quran, Torah, Vedas, Sutras, and other scriptures',
+      'open-access journal articles in biblical studies, comparative religion, and theology',
+      'public domain church fathers writings, patristic texts, and early Christian literature',
+      'open-access resources on indigenous spiritual traditions and oral histories',
+      'public domain historical documents related to religious movements and religious freedom',
+      'newly available open-access archaeological reports related to biblical and sacred sites',
+      'public domain lexicons, concordances, and dictionaries for ancient languages (Hebrew, Greek, Aramaic, Sanskrit, Pali, Arabic)',
+      'open-access museum digital collections featuring religious artifacts and sacred manuscripts',
+      'public domain books on philosophy of religion, spirituality, and mysticism',
+      'open-access resources on Eastern religions — Buddhism, Hinduism, Taoism, Confucianism, Jainism, Sikhism',
+      'public domain devotional literature, prayer books, and liturgical texts from all traditions',
+      'open-access resources on Dead Sea Scrolls, Nag Hammadi codices, and apocryphal texts',
+      'public domain texts on Islamic theology, Hadith studies, and Quranic commentary',
+      'open-access resources on Jewish rabbinic literature, Talmud, Midrash, and Kabbalah',
+      'newly released government archive documents on religious history and church-state relations',
+      'open-access language learning resources for ancient and liturgical languages',
+      'public domain reference works on world religions, religious history, and comparative theology'
+    ];
+    const focusIndex = Math.floor(Date.now() / (5 * 60000)) % DISCOVERY_FOCUSES.length;
+    const currentFocus = DISCOVERY_FOCUSES[focusIndex];
+
+    // 6. DISCOVERY PHASE — Use LLM with web search to discover new resources
     try {
-      const discoveryPrompt = `You are the Content Acquisition Engine for a World Scripture Library. Your mission is to discover legally obtainable, free knowledge resources that can be added to the library.
+      const discoveryPrompt = `You are the Content Acquisition Engine for a World Scripture Library. You are a 24/7 autonomous data miner that constantly discovers and acquires legally free knowledge resources.
 
-Search the internet for recently available or newly discovered:
-- Public domain sacred texts and religious texts
-- Open-access academic papers about religion, theology, and spirituality
-- Newly digitized ancient manuscripts
-- Public domain translations of religious texts
-- Open-access dissertations and theses on religious studies
-- Museum digital collections related to religious artifacts
-- University repository additions in theology and religious studies
-- Government archive releases of historical religious documents
-- New open-access journals in theology and religious studies
-- Public domain books on religion, spirituality, and philosophy
+THIS CYCLE'S MINING FOCUS: ${currentFocus}
 
-Focus on resources that are:
-- Legally free (public domain, open license, creative commons, or official free access)
-- Relevant to world scripture, religious studies, theology, or spirituality
-- From trustworthy sources (universities, museums, governments, established archives)
+Search the internet for resources matching this focus. Prioritize:
+- Resources that are legally free (public domain, open license, creative commons, official free access, free with registration)
+- Resources relevant to world scripture, religious studies, theology, spirituality, or ancient texts
+- Trustworthy sources (universities, museums, governments, established digital archives, repositories)
+- Resources NOT already commonly known or already in typical library collections
 
-Provider context: The following providers are already connected: ${providerNames}.${missionContext}
+Provider context: Connected providers: ${providerNames}.${missionContext}
 
-Return exactly 5 new discoveries as a JSON array. Each discovery must have:
+Return exactly 10 new discoveries as a JSON array. Each discovery must have:
 - title: The title of the resource
 - author: Author or organization
 - source_url: Direct URL to the resource
-- resource_type: One of: book, sacred_text, historical_document, ancient_manuscript, journal_article, research_paper, dissertation, lexicon, commentary, devotional, reference_work
+- resource_type: One of: book, sacred_text, historical_document, ancient_manuscript, journal_article, research_paper, dissertation, thesis, lexicon, dictionary, concordance, commentary, study_guide, language_resource, devotional, reference_work
 - rights: One of: public_domain, open_license, creative_commons, official_free_access, free_with_registration
 - tradition: Faith tradition (Christianity, Judaism, Islam, Hinduism, Buddhism, etc.)
 - language: Primary language
 - description: Brief description of the resource (2-3 sentences)
 - provider_name: Name of the source organization or repository
 - provider_website: Website of the source
-- provider_type: One of: university, museum, government_archive, digital_library, publisher, research_institute, religious_organization, historical_society, repository, open_access_archive, public_domain_library
+- provider_type: One of: university, museum, government_archive, digital_library, publisher, research_institute, religious_organization, historical_society, repository, open_access_archive, public_domain_library, community_archive, api_provider
 - collection_suggestion: Suggested collection name for this resource
-- priority_score: 0-100 based on educational value, foundational importance, and collection gap`;
+- priority_score: 0-100 based on educational value, foundational importance, and collection gap
+- historical_period: Approximate era or century if applicable
+- region: Geographic origin if applicable`;
 
       const discoveryResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt: discoveryPrompt,
@@ -130,7 +158,9 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
                   provider_website: { type: 'string' },
                   provider_type: { type: 'string' },
                   collection_suggestion: { type: 'string' },
-                  priority_score: { type: 'number' }
+                  priority_score: { type: 'number' },
+                  historical_period: { type: 'string' },
+                  region: { type: 'string' }
                 }
               }
             }
@@ -140,7 +170,7 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
 
       const discoveries = discoveryResponse.discoveries || [];
 
-      // 6. PROCESS DISCOVERIES
+      // 7. PROCESS DISCOVERIES
       for (const disc of discoveries) {
         try {
           // Check for duplicates
@@ -163,7 +193,6 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
           // Create or update provider
           let provider = providers.find(p => p.name === disc.provider_name);
           if (!provider) {
-            // Create new provider as under_review
             provider = await base44.asServiceRole.entities.CAESourceProvider.create({
               name: disc.provider_name,
               organization: disc.provider_name,
@@ -203,7 +232,9 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
               language: disc.language,
               tradition: disc.tradition,
               description: disc.description,
-              collection_suggestion: disc.collection_suggestion
+              collection_suggestion: disc.collection_suggestion,
+              historical_period: disc.historical_period,
+              region: disc.region
             }),
             collection_assignments: JSON.stringify([disc.collection_suggestion].filter(Boolean)),
             duplicate_check_status: 'unique',
@@ -221,13 +252,14 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
             details: `Discovered: ${disc.title} — ${disc.description?.substring(0, 100) || ''}`,
             discovery_id: discovery.id,
             provider_id: provider.id,
-            is_public: false
+            is_public: false,
+            tradition: disc.tradition,
+            source_type: disc.resource_type
           });
 
           // Process free resources immediately
           const freeRights = ['public_domain', 'open_license', 'creative_commons', 'official_free_access', 'free_with_registration'];
           if (freeRights.includes(disc.rights)) {
-            // Update discovery to importing
             await base44.asServiceRole.entities.CAEDiscovery.update(discovery.id, {
               discovery_stage: 'importing'
             });
@@ -260,7 +292,6 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
               registryRecord = await base44.asServiceRole.entities.WorldScriptureRegistry.create(registryData);
             }
 
-            // Update discovery with registry link and mark as published
             await base44.asServiceRole.entities.CAEDiscovery.update(discovery.id, {
               discovery_stage: 'published',
               registry_record_id: registryRecord.id,
@@ -271,14 +302,15 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
                 tradition: disc.tradition,
                 language: disc.language,
                 themes: [disc.collection_suggestion].filter(Boolean),
-                suggested_collections: [disc.collection_suggestion].filter(Boolean)
+                suggested_collections: [disc.collection_suggestion].filter(Boolean),
+                historical_period: disc.historical_period,
+                geographic_region: disc.region
               })
             });
 
             stats.imported++;
             stats.published++;
 
-            // Log import and publish events
             await base44.asServiceRole.entities.CAEActivityEvent.create({
               event_type: disc.rights === 'public_domain' ? 'public_domain_imported' : 'open_license_imported',
               resource_title: disc.title,
@@ -287,23 +319,12 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
               details: `Imported and published: ${disc.title}`,
               discovery_id: discovery.id,
               is_public: true,
-              category: disc.resource_type === 'ancient_manuscript' ? 'new_manuscript' : disc.resource_type === 'historical_document' ? 'new_historical_document' : disc.rights === 'public_domain' ? 'new_public_domain_book' : 'new_open_access_publication',
+              category: disc.resource_type === 'ancient_manuscript' ? 'new_manuscript' : disc.resource_type === 'historical_document' ? 'new_historical_document' : disc.resource_type === 'language_resource' || disc.resource_type === 'lexicon' ? 'new_language_resource' : disc.rights === 'public_domain' ? 'new_public_domain_book' : 'new_open_access_publication',
               tradition: disc.tradition,
               source_type: disc.resource_type,
               availability: 'available'
             });
-
-            await base44.asServiceRole.entities.CAEActivityEvent.create({
-              event_type: 'published_to_library',
-              resource_title: disc.title,
-              source_provider: provider.name,
-              status: 'success',
-              details: `Published to World Scripture Library: ${disc.title}`,
-              discovery_id: discovery.id,
-              is_public: true
-            });
           } else {
-            // Blocked — license or permission required
             await base44.asServiceRole.entities.CAEDiscovery.update(discovery.id, {
               discovery_stage: 'blocked',
               blocker_type: 'license_required'
@@ -353,19 +374,74 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
       });
     }
 
-    // 7. Update engine config
+    // 8. PROCESS STUCK DISCOVERIES — pick up items left in intermediate stages
+    try {
+      const stuckDiscoveries = await base44.asServiceRole.entities.CAEDiscovery.filter({ discovery_stage: 'discovered' });
+      for (const stuck of stuckDiscoveries.slice(0, 10)) {
+        try {
+          const metadata = stuck.metadata_harvested ? JSON.parse(stuck.metadata_harvested) : {};
+          const freeRights = ['public_domain', 'open_license', 'creative_commons', 'official_free_access', 'free_with_registration'];
+          if (freeRights.includes(stuck.rights_classification)) {
+            await base44.asServiceRole.entities.CAEDiscovery.update(stuck.id, { discovery_stage: 'importing' });
+
+            const existingRegistry = await base44.asServiceRole.entities.WorldScriptureRegistry.filter({ title: stuck.title });
+            const registryData = {
+              title: stuck.title,
+              tradition: metadata.tradition || 'Unknown',
+              collection: 'sacred_scriptures',
+              source_type: 'reference_work',
+              original_language: metadata.language || 'Unknown',
+              description: metadata.description || '',
+              source_provider: stuck.source_provider_name,
+              source_url: stuck.source_url,
+              access_status: 'available_through_official_link',
+              license_status: stuck.rights_classification === 'public_domain' ? 'public_domain' : 'open_license',
+              copyright_status: stuck.rights_classification === 'public_domain' ? 'public_domain' : 'creative_commons',
+              verification_status: 'source_verified',
+              confidence_level: 'medium',
+              last_verified_at: now,
+              import_status: 'imported'
+            };
+
+            let registryRecord;
+            if (existingRegistry.length > 0) {
+              registryRecord = await base44.asServiceRole.entities.WorldScriptureRegistry.update(existingRegistry[0].id, registryData);
+            } else {
+              registryRecord = await base44.asServiceRole.entities.WorldScriptureRegistry.create(registryData);
+            }
+
+            await base44.asServiceRole.entities.CAEDiscovery.update(stuck.id, {
+              discovery_stage: 'published',
+              registry_record_id: registryRecord.id,
+              published_to_library: true,
+              processed_at: now
+            });
+            stats.processed++;
+            stats.published++;
+          }
+        } catch (e) {
+          // skip individual stuck item errors
+        }
+      }
+    } catch (e) {
+      stats.errors.push(`Stuck processing: ${e.message}`);
+    }
+
+    // 9. Update engine config
+    const totalProcessedThisRun = stats.discovered + stats.processed;
     await base44.asServiceRole.entities.CAEEngineConfig.update(config.id, {
       last_run: now,
-      next_scheduled_run: new Date(Date.now() + (config.scan_interval_minutes || 30) * 60000).toISOString(),
+      next_scheduled_run: new Date(Date.now() + (config.scan_interval_minutes || 5) * 60000).toISOString(),
       total_discoveries: (config.total_discoveries || 0) + stats.discovered,
       total_imports: (config.total_imports || 0) + stats.imported,
       total_published: (config.total_published || 0) + stats.published,
       queue_depth: stats.discovered,
       current_job: null,
+      processing_rate: Math.round(totalProcessedThisRun * 12), // per hour estimate (12 runs per hour at 5-min intervals)
       error_rate: stats.failed > 0 ? Math.round((stats.failed / (stats.discovered || 1)) * 100) : 0
     });
 
-    // 8. Update monitoring subsystem
+    // 10. Update monitoring subsystem
     const monitoringSub = await base44.asServiceRole.entities.CAESubsystemStatus.filter({ subsystem_name: 'monitoring_health' });
     if (monitoringSub.length > 0) {
       await base44.asServiceRole.entities.CAESubsystemStatus.update(monitoringSub[0].id, {
@@ -375,7 +451,7 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
       });
     }
 
-    // 9. Update collection goals progress
+    // 11. Update collection goals progress
     const goals = await base44.asServiceRole.entities.CAECollectionGoal.filter({ status: 'active' });
     for (const goal of goals) {
       if (goal.target_count > 0) {
@@ -400,7 +476,7 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
       }
     }
 
-    // 10. Update mission progress
+    // 12. Update mission progress
     if (config.current_mission_id) {
       const mission = await base44.asServiceRole.entities.CAEMission.get(config.current_mission_id);
       if (mission && mission.status === 'active') {
@@ -416,7 +492,7 @@ Return exactly 5 new discoveries as a JSON array. Each discovery must have:
       status: 'completed',
       run_at: now,
       stats,
-      next_run: new Date(Date.now() + (config.scan_interval_minutes || 30) * 60000).toISOString()
+      next_run: new Date(Date.now() + (config.scan_interval_minutes || 5) * 60000).toISOString()
     });
 
   } catch (error) {
