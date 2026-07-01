@@ -33,9 +33,10 @@ Deno.serve(async (req) => {
 });
 
 async function handleLibrarySearch(base44, query) {
-  // First check if we already have LibraryText records matching this query
+  // First check if we already have NATIVE LibraryText records matching this query
+  // Only native texts (full_text_available) are returned — hyperlinks are not library books
   const existingTexts = await base44.entities.LibraryText.filter(
-    { title: { $regex: query, $options: 'i' } },
+    { title: { $regex: query, $options: 'i' }, full_text_available: true },
     '-updated_date',
     20
   ).catch(() => []);
@@ -174,10 +175,12 @@ Return a JSON object with these keys:
     major_themes: JSON.stringify(t.major_themes || []),
     structure: t.structure || '',
     available_translations: JSON.stringify(t.available_translations || []),
-    full_text_available: !!t.full_text_available,
-    full_text_unavailable_reason: t.full_text_unavailable_reason || '',
+    full_text_available: false,
+    full_text_unavailable_reason: 'Pending native acquisition by the Content Acquisition Engine.',
     source_url: t.source_url || '',
-    access_level: validAccess.includes(t.access_level) ? t.access_level : 'metadata_only',
+    access_level: 'metadata_only',
+    packaging_status: 'not_packaged',
+    acquisition_method: 'external_only',
     verification_status: validVerification.includes(t.verification_status) ? t.verification_status : 'metadata_only',
     license_status: validLicense.includes(t.license_status) ? t.license_status : 'metadata_only',
     source_provider: t.source_provider || '',

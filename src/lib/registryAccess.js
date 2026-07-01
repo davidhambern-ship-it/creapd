@@ -1,9 +1,36 @@
 import { base44 } from '@/api/base44Client';
 
 const ACCESSIBLE_STATUSES = ['available_in_producer', 'available_through_api', 'public_domain_import_available'];
-const EXTERNAL_STATUSES = ['available_through_official_link', 'available_through_licensed_provider'];
 
 export async function resolveTextAccess(libraryText, userId, userName) {
+  // NATIVE LIBRARY POLICY: The LibraryText's own access_level takes precedence.
+  // If the text has been natively acquired (full_text_available), it always opens in the Reader.
+  // The internet is the acquisition source. Producer is the library.
+
+  // 1. Native resource — open in the Reader immediately
+  if (libraryText.full_text_available || libraryText.access_level === 'full_text') {
+    return {
+      canAccess: true,
+      redirect: 'reader',
+      accessStatus: 'available_in_producer',
+      licenseStatus: libraryText.license_status || 'public_domain',
+      registry: null
+    };
+  }
+
+  // 2. Pending acquisition — the CAE is acquiring this resource
+  if (libraryText.packaging_status === 'not_packaged' || libraryText.packaging_status === 'packaging' || libraryText.access_level === 'metadata_only') {
+    return {
+      canAccess: false,
+      redirect: null,
+      accessStatus: 'metadata_only',
+      licenseStatus: libraryText.license_status || 'unknown',
+      registry: null,
+      pendingAcquisition: true
+    };
+  }
+
+  // 3. For genuinely restricted content, check the World Scripture Registry
   let registry = null;
   try {
     const records = await base44.entities.WorldScriptureRegistry.filter(
@@ -21,13 +48,7 @@ export async function resolveTextAccess(libraryText, userId, userName) {
     accessStatus = registry.access_status;
     licenseStatus = registry.license_status;
   } else {
-    const accessMap = {
-      'full_text': 'available_in_producer',
-      'embedded_access': 'available_through_official_link',
-      'external_link': 'available_through_official_link',
-      'metadata_only': 'metadata_only'
-    };
-    accessStatus = accessMap[libraryText.access_level] || 'metadata_only';
+    accessStatus = 'metadata_only';
     licenseStatus = libraryText.license_status || 'unknown';
   }
 
@@ -35,11 +56,7 @@ export async function resolveTextAccess(libraryText, userId, userName) {
     return { canAccess: true, redirect: 'reader', accessStatus, licenseStatus, registry };
   }
 
-  if (EXTERNAL_STATUSES.includes(accessStatus)) {
-    const url = registry?.source_url || libraryText.source_url;
-    return { canAccess: true, redirect: 'external', accessStatus, licenseStatus, registry, url };
-  }
-
+  // Log demand for restricted content
   if (registry) {
     try {
       await base44.entities.RegistryDemandEvent.create({

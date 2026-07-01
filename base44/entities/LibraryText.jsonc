@@ -88,9 +88,52 @@
       "type": "string",
       "description": "Reason full text is unavailable (paywall, copyright, metadata only)"
     },
+    "chapters": {
+      "type": "string",
+      "description": "JSON array of structured chapter objects: {title, order, sections: [{title, paragraphs: []}]}"
+    },
+    "table_of_contents": {
+      "type": "string",
+      "description": "JSON array of {chapter_number, title} for navigation"
+    },
+    "word_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total word count of the full text"
+    },
+    "reading_time_minutes": {
+      "type": "number",
+      "default": 0,
+      "description": "Estimated reading time in minutes (at 200 wpm)"
+    },
+    "packaging_status": {
+      "type": "string",
+      "enum": [
+        "not_packaged",
+        "packaging",
+        "packaged",
+        "failed"
+      ],
+      "default": "not_packaged"
+    },
+    "acquisition_method": {
+      "type": "string",
+      "enum": [
+        "native_fetch",
+        "llm_acquired",
+        "api_integration",
+        "external_only"
+      ],
+      "default": "external_only"
+    },
+    "is_foundation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a Foundation Library resource"
+    },
     "source_url": {
       "type": "string",
-      "description": "URL to the official source or publisher"
+      "description": "URL to the official source or publisher (acquisition source, not primary reading experience)"
     },
     "embedded_reader_url": {
       "type": "string",

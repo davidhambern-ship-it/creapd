@@ -12,6 +12,7 @@ import SourceIntegrityBadge from '@/components/library/SourceIntegrityBadge';
 import PassageActions from '@/components/library/PassageActions';
 import WordInteractionModal from '@/components/library/WordInteractionModal';
 import { HIGHLIGHT_CATEGORIES, READING_MODES } from '@/lib/spiritualConstants';
+import NativeTextReader from '@/components/library/NativeTextReader';
 
 export default function LibraryReader() {
   const { textId } = useParams();
@@ -29,6 +30,7 @@ export default function LibraryReader() {
   const [readingMode, setReadingMode] = useState('reading');
   const [noteText, setNoteText] = useState('');
   const [highlightCategory, setHighlightCategory] = useState('important');
+  const [chapters, setChapters] = useState([]);
 
   const loadText = useCallback(async () => {
     if (!textId) return;
@@ -44,6 +46,12 @@ export default function LibraryReader() {
       setHighlights(h || []);
       setNotes(n || []);
       setBookmarks(b || []);
+      try {
+        const parsed = JSON.parse(t.chapters || '[]');
+        setChapters(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setChapters([]);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -243,6 +251,18 @@ export default function LibraryReader() {
 
           {/* Reading Area */}
           {text.full_text_available && text.full_text ? (
+            chapters.length > 0 ? (
+              <NativeTextReader
+                text={text}
+                chapters={chapters}
+                onWordClick={handleWordClick}
+                onPassageClick={handlePassageClick}
+                onAddHighlight={handleAddHighlight}
+                onBookmark={handleBookmark}
+                bookmarks={bookmarks}
+                highlights={highlights}
+              />
+            ) : (
             <div className="glass-panel p-6 md:p-8">
               {readingMode === 'focus' ? (
                 <div className="prose prose-invert max-w-none">
@@ -297,16 +317,17 @@ export default function LibraryReader() {
                 </div>
               )}
             </div>
+            )
           ) : (
             <div className="glass-panel p-8 text-center">
               <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-heading font-semibold mb-2">Full Text Not Available</h3>
+              <h3 className="font-heading font-semibold mb-2">Native Acquisition Pending</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {text.full_text_unavailable_reason || 'This text is available as metadata only due to licensing or access restrictions.'}
+                {text.full_text_unavailable_reason || 'The Content Acquisition Engine is working to acquire this resource as a native text.'}
               </p>
               {text.source_url && (
-                <a href={text.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:underline">
-                  <ExternalLink className="w-4 h-4" /> Access Official Source
+                <a href={text.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                  <ExternalLink className="w-3.5 h-3.5" /> View acquisition source
                 </a>
               )}
               <div className="mt-6 p-4 rounded-lg bg-secondary/30 text-left">

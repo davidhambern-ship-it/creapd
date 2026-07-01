@@ -43,6 +43,17 @@ Deno.serve(async (req) => {
       last_run: now
     });
 
+    // MIGRATION: Update existing LibraryText records that were created as external links
+    // to the new native library model (packaging_status: not_packaged, access_level: metadata_only)
+    try {
+      await base44.asServiceRole.entities.LibraryText.updateMany(
+        { full_text_available: false, access_level: 'external_link' },
+        { $set: { packaging_status: 'not_packaged', access_level: 'metadata_only', acquisition_method: 'external_only' } }
+      );
+    } catch (migrationErr) {
+      // Non-fatal — migration may have already run
+    }
+
     // 2. Initialize subsystems if needed
     const subsystems = await base44.asServiceRole.entities.CAESubsystemStatus.list();
     if (subsystems.length === 0) {
@@ -308,7 +319,8 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
               })
             });
 
-            // Create LibraryText record so the resource appears in the World Scripture Library
+            // Create LibraryText record with 'not_packaged' status — will be acquired natively in the acquisition phase
+            // The CAE does not create hyperlinks. It creates records that will become native books.
             const existingLibraryText = await base44.asServiceRole.entities.LibraryText.filter({ title: disc.title });
             if (existingLibraryText.length === 0) {
               const collectionMap = {
@@ -324,7 +336,6 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
                 language_resource: 'language_learning',
                 devotional: 'sacred_scriptures'
               };
-              const accessLevel = disc.rights === 'public_domain' ? 'external_link' : 'external_link';
               const licenseStatus = disc.rights === 'public_domain' ? 'public_domain' : 'official_free_access';
               const verificationStatus = disc.rights === 'public_domain' ? 'public_domain' : 'official_organization';
 
@@ -338,11 +349,13 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
                 publisher: disc.provider_name,
                 full_text: '',
                 full_text_available: false,
-                access_level: accessLevel,
+                access_level: 'metadata_only',
+                packaging_status: 'not_packaged',
+                acquisition_method: 'external_only',
                 license_status: licenseStatus,
                 verification_status: verificationStatus,
                 last_verification: now,
-                confidence_notes: `Auto-acquired by CAE from ${provider.name}. Rights: ${disc.rights}.`,
+                confidence_notes: `Discovered by CAE from ${provider.name}. Rights: ${disc.rights}. Pending native acquisition.`,
                 major_themes: JSON.stringify([disc.collection_suggestion].filter(Boolean)),
                 historical_context: disc.description || '',
                 geographic_origin: disc.region || ''
@@ -415,6 +428,164 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
       });
     }
 
+    // 7b. NATIVE ACQUISITION PHASE — acquire actual text content for pending resources
+    // The CAE does not create hyperlinks. It acquires actual knowledge and packages it natively.
+    // This is the Resource Packaging Engine in action.
+    try {
+      const recentTexts = await base44.asServiceRole.entities.LibraryText.list('-created_date', 50);
+      const pendingTexts = recentTexts.filter(t => !t.packaging_status || t.packaging_status === 'not_packaged');
+      const toAcquire = pendingTexts.slice(0, 2); // Acquire 2 per cycle to stay within timeout
+
+      for (const textRecord of toAcquire) {
+        try {
+          await base44.asServiceRole.entities.LibraryText.update(textRecord.id, {
+            packaging_status: 'packaging'
+          });
+
+          const acquisitionPrompt = `You are the Resource Acquisition Engine for Producer's World Scripture Library. Your task is to acquire the ACTUAL TEXT CONTENT of a legally free resource and return it structured into chapters.
+
+Resource Title: ${textRecord.title}
+Tradition: ${textRecord.tradition}
+Original Language: ${textRecord.original_language || 'Unknown'}
+Source URL: ${textRecord.source_url || 'N/A'}
+Description: ${textRecord.historical_context || 'N/A'}
+
+CRITICAL INSTRUCTIONS:
+1. Search the internet for the actual full text of this resource.
+2. You MUST return the actual text content — NOT a summary, NOT a description, NOT a paraphrase.
+3. For public domain texts (Bhagavad Gita, Tao Te Ching, Dhammapada, Analects, etc.), retrieve the complete text.
+4. Structure the text into chapters, with each chapter containing its full text content.
+5. For shorter works (poems, short texts), return the complete text as a single chapter.
+6. For longer works, return as many chapters as you can (at least the first 3-5 chapters).
+7. Preserve paragraph breaks within each chapter's content using double newlines.
+
+Set acquisition_successful to true ONLY if you retrieved actual text content. If the text is not publicly available, set it to false.`;
+
+          const acquisitionResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: acquisitionPrompt,
+            add_context_from_internet: true,
+            model: 'gemini_3_flash',
+            response_json_schema: {
+              type: 'object',
+              properties: {
+                acquisition_successful: { type: 'boolean' },
+                chapters: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      content: { type: 'string' }
+                    }
+                  }
+                },
+                word_count: { type: 'number' },
+                notes: { type: 'string' }
+              }
+            }
+          });
+
+          if (acquisitionResponse.acquisition_successful && (acquisitionResponse.chapters || []).length > 0) {
+            // Structure chapters into sections and paragraphs
+            const chapters = (acquisitionResponse.chapters || []).map((ch, idx) => {
+              const paragraphs = (ch.content || '').split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 0);
+              const sections = paragraphs.length > 10
+                ? Array.from({ length: Math.ceil(paragraphs.length / 8) }, (_, i) => ({
+                    title: '',
+                    paragraphs: paragraphs.slice(i * 8, (i + 1) * 8)
+                  }))
+                : [{ title: '', paragraphs }];
+              return {
+                title: ch.title || `Chapter ${idx + 1}`,
+                order: idx + 1,
+                sections
+              };
+            });
+
+            const fullText = (acquisitionResponse.chapters || []).map(ch => ch.content || '').join('\n\n');
+            const wordCount = acquisitionResponse.word_count || fullText.split(/\s+/).filter(w => w.length > 0).length;
+            const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+            const toc = chapters.map((ch, idx) => ({ chapter_number: idx + 1, title: ch.title }));
+
+            await base44.asServiceRole.entities.LibraryText.update(textRecord.id, {
+              full_text: fullText,
+              full_text_available: true,
+              full_text_unavailable_reason: '',
+              chapters: JSON.stringify(chapters),
+              table_of_contents: JSON.stringify(toc),
+              word_count: wordCount,
+              reading_time_minutes: readingTime,
+              packaging_status: 'packaged',
+              acquisition_method: 'llm_acquired',
+              access_level: 'full_text',
+              structure: `${chapters.length} chapter(s), ${wordCount} words, ~${readingTime} min read`,
+              last_verification: now
+            });
+
+            // Also update the WorldScriptureRegistry to reflect native access
+            try {
+              const registryRecords = await base44.asServiceRole.entities.WorldScriptureRegistry.filter({ title: textRecord.title });
+              if (registryRecords.length > 0) {
+                await base44.asServiceRole.entities.WorldScriptureRegistry.update(registryRecords[0].id, {
+                  access_status: 'available_in_producer',
+                  import_status: 'imported',
+                  full_text_available: true,
+                  search_indexed: true,
+                  last_verified_at: now
+                });
+              }
+            } catch {}
+
+            stats.imported++;
+
+            await base44.asServiceRole.entities.CAEActivityEvent.create({
+              event_type: 'published_to_library',
+              resource_title: textRecord.title,
+              source_provider: textRecord.source_provider || 'CAE',
+              status: 'success',
+              details: `Native resource acquired: ${textRecord.title} — ${chapters.length} chapters, ${wordCount} words`,
+              is_public: true,
+              category: 'newly_indexed',
+              tradition: textRecord.tradition
+            });
+
+            await base44.asServiceRole.entities.CAEOperationLog.create({
+              operation_type: 'publishing',
+              description: `Native acquisition: ${textRecord.title}`,
+              resource_title: textRecord.title,
+              outcome: 'success',
+              details: `${chapters.length} chapters, ${wordCount} words, ${readingTime} min read`,
+              subsystem: 'live_library_publisher'
+            });
+          } else {
+            await base44.asServiceRole.entities.LibraryText.update(textRecord.id, {
+              packaging_status: 'failed',
+              full_text_unavailable_reason: acquisitionResponse.notes || 'Content could not be retrieved at this time.'
+            });
+
+            await base44.asServiceRole.entities.CAEOperationLog.create({
+              operation_type: 'failure',
+              description: `Acquisition failed: ${textRecord.title}`,
+              resource_title: textRecord.title,
+              outcome: 'failure',
+              error_message: acquisitionResponse.notes || 'Unknown acquisition failure',
+              subsystem: 'import_engine'
+            });
+          }
+        } catch (acqErr) {
+          try {
+            await base44.asServiceRole.entities.LibraryText.update(textRecord.id, {
+              packaging_status: 'failed',
+              full_text_unavailable_reason: acqErr.message
+            });
+          } catch {}
+          stats.errors.push(`Acquisition: ${acqErr.message}`);
+        }
+      }
+    } catch (acqPhaseErr) {
+      stats.errors.push(`Acquisition phase: ${acqPhaseErr.message}`);
+    }
+
     // 8. PROCESS STUCK DISCOVERIES — pick up items left in intermediate stages
     try {
       const stuckDiscoveries = await base44.asServiceRole.entities.CAEDiscovery.filter({ discovery_stage: 'discovered' });
@@ -458,7 +629,7 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
               processed_at: now
             });
 
-            // Also create LibraryText if it doesn't exist
+            // Also create LibraryText if it doesn't exist (with not_packaged status for native acquisition)
             const existingLibText = await base44.asServiceRole.entities.LibraryText.filter({ title: stuck.title });
             if (existingLibText.length === 0) {
               await base44.asServiceRole.entities.LibraryText.create({
@@ -471,11 +642,13 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
                 publisher: stuck.source_provider_name,
                 full_text: '',
                 full_text_available: false,
-                access_level: 'external_link',
+                access_level: 'metadata_only',
+                packaging_status: 'not_packaged',
+                acquisition_method: 'external_only',
                 license_status: stuck.rights_classification === 'public_domain' ? 'public_domain' : 'official_free_access',
                 verification_status: stuck.rights_classification === 'public_domain' ? 'public_domain' : 'official_organization',
                 last_verification: now,
-                confidence_notes: `Auto-acquired by CAE from ${stuck.source_provider_name}.`,
+                confidence_notes: `Discovered by CAE from ${stuck.source_provider_name}. Pending native acquisition.`,
                 historical_context: metadata.description || ''
               });
             }

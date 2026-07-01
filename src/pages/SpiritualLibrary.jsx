@@ -129,7 +129,7 @@ export default function SpiritualLibrary() {
       } else {
         const accessBadge = getStatusBadge(REGISTRY_ACCESS_STATUS, result.accessStatus);
         const messages = {
-          metadata_only: 'This text is available as metadata only. Full text is not currently accessible in Producer.',
+          metadata_only: 'The Content Acquisition Engine is working to acquire this resource. Full text will be available in Producer once native acquisition is complete.',
           license_required: 'This text requires a license. Your request has been logged and will be reviewed by the admin team.',
           permission_required: 'This text requires permission from the rights holder. Your request has been logged.',
           unavailable: 'This text is currently unavailable. Your interest has been logged.',
@@ -158,6 +158,8 @@ export default function SpiritualLibrary() {
 
   const totalWordsLearned = wordStudies.filter(w => w.is_learned).length;
   const totalStudyStreak = Math.max(...languageProgress.map(l => l.study_streak || 0), 0);
+  const nativeTexts = libraryTexts.filter(t => t.full_text_available);
+  const pendingTexts = libraryTexts.filter(t => !t.full_text_available && t.packaging_status !== 'failed');
 
   return (
     <div className="min-h-screen p-6 md:p-8">
@@ -279,7 +281,7 @@ export default function SpiritualLibrary() {
                     <button
                       key={i}
                       onClick={() => {
-                        const text = libraryTexts.find(t => t.title === title);
+                        const text = nativeTexts.find(t => t.title === title);
                         if (text) handleOpenText(text);
                         else handleSearch(`Read: ${title}`);
                       }}
@@ -317,18 +319,18 @@ export default function SpiritualLibrary() {
             )}
 
             {/* Library Collections */}
-            <LibraryCollections sacredTexts={libraryTexts.filter(t => t.collection === 'sacred_scriptures').map(t => t.title)} onOpenText={(title) => {
+            <LibraryCollections sacredTexts={nativeTexts.filter(t => t.collection === 'sacred_scriptures').map(t => t.title)} onOpenText={(title) => {
               const text = libraryTexts.find(t => t.title === title);
               if (text) handleOpenText(text);
               else handleSearch(`Read: ${title}`);
             }} />
 
-            {/* Library Texts */}
-            {libraryTexts.length > 0 && (
+            {/* Library Catalog — Only native texts (full text available) appear as books */}
+            {nativeTexts.length > 0 && (
               <div>
                 <h3 className="text-sm font-heading font-semibold text-muted-foreground uppercase tracking-wider mb-3">Library Catalog</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {libraryTexts.slice(0, 12).map(text => (
+                  {nativeTexts.slice(0, 12).map(text => (
                     <button
                       key={text.id}
                       onClick={() => handleOpenText(text)}
@@ -341,11 +343,22 @@ export default function SpiritualLibrary() {
                           <p className="text-xs text-muted-foreground">{text.tradition}</p>
                         </div>
                       </div>
-                      {text.original_language && (
-                        <p className="text-xs text-muted-foreground ml-6">{text.original_language}</p>
-                      )}
+                      <div className="flex items-center gap-2 ml-6">
+                        {text.original_language && <p className="text-xs text-muted-foreground">{text.original_language}</p>}
+                        {text.reading_time_minutes > 0 && <p className="text-xs text-muted-foreground">· {text.reading_time_minutes} min</p>}
+                      </div>
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Acquiring Resources — pending native acquisition, not displayed as books */}
+            {pendingTexts.length > 0 && (
+              <div className="glass-panel p-4 border-accent/20">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  <span>The Content Acquisition Engine is acquiring {pendingTexts.length} additional resource{pendingTexts.length !== 1 ? 's' : ''}...</span>
                 </div>
               </div>
             )}
@@ -423,7 +436,9 @@ export default function SpiritualLibrary() {
                             >
                               <p className="text-sm font-medium truncate">{text.title}</p>
                               <p className="text-xs text-muted-foreground">{text.tradition} · {text.original_language || 'Unknown language'}</p>
-                              {text.full_text_available && <p className="text-xs text-berna-emerald mt-1">Full text available</p>}
+                              {text.full_text_available
+                            ? <p className="text-xs text-berna-emerald mt-1 flex items-center gap-1"><BookOpen className="w-3 h-3" /> Read Now</p>
+                            : <p className="text-xs text-accent mt-1 flex items-center gap-1"><Package className="w-3 h-3" /> Acquiring</p>}
                             </button>
                           ))}
                         </div>
@@ -531,7 +546,7 @@ export default function SpiritualLibrary() {
         {/* ACTIVITY TAB */}
         {activeTab === 'activity' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ActivityPanel title="Recently Opened Texts" icon={BookOpen} items={libraryTexts.slice(0, 5).map(t => ({ title: t.title, subtitle: t.tradition, onClick: () => handleOpenText(t) }))} />
+            <ActivityPanel title="Recently Opened Texts" icon={BookOpen} items={nativeTexts.slice(0, 5).map(t => ({ title: t.title, subtitle: t.tradition, onClick: () => handleOpenText(t) }))} />
             <ActivityPanel title="Recent Research Projects" icon={GraduationCap} items={researchProjects.map(s => ({ title: s.title, subtitle: s.research_question, to: `/spiritual/study/${s.id}` }))} />
             <ActivityPanel title="Recent Word Studies" icon={Languages} items={wordStudies.map(w => ({ title: w.word, subtitle: w.language, to: `/spiritual/library/word/${w.id}` }))} />
             <ActivityPanel title="Recent Comparisons" icon={Columns2} items={comparisons.map(c => ({ title: c.title, subtitle: c.comparison_type?.replace(/_/g, ' '), to: `/spiritual/library/compare/${c.id}` }))} />
@@ -545,7 +560,7 @@ export default function SpiritualLibrary() {
         {activeTab === 'collections' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <CollectionPanel title="Saved Texts" icon={BookOpen} items={libraryTexts.filter(t => t.is_saved)} onOpen={(t) => handleOpenText(t)} />
+              <CollectionPanel title="Saved Texts" icon={BookOpen} items={nativeTexts.filter(t => t.is_saved)} onOpen={(t) => handleOpenText(t)} />
               <CollectionPanel title="Bookmarked Passages" icon={BookMarked} items={bookmarks} onOpen={(b) => navigate(`/spiritual/library/reader/${b.text_id}`)} />
               <CollectionPanel title="Favorite Word Studies" icon={Languages} items={wordStudies.filter(w => w.is_favorite)} onOpen={(w) => navigate(`/spiritual/library/word/${w.id}`)} />
               <CollectionPanel title="Saved Comparisons" icon={Columns2} items={comparisons.filter(c => c.is_pinned)} onOpen={(c) => navigate(`/spiritual/library/compare/${c.id}`)} />
@@ -647,7 +662,7 @@ export default function SpiritualLibrary() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatCard icon={GraduationCap} label="Research Projects" value={researchProjects.length} />
               <StatCard icon={Columns2} label="Comparisons" value={comparisons.length} />
-              <StatCard icon={BookOpen} label="Texts in Library" value={libraryTexts.length} />
+              <StatCard icon={BookOpen} label="Texts in Library" value={nativeTexts.length} />
               <StatCard icon={Star} label="Highlights" value={highlights.length} />
             </div>
 

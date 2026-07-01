@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Globe, Search, Download, RefreshCw, FileText, Lock, Wallet, Users, AlertTriangle, HeartPulse, TrendingUp, Clock, BookCheck, ShieldCheck, Database, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CAEActivityFeed from '@/components/cae/CAEActivityFeed';
+import FoundationLibraryProgress from '@/components/cae/FoundationLibraryProgress';
 
 export default function CAEOverview({ config, activityEvents, onRefresh }) {
   const [stats, setStats] = useState({ providers: 0, discoveries: 0, published: 0, blocked: 0, missions: 0, goals: 0, subsystemsHealthy: 0, subsystemsTotal: 0, budgetBalance: 0, purchaseQueue: 0 });
@@ -66,6 +67,8 @@ export default function CAEOverview({ config, activityEvents, onRefresh }) {
 
   return (
     <div className="space-y-6">
+      <FoundationLibraryProgress config={config} />
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {statCards.map(card => {
           const Icon = card.icon;
