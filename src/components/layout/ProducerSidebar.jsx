@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck
+  ShieldCheck, LayoutGrid
 } from 'lucide-react';
 
 const navItems = [
@@ -65,6 +65,15 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
             );
           })}
         </nav>
+        <div className="p-2 border-t border-white/[0.06]">
+          <Link
+            to="/production-types"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-white hover:bg-white/[0.04] transition-colors"
+          >
+            <LayoutGrid className="w-4 h-4 flex-shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">Switch Production Type</span>}
+          </Link>
+        </div>
         <button
           onClick={onToggle}
           className="p-3 text-muted-foreground hover:text-white border-t border-white/[0.06] flex items-center justify-center"
@@ -90,6 +99,10 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
             </Link>
           );
         })}
+        <Link to="/production-types" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/production-types' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
+          <LayoutGrid className="w-4 h-4" />
+          <span className="text-[9px]">Switch</span>
+        </Link>
         <Link to="/settings" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/settings' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
           <Settings className="w-4 h-4" />
           <span className="text-[9px]">More</span>
