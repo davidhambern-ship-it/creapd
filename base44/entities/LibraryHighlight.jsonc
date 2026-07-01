@@ -1,0 +1,50 @@
+{
+  "name": "LibraryHighlight",
+  "type": "object",
+  "properties": {
+    "text_id": {
+      "type": "string"
+    },
+    "text_title": {
+      "type": "string"
+    },
+    "passage_reference": {
+      "type": "string"
+    },
+    "highlighted_text": {
+      "type": "string",
+      "description": "The highlighted portion of text"
+    },
+    "highlight_category": {
+      "type": "string",
+      "enum": [
+        "important",
+        "question",
+        "research",
+        "language",
+        "historical",
+        "production_idea",
+        "personal_insight",
+        "prayer",
+        "teaching_point",
+        "application"
+      ],
+      "default": "important"
+    },
+    "note": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "research_session_id": {
+      "type": "string",
+      "description": "Associated ResearchSession ID if linked to a research project"
+    }
+  },
+  "required": [
+    "text_id",
+    "text_title",
+    "highlighted_text"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "name": "LanguageProgress",
+  "type": "object",
+  "properties": {
+    "language": {
+      "type": "string",
+      "description": "Language being studied (e.g. Biblical Hebrew, Koine Greek)"
+    },
+    "current_level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "elementary",
+        "intermediate",
+        "advanced",
+        "fluent"
+      ],
+      "default": "beginner"
+    },
+    "words_learned": {
+      "type": "number",
+      "default": 0
+    },
+    "words_mastered": {
+      "type": "number",
+      "default": 0
+    },
+    "writing_progress": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 percentage"
+    },
+    "reading_progress": {
+      "type": "number",
+      "default": 0
+    },
+    "pronunciation_progress": {
+      "type": "number",
+      "default": 0
+    },
+    "grammar_progress": {
+      "type": "number",
+      "default": 0
+    },
+    "current_lesson": {
+      "type": "string"
+    },
+    "suggested_lesson": {
+      "type": "string"
+    },
+    "study_streak": {
+      "type": "number",
+      "default": 0,
+      "description": "Current study streak in days"
+    },
+    "last_studied": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_study_time_minutes": {
+      "type": "number",
+      "default": 0
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "language"
+  ]
+}

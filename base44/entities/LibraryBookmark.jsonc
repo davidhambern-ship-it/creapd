@@ -1,0 +1,54 @@
+{
+  "name": "LibraryBookmark",
+  "type": "object",
+  "properties": {
+    "text_id": {
+      "type": "string",
+      "description": "ID of the LibraryText this bookmark belongs to"
+    },
+    "text_title": {
+      "type": "string"
+    },
+    "passage_reference": {
+      "type": "string",
+      "description": "Passage reference (e.g. John 3:16, Gita 2:47)"
+    },
+    "chapter": {
+      "type": "string"
+    },
+    "verse": {
+      "type": "string"
+    },
+    "section": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "description": "Bookmark category"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated tags"
+    },
+    "collection_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "text_id",
+    "text_title",
+    "passage_reference"
+  ]
+}

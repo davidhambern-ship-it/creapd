@@ -1,0 +1,191 @@
+{
+  "name": "LibraryText",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the text (e.g. Gospel of John, Bhagavad Gita)"
+    },
+    "tradition": {
+      "type": "string",
+      "description": "Faith tradition this text belongs to"
+    },
+    "collection": {
+      "type": "string",
+      "enum": [
+        "sacred_scriptures",
+        "historical_documents",
+        "ancient_manuscripts",
+        "apocryphal",
+        "original_languages",
+        "lexicons",
+        "historical_records",
+        "reference_works",
+        "organization_publications",
+        "language_learning",
+        "research_collections",
+        "personal_collections"
+      ],
+      "default": "sacred_scriptures"
+    },
+    "original_language": {
+      "type": "string",
+      "description": "Original language of the text"
+    },
+    "writing_system": {
+      "type": "string",
+      "description": "Writing system used (e.g. Hebrew script, Greek alphabet)"
+    },
+    "traditional_attribution": {
+      "type": "string",
+      "description": "Traditional attribution of authorship"
+    },
+    "scholarly_dating": {
+      "type": "string",
+      "description": "Scholarly consensus on dating"
+    },
+    "historical_dating": {
+      "type": "string",
+      "description": "Historical or traditional dating"
+    },
+    "historical_context": {
+      "type": "string",
+      "description": "Historical context and background"
+    },
+    "geographic_origin": {
+      "type": "string",
+      "description": "Geographic origin of the text"
+    },
+    "major_themes": {
+      "type": "string",
+      "description": "JSON array of major themes"
+    },
+    "structure": {
+      "type": "string",
+      "description": "Structure of the text (books, chapters, verses, etc.)"
+    },
+    "available_editions": {
+      "type": "string",
+      "description": "JSON array of available editions"
+    },
+    "available_translations": {
+      "type": "string",
+      "description": "JSON array of available translations with metadata"
+    },
+    "available_manuscripts": {
+      "type": "string",
+      "description": "JSON array of available manuscripts"
+    },
+    "full_text": {
+      "type": "string",
+      "description": "Full text content when legally available"
+    },
+    "full_text_available": {
+      "type": "boolean",
+      "default": false
+    },
+    "full_text_unavailable_reason": {
+      "type": "string",
+      "description": "Reason full text is unavailable (paywall, copyright, metadata only)"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "URL to the official source or publisher"
+    },
+    "embedded_reader_url": {
+      "type": "string",
+      "description": "URL for official embedded access when supported"
+    },
+    "access_level": {
+      "type": "string",
+      "enum": [
+        "full_text",
+        "embedded_access",
+        "external_link",
+        "metadata_only"
+      ],
+      "default": "metadata_only"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "verified_primary_source",
+        "verified_historical_source",
+        "verified_academic_source",
+        "official_publisher",
+        "official_organization",
+        "public_domain",
+        "licensed_content",
+        "metadata_only",
+        "community_resource"
+      ],
+      "default": "metadata_only"
+    },
+    "license_status": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "official_free_access",
+        "licensed_integration",
+        "external_official_link",
+        "metadata_only",
+        "unavailable"
+      ],
+      "default": "metadata_only"
+    },
+    "source_provider": {
+      "type": "string",
+      "description": "Name of the source provider or repository"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "translator": {
+      "type": "string"
+    },
+    "edition": {
+      "type": "string"
+    },
+    "publication_date": {
+      "type": "string"
+    },
+    "last_verification": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confidence_notes": {
+      "type": "string",
+      "description": "Notes on confidence and verification of source"
+    },
+    "is_saved": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    },
+    "reading_progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Reading progress as percentage 0-100"
+    },
+    "last_read_position": {
+      "type": "string",
+      "description": "Last read position (chapter:verse or section)"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated tags"
+    },
+    "collection_name": {
+      "type": "string",
+      "description": "Personal collection name if saved to one"
+    }
+  },
+  "required": [
+    "title",
+    "tradition",
+    "collection"
+  ]
+}

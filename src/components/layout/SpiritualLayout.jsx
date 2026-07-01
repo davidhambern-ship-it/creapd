@@ -3,13 +3,15 @@ import { Outlet, useLocation, Link } from 'react-router-dom';
 import { SPIRITUAL_NAV_ITEMS } from '@/lib/spiritualConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, BookOpen, GraduationCap,
-  PenTool, Sparkles, Package, Download, Settings, X, Menu, LayoutGrid, Circle, Church
+  PenTool, Sparkles, Package, Download, Settings, X, Menu, LayoutGrid, Circle, Church,
+  Library, Languages, Columns2, Star, Clock3
 } from 'lucide-react';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, BookOpen,
   GraduationCap, PenTool, Sparkles, Package, Download, Settings,
-  X, Menu, LayoutGrid, Circle, Church
+  X, Menu, LayoutGrid, Circle, Church, Library, Languages, Columns2,
+  Star, Clock3
 };
 
 export default function SpiritualLayout() {

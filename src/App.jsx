@@ -58,6 +58,10 @@ import SpiritualDashboard from '@/pages/SpiritualDashboard';
 import SpiritualResearch from '@/pages/SpiritualResearch';
 import SpiritualResearchDetail from '@/pages/SpiritualResearchDetail';
 import SpiritualLibrary from '@/pages/SpiritualLibrary';
+import LibraryReader from '@/pages/LibraryReader';
+import LibraryWordStudy from '@/pages/LibraryWordStudy';
+import LibraryCompare from '@/pages/LibraryCompare';
+import LibraryLanguages from '@/pages/LibraryLanguages';
 import SpiritualStudy from '@/pages/SpiritualStudy';
 import SpiritualStudySession from '@/pages/SpiritualStudySession';
 import SpiritualMessage from '@/pages/SpiritualMessage';
@@ -148,6 +152,11 @@ const AuthenticatedApp = () => {
           <Route path="/spiritual/research" element={<SpiritualResearch />} />
           <Route path="/spiritual/research/:researchItemId" element={<SpiritualResearchDetail />} />
           <Route path="/spiritual/library" element={<SpiritualLibrary />} />
+          <Route path="/spiritual/library/reader/:textId" element={<LibraryReader />} />
+          <Route path="/spiritual/library/word/:wordId" element={<LibraryWordStudy />} />
+          <Route path="/spiritual/library/compare" element={<LibraryCompare />} />
+          <Route path="/spiritual/library/compare/:comparisonId" element={<LibraryCompare />} />
+          <Route path="/spiritual/library/languages" element={<LibraryLanguages />} />
           <Route path="/spiritual/study" element={<SpiritualStudy />} />
           <Route path="/spiritual/study/:sessionId" element={<SpiritualStudySession />} />
           <Route path="/spiritual/message" element={<SpiritualMessage />} />

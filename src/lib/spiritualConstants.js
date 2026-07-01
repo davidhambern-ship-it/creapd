@@ -143,7 +143,10 @@ export const SPIRITUAL_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/spiritual/dashboard' },
   { icon: 'Settings2', label: 'Configuration', path: '/spiritual/configure' },
   { icon: 'Search', label: 'Research', path: '/spiritual/research' },
-  { icon: 'BookOpen', label: 'World Scripture Library', path: '/spiritual/library' },
+  { icon: 'Library', label: 'Library Home', path: '/spiritual/library' },
+  { icon: 'BookOpen', label: 'Sacred Texts', path: '/spiritual/library?browse=collection' },
+  { icon: 'Languages', label: 'Languages', path: '/spiritual/library/languages' },
+  { icon: 'Columns2', label: 'Comparisons', path: '/spiritual/library/compare' },
   { icon: 'GraduationCap', label: 'Study Workspace', path: '/spiritual/study' },
   { icon: 'PenTool', label: 'Message Builder', path: '/spiritual/message' },
   { icon: 'Sparkles', label: 'AI Assets', path: '/spiritual/assets' },
@@ -262,4 +265,135 @@ export const LIBRARY_HISTORICAL_PERIODS = [
 export const LIBRARY_REGIONS = [
   'Middle East', 'Mediterranean', 'Europe', 'South Asia', 'East Asia',
   'Southeast Asia', 'Africa', 'Americas', 'Oceania'
+];
+
+// ===== World Scripture Library — Expanded Constants =====
+
+export const BROWSE_CATEGORIES = [
+  { key: 'tradition', label: 'Faith Tradition', icon: 'Globe' },
+  { key: 'language', label: 'Language', icon: 'Languages' },
+  { key: 'period', label: 'Historical Period', icon: 'Clock' },
+  { key: 'region', label: 'Geographic Region', icon: 'MapPin' },
+  { key: 'collection', label: 'Text Collection', icon: 'BookOpen' },
+  { key: 'theme', label: 'Theme', icon: 'Sparkles' },
+  { key: 'figure', label: 'Historical Figure', icon: 'User' },
+  { key: 'place', label: 'Place', icon: 'Map' },
+  { key: 'original_language', label: 'Original Language', icon: 'Languages' },
+  { key: 'writing_system', label: 'Writing System', icon: 'PenTool' },
+  { key: 'study_type', label: 'Study Type', icon: 'GraduationCap' },
+  { key: 'discoveries', label: 'Recent Discoveries', icon: 'Search' }
+];
+
+export const VERIFICATION_LEVELS = {
+  verified_primary_source: { label: 'Verified Primary Source', color: 'berna-emerald' },
+  verified_historical_source: { label: 'Verified Historical Source', color: 'berna-emerald' },
+  verified_academic_source: { label: 'Verified Academic Source', color: 'chart-2' },
+  official_publisher: { label: 'Official Publisher', color: 'primary' },
+  official_organization: { label: 'Official Organization', color: 'primary' },
+  public_domain: { label: 'Public Domain', color: 'muted' },
+  licensed_content: { label: 'Licensed Content', color: 'chart-2' },
+  metadata_only: { label: 'Metadata Only', color: 'muted' },
+  community_resource: { label: 'Community Resource', color: 'muted' }
+};
+
+export const ACCESS_LEVEL_LABELS = {
+  full_text: 'Full Text Available',
+  embedded_access: 'Official Embedded Access',
+  external_link: 'External Official Link',
+  metadata_only: 'Metadata Only'
+};
+
+export const LICENSE_LABELS = {
+  public_domain: 'Public Domain',
+  official_free_access: 'Official Free Access',
+  licensed_integration: 'Licensed Integration',
+  external_official_link: 'External Official Link',
+  metadata_only: 'Metadata Only',
+  unavailable: 'Unavailable'
+};
+
+export const HIGHLIGHT_CATEGORIES = [
+  { key: 'important', label: 'Important', color: 'bg-yellow-500/20 text-yellow-400' },
+  { key: 'question', label: 'Question', color: 'bg-blue-500/20 text-blue-400' },
+  { key: 'research', label: 'Research', color: 'bg-purple-500/20 text-purple-400' },
+  { key: 'language', label: 'Language', color: 'bg-cyan-500/20 text-cyan-400' },
+  { key: 'historical', label: 'Historical', color: 'bg-amber-600/20 text-amber-500' },
+  { key: 'production_idea', label: 'Production Idea', color: 'bg-accent/20 text-accent' },
+  { key: 'personal_insight', label: 'Personal Insight', color: 'bg-pink-500/20 text-pink-400' },
+  { key: 'prayer', label: 'Prayer', color: 'bg-indigo-500/20 text-indigo-400' },
+  { key: 'teaching_point', label: 'Teaching Point', color: 'bg-green-500/20 text-green-400' },
+  { key: 'application', label: 'Application', color: 'bg-teal-500/20 text-teal-400' }
+];
+
+export const READING_MODES = [
+  { key: 'reading', label: 'Reading', icon: 'BookOpen' },
+  { key: 'research', label: 'Research', icon: 'Search' },
+  { key: 'study', label: 'Study', icon: 'GraduationCap' },
+  { key: 'language', label: 'Language', icon: 'Languages' },
+  { key: 'comparison', label: 'Comparison', icon: 'Columns2' },
+  { key: 'focus', label: 'Focus', icon: 'Eye' }
+];
+
+export const COMPARISON_TYPES = [
+  { key: 'scripture_vs_scripture', label: 'Scripture vs Scripture' },
+  { key: 'passage_vs_passage', label: 'Passage vs Passage' },
+  { key: 'book_vs_book', label: 'Book vs Book' },
+  { key: 'word_vs_word', label: 'Word vs Word' },
+  { key: 'theme_vs_theme', label: 'Theme vs Theme' },
+  { key: 'doctrine_vs_doctrine', label: 'Doctrine vs Doctrine' },
+  { key: 'tradition_vs_tradition', label: 'Tradition vs Tradition' },
+  { key: 'translation_vs_translation', label: 'Translation vs Translation' },
+  { key: 'language_vs_language', label: 'Language vs Language' },
+  { key: 'figure_vs_figure', label: 'Historical Figure vs Figure' },
+  { key: 'place_vs_place', label: 'Place vs Place' },
+  { key: 'custom_comparison', label: 'Custom Comparison' }
+];
+
+export const SUPPORTED_LEARNING_LANGUAGES = [
+  { key: 'biblical_hebrew', label: 'Biblical Hebrew', script: 'Hebrew', tradition: 'Judaism/Christianity' },
+  { key: 'koine_greek', label: 'Koine Greek', script: 'Greek', tradition: 'Christianity' },
+  { key: 'biblical_aramaic', label: 'Biblical Aramaic', script: 'Aramaic', tradition: 'Judaism/Christianity' },
+  { key: 'classical_arabic', label: 'Classical Arabic', script: 'Arabic', tradition: 'Islam' },
+  { key: 'sanskrit', label: 'Sanskrit', script: 'Devanagari', tradition: 'Hinduism/Buddhism' },
+  { key: 'pali', label: 'Pali', script: 'Sinhala/Burmese', tradition: 'Buddhism' },
+  { key: 'gurmukhi', label: 'Gurmukhi', script: 'Gurmukhi', tradition: 'Sikhism' },
+  { key: 'classical_chinese', label: 'Classical Chinese', script: 'Chinese', tradition: 'Taoism/Confucianism' },
+  { key: 'latin', label: 'Latin', script: 'Latin', tradition: 'Christianity' },
+  { key: 'geez', label: "Ge'ez", script: 'Ge\'ez', tradition: 'Ethiopian Orthodox' },
+  { key: 'avestan', label: 'Avestan', script: 'Avestan', tradition: 'Zoroastrianism' }
+];
+
+export const BRIDGE_TYPE_LABELS = {
+  direct_translation: 'Direct Translation',
+  closest_translation: 'Closest Translation',
+  conceptual_parallel: 'Conceptual Parallel',
+  related_theme: 'Related Theme',
+  shared_root: 'Shared Root',
+  no_direct_equivalent: 'No Direct Equivalent'
+};
+
+export const COMPARISON_MATRIX_ROWS = [
+  'Major Themes',
+  'Historical Context',
+  'Original Language',
+  'Key Teachings',
+  'Terminology',
+  'Important Figures',
+  'Timeline',
+  'Geography',
+  'Related Concepts',
+  'Supporting References'
+];
+
+export const QUICK_ACTIONS = [
+  { label: 'Open Study Workspace', icon: 'GraduationCap', path: '/spiritual/study' },
+  { label: 'Open Current Research', icon: 'Search', path: '/spiritual/research' },
+  { label: 'Browse Languages', icon: 'Languages', path: '/spiritual/library/languages' },
+  { label: 'Browse Traditions', icon: 'Globe', path: '/spiritual/library?browse=tradition' },
+  { label: 'Browse Sacred Texts', icon: 'BookOpen', path: '/spiritual/library?browse=collection' },
+  { label: 'Compare Texts', icon: 'Columns2', path: '/spiritual/library/compare' },
+  { label: 'Continue Language Learning', icon: 'GraduationCap', path: '/spiritual/library/languages' },
+  { label: 'Create Research Project', icon: 'FileText', path: '/spiritual/study' },
+  { label: 'Open Message Builder', icon: 'PenTool', path: '/spiritual/message' },
+  { label: 'Create Production', icon: 'Sparkles', path: '/spiritual/configure' }
 ];

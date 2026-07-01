@@ -1,0 +1,103 @@
+{
+  "name": "LibraryComparison",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Comparison title"
+    },
+    "comparison_type": {
+      "type": "string",
+      "enum": [
+        "scripture_vs_scripture",
+        "passage_vs_passage",
+        "book_vs_book",
+        "word_vs_word",
+        "theme_vs_theme",
+        "doctrine_vs_doctrine",
+        "tradition_vs_tradition",
+        "timeline_vs_timeline",
+        "translation_vs_translation",
+        "language_vs_language",
+        "figure_vs_figure",
+        "place_vs_place",
+        "organization_vs_organization",
+        "custom_comparison"
+      ],
+      "default": "custom_comparison"
+    },
+    "items_compared": {
+      "type": "string",
+      "description": "JSON array of items being compared with their details"
+    },
+    "comparison_matrix": {
+      "type": "string",
+      "description": "JSON array of comparison matrix rows"
+    },
+    "similarities": {
+      "type": "string",
+      "description": "JSON array of similarity objects with citations"
+    },
+    "differences": {
+      "type": "string",
+      "description": "JSON array of difference objects with citations"
+    },
+    "historical_development": {
+      "type": "string"
+    },
+    "timeline_events": {
+      "type": "string",
+      "description": "JSON array of parallel timeline events"
+    },
+    "language_notes": {
+      "type": "string"
+    },
+    "multiple_perspectives": {
+      "type": "string",
+      "description": "JSON array of perspective objects with attribution"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI-generated comparative summary"
+    },
+    "ai_questions": {
+      "type": "string",
+      "description": "JSON array of questions for further study"
+    },
+    "notebook_content": {
+      "type": "string",
+      "description": "Producer's comparison notebook (rich text)"
+    },
+    "citations": {
+      "type": "string"
+    },
+    "sources_used": {
+      "type": "string",
+      "description": "JSON array of sources used"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "researching",
+        "ready",
+        "archived"
+      ],
+      "default": "researching"
+    },
+    "source_session_id": {
+      "type": "string",
+      "description": "Associated ResearchSession ID if spawned from a study"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "tags": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "comparison_type"
+  ]
+}

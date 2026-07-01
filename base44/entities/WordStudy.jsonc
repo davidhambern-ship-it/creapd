@@ -1,0 +1,133 @@
+{
+  "name": "WordStudy",
+  "type": "object",
+  "properties": {
+    "word": {
+      "type": "string",
+      "description": "The word in its transliterated or original form"
+    },
+    "original_script": {
+      "type": "string",
+      "description": "The word in its original script"
+    },
+    "language": {
+      "type": "string",
+      "description": "Language of the word (e.g. Biblical Hebrew, Koine Greek)"
+    },
+    "writing_system": {
+      "type": "string"
+    },
+    "transliteration": {
+      "type": "string"
+    },
+    "pronunciation": {
+      "type": "string",
+      "description": "Phonetic pronunciation"
+    },
+    "ipa": {
+      "type": "string",
+      "description": "IPA notation when available"
+    },
+    "literal_meaning": {
+      "type": "string"
+    },
+    "contextual_meaning": {
+      "type": "string"
+    },
+    "grammar": {
+      "type": "string",
+      "description": "Grammar notes (part of speech, gender, case, tense, etc.)"
+    },
+    "part_of_speech": {
+      "type": "string"
+    },
+    "root": {
+      "type": "string",
+      "description": "Root word or etymological root"
+    },
+    "word_family": {
+      "type": "string",
+      "description": "JSON array of related word family members"
+    },
+    "historical_development": {
+      "type": "string"
+    },
+    "occurrences": {
+      "type": "string",
+      "description": "JSON array of occurrences with references"
+    },
+    "translation_variations": {
+      "type": "string",
+      "description": "JSON array of how this word is translated across versions"
+    },
+    "related_concepts": {
+      "type": "string",
+      "description": "JSON array of related concepts"
+    },
+    "language_bridges": {
+      "type": "string",
+      "description": "JSON array of language bridge objects (direct translation, conceptual parallel, etc.)"
+    },
+    "bridge_type": {
+      "type": "string",
+      "enum": [
+        "direct_translation",
+        "closest_translation",
+        "conceptual_parallel",
+        "related_theme",
+        "shared_root",
+        "no_direct_equivalent"
+      ],
+      "default": "direct_translation"
+    },
+    "is_learned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the producer has learned this word"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    },
+    "mastery_level": {
+      "type": "string",
+      "enum": [
+        "new",
+        "learning",
+        "reviewing",
+        "mastered",
+        "forgotten"
+      ],
+      "default": "new"
+    },
+    "practice_count": {
+      "type": "number",
+      "default": 0
+    },
+    "quiz_score": {
+      "type": "number",
+      "default": 0
+    },
+    "writing_practice_count": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "associated_text_id": {
+      "type": "string",
+      "description": "LibraryText ID where this word was first studied"
+    },
+    "associated_passage": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "word",
+    "language"
+  ]
+}

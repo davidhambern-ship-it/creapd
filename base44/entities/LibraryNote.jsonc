@@ -1,0 +1,46 @@
+{
+  "name": "LibraryNote",
+  "type": "object",
+  "properties": {
+    "text_id": {
+      "type": "string"
+    },
+    "text_title": {
+      "type": "string"
+    },
+    "passage_reference": {
+      "type": "string"
+    },
+    "note_content": {
+      "type": "string",
+      "description": "Rich text note content"
+    },
+    "note_type": {
+      "type": "string",
+      "enum": [
+        "general",
+        "research",
+        "language",
+        "historical",
+        "production_idea",
+        "question",
+        "teaching"
+      ],
+      "default": "general"
+    },
+    "tags": {
+      "type": "string"
+    },
+    "research_session_id": {
+      "type": "string"
+    },
+    "collection_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "text_id",
+    "text_title",
+    "note_content"
+  ]
+}
