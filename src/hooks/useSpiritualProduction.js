@@ -71,6 +71,13 @@ export function useSpiritualProduction(configId) {
     pollRef.current = setInterval(async () => {
       try {
         const updated = await base44.entities.SpiritualProductionConfiguration.get(activeId);
+        // Staleness safety net: if the config has been "building" for more than 3 minutes,
+        // the backend function likely timed out without reaching the catch block. Mark as failed.
+        const staleMs = Date.now() - new Date(updated.updated_date).getTime();
+        if (updated.status === 'building' && staleMs > 180000) {
+          await base44.entities.SpiritualProductionConfiguration.update(activeId, { status: 'failed' });
+          updated.status = 'failed';
+        }
         setConfig(updated);
         if (updated.status !== 'building') {
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
