@@ -38,7 +38,9 @@ export default function SpiritualMessage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      await base44.functions.invoke('buildSpiritualProduction', { configuration_id: config.id });
+      await base44.entities.SpiritualProductionConfiguration.update(config.id, { status: 'building' });
+      // Fire the build — don't await the full execution (voice/image post-processing runs after status is set to 'ready')
+      base44.functions.invoke('buildSpiritualProduction', { configuration_id: config.id }).catch(err => console.error(err));
       await refresh();
     } catch (err) {
       console.error(err);
