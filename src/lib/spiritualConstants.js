@@ -90,7 +90,7 @@ export const STUDY_TOPIC_OPTIONS = [
 ];
 
 export const RESEARCH_SOURCE_OPTIONS = [
-  'Sacred Text Library', 'Official Faith Resources', 'Historical References',
+  'World Scripture Library', 'Official Faith Resources', 'Historical References',
   'Academic References', 'Language Resources', 'Maps', 'Archaeology',
   'Current News', 'Educational Publications', 'Organization Publications',
   'Libraries', 'Museums', 'Universities', 'Public Domain Resources',
@@ -143,7 +143,7 @@ export const SPIRITUAL_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/spiritual/dashboard' },
   { icon: 'Settings2', label: 'Configuration', path: '/spiritual/configure' },
   { icon: 'Search', label: 'Research', path: '/spiritual/research' },
-  { icon: 'BookOpen', label: 'Sacred Text Library', path: '/spiritual/library' },
+  { icon: 'BookOpen', label: 'World Scripture Library', path: '/spiritual/library' },
   { icon: 'GraduationCap', label: 'Study Workspace', path: '/spiritual/study' },
   { icon: 'PenTool', label: 'Message Builder', path: '/spiritual/message' },
   { icon: 'Sparkles', label: 'AI Assets', path: '/spiritual/assets' },
@@ -230,3 +230,36 @@ export function estimateSpeakingTime(text) {
   const words = text.trim().split(/\s+/).length;
   return Math.round((words / 130) * 60);
 }
+
+// ===== World Scripture Library Collections =====
+
+export const LIBRARY_COLLECTIONS = [
+  { key: 'sacred_scriptures', label: 'Sacred Scriptures', icon: 'BookOpen', description: 'Primary sacred texts from all faith traditions' },
+  { key: 'historical_documents', label: 'Historical Religious Documents', icon: 'ScrollText', description: 'Writings of early movements, church fathers, and reformers' },
+  { key: 'ancient_manuscripts', label: 'Ancient Manuscripts', icon: 'FileText', description: 'Original and early manuscript sources with textual notes' },
+  { key: 'apocryphal', label: 'Apocryphal & Deuterocanonical', icon: 'BookMarked', description: 'Secondary canonical texts and deuterocanonical books' },
+  { key: 'original_languages', label: 'Original Language Resources', icon: 'Languages', description: 'Hebrew, Greek, Aramaic, Sanskrit, Pali, and Arabic source texts' },
+  { key: 'lexicons', label: 'Lexicons & Dictionaries', icon: 'Library', description: 'Word study reference works for original languages' },
+  { key: 'historical_maps', label: 'Historical Maps', icon: 'Map', description: 'Biblical and historical geography of the ancient world' },
+  { key: 'timelines', label: 'Timelines', icon: 'Clock', description: 'Chronological frameworks for religious and biblical history' },
+  { key: 'organization_publications', label: 'Organization Publications', icon: 'Building2', description: 'Official publications from faith organizations and institutions' },
+  { key: 'reference_works', label: 'Reference Works', icon: 'BookOpen', description: 'Encyclopedias, dictionaries, companions, and study guides' },
+  { key: 'language_learning', label: 'Language Learning', icon: 'GraduationCap', description: 'Tools and courses for learning original and scholarly languages' },
+  { key: 'research_collections', label: 'Research Collections', icon: 'FolderOpen', description: 'Curated collections for specific research topics and themes' },
+  { key: 'personal_collections', label: 'Personal Collections', icon: 'Star', description: 'Your saved texts, highlights, and curated collections' }
+];
+
+export const LIBRARY_LANGUAGES = [
+  'Hebrew', 'Greek (Koine)', 'Aramaic', 'Latin', 'Sanskrit', 'Pali',
+  'Arabic', 'Avestan', 'Classical Chinese', 'Tibetan', 'Coptic', 'English'
+];
+
+export const LIBRARY_HISTORICAL_PERIODS = [
+  'Ancient (pre-500 BCE)', 'Classical (500 BCE–500 CE)', 'Medieval (500–1500 CE)',
+  'Reformation (1500–1700)', 'Modern (1700–1900)', 'Contemporary (1900–present)'
+];
+
+export const LIBRARY_REGIONS = [
+  'Middle East', 'Mediterranean', 'Europe', 'South Asia', 'East Asia',
+  'Southeast Asia', 'Africa', 'Americas', 'Oceania'
+];

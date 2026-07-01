@@ -81,7 +81,7 @@ export default function SpiritualDashboard() {
 
   const QUICK_ACTIONS = [
     { label: 'Study Workspace', icon: GraduationCap, path: '/spiritual/study' },
-    { label: 'Sacred Text Library', icon: BookOpen, path: '/spiritual/library' },
+    { label: 'World Scripture Library', icon: BookOpen, path: '/spiritual/library' },
     { label: 'Continue Message', icon: PenTool, path: '/spiritual/message' },
     { label: 'Generate Assets', icon: Sparkles, path: '/spiritual/assets' },
     { label: 'Refresh Research', icon: Search, path: '/spiritual/research' },
