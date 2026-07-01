@@ -392,6 +392,9 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       package_item_count: packageItems.length
     });
   } catch (error) {
+    try {
+      await base44.entities.SpiritualProductionConfiguration.update(configuration_id, { status: 'failed' });
+    } catch {}
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
