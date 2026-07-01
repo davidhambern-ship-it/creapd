@@ -308,6 +308,47 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
               })
             });
 
+            // Create LibraryText record so the resource appears in the World Scripture Library
+            const existingLibraryText = await base44.asServiceRole.entities.LibraryText.filter({ title: disc.title });
+            if (existingLibraryText.length === 0) {
+              const collectionMap = {
+                sacred_text: 'sacred_scriptures',
+                historical_document: 'historical_documents',
+                ancient_manuscript: 'ancient_manuscripts',
+                lexicon: 'lexicons',
+                dictionary: 'lexicons',
+                concordance: 'lexicons',
+                commentary: 'reference_works',
+                study_guide: 'reference_works',
+                reference_work: 'reference_works',
+                language_resource: 'language_learning',
+                devotional: 'sacred_scriptures'
+              };
+              const accessLevel = disc.rights === 'public_domain' ? 'external_link' : 'external_link';
+              const licenseStatus = disc.rights === 'public_domain' ? 'public_domain' : 'official_free_access';
+              const verificationStatus = disc.rights === 'public_domain' ? 'public_domain' : 'official_organization';
+
+              await base44.asServiceRole.entities.LibraryText.create({
+                title: disc.title,
+                tradition: disc.tradition || 'Unknown',
+                collection: collectionMap[disc.resource_type] || 'reference_works',
+                original_language: disc.language || 'Unknown',
+                source_url: disc.source_url,
+                source_provider: provider.name,
+                publisher: disc.provider_name,
+                full_text: '',
+                full_text_available: false,
+                access_level: accessLevel,
+                license_status: licenseStatus,
+                verification_status: verificationStatus,
+                last_verification: now,
+                confidence_notes: `Auto-acquired by CAE from ${provider.name}. Rights: ${disc.rights}.`,
+                major_themes: JSON.stringify([disc.collection_suggestion].filter(Boolean)),
+                historical_context: disc.description || '',
+                geographic_origin: disc.region || ''
+              });
+            }
+
             stats.imported++;
             stats.published++;
 
@@ -416,6 +457,29 @@ Return exactly 10 new discoveries as a JSON array. Each discovery must have:
               published_to_library: true,
               processed_at: now
             });
+
+            // Also create LibraryText if it doesn't exist
+            const existingLibText = await base44.asServiceRole.entities.LibraryText.filter({ title: stuck.title });
+            if (existingLibText.length === 0) {
+              await base44.asServiceRole.entities.LibraryText.create({
+                title: stuck.title,
+                tradition: metadata.tradition || 'Unknown',
+                collection: 'reference_works',
+                original_language: metadata.language || 'Unknown',
+                source_url: stuck.source_url,
+                source_provider: stuck.source_provider_name,
+                publisher: stuck.source_provider_name,
+                full_text: '',
+                full_text_available: false,
+                access_level: 'external_link',
+                license_status: stuck.rights_classification === 'public_domain' ? 'public_domain' : 'official_free_access',
+                verification_status: stuck.rights_classification === 'public_domain' ? 'public_domain' : 'official_organization',
+                last_verification: now,
+                confidence_notes: `Auto-acquired by CAE from ${stuck.source_provider_name}.`,
+                historical_context: metadata.description || ''
+              });
+            }
+
             stats.processed++;
             stats.published++;
           }
