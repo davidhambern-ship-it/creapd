@@ -1,0 +1,69 @@
+{
+  "name": "SpiritualResearchItem",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SpiritualProductionConfiguration"
+    },
+    "title": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "primary_source",
+        "secondary_source",
+        "historical_reference",
+        "language_study",
+        "current_event",
+        "ai_suggestion"
+      ],
+      "default": "secondary_source"
+    },
+    "category": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string"
+    },
+    "relevance": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "citation": {
+      "type": "string",
+      "description": "Full citation information"
+    },
+    "associated_topic": {
+      "type": "string"
+    },
+    "added_to_study": {
+      "type": "boolean",
+      "default": false
+    },
+    "added_to_message": {
+      "type": "boolean",
+      "default": false
+    },
+    "added_to_package": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "configuration_id",
+    "title"
+  ]
+}

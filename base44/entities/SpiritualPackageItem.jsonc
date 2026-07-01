@@ -1,0 +1,56 @@
+{
+  "name": "SpiritualPackageItem",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SpiritualProductionConfiguration"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "message",
+        "study",
+        "presentation",
+        "graphic",
+        "handout",
+        "discussion",
+        "research",
+        "citation",
+        "speaker_resource",
+        "prayer",
+        "reading_plan"
+      ],
+      "default": "message"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source or origin of this package item"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "missing",
+        "generating",
+        "needs_review",
+        "approved",
+        "complete"
+      ],
+      "default": "needs_review"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "item_type"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "name": "SpiritualMessageSection",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SpiritualProductionConfiguration"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "section_type": {
+      "type": "string",
+      "enum": [
+        "opening",
+        "introduction",
+        "main_section",
+        "supporting_reference",
+        "illustration",
+        "application",
+        "discussion_question",
+        "closing",
+        "call_to_action",
+        "prayer",
+        "announcements",
+        "closing_notes"
+      ],
+      "default": "main_section"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string",
+      "description": "Main message content for this section"
+    },
+    "speaker_notes": {
+      "type": "string",
+      "description": "Private speaker notes"
+    },
+    "scripture_references": {
+      "type": "string",
+      "description": "Scripture/sacred text references with citations"
+    },
+    "citations": {
+      "type": "string",
+      "description": "Source citations for this section"
+    },
+    "estimated_duration_seconds": {
+      "type": "number",
+      "description": "Estimated speaking time in seconds"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "generated",
+        "edited",
+        "approved"
+      ],
+      "default": "draft"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "section_type"
+  ]
+}

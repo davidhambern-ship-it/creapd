@@ -1,0 +1,82 @@
+{
+  "name": "SpiritualAsset",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SpiritualProductionConfiguration"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "title_slide",
+        "scripture_slide",
+        "quote_slide",
+        "historical_slide",
+        "map_slide",
+        "biography_slide",
+        "word_study_slide",
+        "comparison_slide",
+        "teaching_diagram",
+        "ai_image",
+        "image_prompt",
+        "video_prompt",
+        "social_graphic",
+        "thumbnail",
+        "lower_third",
+        "handout",
+        "discussion_guide",
+        "reading_plan",
+        "prayer_guide",
+        "speaker_notes",
+        "study_notes",
+        "production_notes",
+        "call_to_action_slide",
+        "closing_slide",
+        "announcement_graphic"
+      ],
+      "default": "scripture_slide"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "associated_section_id": {
+      "type": "string",
+      "description": "SpiritualMessageSection ID if tied to a section"
+    },
+    "associated_topic": {
+      "type": "string"
+    },
+    "scripture_reference": {
+      "type": "string",
+      "description": "Scripture reference for scripture slides"
+    },
+    "translation": {
+      "type": "string"
+    },
+    "citation": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_generated",
+        "generating",
+        "ready",
+        "needs_review",
+        "approved"
+      ],
+      "default": "not_generated"
+    },
+    "generated_image_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "asset_type"
+  ]
+}

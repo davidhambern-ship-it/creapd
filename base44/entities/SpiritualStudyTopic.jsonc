@@ -1,0 +1,62 @@
+{
+  "name": "SpiritualStudyTopic",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SpiritualProductionConfiguration"
+    },
+    "topic_name": {
+      "type": "string"
+    },
+    "generated_summary": {
+      "type": "string"
+    },
+    "talking_points": {
+      "type": "string",
+      "description": "3-5 talking points for the speaker"
+    },
+    "key_passages": {
+      "type": "string",
+      "description": "Relevant scripture/sacred text references"
+    },
+    "sources": {
+      "type": "string",
+      "description": "Sources consulted for this topic"
+    },
+    "historical_context": {
+      "type": "string"
+    },
+    "discussion_questions": {
+      "type": "string",
+      "description": "Generated discussion questions"
+    },
+    "multiple_perspectives": {
+      "type": "string",
+      "description": "Different viewpoints if applicable"
+    },
+    "suggested_placement": {
+      "type": "string",
+      "description": "Where in the production this topic fits best"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_generated",
+        "generating",
+        "ready",
+        "needs_review",
+        "approved"
+      ],
+      "default": "not_generated"
+    },
+    "added_to_message": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "configuration_id",
+    "topic_name"
+  ]
+}

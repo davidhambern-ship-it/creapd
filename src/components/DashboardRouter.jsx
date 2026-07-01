@@ -11,6 +11,8 @@ export default function DashboardRouter() {
     base44.auth.me().then(user => {
       if (user?.default_production_type === 'music') {
         setRedirect('/music/dashboard');
+      } else if (user?.default_production_type === 'spiritual') {
+        setRedirect('/spiritual/dashboard');
       }
       setLoading(false);
     }).catch(() => setLoading(false));

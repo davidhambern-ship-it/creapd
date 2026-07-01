@@ -52,6 +52,16 @@ import MusicRundown from '@/pages/MusicRundown';
 import MusicAssets from '@/pages/MusicAssets';
 import MusicExport from '@/pages/MusicExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
+import SpiritualLayout from '@/components/layout/SpiritualLayout';
+import SpiritualConfigure from '@/pages/SpiritualConfigure';
+import SpiritualDashboard from '@/pages/SpiritualDashboard';
+import SpiritualResearch from '@/pages/SpiritualResearch';
+import SpiritualLibrary from '@/pages/SpiritualLibrary';
+import SpiritualStudy from '@/pages/SpiritualStudy';
+import SpiritualMessage from '@/pages/SpiritualMessage';
+import SpiritualAssets from '@/pages/SpiritualAssets';
+import SpiritualPackage from '@/pages/SpiritualPackage';
+import SpiritualExport from '@/pages/SpiritualExport';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -127,6 +137,19 @@ const AuthenticatedApp = () => {
           <Route path="/music/assets" element={<MusicAssets />} />
           <Route path="/music/export" element={<MusicExport />} />
           <Route path="/settings/default-production" element={<DefaultProductionSettings />} />
+        </Route>
+
+        {/* Spiritual Production */}
+        <Route element={<SpiritualLayout />}>
+          <Route path="/spiritual/configure" element={<SpiritualConfigure />} />
+          <Route path="/spiritual/dashboard" element={<SpiritualDashboard />} />
+          <Route path="/spiritual/research" element={<SpiritualResearch />} />
+          <Route path="/spiritual/library" element={<SpiritualLibrary />} />
+          <Route path="/spiritual/study" element={<SpiritualStudy />} />
+          <Route path="/spiritual/message" element={<SpiritualMessage />} />
+          <Route path="/spiritual/assets" element={<SpiritualAssets />} />
+          <Route path="/spiritual/package" element={<SpiritualPackage />} />
+          <Route path="/spiritual/export" element={<SpiritualExport />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

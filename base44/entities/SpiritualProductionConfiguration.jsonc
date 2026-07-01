@@ -1,0 +1,189 @@
+{
+  "name": "SpiritualProductionConfiguration",
+  "type": "object",
+  "properties": {
+    "production_name": {
+      "type": "string"
+    },
+    "speaker_name": {
+      "type": "string"
+    },
+    "co_host_name": {
+      "type": "string"
+    },
+    "production_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "live_or_recorded": {
+      "type": "string",
+      "enum": [
+        "live",
+        "recorded"
+      ],
+      "default": "live"
+    },
+    "location": {
+      "type": "string"
+    },
+    "organization_name": {
+      "type": "string"
+    },
+    "production_description": {
+      "type": "string"
+    },
+    "series_name": {
+      "type": "string"
+    },
+    "episode_number": {
+      "type": "string"
+    },
+    "faith_tradition": {
+      "type": "string",
+      "enum": [
+        "Christianity",
+        "Judaism",
+        "Islam",
+        "Hinduism",
+        "Buddhism",
+        "Sikhism",
+        "Bah\u00e1'\u00ed",
+        "Jainism",
+        "Taoism",
+        "Confucianism",
+        "Shinto",
+        "Pagan Traditions",
+        "Indigenous Traditions",
+        "Spiritual but Not Religious",
+        "Comparative Religion",
+        "Philosophy",
+        "Interfaith",
+        "Custom"
+      ],
+      "default": "Christianity"
+    },
+    "branch_denomination": {
+      "type": "string",
+      "description": "Selected branch, denomination, school, or lineage"
+    },
+    "production_type": {
+      "type": "string",
+      "enum": [
+        "Sermon",
+        "Bible Study",
+        "Devotional",
+        "Teaching Series",
+        "Podcast",
+        "Livestream",
+        "Prayer Meeting",
+        "Study Group",
+        "Youth Lesson",
+        "Children's Lesson",
+        "Sunday School",
+        "Educational Presentation",
+        "Conference Message",
+        "Retreat Session",
+        "Discussion Panel",
+        "Q&A Session",
+        "Meditation Session",
+        "Scripture Reading",
+        "Worship Service",
+        "Holiday Production",
+        "Memorial Service",
+        "Wedding Ceremony",
+        "Funeral Message",
+        "Community Event",
+        "Custom Production"
+      ],
+      "default": "Sermon"
+    },
+    "audience": {
+      "type": "string",
+      "enum": [
+        "General Audience",
+        "Adults",
+        "Young Adults",
+        "Teenagers",
+        "Children",
+        "Families",
+        "Leaders",
+        "New Believers",
+        "Long-Time Members",
+        "Visitors",
+        "Interfaith Audience",
+        "Academic Audience",
+        "Community Outreach",
+        "Online Audience",
+        "Private Study",
+        "Custom Audience"
+      ],
+      "default": "General Audience"
+    },
+    "sacred_texts": {
+      "type": "string",
+      "description": "JSON array of selected sacred texts"
+    },
+    "default_translation": {
+      "type": "string"
+    },
+    "study_resources": {
+      "type": "string",
+      "description": "JSON array of selected study resource categories"
+    },
+    "study_topics": {
+      "type": "string",
+      "description": "JSON array of selected study topics"
+    },
+    "research_sources": {
+      "type": "string",
+      "description": "JSON array of selected research source categories"
+    },
+    "current_events_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "comparative_study_mode": {
+      "type": "boolean",
+      "default": false
+    },
+    "multiple_perspectives": {
+      "type": "boolean",
+      "default": true
+    },
+    "speaker_tone": {
+      "type": "string",
+      "default": "Inspirational"
+    },
+    "target_runtime": {
+      "type": "string",
+      "default": "30 Minutes"
+    },
+    "ai_automation": {
+      "type": "string",
+      "description": "JSON array of selected AI automation options"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "configuring",
+        "building",
+        "ready",
+        "refreshing",
+        "failed"
+      ],
+      "default": "configuring"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "production_name",
+    "production_date",
+    "faith_tradition"
+  ]
+}

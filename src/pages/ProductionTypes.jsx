@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, Newspaper, Trophy, ChefHat, Mic2, Lock, ArrowRight } from 'lucide-react';
+import { Music, Newspaper, Trophy, ChefHat, Mic2, Church, Lock, ArrowRight } from 'lucide-react';
 
 const PRODUCTION_TYPES = [
   {
@@ -49,6 +49,16 @@ const PRODUCTION_TYPES = [
     available: false,
     gradient: 'from-pink-500/20 to-rose-500/10',
     accent: 'text-pink-400'
+  },
+  {
+    key: 'spiritual',
+    label: 'Spiritual Production',
+    description: 'Sermons, Bible studies, devotionals, worship services, prayer meetings, and faith-based content for any tradition.',
+    icon: Church,
+    available: true,
+    path: '/spiritual/configure',
+    gradient: 'from-amber-500/20 to-yellow-500/10',
+    accent: 'text-amber-400'
   }
 ];
 
