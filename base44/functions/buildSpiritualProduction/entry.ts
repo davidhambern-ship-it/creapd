@@ -1,13 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
+  let base44;
+  let configuration_id;
   try {
-    const base44 = createClientFromRequest(req);
+    base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { configuration_id, research_session_id } = body;
+    configuration_id = body.configuration_id;
+    const research_session_id = body.research_session_id;
 
     if (!configuration_id) {
       return Response.json({ error: 'configuration_id is required' }, { status: 400 });
