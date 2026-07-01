@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, CheckCircle2, FileText, Shield, Lock, AlertTriangle, TrendingUp, Clock, BookCheck } from 'lucide-react';
+import { Database, CheckCircle2, FileText, Shield, Lock, AlertTriangle, TrendingUp, Clock, BookCheck, Copyright } from 'lucide-react';
 
 export default function RegistryStats({ stats }) {
   const items = [
@@ -9,6 +9,7 @@ export default function RegistryStats({ stats }) {
     { label: 'Licensed', value: stats.licensed, icon: Shield, color: 'text-primary' },
     { label: 'License Required', value: stats.licenseRequired, icon: Lock, color: 'text-accent' },
     { label: 'Permission Required', value: stats.permissionRequired, icon: Lock, color: 'text-accent' },
+    { label: 'Copyrighted', value: stats.copyrighted, icon: Copyright, color: 'text-destructive' },
     { label: 'Metadata Only', value: stats.metadataOnly, icon: FileText, color: 'text-muted-foreground' },
     { label: 'Failed Imports', value: stats.failedImports, icon: AlertTriangle, color: 'text-destructive' },
     { label: 'High Demand', value: stats.highDemand, icon: TrendingUp, color: 'text-accent' },
