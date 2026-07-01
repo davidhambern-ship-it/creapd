@@ -1,0 +1,89 @@
+{
+  "name": "CAEActivityEvent",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "new_discovery",
+        "registry_record_created",
+        "public_domain_imported",
+        "open_license_imported",
+        "metadata_updated",
+        "translation_found",
+        "manuscript_found",
+        "license_required",
+        "permission_required",
+        "import_complete",
+        "indexing_complete",
+        "published_to_library",
+        "failed_job",
+        "admin_review_needed",
+        "provider_account_created",
+        "budget_decision_made",
+        "provider_discovered",
+        "rights_classified",
+        "duplicate_detected",
+        "collection_goal_progress",
+        "mission_progress",
+        "provider_health_alert",
+        "milestone_reached"
+      ],
+      "default": "new_discovery"
+    },
+    "resource_title": {
+      "type": "string"
+    },
+    "source_provider": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "info",
+        "success",
+        "warning",
+        "error",
+        "pending"
+      ],
+      "default": "info"
+    },
+    "details": {
+      "type": "string"
+    },
+    "action_url": {
+      "type": "string",
+      "description": "URL to view the related resource or record"
+    },
+    "discovery_id": {
+      "type": "string"
+    },
+    "provider_id": {
+      "type": "string"
+    },
+    "mission_id": {
+      "type": "string"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, visible in producer-facing library activity feed"
+    },
+    "category": {
+      "type": "string",
+      "description": "For public feed: recently_added, newly_indexed, new_translation, new_historical_document, new_language_resource, new_manuscript, new_public_domain_book, new_open_access_publication"
+    },
+    "tradition": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "availability": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_type"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "name": "CAEOperationLog",
+  "type": "object",
+  "properties": {
+    "operation_type": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "import",
+        "communication",
+        "registration",
+        "licensing",
+        "failure",
+        "retry",
+        "purchase",
+        "mission_progress",
+        "relationship_update",
+        "verification",
+        "indexing",
+        "classification",
+        "publishing",
+        "maintenance",
+        "optimization"
+      ],
+      "default": "discovery"
+    },
+    "description": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "resource_title": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failure",
+        "pending",
+        "partial",
+        "skipped"
+      ],
+      "default": "success"
+    },
+    "details": {
+      "type": "string"
+    },
+    "subsystem": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "operation_type",
+    "description"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "name": "CAEMission",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "target_collections": {
+      "type": "string",
+      "description": "JSON array of target collection names"
+    },
+    "target_traditions": {
+      "type": "string",
+      "description": "JSON array of target faith traditions"
+    },
+    "target_resource_types": {
+      "type": "string",
+      "description": "JSON array of target resource types"
+    },
+    "target_languages": {
+      "type": "string",
+      "description": "JSON array of target languages"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "completed",
+        "cancelled"
+      ],
+      "default": "active"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "resources_acquired": {
+      "type": "number",
+      "default": 0
+    },
+    "resources_target": {
+      "type": "number",
+      "default": 0
+    },
+    "resources_remaining": {
+      "type": "number",
+      "default": 0
+    },
+    "estimated_completion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mission_health": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "good",
+        "fair",
+        "poor",
+        "stalled"
+      ],
+      "default": "good"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

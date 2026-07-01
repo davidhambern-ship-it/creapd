@@ -1,0 +1,241 @@
+{
+  "name": "CAEDiscovery",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "source_provider_id": {
+      "type": "string",
+      "description": "ID of CAESourceProvider"
+    },
+    "source_provider_name": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "resource_type": {
+      "type": "string",
+      "enum": [
+        "book",
+        "sacred_text",
+        "historical_document",
+        "ancient_manuscript",
+        "journal_article",
+        "research_paper",
+        "dissertation",
+        "thesis",
+        "conference_proceeding",
+        "map",
+        "lexicon",
+        "dictionary",
+        "concordance",
+        "commentary",
+        "study_guide",
+        "language_resource",
+        "devotional",
+        "lecture_transcript",
+        "government_publication",
+        "museum_catalog",
+        "archaeological_report",
+        "reference_work",
+        "structured_dataset"
+      ],
+      "default": "book"
+    },
+    "file_format": {
+      "type": "string",
+      "enum": [
+        "native_digital_text",
+        "scanned_pdf",
+        "image_based_pdf",
+        "epub",
+        "xml",
+        "html",
+        "json",
+        "txt",
+        "csv",
+        "iiif",
+        "tei_xml",
+        "structured_api_response",
+        "unknown_format"
+      ],
+      "default": "native_digital_text"
+    },
+    "discovery_stage": {
+      "type": "string",
+      "enum": [
+        "discovered",
+        "metadata_harvested",
+        "verified",
+        "rights_checked",
+        "registration_checked",
+        "queued",
+        "importing",
+        "processing",
+        "indexed",
+        "published",
+        "failed",
+        "blocked"
+      ],
+      "default": "discovered"
+    },
+    "rights_classification": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "open_license",
+        "creative_commons",
+        "official_free_access",
+        "free_with_registration",
+        "educational_access",
+        "institutional_access",
+        "api_access",
+        "publisher_license_required",
+        "permission_required",
+        "commercial_license_required",
+        "subscription_required",
+        "copyright_restricted",
+        "unavailable",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "rights_investigation": {
+      "type": "string",
+      "description": "JSON object with publisher, rights_holder, copyright_holder, licensing_agency, available_licenses, pricing, contact_info"
+    },
+    "recommended_strategy": {
+      "type": "string",
+      "enum": [
+        "acquire_immediately",
+        "wait",
+        "monitor",
+        "negotiate",
+        "request_permission",
+        "request_api_access",
+        "request_institutional_access",
+        "join_free_program",
+        "register_provider_account",
+        "purchase_license",
+        "use_public_domain_alternative",
+        "use_official_external_reader",
+        "await_public_domain_status",
+        "manual_review"
+      ],
+      "default": "manual_review"
+    },
+    "acquisition_priority_score": {
+      "type": "number",
+      "description": "0-100 priority score",
+      "default": 0
+    },
+    "cost": {
+      "type": "number",
+      "default": 0
+    },
+    "quality_score": {
+      "type": "number",
+      "description": "0-100 quality score after processing",
+      "default": 0
+    },
+    "metadata_harvested": {
+      "type": "string",
+      "description": "JSON object with title, author, date, language, subjects, keywords, identifiers, editions, translations, licensing, relationships"
+    },
+    "ai_classification": {
+      "type": "string",
+      "description": "JSON object with resource_type, subject, tradition, historical_period, language, writing_system, themes, primary_topics, secondary_topics, geographic_region, historical_figures, organizations, events, places, referenced_works, study_categories, suggested_collections, difficulty_level, educational_value, cross_reference_potential"
+    },
+    "collection_assignments": {
+      "type": "string",
+      "description": "JSON array of collection names"
+    },
+    "knowledge_extraction": {
+      "type": "string",
+      "description": "JSON object with extracted structure: books, chapters, sections, paragraphs, verses, headings, quotes, footnotes, references, bibliographies, timelines, glossaries, vocabulary, definitions, questions, study_topics, key_concepts"
+    },
+    "relationship_mappings": {
+      "type": "string",
+      "description": "JSON array of relationship objects with type, target_title, description"
+    },
+    "citation_recognition": {
+      "type": "string",
+      "description": "JSON array of citation objects with type, title, author, identifier"
+    },
+    "translation_info": {
+      "type": "string",
+      "description": "JSON object with translation_name, edition, translator, publication, language, revision, license"
+    },
+    "duplicate_check_status": {
+      "type": "string",
+      "enum": [
+        "unchecked",
+        "unique",
+        "duplicate_found",
+        "merged"
+      ],
+      "default": "unchecked"
+    },
+    "duplicate_of_id": {
+      "type": "string",
+      "description": "ID of the original discovery if this is a duplicate"
+    },
+    "ocr_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "ocr_confidence": {
+      "type": "number",
+      "description": "0-100 OCR confidence score",
+      "default": 0
+    },
+    "search_indexed": {
+      "type": "boolean",
+      "default": false
+    },
+    "registry_record_id": {
+      "type": "string",
+      "description": "ID of WorldScriptureRegistry record created/updated"
+    },
+    "published_to_library": {
+      "type": "boolean",
+      "default": false
+    },
+    "blocker_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "license_required",
+        "permission_required",
+        "copyright_restricted",
+        "registration_required",
+        "manual_review_required",
+        "source_quality_failed",
+        "duplicate_detected",
+        "technical_import_failed"
+      ],
+      "default": "none"
+    },
+    "error_log": {
+      "type": "string"
+    },
+    "mission_id": {
+      "type": "string",
+      "description": "ID of CAEMission this discovery relates to"
+    },
+    "discovered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "title",
+    "source_provider_name"
+  ]
+}

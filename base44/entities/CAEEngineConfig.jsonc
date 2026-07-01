@@ -1,0 +1,177 @@
+{
+  "name": "CAEEngineConfig",
+  "type": "object",
+  "properties": {
+    "engine_name": {
+      "type": "string",
+      "description": "Display name for this CAE instance",
+      "default": "Content Acquisition Engine"
+    },
+    "engine_status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "paused",
+        "degraded",
+        "error",
+        "maintenance",
+        "offline"
+      ],
+      "default": "running"
+    },
+    "operating_mode": {
+      "type": "string",
+      "enum": [
+        "passive",
+        "assisted",
+        "expedition"
+      ],
+      "default": "passive"
+    },
+    "current_mission_id": {
+      "type": "string",
+      "description": "ID of active CAEMission if in expedition mode"
+    },
+    "current_mission_name": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "next_scheduled_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "current_job": {
+      "type": "string",
+      "description": "Description of currently executing job"
+    },
+    "queue_depth": {
+      "type": "number",
+      "default": 0
+    },
+    "processing_rate": {
+      "type": "number",
+      "description": "Resources processed per hour",
+      "default": 0
+    },
+    "error_rate": {
+      "type": "number",
+      "description": "Error percentage 0-100",
+      "default": 0
+    },
+    "total_discoveries": {
+      "type": "number",
+      "default": 0
+    },
+    "total_imports": {
+      "type": "number",
+      "default": 0
+    },
+    "total_published": {
+      "type": "number",
+      "default": 0
+    },
+    "cae_identity_email": {
+      "type": "string",
+      "default": "cae@producer.com"
+    },
+    "cae_identity_name": {
+      "type": "string",
+      "default": "Producer Content Acquisition Engine"
+    },
+    "wallet_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "wallet_currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "reserved_funds": {
+      "type": "number",
+      "default": 0
+    },
+    "recurring_deposit_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "recurring_deposit_schedule": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly",
+        "custom",
+        "none"
+      ],
+      "default": "none"
+    },
+    "max_single_purchase": {
+      "type": "number",
+      "default": 100
+    },
+    "max_weekly_purchases": {
+      "type": "number",
+      "default": 3
+    },
+    "max_monthly_spend": {
+      "type": "number",
+      "default": 500
+    },
+    "approval_threshold": {
+      "type": "number",
+      "description": "Purchases above this amount require admin approval",
+      "default": 50
+    },
+    "allow_automatic_purchasing": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_subscription_purchases": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_api_fees": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_educational_memberships": {
+      "type": "boolean",
+      "default": false
+    },
+    "automatic_free_registration": {
+      "type": "boolean",
+      "default": true
+    },
+    "scan_interval_minutes": {
+      "type": "number",
+      "default": 30
+    },
+    "max_concurrent_jobs": {
+      "type": "number",
+      "default": 5
+    },
+    "quality_threshold": {
+      "type": "number",
+      "description": "Minimum quality score to auto-publish (0-100)",
+      "default": 60
+    },
+    "savings_goals": {
+      "type": "string",
+      "description": "JSON array of savings goal objects with name, target_amount, current_amount, target_resource"
+    },
+    "notifications_enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "engine_name"
+  ]
+}

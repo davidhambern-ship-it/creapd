@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, Database, Plus, ArrowLeft, Lock } from 'lucide-react';
+import { Loader2, Database, Plus, ArrowLeft, Lock, Cpu } from 'lucide-react';
 import RegistryStats from '@/components/admin/RegistryStats';
 import RegistryFilters from '@/components/admin/RegistryFilters';
 import RegistryTable from '@/components/admin/RegistryTable';
@@ -124,7 +124,10 @@ export default function WorldScriptureRegistry() {
               <p className="text-sm text-muted-foreground">Master catalog for all texts in the World Scripture Library</p>
             </div>
           </div>
-          <Button onClick={() => navigate('/admin/world-scripture-registry/new')}><Plus className="w-4 h-4 mr-2" /> Add Record</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate('/admin/content-acquisition-engine')}><Cpu className="w-4 h-4 mr-2" /> Content Acquisition Engine</Button>
+            <Button onClick={() => navigate('/admin/world-scripture-registry/new')}><Plus className="w-4 h-4 mr-2" /> Add Record</Button>
+          </div>
         </div>
 
         {loading ? (

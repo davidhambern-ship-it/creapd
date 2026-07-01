@@ -1,0 +1,66 @@
+{
+  "name": "CAEBudgetTransaction",
+  "type": "object",
+  "properties": {
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "manual_deposit",
+        "purchase",
+        "reservation",
+        "refund",
+        "adjustment",
+        "savings_allocation"
+      ],
+      "default": "deposit"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "description": {
+      "type": "string"
+    },
+    "resource_title": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "balance_after": {
+      "type": "number"
+    },
+    "reserved_for": {
+      "type": "string",
+      "description": "Savings goal name if reserved"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "pending",
+        "failed",
+        "reserved",
+        "released"
+      ],
+      "default": "completed"
+    },
+    "discovery_id": {
+      "type": "string"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "auto_approved",
+        "admin_approved",
+        "pending",
+        "denied"
+      ],
+      "default": "auto_approved"
+    }
+  },
+  "required": [
+    "transaction_type",
+    "amount"
+  ]
+}

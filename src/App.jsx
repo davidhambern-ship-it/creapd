@@ -70,6 +70,7 @@ import SpiritualPackage from '@/pages/SpiritualPackage';
 import SpiritualExport from '@/pages/SpiritualExport';
 import WorldScriptureRegistry from '@/pages/admin/WorldScriptureRegistry';
 import WorldScriptureRegistryDetail from '@/pages/admin/WorldScriptureRegistryDetail';
+import ContentAcquisitionEngine from '@/pages/admin/ContentAcquisitionEngine';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -170,6 +171,7 @@ const AuthenticatedApp = () => {
         {/* Admin */}
         <Route path="/admin/world-scripture-registry" element={<WorldScriptureRegistry />} />
         <Route path="/admin/world-scripture-registry/:id" element={<WorldScriptureRegistryDetail />} />
+        <Route path="/admin/content-acquisition-engine" element={<ContentAcquisitionEngine />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

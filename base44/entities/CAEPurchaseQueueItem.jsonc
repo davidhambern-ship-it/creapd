@@ -1,0 +1,75 @@
+{
+  "name": "CAEPurchaseQueueItem",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "rights_holder": {
+      "type": "string"
+    },
+    "priority_score": {
+      "type": "number",
+      "default": 0
+    },
+    "cost": {
+      "type": "number",
+      "default": 0
+    },
+    "wallet_balance_at_time": {
+      "type": "number",
+      "default": 0
+    },
+    "savings_progress": {
+      "type": "number",
+      "description": "0-100 percentage saved toward purchase",
+      "default": 0
+    },
+    "recommended_action": {
+      "type": "string",
+      "enum": [
+        "purchase_now",
+        "save",
+        "wait",
+        "negotiate",
+        "find_alternative",
+        "monitor"
+      ],
+      "default": "save"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied",
+        "auto_approved",
+        "purchased"
+      ],
+      "default": "pending"
+    },
+    "estimated_purchase_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "discovery_id": {
+      "type": "string"
+    },
+    "collection_goal": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "factors": {
+      "type": "string",
+      "description": "JSON object with collection_gap, educational_value, foundational_importance, research_value, demand, cost, license_quality, integration_potential, alternative_availability, long_term_benefit"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

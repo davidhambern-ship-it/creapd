@@ -1,0 +1,79 @@
+{
+  "name": "CAESubsystemStatus",
+  "type": "object",
+  "properties": {
+    "subsystem_name": {
+      "type": "string",
+      "enum": [
+        "source_discovery",
+        "metadata_harvester",
+        "rights_licensing",
+        "source_verification",
+        "duplicate_detection",
+        "translation_discovery",
+        "edition_discovery",
+        "manuscript_discovery",
+        "import_engine",
+        "ocr_text_processing",
+        "search_index",
+        "ai_classification",
+        "registry_sync",
+        "opportunity_engine",
+        "budget_acquisition",
+        "account_provider_manager",
+        "live_library_publisher",
+        "admin_review_center",
+        "monitoring_health"
+      ],
+      "description": "Identifier for the subsystem"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "paused",
+        "degraded",
+        "error",
+        "offline"
+      ],
+      "default": "running"
+    },
+    "queue_depth": {
+      "type": "number",
+      "default": 0
+    },
+    "last_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_success": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error_count": {
+      "type": "number",
+      "default": 0
+    },
+    "success_count": {
+      "type": "number",
+      "default": 0
+    },
+    "health_score": {
+      "type": "number",
+      "description": "0-100 health score",
+      "default": 100
+    },
+    "current_job": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "subsystem_name"
+  ]
+}

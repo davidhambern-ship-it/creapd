@@ -7,7 +7,7 @@ import {
   Columns2, Globe, Clock, MapPin, Search, Star, FileText, PenTool,
   Package, BookMarked, Lightbulb, ChevronDown, ChevronUp, Library,
   ScrollText, Building2, Map, Clock3, FolderOpen, Award, Flame, TrendingUp,
-  Lock, ExternalLink, Database
+  Lock, ExternalLink, Database, Cpu
 } from 'lucide-react';
 import LibraryHero from '@/components/library/LibraryHero';
 import LibraryCollections from '@/components/library/LibraryCollections';
@@ -165,7 +165,10 @@ export default function SpiritualLibrary() {
         <LibraryHero onSearch={handleSearch} searching={searching} />
 
         {user?.role === 'admin' && (
-          <div className="flex justify-end mb-2">
+          <div className="flex justify-end mb-2 gap-4">
+            <Link to="/admin/content-acquisition-engine" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+              <Cpu className="w-3.5 h-3.5" /> Content Acquisition Engine
+            </Link>
             <Link to="/admin/world-scripture-registry" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
               <Database className="w-3.5 h-3.5" /> World Scripture Registry
             </Link>

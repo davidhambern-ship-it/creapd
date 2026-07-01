@@ -1,0 +1,104 @@
+{
+  "name": "CAEProviderAccount",
+  "type": "object",
+  "properties": {
+    "provider_id": {
+      "type": "string",
+      "description": "ID of CAESourceProvider"
+    },
+    "provider_name": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "authentication_method": {
+      "type": "string",
+      "enum": [
+        "password",
+        "api_key",
+        "oauth",
+        "none",
+        "unknown"
+      ],
+      "default": "none"
+    },
+    "has_api_keys": {
+      "type": "boolean",
+      "default": false
+    },
+    "access_level": {
+      "type": "string",
+      "description": "free, registered, premium, institutional, etc."
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "active",
+        "expired",
+        "pending",
+        "cancelled"
+      ],
+      "default": "none"
+    },
+    "registration_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "terms_accepted": {
+      "type": "boolean",
+      "default": false
+    },
+    "renewal_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "security_status": {
+      "type": "string",
+      "enum": [
+        "secure",
+        "needs_attention",
+        "compromised",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "connected_collections": {
+      "type": "string",
+      "description": "JSON array of collection names accessible through this account"
+    },
+    "collections_gained": {
+      "type": "string",
+      "description": "JSON array of collections gained through registration"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "pending",
+        "failed",
+        "not_required"
+      ],
+      "default": "not_required"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "registration_method": {
+      "type": "string",
+      "enum": [
+        "automatic",
+        "manual",
+        "pending_approval"
+      ],
+      "default": "automatic"
+    }
+  },
+  "required": [
+    "provider_name"
+  ]
+}

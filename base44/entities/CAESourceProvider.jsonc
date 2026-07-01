@@ -1,0 +1,201 @@
+{
+  "name": "CAESourceProvider",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "organization": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "primary_language": {
+      "type": "string"
+    },
+    "provider_type": {
+      "type": "string",
+      "enum": [
+        "university",
+        "museum",
+        "government_archive",
+        "digital_library",
+        "publisher",
+        "research_institute",
+        "religious_organization",
+        "historical_society",
+        "academic_journal",
+        "language_institute",
+        "repository",
+        "open_access_archive",
+        "public_domain_library",
+        "private_collection",
+        "community_archive",
+        "api_provider",
+        "metadata_provider"
+      ],
+      "default": "digital_library"
+    },
+    "discovery_layer": {
+      "type": "string",
+      "enum": [
+        "known_trusted",
+        "trusted_expansion",
+        "intelligent_exploration"
+      ],
+      "default": "intelligent_exploration"
+    },
+    "pipeline": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "open_access",
+        "university",
+        "museum",
+        "government_archive",
+        "publisher",
+        "api",
+        "organization_publication",
+        "research_repository"
+      ],
+      "default": "open_access"
+    },
+    "collections_available": {
+      "type": "string",
+      "description": "JSON array of collection names available from this provider"
+    },
+    "subjects_covered": {
+      "type": "string",
+      "description": "JSON array of subjects"
+    },
+    "trust_score": {
+      "type": "number",
+      "description": "0-100 confidence/trust score",
+      "default": 50
+    },
+    "approval_state": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "conditional",
+        "under_review",
+        "rejected"
+      ],
+      "default": "under_review"
+    },
+    "relationship_status": {
+      "type": "string",
+      "enum": [
+        "discovered",
+        "under_review",
+        "verified",
+        "connected",
+        "account_created",
+        "api_connected",
+        "import_enabled",
+        "metadata_only",
+        "license_negotiation",
+        "inactive",
+        "blocked"
+      ],
+      "default": "discovered"
+    },
+    "registration_requirements": {
+      "type": "string",
+      "description": "none, free_registration, paid, institutional, api_key, etc."
+    },
+    "license_model": {
+      "type": "string"
+    },
+    "apis": {
+      "type": "string",
+      "description": "JSON array of API endpoints"
+    },
+    "metadata_endpoints": {
+      "type": "string",
+      "description": "JSON array of metadata endpoint URLs"
+    },
+    "download_formats": {
+      "type": "string",
+      "description": "JSON array of supported formats (PDF, EPUB, XML, etc.)"
+    },
+    "update_frequency": {
+      "type": "string"
+    },
+    "last_crawl": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_verification": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "api_health": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "website_status": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "import_success_rate": {
+      "type": "number",
+      "description": "0-100 percentage",
+      "default": 0
+    },
+    "broken_link_count": {
+      "type": "number",
+      "default": 0
+    },
+    "total_resources_discovered": {
+      "type": "number",
+      "default": 0
+    },
+    "total_resources_imported": {
+      "type": "number",
+      "default": 0
+    },
+    "connected_account_id": {
+      "type": "string",
+      "description": "ID of CAEProviderAccount if connected"
+    },
+    "connected_collections": {
+      "type": "string",
+      "description": "JSON array of connected collection names"
+    },
+    "next_follow_up": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "follow_up_reason": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "provider_type"
+  ]
+}

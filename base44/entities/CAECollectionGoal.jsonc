@@ -1,0 +1,96 @@
+{
+  "name": "CAECollectionGoal",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "target_count": {
+      "type": "number",
+      "default": 0
+    },
+    "resources_acquired": {
+      "type": "number",
+      "default": 0
+    },
+    "resources_remaining": {
+      "type": "number",
+      "default": 0
+    },
+    "known_resources": {
+      "type": "number",
+      "default": 0
+    },
+    "public_domain_opportunities": {
+      "type": "number",
+      "default": 0
+    },
+    "pending_licenses": {
+      "type": "number",
+      "default": 0
+    },
+    "completion_percentage": {
+      "type": "number",
+      "default": 0
+    },
+    "estimated_completion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "collection_quality": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "good",
+        "fair",
+        "poor",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "collection_strength": {
+      "type": "string",
+      "enum": [
+        "comprehensive",
+        "strong",
+        "developing",
+        "minimal",
+        "empty"
+      ],
+      "default": "empty"
+    },
+    "related_collections": {
+      "type": "string",
+      "description": "JSON array of related collection goal names"
+    },
+    "tradition": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "completed",
+        "paused",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
