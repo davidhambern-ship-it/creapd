@@ -58,6 +58,7 @@ import SpiritualDashboard from '@/pages/SpiritualDashboard';
 import SpiritualResearch from '@/pages/SpiritualResearch';
 import SpiritualLibrary from '@/pages/SpiritualLibrary';
 import SpiritualStudy from '@/pages/SpiritualStudy';
+import SpiritualStudySession from '@/pages/SpiritualStudySession';
 import SpiritualMessage from '@/pages/SpiritualMessage';
 import SpiritualAssets from '@/pages/SpiritualAssets';
 import SpiritualPackage from '@/pages/SpiritualPackage';
@@ -146,6 +147,7 @@ const AuthenticatedApp = () => {
           <Route path="/spiritual/research" element={<SpiritualResearch />} />
           <Route path="/spiritual/library" element={<SpiritualLibrary />} />
           <Route path="/spiritual/study" element={<SpiritualStudy />} />
+          <Route path="/spiritual/study/:sessionId" element={<SpiritualStudySession />} />
           <Route path="/spiritual/message" element={<SpiritualMessage />} />
           <Route path="/spiritual/assets" element={<SpiritualAssets />} />
           <Route path="/spiritual/package" element={<SpiritualPackage />} />

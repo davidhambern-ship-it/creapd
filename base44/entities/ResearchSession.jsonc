@@ -1,0 +1,138 @@
+{
+  "name": "ResearchSession",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "research_question": {
+      "type": "string",
+      "description": "The natural language research question"
+    },
+    "study_type": {
+      "type": "string",
+      "enum": [
+        "passage",
+        "topic",
+        "question",
+        "doctrine",
+        "original_language",
+        "word",
+        "character",
+        "biography",
+        "place",
+        "historical_event",
+        "comparative",
+        "current_event",
+        "apologetics",
+        "theme",
+        "timeline",
+        "cultural",
+        "philosophy",
+        "tradition",
+        "custom"
+      ],
+      "default": "custom"
+    },
+    "faith_tradition": {
+      "type": "string"
+    },
+    "branch_denomination": {
+      "type": "string"
+    },
+    "sacred_texts": {
+      "type": "string",
+      "description": "JSON array of sacred texts"
+    },
+    "research_sources": {
+      "type": "string",
+      "description": "JSON array of enabled research source categories"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "researching",
+        "ready",
+        "failed",
+        "archived"
+      ],
+      "default": "researching"
+    },
+    "research_plan": {
+      "type": "string",
+      "description": "JSON array of research steps with labels and statuses"
+    },
+    "primary_source_analysis": {
+      "type": "string",
+      "description": "Analysis of primary sources (sacred texts, passages)"
+    },
+    "original_language_analysis": {
+      "type": "string",
+      "description": "JSON array of word study objects"
+    },
+    "historical_development": {
+      "type": "string",
+      "description": "Historical development and context"
+    },
+    "timeline_events": {
+      "type": "string",
+      "description": "JSON array of timeline event objects"
+    },
+    "comparative_analysis": {
+      "type": "string",
+      "description": "JSON array of comparison table objects"
+    },
+    "multiple_perspectives": {
+      "type": "string",
+      "description": "JSON array of perspective objects"
+    },
+    "research_summary": {
+      "type": "string",
+      "description": "Comprehensive research summary"
+    },
+    "related_studies": {
+      "type": "string",
+      "description": "JSON array of related study suggestions"
+    },
+    "sources_used": {
+      "type": "string",
+      "description": "JSON array of source objects with citations"
+    },
+    "citations": {
+      "type": "string",
+      "description": "Formatted citation list"
+    },
+    "discussion_questions": {
+      "type": "string",
+      "description": "JSON array of discussion question strings"
+    },
+    "production_ideas": {
+      "type": "string",
+      "description": "JSON array of production idea objects"
+    },
+    "notebook_content": {
+      "type": "string",
+      "description": "Producer's personal research notebook (rich text)"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated tags"
+    },
+    "collection_name": {
+      "type": "string",
+      "description": "Optional collection/folder name"
+    }
+  },
+  "required": [
+    "title",
+    "research_question"
+  ]
+}
