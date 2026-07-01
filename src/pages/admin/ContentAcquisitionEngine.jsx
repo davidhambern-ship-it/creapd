@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+
+
 import CAEEngineHeader from '@/components/cae/CAEEngineHeader';
 import CAEOverview from '@/components/cae/CAEOverview';
 import CAEActivityFeed from '@/components/cae/CAEActivityFeed';
@@ -21,7 +23,6 @@ export default function ContentAcquisitionEngine() {
   const [activityEvents, setActivityEvents] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(u => {
@@ -60,25 +61,6 @@ export default function ContentAcquisitionEngine() {
     return () => unsubscribe();
   }, [user]);
 
-  const handleRunNow = async () => {
-    setRunning(true);
-    try {
-      await base44.functions.invoke('runCAE', {});
-      await loadData();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const handleToggleEngine = async () => {
-    if (!config) return;
-    const newStatus = config.engine_status === 'running' ? 'paused' : 'running';
-    await base44.entities.CAEEngineConfig.update(config.id, { engine_status: newStatus });
-    setConfig({ ...config, engine_status: newStatus });
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -102,7 +84,7 @@ export default function ContentAcquisitionEngine() {
 
   return (
     <div className="min-h-screen bg-background">
-      <CAEEngineHeader config={config} running={running} onRunNow={handleRunNow} onToggleEngine={handleToggleEngine} />
+      <CAEEngineHeader config={config} />
 
       <div className="max-w-[1600px] mx-auto px-4 md:px-6 pb-12">
         <div className="flex gap-1 overflow-x-auto mb-6 pb-2">
