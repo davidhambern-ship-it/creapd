@@ -9,6 +9,7 @@ export function useSpiritualProduction(configId) {
   const [assets, setAssets] = useState([]);
   const [packageItems, setPackageItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [generatingVoice, setGeneratingVoice] = useState(false);
   const pollRef = useRef(null);
 
   const fetchSubEntities = async (activeId) => {
@@ -82,6 +83,16 @@ export function useSpiritualProduction(configId) {
         if (updated.status !== 'building') {
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
           await fetchSubEntities(activeId);
+          // After build completes, trigger voice generation
+          if (updated.status === 'ready') {
+            setGeneratingVoice(true);
+            base44.functions.invoke('generateSpiritualVoiceovers', { configuration_id: activeId })
+              .catch(err => console.error('Voice generation error:', err))
+              .finally(() => {
+                setGeneratingVoice(false);
+                loadAll(true);
+              });
+          }
         }
       } catch (e) { /* ignore poll errors */ }
     }, 10000);
@@ -93,5 +104,5 @@ export function useSpiritualProduction(configId) {
     loadAll(false);
   }, [loadAll]);
 
-  return { config, setConfig, research, topics, messageSections, assets, packageItems, loading, refresh: () => loadAll(true) };
+  return { config, setConfig, research, topics, messageSections, assets, packageItems, loading, generatingVoice, refresh: () => loadAll(true) };
 }

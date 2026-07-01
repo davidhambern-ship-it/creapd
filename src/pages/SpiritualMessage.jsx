@@ -11,7 +11,7 @@ import RuntimeOverview from '@/components/message/RuntimeOverview';
 import PresentationStrip from '@/components/message/PresentationStrip';
 
 export default function SpiritualMessage() {
-  const { config, messageSections, assets, packageItems, loading, refresh } = useSpiritualProduction();
+  const { config, messageSections, assets, packageItems, loading, generatingVoice, refresh } = useSpiritualProduction();
   const [generating, setGenerating] = useState(false);
   const moduleRefs = useRef({});
 
@@ -54,7 +54,7 @@ export default function SpiritualMessage() {
   };
 
   // Building state
-  if (generating || config.status === 'building') {
+  if (generating || config.status === 'building' || generatingVoice) {
     return (
       <div className="min-h-screen p-6 md:p-8">
         <div className="max-w-5xl mx-auto">
@@ -64,7 +64,7 @@ export default function SpiritualMessage() {
               <p className="text-sm text-muted-foreground">{config.production_name || config.production_type}</p>
             </div>
           </div>
-          <ProductionStatusBar generating={generating} configStatus={config.status} />
+          <ProductionStatusBar generating={generating} configStatus={config.status} generatingVoice={generatingVoice} />
         </div>
       </div>
     );
