@@ -272,7 +272,7 @@ TASKS:
    - prayer: Opening or closing prayer (if applicable)
    - closing_notes: Final notes
 
-   Each section must include: order, section_type (from the list above), title, content (the full message text for this section), speaker_notes (private notes for the speaker), scripture_references (with citations), citations (source citations), and estimated_duration_seconds.
+   Each section must include: order, section_type (from the list above), title, content (the full message text for this section), speaker_notes (private notes for the speaker), scripture_references (with citations), citations (source citations), estimated_duration_seconds (realistic speaking time based on word count at 130 wpm), target_runtime_seconds (intended duration for this section, proportional to total target runtime), slide_title (concise title for the presentation slide for this section), slide_content (bullet points or key phrases for the slide — NOT the full script), and slide_visual_prompt (brief description of the visual design for this slide).
 
 2. AI ASSETS: Generate the following based on selected automation:
    - title_slide: Title and theme for the production
@@ -303,7 +303,11 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
               speaker_notes: { type: 'string' },
               scripture_references: { type: 'string' },
               citations: { type: 'string' },
-              estimated_duration_seconds: { type: 'number' }
+              estimated_duration_seconds: { type: 'number' },
+              target_runtime_seconds: { type: 'number' },
+              slide_title: { type: 'string' },
+              slide_content: { type: 'string' },
+              slide_visual_prompt: { type: 'string' }
             }
           }
         },
@@ -355,13 +359,37 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       await base44.entities.SpiritualMessageSection.bulkCreate(messageData);
     }
 
-    // Create AI assets
-    const assets = [];
-
-    if (aiAutomation.includes('Generate Presentation Slides') && llm2.title_slide) {
-      assets.push({ configuration_id, asset_type: 'title_slide', title: 'Title Slide', content: llm2.title_slide, status: 'ready' });
+    // Fetch created sections for per-section slide assets
+    let createdSections = [];
+    if (messageData.length > 0) {
+      createdSections = await base44.entities.SpiritualMessageSection.filter({ configuration_id }, 'order');
     }
-    if (aiAutomation.includes('Generate Presentation Slides') && llm2.scripture_slides) {
+
+    // Create AI assets — ALL assets generated automatically (Production Engine)
+    const assets = [];
+    const slideDataMap = llm2.message_sections || [];
+
+    // Per-section presentation slides
+    for (let i = 0; i < createdSections.length; i++) {
+      const section = createdSections[i];
+      const slide = slideDataMap[i] || {};
+      const slideType = section.section_type === 'opening' ? 'title_slide'
+        : section.section_type === 'closing' || section.section_type === 'closing_notes' ? 'closing_slide'
+        : section.section_type === 'call_to_action' ? 'call_to_action_slide'
+        : 'scripture_slide';
+      assets.push({
+        configuration_id,
+        asset_type: slideType,
+        title: slide.slide_title || section.title,
+        content: slide.slide_content || '',
+        associated_section_id: section.id,
+        associated_topic: section.title,
+        status: 'ready'
+      });
+    }
+
+    // Global production assets (always generated — Production Engine)
+    if (llm2.scripture_slides) {
       for (const slide of llm2.scripture_slides) {
         assets.push({
           configuration_id,
@@ -375,28 +403,28 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
         });
       }
     }
-    if (aiAutomation.includes('Generate Social Captions') && llm2.social_captions) {
+    if (llm2.social_captions) {
       assets.push({ configuration_id, asset_type: 'social_graphic', title: 'Social Media Captions', content: llm2.social_captions.join('\n\n---\n\n'), status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Prayer Guide') && llm2.prayer_guide) {
+    if (llm2.prayer_guide) {
       assets.push({ configuration_id, asset_type: 'prayer_guide', title: 'Prayer Guide', content: llm2.prayer_guide, status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Speaker Notes') && llm2.speaker_notes) {
-      assets.push({ configuration_id, asset_type: 'speaker_notes', title: 'Speaker Notes', content: llm2.speaker_notes, status: 'ready' });
+    if (llm2.speaker_notes) {
+      assets.push({ configuration_id, asset_type: 'speaker_notes', title: 'Overall Speaker Notes', content: llm2.speaker_notes, status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Discussion Questions') && llm2.discussion_guide) {
+    if (llm2.discussion_guide) {
       assets.push({ configuration_id, asset_type: 'discussion_guide', title: 'Discussion Guide', content: llm2.discussion_guide, status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Reading Plan') && llm2.reading_plan) {
+    if (llm2.reading_plan) {
       assets.push({ configuration_id, asset_type: 'reading_plan', title: 'Reading Plan', content: llm2.reading_plan, status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Image Prompts') && llm2.thumbnail_prompt) {
+    if (llm2.thumbnail_prompt) {
       assets.push({ configuration_id, asset_type: 'thumbnail', title: 'Thumbnail Prompt', content: llm2.thumbnail_prompt, status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Video Prompts') && llm2.video_prompt) {
+    if (llm2.video_prompt) {
       assets.push({ configuration_id, asset_type: 'video_prompt', title: 'Video Prompt', content: llm2.video_prompt, status: 'ready' });
     }
-    if (aiAutomation.includes('Generate Production Notes') && llm2.production_notes) {
+    if (llm2.production_notes) {
       assets.push({ configuration_id, asset_type: 'production_notes', title: 'Production Notes', content: llm2.production_notes, status: 'ready' });
     }
 
@@ -415,16 +443,11 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
     if (researchData.length > 0) {
       packageItems.push({ configuration_id, order: 2, item_type: 'research', title: 'Research', content: `${researchData.length} research items`, source: 'Research Center', status: 'approved' });
     }
-    packageItems.push({ configuration_id, order: 3, item_type: 'presentation', title: 'Presentation Slides', content: `${llm2.scripture_slides ? llm2.scripture_slides.length + 1 : 1} slides`, source: 'AI Assets', status: assets.length > 0 ? 'approved' : 'needs_review' });
-    if (aiAutomation.includes('Generate Prayer Guide')) {
-      packageItems.push({ configuration_id, order: 4, item_type: 'prayer', title: 'Prayer Guide', content: 'Prayer guide generated', source: 'AI Assets', status: 'approved' });
-    }
-    if (aiAutomation.includes('Generate Reading Plan')) {
-      packageItems.push({ configuration_id, order: 5, item_type: 'reading_plan', title: 'Reading Plan', content: 'Reading plan generated', source: 'AI Assets', status: 'approved' });
-    }
-    if (aiAutomation.includes('Generate Discussion Questions')) {
-      packageItems.push({ configuration_id, order: 6, item_type: 'discussion', title: 'Discussion Materials', content: 'Discussion guide generated', source: 'AI Assets', status: 'approved' });
-    }
+    const slideCount = createdSections.length + (llm2.scripture_slides ? llm2.scripture_slides.length : 0);
+    packageItems.push({ configuration_id, order: 3, item_type: 'presentation', title: 'Presentation Slides', content: `${slideCount} slides`, source: 'AI Assets', status: 'approved' });
+    packageItems.push({ configuration_id, order: 4, item_type: 'prayer', title: 'Prayer Guide', content: 'Prayer guide generated', source: 'AI Assets', status: 'approved' });
+    packageItems.push({ configuration_id, order: 5, item_type: 'reading_plan', title: 'Reading Plan', content: 'Reading plan generated', source: 'AI Assets', status: 'approved' });
+    packageItems.push({ configuration_id, order: 6, item_type: 'discussion', title: 'Discussion Materials', content: 'Discussion guide generated', source: 'AI Assets', status: 'approved' });
 
     if (packageItems.length > 0) {
       await base44.entities.SpiritualPackageItem.bulkCreate(packageItems);
