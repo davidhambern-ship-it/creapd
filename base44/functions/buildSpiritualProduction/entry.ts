@@ -459,7 +459,10 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       await base44.entities.SpiritualPackageItem.bulkCreate(packageItems);
     }
 
-    // ===== VOICE GENERATION + RUNTIME VALIDATION =====
+    // Core production is complete — mark as ready so the frontend stops polling
+    await base44.entities.SpiritualProductionConfiguration.update(configuration_id, { status: 'ready' });
+
+    // ===== VOICE GENERATION + RUNTIME VALIDATION (best-effort post-processing) =====
     const totalTargetSeconds = parseRuntimeToSeconds(config.target_runtime);
     const sectionCount = Math.max(createdSections.length, 1);
     const perSectionTarget = Math.floor(totalTargetSeconds / sectionCount);
@@ -619,8 +622,8 @@ Return a JSON object with an "adjustments" array, each containing "id" (string) 
       } catch {}
     }
 
-    // Update config status to ready
-    await base44.entities.SpiritualProductionConfiguration.update(configuration_id, { status: 'ready' });
+    // Config was already marked 'ready' after package creation above.
+    // Voice/image generation above is best-effort post-processing.
 
     return Response.json({
       success: true,
