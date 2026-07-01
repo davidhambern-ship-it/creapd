@@ -13,6 +13,7 @@ import PassageActions from '@/components/library/PassageActions';
 import WordInteractionModal from '@/components/library/WordInteractionModal';
 import { HIGHLIGHT_CATEGORIES, READING_MODES } from '@/lib/spiritualConstants';
 import NativeTextReader from '@/components/library/NativeTextReader';
+import CreateMessageButton from '@/components/message/CreateMessageButton';
 
 export default function LibraryReader() {
   const { textId } = useParams();
@@ -469,9 +470,18 @@ export default function LibraryReader() {
               <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => navigate(`/spiritual/library/compare?query=${encodeURIComponent(`Compare ${text.title} with related texts`)}`)}>
                 <Columns2 className="w-4 h-4 mr-2" /> Compare This Text
               </Button>
-              <Button size="sm" variant="outline" className="w-full justify-start" onClick={() => navigate('/spiritual/message')}>
-                <BookOpen className="w-4 h-4 mr-2" /> Open Message Builder
-              </Button>
+              <CreateMessageButton
+                context={{
+                  title: `Message: ${text.title}`,
+                  topic: text.title,
+                  faith_tradition: text.tradition,
+                  study_topics: JSON.stringify([text.title]),
+                }}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                label="Create Message"
+              />
             </div>
           </div>
         </div>

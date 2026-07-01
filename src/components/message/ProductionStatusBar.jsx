@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, CheckCircle2, Search, GraduationCap, PenTool, Presentation, Package, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, Search, GraduationCap, PenTool, Presentation, Package, Clock, Volume2 } from 'lucide-react';
 
 const STAGES = [
   { key: 'research', label: 'Research', icon: Search },
   { key: 'topics', label: 'Study Topics', icon: GraduationCap },
   { key: 'message', label: 'Message Script', icon: PenTool },
   { key: 'slides', label: 'Presentation Slides', icon: Presentation },
+  { key: 'voice', label: 'Voiceover', icon: Volume2 },
   { key: 'assets', label: 'Production Assets', icon: Package },
   { key: 'package', label: 'Delivery Package', icon: CheckCircle2 }
 ];

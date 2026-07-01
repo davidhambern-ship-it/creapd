@@ -353,6 +353,11 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       scripture_references: section.scripture_references || '',
       citations: section.citations || '',
       estimated_duration_seconds: section.estimated_duration_seconds || 0,
+      target_runtime_seconds: section.target_runtime_seconds || 0,
+      slide_title: section.slide_title || '',
+      slide_content: section.slide_content || '',
+      slide_visual_prompt: section.slide_visual_prompt || '',
+      runtime_status: 'pending',
       status: 'generated'
     }));
     if (messageData.length > 0) {
@@ -428,8 +433,9 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       assets.push({ configuration_id, asset_type: 'production_notes', title: 'Production Notes', content: llm2.production_notes, status: 'ready' });
     }
 
+    let createdAssets = [];
     if (assets.length > 0) {
-      await base44.entities.SpiritualAsset.bulkCreate(assets);
+      createdAssets = await base44.entities.SpiritualAsset.bulkCreate(assets);
     }
 
     // Create production package items
@@ -453,6 +459,166 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       await base44.entities.SpiritualPackageItem.bulkCreate(packageItems);
     }
 
+    // ===== VOICE GENERATION + RUNTIME VALIDATION =====
+    const totalTargetSeconds = parseRuntimeToSeconds(config.target_runtime);
+    const sectionCount = Math.max(createdSections.length, 1);
+    const perSectionTarget = Math.floor(totalTargetSeconds / sectionCount);
+
+    // Generate voice for each section in parallel
+    const voiceResults = await Promise.all(
+      createdSections.map(async (section) => {
+        try {
+          const text = (section.content || '').substring(0, 5000);
+          if (!text || text.trim().length < 10) {
+            return { sectionId: section.id, voiceUrl: null, wordCount: 0 };
+          }
+          const voiceResult = await base44.integrations.Core.GenerateSpeech({
+            text: text,
+            voice: 'storm',
+            language_code: 'en'
+          });
+          const wordCount = text.split(/\s+/).filter(Boolean).length;
+          return { sectionId: section.id, voiceUrl: voiceResult.url, wordCount };
+        } catch (err) {
+          const wordCount = (section.content || '').split(/\s+/).filter(Boolean).length;
+          return { sectionId: section.id, voiceUrl: null, wordCount };
+        }
+      })
+    );
+
+    // Calculate voice duration and runtime status for each section
+    const sectionRuntimeData = voiceResults.map(vr => {
+      const voiceDuration = Math.round(vr.wordCount / 2.5); // ~150 wpm = 2.5 words/sec
+      const status = voiceDuration < perSectionTarget * 0.7 ? 'too_short'
+        : voiceDuration > perSectionTarget * 1.3 ? 'too_long'
+        : 'on_target';
+      return {
+        id: vr.sectionId,
+        voice_url: vr.voiceUrl,
+        voice_duration_seconds: voiceDuration,
+        target_runtime_seconds: perSectionTarget,
+        runtime_status: status
+      };
+    });
+
+    if (sectionRuntimeData.length > 0) {
+      await base44.entities.SpiritualMessageSection.bulkUpdate(sectionRuntimeData);
+    }
+
+    // ===== AUTO-ADJUST: Expand/condense scripts that are off-target =====
+    const sectionsToAdjust = sectionRuntimeData.filter(s => s.runtime_status !== 'on_target');
+    if (sectionsToAdjust.length > 0 && sectionsToAdjust.length <= createdSections.length) {
+      try {
+        const adjustSections = await Promise.all(
+          sectionsToAdjust.map(async s => {
+            const sec = createdSections.find(cs => cs.id === s.id);
+            return {
+              id: s.id,
+              section_type: sec?.section_type || 'main_section',
+              title: sec?.title || '',
+              current_content: sec?.content || '',
+              target_runtime: s.target_runtime_seconds,
+              current_duration: s.voice_duration_seconds,
+              action: s.runtime_status === 'too_short' ? 'expand' : 'condense'
+            };
+          })
+        );
+
+        const adjustPrompt = `You are adjusting message sections to match their target runtime. For each section, ${'expand or condense'} the content so the speaking time matches the target.
+
+SECTIONS TO ADJUST:
+${adjustSections.map(s => `
+Section: "${s.title}" (${s.section_type})
+Action: ${s.action.toUpperCase()}
+Current duration: ${s.current_duration}s
+Target duration: ${s.target_runtime}s
+Current content:
+${s.current_content}
+`).join('\n---\n')}
+
+RULES:
+- Preserve the core message, scripture references, and citations
+- Maintain the same tone and style
+- If expanding: add depth, illustrations, examples, or application — do NOT pad with filler
+- If condensing: tighten language, remove redundancy — do NOT cut essential content
+- Keep each section's content under 5000 characters
+
+Return a JSON object with an "adjustments" array, each containing "id" (string) and "adjusted_content" (string).`;
+
+        const adjustSchema = {
+          type: 'object',
+          properties: {
+            adjustments: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  adjusted_content: { type: 'string' }
+                }
+              }
+            }
+          }
+        };
+
+        const adjustResult = await base44.integrations.Core.InvokeLLM({
+          prompt: adjustPrompt,
+          response_json_schema: adjustSchema
+        });
+
+        // Update adjusted sections and regenerate voice
+        const adjustedUpdates = await Promise.all(
+          (adjustResult.adjustments || []).map(async adj => {
+            const wordCount = (adj.adjusted_content || '').split(/\s+/).filter(Boolean).length;
+            const voiceDuration = Math.round(wordCount / 2.5);
+            const status = voiceDuration < perSectionTarget * 0.7 ? 'too_short'
+              : voiceDuration > perSectionTarget * 1.3 ? 'too_long'
+              : 'on_target';
+
+            // Regenerate voice for adjusted content
+            let voiceUrl = null;
+            try {
+              const voiceResult = await base44.integrations.Core.GenerateSpeech({
+                text: (adj.adjusted_content || '').substring(0, 5000),
+                voice: 'storm',
+                language_code: 'en'
+              });
+              voiceUrl = voiceResult.url;
+            } catch {}
+
+            return {
+              id: adj.id,
+              content: adj.adjusted_content,
+              voice_url: voiceUrl,
+              voice_duration_seconds: voiceDuration,
+              runtime_status: status
+            };
+          })
+        );
+
+        if (adjustedUpdates.length > 0) {
+          await base44.entities.SpiritualMessageSection.bulkUpdate(adjustedUpdates);
+        }
+      } catch (err) {
+        // Auto-adjust is best-effort — production still succeeds
+      }
+    }
+
+    // ===== IMAGE GENERATION for title slide =====
+    if (llm2.thumbnail_prompt) {
+      try {
+        const imageResult = await base44.integrations.Core.GenerateImage({
+          prompt: llm2.thumbnail_prompt
+        });
+        if (imageResult.url) {
+          const titleSlide = createdAssets.find(a => a.asset_type === 'title_slide');
+          if (titleSlide) {
+            await base44.entities.SpiritualAsset.update(titleSlide.id, { generated_image_url: imageResult.url });
+          }
+        }
+      } catch {}
+    }
+
     // Update config status to ready
     await base44.entities.SpiritualProductionConfiguration.update(configuration_id, { status: 'ready' });
 
@@ -472,6 +638,13 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+function parseRuntimeToSeconds(runtimeStr) {
+  if (!runtimeStr) return 1800;
+  const match = String(runtimeStr).match(/(\d+)\s*Minute/i);
+  if (match) return parseInt(match[1]) * 60;
+  return 1800;
+}
 
 function safeParse(str, fallback) {
   if (!str) return fallback;

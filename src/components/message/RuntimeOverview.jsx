@@ -11,7 +11,7 @@ function parseRuntimeToSeconds(runtimeStr) {
 
 export default function RuntimeOverview({ sections, targetRuntime }) {
   const targetSeconds = parseRuntimeToSeconds(targetRuntime);
-  const totalEstimated = sections.reduce((sum, s) => sum + estimateSpeakingTime(s.content), 0);
+  const totalEstimated = sections.reduce((sum, s) => sum + (s.voice_duration_seconds || estimateSpeakingTime(s.content)), 0);
   const completionPct = targetSeconds > 0 ? Math.min(100, Math.round((totalEstimated / targetSeconds) * 100)) : 0;
   const isUnder = totalEstimated < targetSeconds * 0.85;
   const isOver = totalEstimated > targetSeconds * 1.15;
@@ -51,8 +51,8 @@ export default function RuntimeOverview({ sections, targetRuntime }) {
       {/* Per-Section Breakdown */}
       <div className="space-y-2">
         {sections.map((section, idx) => {
-          const est = estimateSpeakingTime(section.content);
-          const target = section.estimated_duration_seconds || est;
+          const est = section.voice_duration_seconds || estimateSpeakingTime(section.content);
+          const target = section.target_runtime_seconds || section.estimated_duration_seconds || est;
           const pct = target > 0 ? Math.min(100, Math.round((est / target) * 100)) : 0;
           const tooShort = est < target * 0.7;
           const tooLong = est > target * 1.3;

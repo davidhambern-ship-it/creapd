@@ -51,6 +51,42 @@
       "type": "number",
       "description": "Estimated speaking time in seconds"
     },
+    "target_runtime_seconds": {
+      "type": "number",
+      "description": "Intended duration for this section based on total target runtime",
+      "default": 0
+    },
+    "voice_url": {
+      "type": "string",
+      "description": "Generated voiceover audio URL"
+    },
+    "voice_duration_seconds": {
+      "type": "number",
+      "description": "Actual voiceover duration in seconds",
+      "default": 0
+    },
+    "runtime_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "on_target",
+        "too_short",
+        "too_long"
+      ],
+      "default": "pending"
+    },
+    "slide_title": {
+      "type": "string",
+      "description": "Title for the presentation slide"
+    },
+    "slide_content": {
+      "type": "string",
+      "description": "Bullet points or key phrases for the slide"
+    },
+    "slide_visual_prompt": {
+      "type": "string",
+      "description": "Visual design description for the slide"
+    },
     "status": {
       "type": "string",
       "enum": [

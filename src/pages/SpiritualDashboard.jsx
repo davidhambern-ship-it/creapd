@@ -3,14 +3,35 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSpiritualProduction } from '@/hooks/useSpiritualProduction';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, Church, BookOpen, Search, PenTool, Sparkles, Package, Download, RefreshCw, GraduationCap, ListChecks, Clock, FileText, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Church, BookOpen, Search, PenTool, Sparkles, Package, Download, RefreshCw, GraduationCap, ListChecks, Clock, FileText, CheckCircle2, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import CreateMessageButton from '@/components/message/CreateMessageButton';
 import { SECTION_TYPE_LABELS, ASSET_TYPE_LABELS, formatDuration } from '@/lib/spiritualConstants';
 
 export default function SpiritualDashboard() {
   const { config, setConfig, research, topics, messageSections, assets, packageItems, loading, refresh } = useSpiritualProduction();
   const [refreshing, setRefreshing] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState(null);
+  const [creatingMessage, setCreatingMessage] = useState(null);
   const navigate = useNavigate();
+
+  const handleCreateMessageFromTopic = async (topicName) => {
+    setCreatingMessage(topicName);
+    try {
+      const { createMessageFromContext } = await import('@/lib/createMessage');
+      await createMessageFromContext({
+        title: `Message: ${topicName}`,
+        topic: topicName,
+        faith_tradition: config?.faith_tradition,
+        branch_denomination: config?.branch_denomination,
+        sacred_texts: config?.sacred_texts,
+        study_topics: JSON.stringify([topicName]),
+      });
+      navigate('/spiritual/message');
+    } catch (err) {
+      console.error(err);
+      setCreatingMessage(null);
+    }
+  };
 
   const handleTopicClick = (topic) => {
     const query = encodeURIComponent(topic.topic_name);
@@ -218,7 +239,14 @@ export default function SpiritualDashboard() {
                             onClick={(e) => { e.stopPropagation(); handleTopicClick(topic); }}
                             className="text-xs px-2 py-0.5 rounded-md bg-primary/20 text-primary hover:bg-primary/30 transition-colors flex items-center gap-1"
                           >
-                            <GraduationCap className="w-3 h-3" /> Start Study
+                            <GraduationCap className="w-3 h-3" /> Study
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleCreateMessageFromTopic(topic.topic_name); }}
+                            disabled={creatingMessage === topic.topic_name}
+                            className="text-xs px-2 py-0.5 rounded-md bg-accent/20 text-accent hover:bg-accent/30 transition-colors flex items-center gap-1"
+                          >
+                            {creatingMessage === topic.topic_name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Message
                           </button>
                         </div>
                       </div>

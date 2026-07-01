@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SECTION_TYPE_LABELS, formatDuration, estimateSpeakingTime } from '@/lib/spiritualConstants';
 import {
   PenTool, Presentation, StickyNote, Clock, BookOpen, Save, X,
-  AlertTriangle, CheckCircle2, FileText
+  AlertTriangle, CheckCircle2, FileText, Volume2, Play
 } from 'lucide-react';
 
 const TABS = [
@@ -23,8 +23,10 @@ export default function ProductionModule({ section, slide, index, onRefresh }) {
   const [saving, setSaving] = useState(false);
 
   const estimatedSeconds = estimateSpeakingTime(section.content);
-  const targetSeconds = section.estimated_duration_seconds || estimatedSeconds;
-  const completionPct = targetSeconds > 0 ? Math.min(100, Math.round((estimatedSeconds / targetSeconds) * 100)) : 0;
+  const targetSeconds = section.target_runtime_seconds || section.estimated_duration_seconds || estimatedSeconds;
+  const voiceSeconds = section.voice_duration_seconds || estimatedSeconds;
+  const runtimeStatus = section.runtime_status || 'pending';
+  const completionPct = targetSeconds > 0 ? Math.min(100, Math.round((voiceSeconds / targetSeconds) * 100)) : 0;
   const isTooShort = estimatedSeconds < targetSeconds * 0.7;
   const isTooLong = estimatedSeconds > targetSeconds * 1.3;
   const wordCount = (section.content || '').split(/\s+/).filter(Boolean).length;
@@ -58,9 +60,14 @@ export default function ProductionModule({ section, slide, index, onRefresh }) {
           <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
             {SECTION_TYPE_LABELS[section.section_type] || section.section_type}
           </span>
-          <span className={`text-xs flex items-center gap-1 ${isTooShort ? 'text-accent' : isTooLong ? 'text-destructive' : 'text-berna-emerald'}`}>
-            <Clock className="w-3 h-3" /> {formatDuration(estimatedSeconds)} / {formatDuration(targetSeconds)}
+          <span className={`text-xs flex items-center gap-1 ${runtimeStatus === 'too_short' ? 'text-accent' : runtimeStatus === 'too_long' ? 'text-destructive' : 'text-berna-emerald'}`}>
+            <Clock className="w-3 h-3" /> {formatDuration(voiceSeconds)} / {formatDuration(targetSeconds)}
           </span>
+          {section.voice_url && (
+            <a href={section.voice_url} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-primary hover:underline">
+              <Volume2 className="w-3 h-3" /> Voice
+            </a>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {TABS.map(tab => {
@@ -184,16 +191,31 @@ export default function ProductionModule({ section, slide, index, onRefresh }) {
         {/* Timing Tab */}
         {activeTab === 'timing' && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-secondary/30">
                 <p className="text-xs text-muted-foreground mb-1">Target Runtime</p>
                 <p className="text-lg font-heading font-bold">{formatDuration(targetSeconds)}</p>
               </div>
               <div className="p-3 rounded-lg bg-secondary/30">
-                <p className="text-xs text-muted-foreground mb-1">Estimated Speaking Time</p>
-                <p className="text-lg font-heading font-bold">{formatDuration(estimatedSeconds)}</p>
+                <p className="text-xs text-muted-foreground mb-1">Voice Runtime</p>
+                <p className="text-lg font-heading font-bold">{formatDuration(voiceSeconds)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-secondary/30">
+                <p className="text-xs text-muted-foreground mb-1">Difference</p>
+                <p className={`text-lg font-heading font-bold ${voiceSeconds < targetSeconds ? 'text-accent' : voiceSeconds > targetSeconds ? 'text-destructive' : 'text-berna-emerald'}`}>
+                  {voiceSeconds >= targetSeconds ? '+' : ''}{formatDuration(Math.abs(voiceSeconds - targetSeconds))}
+                </p>
               </div>
             </div>
+
+            {section.voice_url && (
+              <div className="p-3 rounded-lg bg-secondary/30">
+                <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  <Volume2 className="w-3 h-3" /> Voiceover
+                </p>
+                <audio controls src={section.voice_url} className="w-full h-8" />
+              </div>
+            )}
 
             <div>
               <div className="flex justify-between text-xs mb-1">

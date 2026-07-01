@@ -10,10 +10,11 @@ import RelatedStudyCard from '@/components/study/RelatedStudyCard';
 import ProductionIdeaCard from '@/components/study/ProductionIdeaCard';
 import { STUDY_TYPE_LABELS, safeJsonParse, mapProductionType, mapAudience, mapTone, mapRuntime } from '@/lib/studyConstants';
 import { DEFAULT_AI_AUTOMATION } from '@/lib/spiritualConstants';
+import CreateMessageButton from '@/components/message/CreateMessageButton';
 import {
   ArrowLeft, Loader2, BookOpen, Languages, Landmark, GitCompare,
   Users, FileText, Clock, Lightbulb, MessageSquare, Sparkles,
-  Pin, Archive, Download, BookPlus
+  Pin, Archive, Download, BookPlus, PenTool
 } from 'lucide-react';
 
 export default function SpiritualStudySession() {
@@ -180,7 +181,18 @@ export default function SpiritualStudySession() {
                 </Link>
               )}
             </div>
-            <div className="flex gap-2 shrink-0">
+            <div className="flex gap-2 shrink-0 items-center">
+              <CreateMessageButton
+                context={{
+                  title: session.title,
+                  research_session_id: session.id,
+                  faith_tradition: session.faith_tradition,
+                  branch_denomination: session.branch_denomination,
+                  sacred_texts: session.sacred_texts,
+                  study_topics: JSON.stringify([session.research_question]),
+                }}
+                size="sm"
+              />
               <button onClick={togglePin} className={`p-2 rounded-lg border transition-colors ${session.is_pinned ? 'bg-accent/15 text-accent border-accent/30' : 'border-border hover:bg-secondary/30'}`}>
                 <Pin className="w-4 h-4" />
               </button>
