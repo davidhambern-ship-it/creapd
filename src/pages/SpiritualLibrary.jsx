@@ -6,10 +6,14 @@ import {
   Loader2, BookOpen, GraduationCap, Sparkles, Languages, ArrowRight,
   Columns2, Globe, Clock, MapPin, Search, Star, FileText, PenTool,
   Package, BookMarked, Lightbulb, ChevronDown, ChevronUp, Library,
-  ScrollText, Building2, Map, Clock3, FolderOpen, Award, Flame, TrendingUp
+  ScrollText, Building2, Map, Clock3, FolderOpen, Award, Flame, TrendingUp,
+  Lock, ExternalLink, Database
 } from 'lucide-react';
 import LibraryHero from '@/components/library/LibraryHero';
 import LibraryCollections from '@/components/library/LibraryCollections';
+import { resolveTextAccess } from '@/lib/registryAccess';
+import { REGISTRY_ACCESS_STATUS, getStatusBadge } from '@/lib/registryConstants';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
   BROWSE_CATEGORIES, LIBRARY_COLLECTIONS, FAITH_TRADITIONS, LIBRARY_LANGUAGES,
   LIBRARY_HISTORICAL_PERIODS, LIBRARY_REGIONS, QUICK_ACTIONS, SUPPORTED_LEARNING_LANGUAGES
@@ -54,6 +58,8 @@ export default function SpiritualLibrary() {
   const [recentlyRead, setRecentlyRead] = useState([]);
   const [expandedBrowse, setExpandedBrowse] = useState(searchParams.get('browse') || 'tradition');
   const [activeTab, setActiveTab] = useState('home');
+  const [user, setUser] = useState(null);
+  const [accessInfo, setAccessInfo] = useState(null);
 
   const RECENTLY_READ_KEY = 'wsLibrary_recentlyRead';
 
@@ -83,6 +89,7 @@ export default function SpiritualLibrary() {
 
   useEffect(() => {
     loadData();
+    base44.auth.me().then(setUser).catch(() => {});
     try { setRecentlyRead(JSON.parse(localStorage.getItem(RECENTLY_READ_KEY) || '[]')); } catch { setRecentlyRead([]); }
   }, [loadData]);
 
@@ -107,11 +114,38 @@ export default function SpiritualLibrary() {
     handleSearch(`${category}: ${item}`);
   };
 
-  const handleOpenText = (text) => {
+  const handleOpenText = async (text) => {
     const updated = [text.title, ...recentlyRead.filter(t => t !== text.title)].slice(0, 8);
     setRecentlyRead(updated);
     localStorage.setItem(RECENTLY_READ_KEY, JSON.stringify(updated));
-    navigate(`/spiritual/library/reader/${text.id}`);
+
+    try {
+      const result = await resolveTextAccess(text, user?.id, user?.full_name);
+      if (result.canAccess && result.redirect === 'reader') {
+        navigate(`/spiritual/library/reader/${text.id}`);
+      } else if (result.canAccess && result.redirect === 'external') {
+        if (result.url) window.open(result.url, '_blank');
+        else navigate(`/spiritual/library/reader/${text.id}`);
+      } else {
+        const accessBadge = getStatusBadge(REGISTRY_ACCESS_STATUS, result.accessStatus);
+        const messages = {
+          metadata_only: 'This text is available as metadata only. Full text is not currently accessible in Producer.',
+          license_required: 'This text requires a license. Your request has been logged and will be reviewed by the admin team.',
+          permission_required: 'This text requires permission from the rights holder. Your request has been logged.',
+          unavailable: 'This text is currently unavailable. Your interest has been logged.',
+          unknown: 'Access status for this text is unknown. Your interest has been logged.'
+        };
+        setAccessInfo({
+          textTitle: text.title,
+          accessLabel: accessBadge.label,
+          badgeClass: accessBadge.className,
+          message: messages[result.accessStatus] || messages.unknown,
+          registry: result.registry
+        });
+      }
+    } catch (err) {
+      navigate(`/spiritual/library/reader/${text.id}`);
+    }
   };
 
   if (loading) {
@@ -129,6 +163,14 @@ export default function SpiritualLibrary() {
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
         <LibraryHero onSearch={handleSearch} searching={searching} />
+
+        {user?.role === 'admin' && (
+          <div className="flex justify-end mb-2">
+            <Link to="/admin/world-scripture-registry" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+              <Database className="w-3.5 h-3.5" /> World Scripture Registry
+            </Link>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
@@ -373,7 +415,7 @@ export default function SpiritualLibrary() {
                           {[...(searchResults.existing_texts || []), ...(searchResults.new_texts || [])].map((text, i) => (
                             <button
                               key={text.id || i}
-                              onClick={() => navigate(`/spiritual/library/reader/${text.id}`)}
+                              onClick={() => handleOpenText(text)}
                               className="glass-panel p-4 hover:border-primary/30 transition-colors text-left"
                             >
                               <p className="text-sm font-medium truncate">{text.title}</p>
@@ -652,6 +694,36 @@ export default function SpiritualLibrary() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Registry Access Dialog */}
+        {accessInfo && (
+          <Dialog open={!!accessInfo} onOpenChange={(open) => !open && setAccessInfo(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-accent" /> {accessInfo.textTitle}
+                </DialogTitle>
+                <DialogDescription>Access to this text is limited.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Access Status:</span>
+                  <span className={`px-2 py-0.5 rounded text-xs ${accessInfo.badgeClass}`}>{accessInfo.accessLabel}</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{accessInfo.message}</p>
+                {accessInfo.registry?.source_url && (
+                  <a href={accessInfo.registry.source_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
+                    <ExternalLink className="w-3.5 h-3.5" /> View official source
+                  </a>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAccessInfo(null)}>Close</Button>
+                <Button onClick={() => { setAccessInfo(null); handleSearch(`Study: ${accessInfo.textTitle}`); }}>Study Instead</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </div>

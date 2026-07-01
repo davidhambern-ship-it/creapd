@@ -68,6 +68,8 @@ import SpiritualMessage from '@/pages/SpiritualMessage';
 import SpiritualAssets from '@/pages/SpiritualAssets';
 import SpiritualPackage from '@/pages/SpiritualPackage';
 import SpiritualExport from '@/pages/SpiritualExport';
+import WorldScriptureRegistry from '@/pages/admin/WorldScriptureRegistry';
+import WorldScriptureRegistryDetail from '@/pages/admin/WorldScriptureRegistryDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -164,6 +166,10 @@ const AuthenticatedApp = () => {
           <Route path="/spiritual/package" element={<SpiritualPackage />} />
           <Route path="/spiritual/export" element={<SpiritualExport />} />
         </Route>
+
+        {/* Admin */}
+        <Route path="/admin/world-scripture-registry" element={<WorldScriptureRegistry />} />
+        <Route path="/admin/world-scripture-registry/:id" element={<WorldScriptureRegistryDetail />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

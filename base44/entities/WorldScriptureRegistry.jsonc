@@ -1,0 +1,267 @@
+{
+  "name": "WorldScriptureRegistry",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Primary title of the text"
+    },
+    "alternate_titles": {
+      "type": "string",
+      "description": "JSON array of alternate titles, aliases, or transliterations"
+    },
+    "tradition": {
+      "type": "string",
+      "description": "Faith tradition this text belongs to"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category within the tradition (e.g. canonical, deuterocanonical, commentary)"
+    },
+    "collection": {
+      "type": "string",
+      "enum": [
+        "sacred_scriptures",
+        "historical_documents",
+        "ancient_manuscripts",
+        "apocryphal",
+        "original_languages",
+        "lexicons",
+        "historical_records",
+        "reference_works",
+        "organization_publications",
+        "language_learning",
+        "research_collections",
+        "personal_collections"
+      ],
+      "default": "sacred_scriptures"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "sacred_text",
+        "historical_document",
+        "ancient_manuscript",
+        "apocryphal",
+        "lexicon",
+        "reference_work",
+        "commentary",
+        "translation",
+        "organization_publication",
+        "language_learning_resource",
+        "research_collection"
+      ],
+      "default": "sacred_text"
+    },
+    "original_language": {
+      "type": "string"
+    },
+    "writing_system": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "traditional_attribution": {
+      "type": "string"
+    },
+    "historical_date": {
+      "type": "string",
+      "description": "Traditional or historical dating"
+    },
+    "scholarly_date_range": {
+      "type": "string",
+      "description": "Scholarly consensus dating range"
+    },
+    "description": {
+      "type": "string"
+    },
+    "themes": {
+      "type": "string",
+      "description": "JSON array of major themes"
+    },
+    "region": {
+      "type": "string",
+      "description": "Geographic origin or region"
+    },
+    "related_texts": {
+      "type": "string",
+      "description": "JSON array of related registry text titles"
+    },
+    "available_translations": {
+      "type": "string",
+      "description": "JSON array of translation objects with name, language, publisher"
+    },
+    "available_editions": {
+      "type": "string",
+      "description": "JSON array of edition objects with name, publisher, year"
+    },
+    "known_digital_sources": {
+      "type": "string",
+      "description": "JSON array of source objects with url, provider, access_type, notes"
+    },
+    "preferred_source": {
+      "type": "string",
+      "description": "Preferred source identifier or URL"
+    },
+    "access_status": {
+      "type": "string",
+      "enum": [
+        "available_in_producer",
+        "available_through_official_link",
+        "available_through_api",
+        "available_through_licensed_provider",
+        "public_domain_import_available",
+        "metadata_only",
+        "license_required",
+        "permission_required",
+        "unavailable",
+        "unknown"
+      ],
+      "default": "metadata_only"
+    },
+    "license_status": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "open_license",
+        "official_free_access",
+        "licensed",
+        "license_needed",
+        "permission_needed",
+        "copyright_restricted",
+        "unknown",
+        "under_review",
+        "negotiating",
+        "rejected"
+      ],
+      "default": "unknown"
+    },
+    "copyright_status": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "copyrighted",
+        "creative_commons",
+        "open_access",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "source_provider": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "api_available": {
+      "type": "boolean",
+      "default": false
+    },
+    "import_status": {
+      "type": "string",
+      "enum": [
+        "not_imported",
+        "import_available",
+        "import_queued",
+        "importing",
+        "imported",
+        "indexed",
+        "failed",
+        "needs_review",
+        "blocked_by_license",
+        "blocked_by_permission"
+      ],
+      "default": "not_imported"
+    },
+    "full_text_available": {
+      "type": "boolean",
+      "default": false
+    },
+    "search_indexed": {
+      "type": "boolean",
+      "default": false
+    },
+    "study_workspace_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "language_learning_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "comparison_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "citation_metadata": {
+      "type": "string",
+      "description": "JSON object with citation format data (author, title, publisher, year, url)"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "source_verified",
+        "admin_verified",
+        "automated_verified",
+        "needs_verification",
+        "disputed"
+      ],
+      "default": "unverified"
+    },
+    "confidence_level": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "user_demand_count": {
+      "type": "number",
+      "default": 0
+    },
+    "license_request_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "requested",
+        "in_negotiation",
+        "approved",
+        "denied",
+        "expired"
+      ],
+      "default": "none"
+    },
+    "acquisition_priority": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "none"
+      ],
+      "default": "none"
+    },
+    "last_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "tradition",
+    "collection"
+  ]
+}

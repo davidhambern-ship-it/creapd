@@ -1,0 +1,41 @@
+{
+  "name": "RegistryDemandEvent",
+  "type": "object",
+  "properties": {
+    "text_id": {
+      "type": "string",
+      "description": "ID of the WorldScriptureRegistry record"
+    },
+    "text_title": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who requested access"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "requested_action": {
+      "type": "string",
+      "description": "What the user tried to do (read, study, compare, etc.)"
+    },
+    "current_access_status": {
+      "type": "string",
+      "description": "Access status at time of request"
+    },
+    "current_license_status": {
+      "type": "string",
+      "description": "License status at time of request"
+    },
+    "notified_admin": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "text_id",
+    "text_title",
+    "requested_action"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "LicensingIssue",
+  "type": "object",
+  "properties": {
+    "text_id": {
+      "type": "string",
+      "description": "ID of the WorldScriptureRegistry record"
+    },
+    "title": {
+      "type": "string"
+    },
+    "issue_type": {
+      "type": "string",
+      "enum": [
+        "license_needed",
+        "permission_needed",
+        "copyright_restricted",
+        "paywall",
+        "removed",
+        "broken_link",
+        "disputed_source",
+        "other"
+      ],
+      "default": "license_needed"
+    },
+    "requested_by_user_id": {
+      "type": "string"
+    },
+    "requested_by_user_name": {
+      "type": "string"
+    },
+    "access_attempt_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "license_status": {
+      "type": "string"
+    },
+    "estimated_priority": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "admin_status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "under_review",
+        "in_progress",
+        "resolved",
+        "wont_fix",
+        "blocked"
+      ],
+      "default": "open"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "resolution_notes": {
+      "type": "string"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "text_id",
+    "title",
+    "issue_type"
+  ]
+}
