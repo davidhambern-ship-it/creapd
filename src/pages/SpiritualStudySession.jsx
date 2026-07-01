@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import FindingsSection from '@/components/study/FindingsSection';
 import WordStudyCard from '@/components/study/WordStudyCard';
 import ResearchProgress from '@/components/study/ResearchProgress';
 import ResearchNotebook from '@/components/study/ResearchNotebook';
 import ResearchAssistant from '@/components/study/ResearchAssistant';
-import { STUDY_TYPE_LABELS, safeJsonParse } from '@/lib/studyConstants';
+import RelatedStudyCard from '@/components/study/RelatedStudyCard';
+import ProductionIdeaCard from '@/components/study/ProductionIdeaCard';
+import { STUDY_TYPE_LABELS, safeJsonParse, mapProductionType, mapAudience, mapTone, mapRuntime } from '@/lib/studyConstants';
+import { DEFAULT_AI_AUTOMATION } from '@/lib/spiritualConstants';
 import {
   ArrowLeft, Loader2, BookOpen, Languages, Landmark, GitCompare,
   Users, FileText, Clock, Lightbulb, MessageSquare, Sparkles,
@@ -15,8 +18,10 @@ import {
 
 export default function SpiritualStudySession() {
   const { sessionId } = useParams();
+  const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [buildingIdea, setBuildingIdea] = useState(false);
   const pollRef = useRef(null);
 
   useEffect(() => {
@@ -60,6 +65,49 @@ export default function SpiritualStudySession() {
   const toggleArchive = async () => {
     await base44.entities.ResearchSession.update(sessionId, { is_archived: !session.is_archived });
     setSession({ ...session, is_archived: !session.is_archived });
+  };
+
+  const handleBuildProduction = async (idea) => {
+    setBuildingIdea(true);
+    try {
+      const configData = {
+        production_name: idea.title,
+        production_date: new Date().toISOString().split('T')[0],
+        start_time: '10:00',
+        live_or_recorded: 'live',
+        faith_tradition: session.faith_tradition || 'Christianity',
+        branch_denomination: session.branch_denomination || 'No Preference',
+        production_type: mapProductionType(idea.production_type),
+        audience: mapAudience(idea.suggested_audience),
+        speaker_tone: mapTone(idea.suggested_tone),
+        target_runtime: mapRuntime(idea.suggested_runtime),
+        production_description: idea.description || '',
+        sacred_texts: session.sacred_texts || JSON.stringify([]),
+        research_sources: session.research_sources || JSON.stringify([]),
+        study_topics: JSON.stringify([session.research_question]),
+        ai_automation: JSON.stringify(DEFAULT_AI_AUTOMATION),
+        source_research_session_id: session.id,
+        current_events_enabled: true,
+        multiple_perspectives: true,
+        status: 'building',
+        is_default: true
+      };
+
+      const savedConfig = await base44.entities.SpiritualProductionConfiguration.create(configData);
+      await base44.auth.updateMe({
+        default_production_type: 'spiritual',
+        default_production_config_id: savedConfig.id
+      });
+
+      base44.functions.invoke('buildSpiritualProduction', {
+        configuration_id: savedConfig.id,
+        research_session_id: session.id
+      }).catch(() => {});
+
+      navigate('/spiritual/dashboard');
+    } catch (err) {
+      setBuildingIdea(false);
+    }
   };
 
   if (loading) {
@@ -123,6 +171,14 @@ export default function SpiritualStudySession() {
               </div>
               <h1 className="text-xl font-heading font-bold mb-1">{session.title}</h1>
               <p className="text-sm text-muted-foreground">{session.research_question}</p>
+              {session.source_session_id && (
+                <Link
+                  to={`/spiritual/study/${session.source_session_id}`}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                >
+                  <ArrowLeft className="w-3 h-3" /> Spawned from original study
+                </Link>
+              )}
             </div>
             <div className="flex gap-2 shrink-0">
               <button onClick={togglePin} className={`p-2 rounded-lg border transition-colors ${session.is_pinned ? 'bg-accent/15 text-accent border-accent/30' : 'border-border hover:bg-secondary/30'}`}>
@@ -259,15 +315,12 @@ export default function SpiritualStudySession() {
                   <FindingsSection title="Production Ideas" icon={Sparkles} defaultOpen={true}>
                     <div className="space-y-2">
                       {ideas.map((idea, i) => (
-                        <Link
+                        <ProductionIdeaCard
                           key={i}
-                          to={`/spiritual/configure?research_session_id=${session.id}`}
-                          className="block p-3 rounded-lg bg-secondary/30 hover:bg-primary/10 transition-colors"
-                        >
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary">{idea.production_type}</span>
-                          <p className="text-sm font-medium mt-1">{idea.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{idea.description}</p>
-                        </Link>
+                          idea={idea}
+                          onBuild={handleBuildProduction}
+                          isBuilding={buildingIdea}
+                        />
                       ))}
                     </div>
                   </FindingsSection>
@@ -277,14 +330,11 @@ export default function SpiritualStudySession() {
                   <FindingsSection title="Related Studies" icon={Lightbulb} defaultOpen={true}>
                     <div className="space-y-2">
                       {related.map((r, i) => (
-                        <Link
+                        <RelatedStudyCard
                           key={i}
-                          to="/spiritual/study"
-                          className="block p-2 rounded-lg hover:bg-secondary/30 transition-colors"
-                        >
-                          <p className="text-sm font-medium">{r.question}</p>
-                          <p className="text-xs text-muted-foreground">{r.relevance}</p>
-                        </Link>
+                          study={r}
+                          sourceSessionId={session.id}
+                        />
                       ))}
                     </div>
                   </FindingsSection>

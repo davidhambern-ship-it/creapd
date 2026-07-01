@@ -90,6 +90,14 @@ export default function SpiritualDashboard() {
           <div>
             <h1 className="text-2xl font-heading font-bold">{config.production_name}</h1>
             <p className="text-sm text-muted-foreground">{config.faith_tradition} · {config.production_type} · {config.production_date}</p>
+            {config.source_research_session_id && (
+              <Link
+                to={`/spiritual/study/${config.source_research_session_id}`}
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+              >
+                <GraduationCap className="w-3 h-3" /> Created from research study
+              </Link>
+            )}
           </div>
           <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className="w-4 h-4 mr-2" />

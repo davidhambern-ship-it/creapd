@@ -48,6 +48,10 @@
       "type": "string",
       "description": "JSON array of enabled research source categories"
     },
+    "source_session_id": {
+      "type": "string",
+      "description": "ID of the Research Session this study was spawned from (via Related Studies click)"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -108,7 +112,7 @@
     },
     "production_ideas": {
       "type": "string",
-      "description": "JSON array of production idea objects"
+      "description": "JSON array of production idea objects with production_type, title, description, suggested_audience, suggested_tone, suggested_runtime, suggested_structure, source_study_topic, suggested_assets"
     },
     "notebook_content": {
       "type": "string",

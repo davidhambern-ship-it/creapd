@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import ResearchSearchBar from '@/components/study/ResearchSearchBar';
@@ -12,6 +12,8 @@ export default function SpiritualStudy() {
   const [loading, setLoading] = useState(true);
   const [researching, setResearching] = useState(false);
   const [faithSettings, setFaithSettings] = useState(null);
+  const [faithSettingsLoaded, setFaithSettingsLoaded] = useState(false);
+  const autoRunTriggered = useRef(false);
 
   const loadSessions = useCallback(async () => {
     const [all, pinned] = await Promise.all([
@@ -35,6 +37,7 @@ export default function SpiritualStudy() {
         });
       }
     } catch {}
+    setFaithSettingsLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -42,10 +45,23 @@ export default function SpiritualStudy() {
     loadFaithSettings();
   }, [loadSessions, loadFaithSettings]);
 
-  const handleSearch = async (question) => {
+  // Auto-run research when arriving from a Related Study click (?query=...&autoRun=true&sourceSession=...)
+  useEffect(() => {
+    if (autoRunTriggered.current || !faithSettingsLoaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get('query');
+    const autoRun = params.get('autoRun') === 'true';
+    const sourceSession = params.get('sourceSession');
+    if (autoRun && query) {
+      autoRunTriggered.current = true;
+      handleSearch(query, sourceSession);
+    }
+  }, [faithSettingsLoaded]);
+
+  const handleSearch = async (question, sourceSessionId) => {
     setResearching(true);
     try {
-      const session = await base44.entities.ResearchSession.create({
+      const sessionData = {
         title: question.length > 60 ? question.substring(0, 60) + '...' : question,
         research_question: question,
         status: 'researching',
@@ -53,9 +69,11 @@ export default function SpiritualStudy() {
         branch_denomination: faithSettings?.branch_denomination || 'No Preference',
         sacred_texts: faithSettings?.sacred_texts || JSON.stringify([]),
         research_sources: faithSettings?.research_sources || JSON.stringify([])
-      });
+      };
+      if (sourceSessionId) sessionData.source_session_id = sourceSessionId;
 
-      base44.functions.invoke('conductResearch', { session_id: session.id }).catch(() => {});
+      const session = await base44.entities.ResearchSession.create(sessionData);
+      base44.functions.invoke('conductResearch', { session_id: session.id, source_session_id: sourceSessionId }).catch(() => {});
       navigate(`/spiritual/study/${session.id}`);
     } catch (err) {
       setResearching(false);

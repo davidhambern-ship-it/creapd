@@ -141,6 +141,10 @@
       "type": "string",
       "description": "JSON array of selected research source categories"
     },
+    "source_research_session_id": {
+      "type": "string",
+      "description": "ID of the ResearchSession that inspired this production (if created from a Production Idea)"
+    },
     "current_events_enabled": {
       "type": "boolean",
       "default": true

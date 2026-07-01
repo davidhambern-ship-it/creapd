@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { configuration_id } = body;
+    const { configuration_id, research_session_id } = body;
 
     if (!configuration_id) {
       return Response.json({ error: 'configuration_id is required' }, { status: 400 });
@@ -19,6 +19,33 @@ Deno.serve(async (req) => {
     }
 
     await base44.entities.SpiritualProductionConfiguration.update(configuration_id, { status: 'building' });
+
+    // Fetch source research session if provided (production created from a research idea)
+    let researchSession = null;
+    let researchContext = '';
+    const sourceSessionId = research_session_id || config.source_research_session_id;
+    if (sourceSessionId) {
+      try {
+        researchSession = await base44.entities.ResearchSession.get(sourceSessionId);
+        if (researchSession) {
+          const words = safeParse(researchSession.original_language_analysis, []);
+          const timeline = safeParse(researchSession.timeline_events, []);
+          const wordSummary = words.map(w => `${w.word} (${w.transliteration || ''}): ${w.literal_meaning || ''}`).join('; ');
+          const timelineSummary = timeline.map(e => `${e.date}: ${e.event}`).join('; ');
+          researchContext = `
+SOURCE RESEARCH SESSION CONTEXT:
+- Research Question: ${researchSession.research_question || 'N/A'}
+- Study Type: ${researchSession.study_type || 'custom'}
+- Research Summary: ${(researchSession.research_summary || '').substring(0, 1200)}
+- Primary Source Analysis: ${(researchSession.primary_source_analysis || '').substring(0, 800)}
+- Key Word Studies: ${wordSummary.substring(0, 500) || 'None'}
+- Historical Development: ${(researchSession.historical_development || '').substring(0, 800)}
+- Timeline: ${timelineSummary.substring(0, 500) || 'None'}
+- Citations: ${(researchSession.citations || '').substring(0, 500)}
+This production was created from the above research. Use these findings as primary source material.`;
+        }
+      } catch {}
+    }
 
     const studyResources = safeParse(config.study_resources, []);
     const studyTopics = safeParse(config.study_topics, []);
@@ -67,6 +94,7 @@ RESEARCH SOURCES:
 ${researchSources.join(', ') || 'All available sources'}
 
 CURRENT EVENTS: ${config.current_events_enabled !== false ? 'Enabled — include relevant current events' : 'Disabled — do not include current events'}
+${researchContext}
 
 SYSTEM RULES:
 - Never present AI-generated content as authoritative doctrine

@@ -165,7 +165,7 @@ TASKS:
 
 6. DISCUSSION QUESTIONS: Generate 3-5 discussion questions based on the research that could be used in a production setting.
 
-7. PRODUCTION IDEAS: Suggest 2-4 production ideas based on this research. Each has: production_type (Sermon, Bible Study, Devotional, Podcast, etc.), title, and description (how this research informs the production).
+7. PRODUCTION IDEAS: Suggest 2-4 production ideas based on this research. Each idea must contain: production_type (one of: Sermon, Bible Study, Devotional, Teaching Series, Podcast, Livestream, Prayer Meeting, Study Group, Youth Lesson, Educational Presentation, Discussion Panel, Q&A Session, Meditation Session, Scripture Reading, Worship Service, Community Event, Custom Production), title, description (how this research informs the production), suggested_audience (one of: General Audience, Adults, Young Adults, Teenagers, Children, Families, Leaders, New Believers, Long-Time Members, Visitors, Interfaith Audience, Academic Audience, Community Outreach, Online Audience, Private Study), suggested_tone (one of: Inspirational, Pastoral, Academic, Conversational, Devotional, Teaching, Evangelistic, Storytelling, Meditative), suggested_runtime (one of: 10 Minutes, 15 Minutes, 20 Minutes, 30 Minutes, 45 Minutes, 60 Minutes, 90 Minutes), suggested_structure (brief outline of how the production should be structured), source_study_topic (which part of the research this idea is based on), suggested_assets (array of strings — what assets to generate, e.g. ["outline", "talking points", "discussion questions", "social caption", "thumbnail prompt"]).
 
 Return a JSON object with exactly these keys: comparative_analysis (array), multiple_perspectives (array), research_summary (string), related_studies (array), sources (array), discussion_questions (array of strings), production_ideas (array).`;
 
@@ -239,7 +239,16 @@ Return a JSON object with exactly these keys: comparative_analysis (array), mult
             properties: {
               production_type: { type: 'string' },
               title: { type: 'string' },
-              description: { type: 'string' }
+              description: { type: 'string' },
+              suggested_audience: { type: 'string' },
+              suggested_tone: { type: 'string' },
+              suggested_runtime: { type: 'string' },
+              suggested_structure: { type: 'string' },
+              source_study_topic: { type: 'string' },
+              suggested_assets: {
+                type: 'array',
+                items: { type: 'string' }
+              }
             }
           }
         }
