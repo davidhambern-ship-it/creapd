@@ -654,5 +654,13 @@ function parseRuntimeToSeconds(runtimeStr) {
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+  let result = str;
+  // Recursively parse double-encoded JSON strings (e.g. "\"[\\\"topic\\\"]\"" → ["topic"])
+  for (let i = 0; i < 3; i++) {
+    if (typeof result !== 'string') break;
+    try { result = JSON.parse(result); } catch { break; }
+  }
+  // If the expected fallback is an array but the result isn't, return the fallback
+  if (Array.isArray(fallback) && !Array.isArray(result)) return fallback;
+  return result ?? fallback;
 }
