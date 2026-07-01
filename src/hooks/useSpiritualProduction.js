@@ -10,8 +10,8 @@ export function useSpiritualProduction(configId) {
   const [packageItems, setPackageItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     let activeId = configId;
     let activeConfig = null;
 
@@ -50,12 +50,12 @@ export function useSpiritualProduction(configId) {
     setMessageSections(m || []);
     setAssets(a || []);
     setPackageItems(p || []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [configId]);
 
   useEffect(() => {
-    loadAll();
+    loadAll(false);
   }, [loadAll]);
 
-  return { config, research, topics, messageSections, assets, packageItems, loading, refresh: loadAll };
+  return { config, setConfig, research, topics, messageSections, assets, packageItems, loading, refresh: () => loadAll(true) };
 }

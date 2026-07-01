@@ -122,9 +122,10 @@ export default function SpiritualConfigure() {
         default_production_type: 'spiritual',
         default_production_config_id: savedConfig.id
       });
-      await base44.entities.SpiritualProductionConfiguration.update(savedConfig.id, { is_default: true });
+      await base44.entities.SpiritualProductionConfiguration.update(savedConfig.id, { is_default: true, status: 'building' });
 
-      await base44.functions.invoke('buildSpiritualProduction', { configuration_id: savedConfig.id });
+      // Fire-and-forget: build takes 60+ seconds, dashboard polls for completion
+      base44.functions.invoke('buildSpiritualProduction', { configuration_id: savedConfig.id }).catch(() => {});
 
       navigate('/spiritual/dashboard');
     } catch (err) {

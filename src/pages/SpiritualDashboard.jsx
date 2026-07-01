@@ -7,7 +7,7 @@ import { Loader2, Church, BookOpen, Search, PenTool, Sparkles, Package, Download
 import { SECTION_TYPE_LABELS, ASSET_TYPE_LABELS, formatDuration } from '@/lib/spiritualConstants';
 
 export default function SpiritualDashboard() {
-  const { config, research, topics, messageSections, assets, packageItems, loading, refresh } = useSpiritualProduction();
+  const { config, setConfig, research, topics, messageSections, assets, packageItems, loading, refresh } = useSpiritualProduction();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -19,23 +19,42 @@ export default function SpiritualDashboard() {
 
   const handleRefresh = async () => {
     if (!config) return;
-    setRefreshing(true);
     try {
-      await base44.functions.invoke('buildSpiritualProduction', { configuration_id: config.id });
-      await refresh();
+      await base44.entities.SpiritualProductionConfiguration.update(config.id, { status: 'building' });
+      setConfig({ ...config, status: 'building' });
+      base44.functions.invoke('buildSpiritualProduction', { configuration_id: config.id }).catch(() => {});
     } catch (err) {
       console.error(err);
     }
-    setRefreshing(false);
   };
 
-  if (loading || refreshing) {
+  if (config?.status === 'building') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
+            <Church className="w-8 h-8 text-primary animate-pulse" />
+          </div>
+          <h2 className="text-xl font-heading font-bold mb-3">Building Your Spiritual Production</h2>
+          <p className="text-muted-foreground mb-8">Producer is gathering research, preparing study topics, building your message, and generating AI assets. This takes about 60 seconds.</p>
+          <div className="space-y-3 text-left">
+            {['Gathering research', 'Preparing study topics', 'Building message outline', 'Generating AI assets'].map((label, i) => (
+              <div key={i} className="flex items-center gap-3 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-muted-foreground">{label}...</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">{config?.status === 'building' ? 'Building your production...' : 'Loading...'}</p>
-        </div>
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -53,27 +72,7 @@ export default function SpiritualDashboard() {
     );
   }
 
-  if (config.status === 'building') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="max-w-md text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
-            <Church className="w-8 h-8 text-primary animate-pulse" />
-          </div>
-          <h2 className="text-xl font-heading font-bold mb-3">Building Your Spiritual Production</h2>
-          <p className="text-muted-foreground mb-8">Producer is gathering research, preparing study topics, building your message, and generating AI assets.</p>
-          <div className="space-y-3 text-left">
-            {['Gathering research', 'Preparing study topics', 'Building message outline', 'Generating AI assets'].map((label, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">{label}...</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   const totalDuration = messageSections.reduce((sum, s) => sum + (s.estimated_duration_seconds || 0), 0);
   const approvedAssets = assets.filter(a => a.status === 'approved' || a.status === 'ready').length;
