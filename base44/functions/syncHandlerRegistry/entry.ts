@@ -323,101 +323,59 @@ function matchSourceToHandler(source, handlers) {
   return null;
 }
 
-// ─── Phase 4: Execute Queued Imports ─────────────────────────────────
+// ─── Phase 4: Report Queued Imports ─────────────────────────────────
+// Note: Actual execution is handled by the "Import Auto-Executor" automation
+// which calls runSMCImport with mode='auto_execute' directly (function-to-function
+// calls via base44.functions.invoke() return 403 — auth tokens aren't forwarded).
 
 async function executeQueuedImports(base44) {
   const queuedJobs = await base44.asServiceRole.entities.SMCImportJob.filter(
     { status: 'Queued' },
     'created_date',
-    MAX_IMPORT_EXECUTIONS * 2
+    50
   );
-
-  const executed = [];
-
-  for (const job of queuedJobs.slice(0, MAX_IMPORT_EXECUTIONS)) {
-    try {
-      await base44.asServiceRole.entities.SMCImportJob.update(job.id, {
-        status: 'Running',
-        started_at: new Date().toISOString()
-      });
-
-      const result = await base44.asServiceRole.functions.invoke('runSMCImport', {
-        mode: 'execute',
-        job_id: job.id
-      });
-
-      executed.push({
-        job_id: job.id,
-        work_title: job.work_title,
-        status: 'completed',
-        records_imported: result?.records_imported || 0
-      });
-    } catch (err) {
-      await base44.asServiceRole.entities.SMCImportJob.update(job.id, {
-        status: 'Failed',
-        error_log: err.message,
-        completed_at: new Date().toISOString()
-      }).catch(() => {});
-
-      executed.push({
-        job_id: job.id,
-        work_title: job.work_title,
-        status: 'failed',
-        error: err.message
-      });
-    }
-  }
 
   return {
     queued_found: queuedJobs.length,
-    executed: executed.length,
-    results: executed
+    executed: 0,
+    note: 'Import execution is handled by the Import Auto-Executor automation (runSMCImport mode=auto_execute)',
+    queued_jobs: queuedJobs.map(j => ({ job_id: j.id, work_title: j.work_title, created_date: j.created_date }))
   };
 }
 
 // ─── Phase 5: Foundation Work Pipeline ──────────────────────────────
 
+// ─── Phase 5: Foundation Work Pipeline ──────────────────────────────
+// Note: Source acquisition is handled by the "Foundation Source Acquisition"
+// automation which calls acquireFoundationSource with mode='auto_acquire' directly.
+// Import execution is handled by the "Import Auto-Executor" automation.
+// This phase only creates Queued import jobs for "Ready to Import" works.
+
 async function processFoundationWorks(base44) {
   const works = await base44.asServiceRole.entities.SMCFoundationWork.list('-priority_score', 200);
 
-  // Works that need sources
+  // Works that need sources (reported only — acquisition handled by separate automation)
   const needSource = works.filter(w =>
     ['Missing', 'Source Needed'].includes(w.roadmap_status)
   ).slice(0, MAX_FOUNDATION_WORKS);
 
-  // Works ready to import
+  // Works ready to import — create Queued import jobs
   const readyToImport = works.filter(w =>
     ['Ready to Import', 'Approved Source Available'].includes(w.roadmap_status)
   ).slice(0, MAX_FOUNDATION_WORKS);
 
   const results = {
-    need_source: { found: needSource.length, processed: [] },
+    need_source: {
+      found: needSource.length,
+      note: 'Source acquisition is handled by the Foundation Source Acquisition automation (acquireFoundationSource mode=auto_acquire)',
+      works: needSource.map(w => ({ work: w.work_title, tradition: w.tradition, priority: w.priority_score }))
+    },
     ready_to_import: { found: readyToImport.length, processed: [] }
   };
 
-  // Acquire sources for works that need them
-  for (const work of needSource) {
-    try {
-      const acquireResult = await base44.asServiceRole.functions.invoke('acquireFoundationSource', {
-        work_id: work.id
-      });
-      results.need_source.processed.push({
-        work: work.work_title,
-        source_found: acquireResult?.source_found || false,
-        new_status: acquireResult?.new_status || 'Unknown'
-      });
-    } catch (err) {
-      results.need_source.processed.push({
-        work: work.work_title,
-        error: err.message
-      });
-    }
-  }
-
-  // Trigger imports for works that are ready
+  // Create Queued import jobs for works that are ready (no function calls needed)
   for (const work of readyToImport) {
     try {
-      // Check if the work has a linked source
       if (work.source_id) {
         const existingJobs = await base44.asServiceRole.entities.SMCImportJob.filter(
           { source_id: work.source_id },
@@ -461,23 +419,11 @@ async function processFoundationWorks(base44) {
           });
         }
       } else {
-        // Try direct seed for known sources (Bible/Quran)
-        const manifestEntry = await findManifestEntry(base44, work.work_title);
-        if (manifestEntry) {
-          await base44.asServiceRole.entities.SMCFoundationWork.update(work.id, { roadmap_status: 'Importing' });
-          await base44.asServiceRole.functions.invoke('seedFoundationText', { source: manifestEntry });
-          await base44.asServiceRole.entities.SMCFoundationWork.update(work.id, { roadmap_status: 'Imported' });
-          results.ready_to_import.processed.push({
-            work: work.work_title,
-            direct_seed: true
-          });
-        } else {
-          results.ready_to_import.processed.push({
-            work: work.work_title,
-            skipped: true,
-            reason: 'No source linked and no direct seed available'
-          });
-        }
+        results.ready_to_import.processed.push({
+          work: work.work_title,
+          skipped: true,
+          reason: 'No source linked — use Foundation Source Acquisition automation'
+        });
       }
     } catch (err) {
       results.ready_to_import.processed.push({
@@ -526,14 +472,5 @@ function parseJsonArray(str) {
   try { return JSON.parse(str); } catch { return []; }
 }
 
-async function findManifestEntry(base44, workTitle) {
-  // Known direct-seed sources
-  const directSeeds = {
-    'The Holy Bible (KJV)': 'bible',
-    'The Bible': 'bible',
-    'The Quran': 'quran',
-    'The Holy Quran': 'quran',
-    'Quran': 'quran'
-  };
-  return directSeeds[workTitle] || null;
-}
+// No longer needed — seedFoundationText is called directly by its own automation
+// (function-to-function calls return 403 because auth tokens aren't forwarded)

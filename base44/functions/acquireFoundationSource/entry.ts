@@ -20,8 +20,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   let base44;
-  let work_id;
-
   try {
     base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -29,9 +27,45 @@ Deno.serve(async (req) => {
     if (user.role !== 'admin') return Response.json({ error: 'Admin access required' }, { status: 403 });
 
     const body = await req.json();
-    work_id = body.work_id;
-    if (!work_id) return Response.json({ error: 'work_id is required' }, { status: 400 });
+    const mode = body.mode || 'single';
 
+    if (mode === 'auto_acquire') {
+      return await autoAcquireWorks(base44);
+    }
+
+    const work_id = body.work_id;
+    if (!work_id) return Response.json({ error: 'work_id is required' }, { status: 400 });
+    return await acquireWorkSource(base44, work_id);
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});
+
+// ─── Auto-acquire sources for all "Source Needed" works ────────────
+async function autoAcquireWorks(base44) {
+  const works = await base44.asServiceRole.entities.SMCFoundationWork.filter(
+    { roadmap_status: 'Source Needed' },
+    '-priority_score',
+    5
+  );
+
+  const results = [];
+  for (const work of works) {
+    try {
+      const result = await acquireWorkSource(base44, work.id);
+      const data = await result.json();
+      results.push({ work_id: work.id, work_title: work.work_title, ...data });
+    } catch (err) {
+      results.push({ work_id: work.id, work_title: work.work_title, error: err.message });
+    }
+  }
+
+  return Response.json({ success: true, mode: 'auto_acquire', works_processed: results.length, results });
+}
+
+// ─── Acquire source for a single foundation work ───────────────────
+async function acquireWorkSource(base44, work_id) {
+  try {
     // 1. Read the foundation work
     const work = await base44.asServiceRole.entities.SMCFoundationWork.get(work_id);
     if (!work) return Response.json({ error: 'Foundation work not found' }, { status: 404 });
@@ -296,8 +330,7 @@ Deno.serve(async (req) => {
       });
     }
   } catch (error) {
-    // Try to revert the work status to "Source Needed" on failure
-    if (base44 && work_id) {
+    if (work_id) {
       try {
         await base44.asServiceRole.entities.SMCFoundationWork.update(work_id, {
           roadmap_status: 'Source Needed',
@@ -307,7 +340,7 @@ Deno.serve(async (req) => {
     }
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Discovery prompt builder — generates a targeted LLM prompt for finding

@@ -14,11 +14,13 @@ Deno.serve(async (req) => {
       return await autoCreateJobs(base44);
     } else if (mode === 'execute') {
       return await executeJob(base44, body.job_id);
+    } else if (mode === 'auto_execute') {
+      return await autoExecuteJobs(base44);
     } else if (mode === 'auto_run_approved') {
       return await autoRunApproved(base44);
     }
 
-    return Response.json({ error: 'Invalid mode. Use auto_create, execute, or auto_run_approved' }, { status: 400 });
+    return Response.json({ error: 'Invalid mode. Use auto_create, execute, auto_execute, or auto_run_approved' }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
@@ -196,6 +198,36 @@ async function executeJob(base44, jobId) {
   }
 }
 
+// ─── Auto-Execute Queued Jobs ──────────────────────────────────────
+// Picks up Queued jobs and executes them through the handler-selected pipeline.
+// Called directly by the "Import Auto-Executor" scheduled automation.
+async function autoExecuteJobs(base44) {
+  const queuedJobs = await base44.asServiceRole.entities.SMCImportJob.filter(
+    { status: 'Queued' },
+    'created_date',
+    5
+  );
+
+  const results = [];
+  for (const job of queuedJobs) {
+    try {
+      const result = await executeJob(base44, job.id);
+      const data = await result.json();
+      results.push({ job_id: job.id, work_title: job.work_title, status: 'completed', records: data.records_imported || 0 });
+    } catch (err) {
+      results.push({ job_id: job.id, work_title: job.work_title, status: 'failed', error: err.message });
+    }
+  }
+
+  return Response.json({
+    success: true,
+    mode: 'auto_execute',
+    queued_found: queuedJobs.length,
+    executed: results.length,
+    results
+  });
+}
+
 // ─── Handler Registry ──────────────────────────────────────────────
 // Each handler: (base44, source, job) => { handler_name, records_imported, total_records, skipped, partial, ... }
 
@@ -321,13 +353,19 @@ function parseHandlerJsonArray(str) {
 
 // ─── Handler: Quran / Bible (delegates to seedFoundationText) ─────
 async function handlerQuranBible(base44, source, job) {
+  // Cannot call seedFoundationText via base44.functions.invoke() — auth tokens
+  // aren't forwarded between functions (returns 403). Inline the seeding logic instead.
   const name = (source.source_name || '').toLowerCase();
-  const seedSource = name.includes('quran') ? 'quran' : 'bible';
+  const isQuran = name.includes('quran');
 
   await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 10 });
 
-  const seedResult = await base44.asServiceRole.functions.invoke('seedFoundationText', { source: seedSource });
-  const data = seedResult.data || seedResult;
+  let data;
+  if (isQuran) {
+    data = await seedQuranInline(base44, job);
+  } else {
+    data = await seedBibleInline(base44, job);
+  }
 
   return {
     handler_name: 'quran_bible_delegate',
@@ -335,11 +373,361 @@ async function handlerQuranBible(base44, source, job) {
     total_records: data.verses_created || 0,
     skipped: 0,
     partial: false,
-    chapters_created: data.chapters_created,
-    verses_created: data.verses_created,
-    library_text_id: data.library_text_id,
-    text_work_id: data.text_work_id
+    chapters_created: data.chapters_created || 0,
+    verses_created: data.verses_created || 0,
+    library_text_id: data.library_text_id || '',
+    text_work_id: data.text_work_id || ''
   };
+}
+
+// ─── Inline Quran Seeding (avoids function-to-function 403) ─────────
+async function seedQuranInline(base44, job) {
+  const QURAN_API_BASE = 'https://api.alquran.cloud/v1';
+  const editionId = 'en.sahih';
+
+  // Find or create Tradition
+  let tradition = await findOrCreateInline(base44, 'Tradition', { name: 'Islam' }, {
+    name: 'Islam',
+    description: 'Monotheistic Abrahamic faith. Sacred text is the Quran.',
+    region: 'Arabian Peninsula',
+    founded_date: '610 CE',
+    original_languages: JSON.stringify(['Arabic']),
+    sacred_texts_summary: 'The Quran (114 surahs, 6236 ayahs)'
+  });
+
+  // Find or create LibraryText
+  let libraryText = await findOrCreateInline(base44, 'LibraryText', { title: 'The Quran', tradition: 'Islam' }, {
+    title: 'The Quran',
+    tradition: 'Islam',
+    collection: 'sacred_scriptures',
+    original_language: 'Arabic',
+    writing_system: 'Arabic Script',
+    traditional_attribution: 'Revealed to Prophet Muhammad (610-632 CE)',
+    scholarly_dating: '610-632 CE',
+    structure: '114 surahs (chapters), 6236 ayahs (verses)',
+    major_themes: JSON.stringify(['Tawhid', 'Prophethood', 'Guidance', 'Mercy', 'Justice', 'Afterlife']),
+    full_text_available: true,
+    full_text: 'Foundation text — verses stored as structured data in SegmentVerse table.',
+    is_foundation: true,
+    access_level: 'full_text',
+    verification_status: 'verified_primary_source',
+    license_status: 'official_free_access',
+    source_provider: 'Al Quran Cloud',
+    source_url: 'https://alquran.cloud'
+  });
+
+  // Find or create TextWork
+  let textWork = await findOrCreateInline(base44, 'TextWork', { library_text_id: libraryText.id }, {
+    library_text_id: libraryText.id,
+    tradition_id: tradition.id,
+    title: 'The Quran',
+    alternate_titles: JSON.stringify(['Al-Quran', 'The Holy Quran']),
+    original_language: 'Arabic',
+    writing_system: 'Arabic Script',
+    traditional_attribution: 'Revealed to Prophet Muhammad (610-632 CE)',
+    scholarly_dating: '610-632 CE',
+    structure_description: '114 surahs (chapters) containing 6236 ayahs (verses)',
+    major_themes: JSON.stringify(['Tawhid', 'Prophethood', 'Guidance', 'Mercy', 'Justice']),
+    geographic_origin: 'Mecca and Medina, Arabian Peninsula',
+    is_foundation: true,
+    source_provider: 'Al Quran Cloud',
+    source_url: 'https://alquran.cloud',
+    source_api_endpoint: QURAN_API_BASE,
+    citation_template: 'Quran {surah}:{ayah} ({edition})',
+    license_status: 'official_free_access',
+    verification_status: 'source_verified',
+    seeding_status: 'seeding'
+  });
+
+  await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 20 });
+
+  // Check if already seeded
+  const existingVerses = await base44.asServiceRole.entities.SegmentVerse.filter({ text_work_id: textWork.id }, '-created_date', 1);
+  if (existingVerses && existingVerses.length > 0) {
+    await base44.asServiceRole.entities.TextWork.update(textWork.id, { seeding_status: 'seeded' });
+    return { text_work_id: textWork.id, library_text_id: libraryText.id, chapters_created: 0, verses_created: 0, already_seeded: true };
+  }
+
+  // Fetch full Quran
+  const apiUrl = `${QURAN_API_BASE}/quran/${editionId}`;
+  const resp = await fetch(apiUrl);
+  if (!resp.ok) throw new Error(`Quran API returned ${resp.status}`);
+  const json = await resp.json();
+  const surahs = json.data.surahs;
+  const editionInfo = json.data.edition;
+
+  await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 30 });
+
+  // Create EditionTranslation
+  const edition = await base44.asServiceRole.entities.EditionTranslation.create({
+    text_work_id: textWork.id,
+    edition_name: editionInfo.name || 'Saheeh International',
+    translator: editionInfo.englishName || 'Saheeh International',
+    language: editionInfo.language || 'en',
+    source_provider: 'Al Quran Cloud',
+    source_url: 'https://alquran.cloud',
+    source_api_identifier: editionInfo.identifier || editionId,
+    license_status: 'official_free_access',
+    is_default: true,
+    citation: `${editionInfo.name || 'Saheeh International'}. Quran. https://alquran.cloud`
+  });
+
+  // Create Division
+  const division = await base44.asServiceRole.entities.Division.create({
+    text_work_id: textWork.id,
+    edition_translation_id: edition.id,
+    name: 'The Quran',
+    order: 0,
+    description: 'The complete Quran — 114 surahs'
+  });
+
+  await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 40 });
+
+  // Create SectionChapters
+  const chapterData = [];
+  for (const surah of surahs) {
+    chapterData.push({
+      division_id: division.id,
+      text_work_id: textWork.id,
+      edition_translation_id: edition.id,
+      name: `${surah.englishName} — ${surah.englishNameTranslation}`,
+      book_name: surah.englishName,
+      order: surah.number,
+      chapter_number: surah.number,
+      verse_count: surah.numberOfAyahs,
+      description: `${surah.revelationType} surah, ${surah.numberOfAyahs} ayahs`,
+      source_api_identifier: String(surah.number)
+    });
+  }
+  const createdChapters = await base44.asServiceRole.entities.SectionChapter.bulkCreate(chapterData);
+
+  await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 60 });
+
+  // Create verses in batches
+  const allVerses = [];
+  let globalOrder = 0;
+  for (let i = 0; i < surahs.length; i++) {
+    const surah = surahs[i];
+    const chapter = createdChapters[i];
+    for (const ayah of surah.ayahs) {
+      allVerses.push({
+        section_chapter_id: chapter.id,
+        division_id: division.id,
+        text_work_id: textWork.id,
+        edition_translation_id: edition.id,
+        tradition_id: tradition.id,
+        verse_number: ayah.numberInSurah,
+        verse_reference: `${surah.number}:${ayah.numberInSurah}`,
+        verse_text: ayah.text,
+        order_index: globalOrder++,
+        source_api_identifier: String(ayah.number),
+        citation: `Quran ${surah.number}:${ayah.numberInSurah} (${editionInfo.name || 'Saheeh International'})`,
+        source_provider: 'Al Quran Cloud',
+        source_url: `https://alquran.cloud/${surah.number}:${ayah.numberInSurah}`
+      });
+    }
+  }
+
+  let versesCreated = 0;
+  for (let i = 0; i < allVerses.length; i += 500) {
+    const batch = allVerses.slice(i, i + 500);
+    await base44.asServiceRole.entities.SegmentVerse.bulkCreate(batch);
+    versesCreated += batch.length;
+    await base44.asServiceRole.entities.SMCImportJob.update(job.id, {
+      progress_percent: Math.min(90, 60 + Math.floor((versesCreated / allVerses.length) * 30))
+    });
+  }
+
+  await base44.asServiceRole.entities.TextWork.update(textWork.id, {
+    seeding_status: 'seeded',
+    total_verses: versesCreated,
+    total_chapters: surahs.length
+  });
+
+  return { text_work_id: textWork.id, library_text_id: libraryText.id, chapters_created: surahs.length, verses_created: versesCreated };
+}
+
+// ─── Inline Bible Seeding (simplified — John, Genesis, Psalms, Matthew, Romans) ─────
+async function seedBibleInline(base44, job) {
+  const BIBLE_API_BASE = 'https://bible-api.com';
+  const books = [
+    { key: 'john', name: 'John', chapters: 21, division: 'New Testament' },
+    { key: 'genesis', name: 'Genesis', chapters: 50, division: 'Old Testament' },
+    { key: 'psalms', name: 'Psalms', chapters: 150, division: 'Old Testament' },
+    { key: 'matthew', name: 'Matthew', chapters: 28, division: 'New Testament' },
+    { key: 'romans', name: 'Romans', chapters: 16, division: 'New Testament' }
+  ];
+
+  let tradition = await findOrCreateInline(base44, 'Tradition', { name: 'Christianity' }, {
+    name: 'Christianity',
+    description: 'Monotheistic Abrahamic faith centered on Jesus Christ. Sacred text is the Bible.',
+    region: 'Levant (Israel/Palestine)',
+    founded_date: '1st century CE',
+    original_languages: JSON.stringify(['Hebrew', 'Aramaic', 'Greek']),
+    sacred_texts_summary: 'The Bible — 66 books (39 Old Testament, 27 New Testament)'
+  });
+
+  let libraryText = await findOrCreateInline(base44, 'LibraryText', { title: 'The Bible', tradition: 'Christianity' }, {
+    title: 'The Bible',
+    tradition: 'Christianity',
+    collection: 'sacred_scriptures',
+    original_language: 'Hebrew, Aramaic, Greek',
+    writing_system: 'Hebrew, Greek Alphabet',
+    traditional_attribution: 'Multiple authors over ~1500 years',
+    scholarly_dating: 'c. 1200 BCE – 100 CE',
+    structure: '66 books (39 Old Testament, 27 New Testament)',
+    major_themes: JSON.stringify(['Covenant', 'Salvation', 'Kingdom of God', 'Love', 'Faith', 'Redemption']),
+    full_text_available: true,
+    full_text: 'Foundation text — verses stored as structured data in SegmentVerse table.',
+    is_foundation: true,
+    access_level: 'full_text',
+    verification_status: 'verified_primary_source',
+    license_status: 'public_domain',
+    source_provider: 'bible-api.com',
+    source_url: 'https://bible-api.com'
+  });
+
+  let textWork = await findOrCreateInline(base44, 'TextWork', { library_text_id: libraryText.id }, {
+    library_text_id: libraryText.id,
+    tradition_id: tradition.id,
+    title: 'The Bible',
+    alternate_titles: JSON.stringify(['The Holy Bible', 'Scripture']),
+    original_language: 'Hebrew, Aramaic, Greek',
+    writing_system: 'Hebrew, Greek Alphabet',
+    traditional_attribution: 'Multiple authors (prophets, apostles, kings)',
+    scholarly_dating: 'c. 1200 BCE – 100 CE',
+    structure_description: '66 books across 2 divisions (Old Testament, New Testament)',
+    major_themes: JSON.stringify(['Covenant', 'Salvation', 'Kingdom of God', 'Love', 'Faith', 'Redemption']),
+    geographic_origin: 'Levant, Mediterranean',
+    is_foundation: true,
+    source_provider: 'bible-api.com',
+    source_url: 'https://bible-api.com',
+    source_api_endpoint: BIBLE_API_BASE,
+    citation_template: '{book} {chapter}:{verse} (KJV)',
+    license_status: 'public_domain',
+    verification_status: 'source_verified',
+    seeding_status: 'seeding'
+  });
+
+  await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 20 });
+
+  // Check if already seeded
+  const existingVerses = await base44.asServiceRole.entities.SegmentVerse.filter({ text_work_id: textWork.id }, '-created_date', 1);
+  if (existingVerses && existingVerses.length > 0) {
+    await base44.asServiceRole.entities.TextWork.update(textWork.id, { seeding_status: 'seeded' });
+    return { text_work_id: textWork.id, library_text_id: libraryText.id, chapters_created: 0, verses_created: 0, already_seeded: true };
+  }
+
+  let edition = await findOrCreateInline(base44, 'EditionTranslation', { text_work_id: textWork.id, source_api_identifier: 'kjv' }, {
+    text_work_id: textWork.id,
+    edition_name: 'King James Version',
+    translator: 'Commissioned by King James I (1611)',
+    language: 'en',
+    source_provider: 'bible-api.com',
+    source_url: 'https://bible-api.com',
+    source_api_identifier: 'kjv',
+    license_status: 'public_domain',
+    is_default: true,
+    citation: 'King James Version (KJV). Public domain. https://bible-api.com'
+  });
+
+  const divisions = {};
+  for (const divName of ['Old Testament', 'New Testament']) {
+    let div = await findOrCreateInline(base44, 'Division', { text_work_id: textWork.id, name: divName }, {
+      text_work_id: textWork.id,
+      edition_translation_id: edition.id,
+      name: divName,
+      order: divName === 'Old Testament' ? 0 : 1,
+      description: divName === 'Old Testament' ? '39 books of the Hebrew Bible' : '27 books of the Christian New Testament'
+    });
+    divisions[divName] = div;
+  }
+
+  await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 30 });
+
+  let globalOrder = 0;
+  let chaptersCreated = 0;
+  let versesCreated = 0;
+  const startTime = Date.now();
+  const TIME_BUDGET_MS = 22000;
+
+  for (const book of books) {
+    if (Date.now() - startTime > TIME_BUDGET_MS) break;
+
+    for (let ch = 1; ch <= book.chapters; ch++) {
+      if (Date.now() - startTime > TIME_BUDGET_MS) break;
+
+      // Check if chapter already exists
+      const existing = await base44.asServiceRole.entities.SectionChapter.filter(
+        { text_work_id: textWork.id, book_name: book.name, chapter_number: ch },
+        '-created_date',
+        1
+      );
+      if (existing && existing.length > 0) continue;
+
+      const url = `${BIBLE_API_BASE}/${book.key}+${ch}`;
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+      const data = await resp.json();
+
+      const chapter = await base44.asServiceRole.entities.SectionChapter.create({
+        division_id: divisions[book.division].id,
+        text_work_id: textWork.id,
+        edition_translation_id: edition.id,
+        name: `${book.name} ${ch}`,
+        book_name: book.name,
+        order: chaptersCreated,
+        chapter_number: ch,
+        verse_count: data.verses?.length || 0,
+        description: `${book.name} Chapter ${ch}`,
+        source_api_identifier: `${book.key}-${ch}`
+      });
+      chaptersCreated++;
+
+      const verseBatch = [];
+      for (const v of data.verses || []) {
+        verseBatch.push({
+          section_chapter_id: chapter.id,
+          division_id: divisions[book.division].id,
+          text_work_id: textWork.id,
+          edition_translation_id: edition.id,
+          tradition_id: tradition.id,
+          verse_number: v.verse,
+          verse_reference: v.reference || `${book.name} ${ch}:${v.verse}`,
+          verse_text: v.text?.trim() || '',
+          order_index: globalOrder++,
+          source_api_identifier: String(v.verse),
+          citation: `${v.reference || `${book.name} ${ch}:${v.verse}`} (KJV)`,
+          source_provider: 'bible-api.com',
+          source_url: url
+        });
+      }
+      if (verseBatch.length > 0) {
+        await base44.asServiceRole.entities.SegmentVerse.bulkCreate(verseBatch);
+        versesCreated += verseBatch.length;
+      }
+
+      await base44.asServiceRole.entities.SMCImportJob.update(job.id, {
+        progress_percent: Math.min(90, 30 + Math.floor((versesCreated / 3000) * 60)),
+        records_imported: versesCreated
+      });
+    }
+  }
+
+  await base44.asServiceRole.entities.TextWork.update(textWork.id, {
+    seeding_status: 'seeded',
+    total_verses: versesCreated,
+    total_chapters: chaptersCreated
+  });
+
+  return { text_work_id: textWork.id, library_text_id: libraryText.id, chapters_created: chaptersCreated, verses_created: versesCreated };
+}
+
+// ─── Helper: find or create entity ──────────────────────────────────
+async function findOrCreateInline(base44, entityName, filter, createData) {
+  const existing = await base44.asServiceRole.entities[entityName].filter(filter, '-created_date', 1);
+  if (existing && existing.length > 0) return existing[0];
+  return await base44.asServiceRole.entities[entityName].create(createData);
 }
 
 // ─── Handler: OpenScriptures Strong's Greek & Hebrew ──────────────
