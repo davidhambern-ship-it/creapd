@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, LayoutGrid, Database, Globe, Cpu, BookOpen
+  ShieldCheck, LayoutGrid
 } from 'lucide-react';
+import AdminSidebarSection from './AdminSidebarSection';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -35,20 +35,8 @@ const navItems = [
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
-const adminItems = [
-  { icon: Globe, label: 'Scripture Registry', path: '/admin/world-scripture-registry' },
-  { icon: Cpu, label: 'Content Acquisition', path: '/admin/content-acquisition-engine' },
-  { icon: Database, label: 'Source Management', path: '/admin/source-management-center' },
-  { icon: BookOpen, label: 'Foundation Seeder', path: '/admin/foundation-seeder' },
-];
-
 export default function ProducerSidebar({ collapsed, onToggle }) {
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    base44.auth.me().then(u => setIsAdmin(u?.role === 'admin')).catch(() => {});
-  }, []);
 
   const renderNavLink = (item) => {
     const isActive = location.pathname === item.path ||
@@ -80,16 +68,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
       <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-16' : 'w-56'} transition-all duration-300 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-r border-white/[0.06] relative z-40`}>
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto overflow-x-hidden">
           {navItems.map(renderNavLink)}
-          {isAdmin && (
-            <>
-              {!collapsed && (
-                <p className="px-3 pt-4 pb-1 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60">
-                  Administration
-                </p>
-              )}
-              {adminItems.map(renderNavLink)}
-            </>
-          )}
+          <AdminSidebarSection collapsed={collapsed} variant="producer" />
         </nav>
         <div className="p-2 border-t border-white/[0.06]">
           <Link

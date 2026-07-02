@@ -5,6 +5,7 @@ import {
   LayoutDashboard, SlidersHorizontal, Search, Music, Mic,
   List, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle
 } from 'lucide-react';
+import AdminSidebarSection from './AdminSidebarSection';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, ListMusic: Music,
@@ -51,6 +52,7 @@ export default function MusicLayout() {
               </Link>
             );
           })}
+          <AdminSidebarSection variant="music" onNavigate={() => {}} />
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
@@ -96,6 +98,7 @@ export default function MusicLayout() {
                 </Link>
               );
             })}
+            <AdminSidebarSection variant="music" onNavigate={() => setMobileNavOpen(false)} />
           </nav>
         )}
 

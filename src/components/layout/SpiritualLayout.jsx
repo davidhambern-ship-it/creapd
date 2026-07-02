@@ -6,6 +6,7 @@ import {
   PenTool, Sparkles, Package, Download, Settings, X, Menu, LayoutGrid, Circle, Church,
   Library, Languages, Columns2, Star, Clock3
 } from 'lucide-react';
+import AdminSidebarSection from './AdminSidebarSection';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, BookOpen,
@@ -52,6 +53,7 @@ export default function SpiritualLayout() {
               </Link>
             );
           })}
+          <AdminSidebarSection variant="spiritual" onNavigate={() => {}} />
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
@@ -95,6 +97,7 @@ export default function SpiritualLayout() {
                 </Link>
               );
             })}
+            <AdminSidebarSection variant="spiritual" onNavigate={() => setMobileNavOpen(false)} />
           </nav>
         )}
 
