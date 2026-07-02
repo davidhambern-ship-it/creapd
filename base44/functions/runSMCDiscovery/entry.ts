@@ -82,10 +82,12 @@ Deno.serve(async (req) => {
                   confidence_score: { type: 'number' },
                   trust_score: { type: 'number' },
                   recommended_use: { type: 'string' }
-                }
+                },
+                required: ['source_name', 'provider_name', 'provider_type', 'source_type', 'website', 'documentation_url', 'api_base_url', 'sample_endpoint', 'detected_formats', 'supported_collections', 'supported_traditions', 'supported_languages', 'authentication_required', 'api_key_required', 'license_summary', 'redistribution_notes', 'commercial_use_notes', 'evidence_links', 'confidence_score', 'trust_score', 'recommended_use']
               }
             }
-          }
+          },
+          required: ['candidates']
         },
         model: 'gemini_3_flash'
       });

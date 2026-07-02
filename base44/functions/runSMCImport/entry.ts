@@ -614,7 +614,8 @@ Respond with a JSON object containing:
         field_mapping: { type: 'object', additionalProperties: true },
         record_count_estimate: { type: 'string' },
         next_steps: { type: 'string' }
-      }
+      },
+      required: ['data_format', 'data_type', 'importable', 'entity_target', 'field_mapping', 'record_count_estimate', 'next_steps']
     }
   });
 
