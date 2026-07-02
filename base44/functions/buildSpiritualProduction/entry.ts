@@ -275,7 +275,7 @@ TASKS:
    - prayer: Opening or closing prayer (if applicable)
    - closing_notes: Final notes
 
-   Each section must include: order, section_type (from the list above), title, content (the full message text for this section), speaker_notes (private notes for the speaker), scripture_references (with citations), citations (source citations), estimated_duration_seconds (realistic speaking time based on word count at 130 wpm), target_runtime_seconds (intended duration for this section, proportional to total target runtime), slide_title (concise title for the presentation slide for this section), slide_content (bullet points or key phrases for the slide — NOT the full script), and slide_visual_prompt (brief description of the visual design for this slide).
+   Each section is a PRESENTATION SCENE. Each must include: order, section_type (from the list above), title, content (the full narration text for this scene — the spoken script that will be converted to voice), speaker_notes (private notes for the speaker), scripture_references (with citations), citations (source citations), estimated_duration_seconds (realistic speaking time based on word count at 130 wpm), target_runtime_seconds (intended duration for this scene, proportional to total target runtime), slide_title (concise title for the presentation slide for this scene), slide_content (bullet points or key phrases for the slide — NOT the full script), slide_visual_prompt (a DETAILED AI image generation prompt describing the visual scene — include subject, style, mood, colors, composition, and lighting. Example: "A serene mountain landscape at sunrise with golden light streaming through clouds, contemplative and majestic, oil painting style, warm earth tones, wide-angle composition"), transition (transition effect when advancing to this slide: one of "fade", "slide_left", "zoom", "dissolve", "none"), and scene_data (a JSON string object with scripture_popups array of {reference, text} for scripture verses that should appear as popups, graphics array of strings describing supporting graphics needed like charts or maps, and animations string describing slide animation instructions).
 
 2. AI ASSETS: Generate the following based on selected automation:
    - title_slide: Title and theme for the production
@@ -310,7 +310,9 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
               target_runtime_seconds: { type: 'number' },
               slide_title: { type: 'string' },
               slide_content: { type: 'string' },
-              slide_visual_prompt: { type: 'string' }
+              slide_visual_prompt: { type: 'string' },
+              transition: { type: 'string' },
+              scene_data: { type: 'string' }
             }
           }
         },
@@ -360,6 +362,8 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       slide_title: section.slide_title || '',
       slide_content: section.slide_content || '',
       slide_visual_prompt: section.slide_visual_prompt || '',
+      transition: ['fade', 'slide_left', 'zoom', 'dissolve', 'none'].includes(section.transition) ? section.transition : 'fade',
+      scene_data: section.scene_data || '',
       runtime_status: 'pending',
       status: 'generated'
     }));

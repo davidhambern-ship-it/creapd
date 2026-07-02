@@ -25,18 +25,31 @@ export default function PresentationStrip({ sections, assets, onSlideClick }) {
           <button
             key={section.id || idx}
             onClick={() => onSlideClick?.(section.id)}
-            className="shrink-0 w-40 h-24 rounded-lg border border-border bg-secondary/30 hover:border-primary/40 transition-colors p-2 text-left group"
+            className="shrink-0 w-40 h-24 rounded-lg border border-border bg-secondary/30 hover:border-primary/40 transition-colors overflow-hidden text-left group relative"
           >
-            <div className="flex items-center gap-1 mb-1">
-              <span className="text-xs font-mono text-muted-foreground">#{section.order || idx + 1}</span>
-              {slide ? (
-                <Presentation className="w-3 h-3 text-primary" />
-              ) : (
-                <BookOpen className="w-3 h-3 text-muted-foreground" />
-              )}
-            </div>
-            <p className="text-xs font-medium truncate group-hover:text-primary">{slide?.title || section.title}</p>
-            <p className="text-xs text-muted-foreground truncate">{slide?.content?.substring(0, 40) || section.content?.substring(0, 40)}</p>
+            {section.generated_image_url ? (
+              <>
+                <img src={section.generated_image_url} alt={section.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                  <span className="text-xs font-mono text-white/60">#{section.order || idx + 1}</span>
+                  <p className="text-xs font-medium truncate text-white">{slide?.title || section.title}</p>
+                </div>
+              </>
+            ) : (
+              <div className="p-2">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-xs font-mono text-muted-foreground">#{section.order || idx + 1}</span>
+                  {slide ? (
+                    <Presentation className="w-3 h-3 text-primary" />
+                  ) : (
+                    <BookOpen className="w-3 h-3 text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs font-medium truncate group-hover:text-primary">{slide?.title || section.title}</p>
+                <p className="text-xs text-muted-foreground truncate">{slide?.content?.substring(0, 40) || section.content?.substring(0, 40)}</p>
+              </div>
+            )}
           </button>
         ))}
         {globalSlides.map((slide, idx) => (

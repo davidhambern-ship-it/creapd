@@ -29,8 +29,9 @@ Deno.serve(async (req) => {
 
     let generated = 0;
     let failed = 0;
+    let adjusted = 0;
 
-    // Generate voice sequentially to stay within timeout and avoid rate limits
+    // ===== PASS 1: Generate voice for all sections =====
     for (const section of sections) {
       try {
         const text = (section.content || '').substring(0, 5000);
@@ -68,6 +69,55 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== PASS 2: Runtime validation — auto-adjust sections that are too short or too long =====
+    const updatedSections = await base44.entities.SpiritualMessageSection.filter({ configuration_id }, 'order');
+    for (const section of updatedSections) {
+      if (section.runtime_status !== 'too_short' && section.runtime_status !== 'too_long') continue;
+      if (!section.voice_url) continue;
+
+      try {
+        const target = section.target_runtime_seconds || perSectionTarget;
+        const currentDuration = section.voice_duration_seconds || 0;
+        const isTooShort = section.runtime_status === 'too_short';
+        const ratio = isTooShort ? target / Math.max(currentDuration, 1) : currentDuration / Math.max(target, 1);
+
+        const adjustPrompt = isTooShort
+          ? `Expand the following spiritual message section to be approximately ${Math.round(ratio * 100)}% longer (about ${target} seconds of speaking time at 130 wpm, so roughly ${Math.round(target / 130 * 60)} words). Keep the same tone, style, and key points. Add depth, illustrations, or supporting detail. Do NOT add new scripture references. Return ONLY the expanded narration text, nothing else.\n\nCurrent text (${currentDuration}s):\n${section.content}`
+          : `Condense the following spiritual message section to be approximately ${Math.round((1 / ratio) * 100)}% shorter (about ${target} seconds of speaking time at 130 wpm, so roughly ${Math.round(target / 130 * 60)} words). Keep the core message, key points, and scripture references. Remove redundancy. Return ONLY the condensed narration text, nothing else.\n\nCurrent text (${currentDuration}s):\n${section.content}`;
+
+        const llmResult = await base44.integrations.Core.InvokeLLM({
+          prompt: adjustPrompt
+        });
+
+        const adjustedText = typeof llmResult === 'string' ? llmResult : (llmResult.text || llmResult.content || '');
+        if (!adjustedText || adjustedText.trim().length < 20) continue;
+
+        // Regenerate voice with adjusted text
+        const newVoice = await base44.integrations.Core.GenerateSpeech({
+          text: adjustedText.substring(0, 5000),
+          voice: 'storm',
+          language_code: 'en'
+        });
+
+        const newWordCount = adjustedText.split(/\s+/).filter(Boolean).length;
+        const newDuration = Math.round(newWordCount / 2.5);
+        const newStatus = newDuration < target * 0.7 ? 'too_short'
+          : newDuration > target * 1.3 ? 'too_long'
+          : 'on_target';
+
+        await base44.entities.SpiritualMessageSection.update(section.id, {
+          content: adjustedText,
+          voice_url: newVoice.url,
+          voice_duration_seconds: newDuration,
+          runtime_status: newStatus,
+          estimated_duration_seconds: newDuration
+        });
+        adjusted++;
+      } catch (err) {
+        // If adjustment fails, leave the original voice
+      }
+    }
+
     // Generate thumbnail image for title slide
     let imageGenerated = false;
     try {
@@ -99,6 +149,7 @@ Deno.serve(async (req) => {
       configuration_id,
       voiceovers_generated: generated,
       voiceovers_failed: failed,
+      runtime_adjusted: adjusted,
       image_generated: imageGenerated
     });
   } catch (error) {

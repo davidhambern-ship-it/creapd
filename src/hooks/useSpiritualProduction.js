@@ -10,6 +10,7 @@ export function useSpiritualProduction(configId) {
   const [packageItems, setPackageItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingVoice, setGeneratingVoice] = useState(false);
+  const [generatingImages, setGeneratingImages] = useState(false);
   const pollRef = useRef(null);
 
   const fetchSubEntities = async (activeId) => {
@@ -61,6 +62,22 @@ export function useSpiritualProduction(configId) {
     if (!silent) setLoading(false);
   }, [configId]);
 
+  const generateSceneImages = async (activeId) => {
+    try {
+      const sections = await base44.entities.SpiritualMessageSection.filter({ configuration_id: activeId }, 'order');
+      for (const section of sections) {
+        if (section.generated_image_url) continue;
+        const prompt = section.slide_visual_prompt || ('spiritual presentation slide about ' + (section.title || ''));
+        try {
+          const result = await base44.integrations.Core.GenerateImage({ prompt });
+          if (result.url) {
+            await base44.entities.SpiritualMessageSection.update(section.id, { generated_image_url: result.url });
+          }
+        } catch (err) { console.error('Image gen error:', err); }
+      }
+    } catch (err) { console.error('Scene image generation failed:', err); }
+  };
+
   // Poll config status when building
   useEffect(() => {
     if (config?.status !== 'building') {
@@ -87,9 +104,17 @@ export function useSpiritualProduction(configId) {
           if (updated.status === 'ready') {
             setGeneratingVoice(true);
             base44.functions.invoke('generateSpiritualVoiceovers', { configuration_id: activeId })
-              .catch(err => console.error('Voice generation error:', err))
-              .finally(() => {
+              .then(async () => {
                 setGeneratingVoice(false);
+                setGeneratingImages(true);
+                await generateSceneImages(activeId);
+                setGeneratingImages(false);
+                await loadAll(true);
+              })
+              .catch(err => {
+                console.error('Voice generation error:', err);
+                setGeneratingVoice(false);
+                setGeneratingImages(false);
                 loadAll(true);
               });
           }
@@ -104,5 +129,5 @@ export function useSpiritualProduction(configId) {
     loadAll(false);
   }, [loadAll]);
 
-  return { config, setConfig, research, topics, messageSections, assets, packageItems, loading, generatingVoice, refresh: () => loadAll(true) };
+  return { config, setConfig, research, topics, messageSections, assets, packageItems, loading, generatingVoice, generatingImages, refresh: () => loadAll(true) };
 }

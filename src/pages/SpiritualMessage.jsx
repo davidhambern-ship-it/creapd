@@ -3,16 +3,19 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useSpiritualProduction } from '@/hooks/useSpiritualProduction';
 import { Button } from '@/components/ui/button';
-import { Loader2, PenTool, Sparkles, Clock, FileText, Package, ChevronRight, Zap } from 'lucide-react';
+import { Loader2, PenTool, Sparkles, Clock, FileText, Package, ChevronRight, Zap, Play, Image as ImageIcon } from 'lucide-react';
 import { formatDuration, estimateSpeakingTime } from '@/lib/spiritualConstants';
 import ProductionModule from '@/components/message/ProductionModule';
 import ProductionStatusBar from '@/components/message/ProductionStatusBar';
 import RuntimeOverview from '@/components/message/RuntimeOverview';
 import PresentationStrip from '@/components/message/PresentationStrip';
+import SceneCard from '@/components/message/SceneCard';
+import PresentationPreview from '@/components/message/PresentationPreview';
 
 export default function SpiritualMessage() {
-  const { config, messageSections, assets, packageItems, loading, generatingVoice, refresh } = useSpiritualProduction();
+  const { config, messageSections, assets, packageItems, loading, generatingVoice, generatingImages, refresh } = useSpiritualProduction();
   const [generating, setGenerating] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const moduleRefs = useRef({});
 
   if (loading) {
@@ -54,7 +57,7 @@ export default function SpiritualMessage() {
   };
 
   // Building state
-  if (generating || config.status === 'building' || generatingVoice) {
+  if (generating || config.status === 'building' || generatingVoice || generatingImages) {
     return (
       <div className="min-h-screen p-6 md:p-8">
         <div className="max-w-5xl mx-auto">
@@ -64,7 +67,7 @@ export default function SpiritualMessage() {
               <p className="text-sm text-muted-foreground">{config.production_name || config.production_type}</p>
             </div>
           </div>
-          <ProductionStatusBar generating={generating} configStatus={config.status} generatingVoice={generatingVoice} />
+          <ProductionStatusBar generating={generating} configStatus={config.status} generatingVoice={generatingVoice} generatingImages={generatingImages} />
         </div>
       </div>
     );
@@ -111,6 +114,9 @@ export default function SpiritualMessage() {
               <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> {totalWords} words</span>
               <span className="flex items-center gap-1"><Package className="w-4 h-4" /> {assets.length} assets</span>
             </div>
+            <Button size="sm" variant="outline" onClick={() => setShowPreview(true)} disabled={messageSections.length === 0}>
+              <Play className="w-3.5 h-3.5 mr-1" /> Preview Presentation
+            </Button>
             <Button size="sm" onClick={handleGenerate} disabled={generating}>
               <Sparkles className="w-3.5 h-3.5 mr-1" /> Regenerate
             </Button>
@@ -125,6 +131,18 @@ export default function SpiritualMessage() {
         {/* Presentation Strip */}
         <div className="mb-4">
           <PresentationStrip sections={messageSections} assets={assets} onSlideClick={scrollToModule} />
+        </div>
+
+        {/* Presentation Scenes Grid */}
+        <div className="mb-6">
+          <h3 className="text-sm font-heading font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+            <ImageIcon className="w-4 h-4" /> Presentation Scenes
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {messageSections.map((section, idx) => (
+              <SceneCard key={section.id} section={section} index={idx} onClick={() => scrollToModule(section.id)} />
+            ))}
+          </div>
         </div>
 
         {/* Production Modules */}
@@ -175,6 +193,14 @@ export default function SpiritualMessage() {
           </div>
         </div>
       </div>
+
+      {showPreview && (
+        <PresentationPreview
+          sections={messageSections}
+          config={config}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }

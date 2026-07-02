@@ -33,7 +33,7 @@
     },
     "content": {
       "type": "string",
-      "description": "Main message content for this section"
+      "description": "Narration script for this scene \u2014 the spoken text"
     },
     "speaker_notes": {
       "type": "string",
@@ -85,7 +85,27 @@
     },
     "slide_visual_prompt": {
       "type": "string",
-      "description": "Visual design description for the slide"
+      "description": "Detailed AI image generation prompt describing the visual scene"
+    },
+    "generated_image_url": {
+      "type": "string",
+      "description": "AI-generated image URL for this scene's slide background"
+    },
+    "transition": {
+      "type": "string",
+      "enum": [
+        "fade",
+        "slide_left",
+        "zoom",
+        "dissolve",
+        "none"
+      ],
+      "default": "fade",
+      "description": "Transition effect when advancing to this slide"
+    },
+    "scene_data": {
+      "type": "string",
+      "description": "JSON object with scripture_popups, graphics, and animation instructions"
     },
     "status": {
       "type": "string",
