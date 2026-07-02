@@ -9,6 +9,7 @@ import {
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
 import ProducerHeader from './ProducerHeader';
+import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 
 const ICON_MAP = {
@@ -45,6 +46,8 @@ export default function SpiritualLayout() {
           <Outlet />
         </main>
       </div>
+
+      <ProductionFooter variant="spiritual" />
 
       <MobileNavDrawer
         open={mobileNavOpen}

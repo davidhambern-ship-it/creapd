@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import ProducerHeader from './ProducerHeader';
 import ProducerSidebar from './ProducerSidebar';
-import ProducerFooter from './ProducerFooter';
+import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 
@@ -22,7 +22,7 @@ export default function ProducerLayout() {
           <Outlet />
         </main>
       </div>
-      <ProducerFooter />
+      <ProductionFooter variant="news" />
       <MobileNavDrawer
         open={navDrawerOpen}
         onClose={() => setNavDrawerOpen(false)}

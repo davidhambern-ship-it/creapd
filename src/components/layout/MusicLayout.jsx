@@ -8,6 +8,7 @@ import {
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
 import ProducerHeader from './ProducerHeader';
+import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 
 const ICON_MAP = {
@@ -43,6 +44,8 @@ export default function MusicLayout() {
           <Outlet />
         </main>
       </div>
+
+      <ProductionFooter variant="music" />
 
       <MobileNavDrawer
         open={mobileNavOpen}
