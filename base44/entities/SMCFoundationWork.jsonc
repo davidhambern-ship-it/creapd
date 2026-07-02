@@ -20,12 +20,23 @@
       "type": "string",
       "enum": [
         "Missing",
-        "Discovered",
-        "Approved",
-        "Ready to Seed",
+        "Source Needed",
+        "Source Found",
+        "Approved Source Available",
+        "Ready to Import",
         "Queued",
         "Importing",
         "Imported",
+        "Indexed",
+        "Published",
+        "Failed",
+        "Needs Review",
+        "License Blocked",
+        "Parser Missing",
+        "Update Available",
+        "Discovered",
+        "Approved",
+        "Ready to Seed",
         "Needs Update",
         "License Required",
         "Unavailable",
@@ -37,6 +48,35 @@
       "type": "number",
       "default": 0,
       "description": "Foundation priority score 0-100"
+    },
+    "importance_label": {
+      "type": "string",
+      "enum": [
+        "Essential",
+        "Foundational",
+        "Major",
+        "Supporting",
+        "Reference",
+        "Specialized",
+        "Historical",
+        "Supplemental",
+        "Experimental"
+      ],
+      "default": "Supporting"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Preferred source provider name"
+    },
+    "preferred_provider": {
+      "type": "string"
+    },
+    "backup_provider": {
+      "type": "string"
+    },
+    "required_parser": {
+      "type": "string",
+      "description": "Required parser type or name"
     },
     "historical_importance": {
       "type": "number",
