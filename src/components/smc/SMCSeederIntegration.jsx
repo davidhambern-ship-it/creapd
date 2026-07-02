@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Download, CheckCircle2, XCircle, Clock, Play, Pause, RotateCcw, FileText } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, XCircle, Clock, Play, Pause, RotateCcw, FileText, Search, Zap, Bot } from 'lucide-react';
 import { IMPORT_STATUSES } from '@/lib/smcConstants';
 
 export default function SMCSeederIntegration() {
@@ -9,6 +9,8 @@ export default function SMCSeederIntegration() {
   const [parsers, setParsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showQueue, setShowQueue] = useState(false);
+  const [executing, setExecuting] = useState(null);
+  const [scanning, setScanning] = useState(false);
 
   const load = async () => {
     try {
@@ -32,6 +34,24 @@ export default function SMCSeederIntegration() {
       else if (action === 'cancel') await base44.entities.SMCImportJob.update(job.id, { status: 'Cancelled' });
       load();
     } catch (err) { console.error(err); }
+  };
+
+  const handleScanSources = async () => {
+    setScanning(true);
+    try {
+      await base44.functions.invoke('runSMCImport', { mode: 'auto_create' });
+      await load();
+    } catch (err) { console.error('Scan error:', err); }
+    finally { setScanning(false); }
+  };
+
+  const handleApproveAndRun = async (jobId) => {
+    setExecuting(jobId);
+    try {
+      await base44.functions.invoke('runSMCImport', { mode: 'execute', job_id: jobId });
+      await load();
+    } catch (err) { console.error('Execute error:', err); }
+    finally { setExecuting(null); }
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -65,7 +85,12 @@ export default function SMCSeederIntegration() {
 
       <div className="flex items-center justify-between">
         <h3 className="font-heading font-semibold">Import Queue</h3>
-        <button onClick={() => setShowQueue(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm"><Download className="w-4 h-4" /> Queue Import</button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleScanSources} disabled={scanning} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/20 text-primary text-sm hover:bg-primary/30 disabled:opacity-50">
+            {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Scan Sources
+          </button>
+          <button onClick={() => setShowQueue(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm"><Download className="w-4 h-4" /> Queue Import</button>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -84,10 +109,17 @@ export default function SMCSeederIntegration() {
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${job.progress_percent}%` }} />
                   </div>
                 )}
+                {job.admin_notes?.includes('Auto-created') && <p className="text-xs text-primary/70 mt-0.5 flex items-center gap-1"><Bot className="w-3 h-3" /> Auto-created — awaiting your approval</p>}
                 {job.records_imported > 0 && <p className="text-xs text-muted-foreground mt-1">{job.records_imported} / {job.total_records_expected || '?'} records imported</p>}
                 {job.error_log && <p className="text-xs text-red-400 mt-1">{job.error_log}</p>}
+                {executing === job.id && <p className="text-xs text-primary mt-1 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Importing data...</p>}
               </div>
               <div className="flex items-center gap-1">
+                {job.status === 'Queued' && (
+                  <button onClick={() => handleApproveAndRun(job.id)} disabled={executing === job.id} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-berna-emerald/20 text-berna-emerald text-xs hover:bg-berna-emerald/30 disabled:opacity-50" title="Approve & Run">
+                    {executing === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />} Run
+                  </button>
+                )}
                 {job.status === 'Running' && <button onClick={() => handleAction(job, 'pause')} className="p-1.5 rounded hover:bg-orange-500/20" title="Pause"><Pause className="w-3.5 h-3.5 text-orange-400" /></button>}
                 {job.status === 'Paused' && <button onClick={() => handleAction(job, 'resume')} className="p-1.5 rounded hover:bg-berna-emerald/20" title="Resume"><Play className="w-3.5 h-3.5 text-berna-emerald" /></button>}
                 {job.status === 'Failed' && <button onClick={() => handleAction(job, 'retry')} className="p-1.5 rounded hover:bg-primary/20" title="Retry"><RotateCcw className="w-3.5 h-3.5 text-primary" /></button>}
