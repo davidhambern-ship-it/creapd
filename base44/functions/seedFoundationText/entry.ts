@@ -375,7 +375,7 @@ async function seedBible(base44, body) {
   const completedBooks = [];
   const remainingBooks = [];
   const allBookKeys = Object.keys(BIBLE_BOOKS);
-  const PARALLEL_FETCH_SIZE = 8;
+  const PARALLEL_FETCH_SIZE = 5;
 
   for (const bookKey of requestedBooks) {
     // Time budget check — return remaining books if we're approaching the timeout
@@ -412,8 +412,9 @@ async function seedBible(base44, body) {
     }
 
     let bookFullySeeded = true;
+    const fetchedChapters = []; // { chapterNum, verses }
 
-    // Fetch missing chapters in parallel batches
+    // Phase 1: Fetch all missing chapters in parallel batches (API calls only, no DB writes)
     for (let i = 0; i < missingChapters.length; i += PARALLEL_FETCH_SIZE) {
       if (Date.now() - startTime > TIME_BUDGET_MS) {
         bookFullySeeded = false;
@@ -426,7 +427,7 @@ async function seedBible(base44, body) {
           const apiUrl = `${BIBLE_API_BASE}/${bookKey}+${chapterNum}`;
           let data = null;
           for (let attempt = 0; attempt < 3 && !data; attempt++) {
-            if (attempt > 0) await sleep(1500);
+            if (attempt > 0) await sleep(2000);
             try {
               const resp = await fetch(apiUrl);
               if (resp.ok) {
@@ -438,42 +439,60 @@ async function seedBible(base44, body) {
           return { chapterNum, data };
         })
       );
+      await sleep(500);
 
-      // Create chapters and verses for successful fetches
       for (const result of results) {
-        if (result.status !== 'fulfilled' || !result.value.data) continue;
-        const { chapterNum, data } = result.value;
-
-        const chapter = await base44.entities.SectionChapter.create({
-          division_id: division.id,
-          text_work_id: textWorkId,
-          edition_translation_id: edition.id,
-          name: `${bookInfo.name} ${chapterNum}`,
-          book_name: bookInfo.name,
-          order: bookIndex * 1000 + chapterNum,
-          chapter_number: chapterNum,
-          verse_count: data.verses.length,
-          source_api_identifier: `${bookKey}+${chapterNum}`
-        });
-        chaptersCreated++;
-
-        const verseBatch = data.verses.map(v => ({
-          section_chapter_id: chapter.id,
-          division_id: division.id,
-          text_work_id: textWorkId,
-          edition_translation_id: edition.id,
-          tradition_id: traditionId,
-          verse_number: v.verse,
-          verse_reference: `${bookInfo.name} ${chapterNum}:${v.verse}`,
-          verse_text: v.text.trim(),
-          order_index: globalOrder++,
-          citation: `${bookInfo.name} ${chapterNum}:${v.verse} (KJV)`,
-          source_provider: 'bible-api.com',
-          source_url: `https://bible-api.com/${bookKey}+${chapterNum}:${v.verse}`
-        }));
-        await base44.entities.SegmentVerse.bulkCreate(verseBatch);
-        versesCreated += verseBatch.length;
+        if (result.status === 'fulfilled' && result.value.data) {
+          fetchedChapters.push(result.value);
+        }
       }
+    }
+
+    if (Date.now() - startTime > TIME_BUDGET_MS) bookFullySeeded = false;
+
+    // Phase 2: Bulk create all chapters at once (1 SDK call instead of N)
+    if (fetchedChapters.length > 0) {
+      const chapterRecords = fetchedChapters.map(fc => ({
+        division_id: division.id,
+        text_work_id: textWorkId,
+        edition_translation_id: edition.id,
+        name: `${bookInfo.name} ${fc.chapterNum}`,
+        book_name: bookInfo.name,
+        order: bookIndex * 1000 + fc.chapterNum,
+        chapter_number: fc.chapterNum,
+        verse_count: fc.data.verses.length,
+        source_api_identifier: `${bookKey}+${fc.chapterNum}`
+      }));
+      const createdChapters = await base44.entities.SectionChapter.bulkCreate(chapterRecords);
+      chaptersCreated += createdChapters.length;
+
+      // Phase 3: Build all verse records and bulk create in batches of 500
+      const allVerses = [];
+      for (let i = 0; i < createdChapters.length; i++) {
+        const ch = createdChapters[i];
+        const fc = fetchedChapters[i];
+        for (const v of fc.data.verses) {
+          allVerses.push({
+            section_chapter_id: ch.id,
+            division_id: division.id,
+            text_work_id: textWorkId,
+            edition_translation_id: edition.id,
+            tradition_id: traditionId,
+            verse_number: v.verse,
+            verse_reference: `${bookInfo.name} ${fc.chapterNum}:${v.verse}`,
+            verse_text: v.text.trim(),
+            order_index: globalOrder++,
+            citation: `${bookInfo.name} ${fc.chapterNum}:${v.verse} (KJV)`,
+            source_provider: 'bible-api.com',
+            source_url: `https://bible-api.com/${bookKey}+${fc.chapterNum}:${v.verse}`
+          });
+        }
+      }
+      // Bulk create verses in batches of 500
+      for (let i = 0; i < allVerses.length; i += 500) {
+        await base44.entities.SegmentVerse.bulkCreate(allVerses.slice(i, i + 500));
+      }
+      versesCreated += allVerses.length;
     }
 
     if (bookFullySeeded) {
@@ -481,6 +500,7 @@ async function seedBible(base44, body) {
     } else {
       remainingBooks.push(bookKey);
     }
+    await sleep(1000);
   }
 
   // 8. Update TextWork with counts

@@ -29,6 +29,7 @@ export default function FoundationTextReader({ text, textId }) {
   const [highlightCategory, setHighlightCategory] = useState('important');
   const [copiedRef, setCopiedRef] = useState(null);
   const [showChapterList, setShowChapterList] = useState(false);
+  const [collapsedBooks, setCollapsedBooks] = useState({});
 
   // Load TextWork and chapters
   useEffect(() => {
@@ -168,6 +169,19 @@ export default function FoundationTextReader({ text, textId }) {
   const currentChapter = chapters.find(c => c.id === activeChapterId);
   const currentIdx = chapters.findIndex(c => c.id === activeChapterId);
 
+  // Group chapters by book
+  const bookGroups = chapters.reduce((acc, ch) => {
+    const book = ch.book_name || 'Unknown';
+    if (!acc[book]) acc[book] = [];
+    acc[book].push(ch);
+    return acc;
+  }, {});
+  const bookNames = Object.keys(bookGroups);
+
+  const toggleBook = (book) => {
+    setCollapsedBooks(prev => ({ ...prev, [book]: !prev[book] }));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -190,21 +204,45 @@ export default function FoundationTextReader({ text, textId }) {
               <Loader2 className="w-3 h-3 animate-spin" /> Seeding in progress...
             </div>
           )}
-          <div className="space-y-0.5">
-            {chapters.map(chap => (
-              <button
-                key={chap.id}
-                onClick={() => { setActiveChapterId(chap.id); setSelectedVerse(null); clearSearch(); }}
-                className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors ${
-                  activeChapterId === chap.id
-                    ? 'bg-primary/20 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
-                }`}
-              >
-                <span className="text-muted-foreground/60 mr-1.5">{chap.order}</span>
-                {chap.name}
-              </button>
-            ))}
+          <div className="space-y-1">
+            {bookNames.map(book => {
+              const isCollapsed = collapsedBooks[book];
+              const bookChapters = bookGroups[book];
+              const hasActive = bookChapters.some(c => c.id === activeChapterId);
+              return (
+                <div key={book}>
+                  <button
+                    onClick={() => toggleBook(book)}
+                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      hasActive ? 'text-primary' : 'text-foreground hover:bg-secondary/40'
+                    }`}
+                  >
+                    {isCollapsed
+                      ? <ChevronRight className="w-3 h-3 shrink-0" />
+                      : <ChevronLeft className="w-3 h-3 shrink-0 rotate-90" />}
+                    <span className="truncate">{book}</span>
+                    <span className="text-muted-foreground/50 ml-auto">{bookChapters.length}</span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="ml-3 space-y-0.5">
+                      {bookChapters.map(chap => (
+                        <button
+                          key={chap.id}
+                          onClick={() => { setActiveChapterId(chap.id); setSelectedVerse(null); clearSearch(); }}
+                          className={`w-full text-left px-2.5 py-1 rounded-md text-xs transition-colors ${
+                            activeChapterId === chap.id
+                              ? 'bg-primary/20 text-primary font-medium'
+                              : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                          }`}
+                        >
+                          {chap.name.replace(book + ' ', '')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
