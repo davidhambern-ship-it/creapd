@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { X, ChevronRight } from 'lucide-react';
-import { PRODUCER_NAV_SECTIONS, PRODUCTION_MODES } from '@/lib/producerNav';
+import { X, ChevronRight, LayoutGrid } from 'lucide-react';
+import { PRODUCTION_MODES } from '@/lib/producerNav';
 import AdminSidebarSection from './AdminSidebarSection';
 
-export default function MobileNavDrawer({ open, onClose }) {
+export default function MobileNavDrawer({ open, onClose, navItems, iconMap, variant }) {
   const location = useLocation();
 
   useEffect(() => {
@@ -18,15 +18,25 @@ export default function MobileNavDrawer({ open, onClose }) {
 
   if (!open) return null;
 
+  // Convert flat nav items (with section field) to grouped sections
+  const sections = [];
+  const sectionMap = {};
+  navItems.forEach(item => {
+    const sectionKey = item.section || null;
+    if (!sectionMap[sectionKey]) {
+      sectionMap[sectionKey] = { label: sectionKey, items: [] };
+      sections.push(sectionMap[sectionKey]);
+    }
+    sectionMap[sectionKey].items.push(item);
+  });
+
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden"
         onClick={onClose}
       />
 
-      {/* Drawer */}
       <aside className="fixed top-0 left-0 bottom-0 w-[85vw] max-w-sm z-[70] bg-gradient-to-b from-[hsl(220,20%,10%)] to-[hsl(220,20%,6%)] border-r border-white/[0.08] flex flex-col lg:hidden animate-slide-in">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.06] flex-shrink-0">
@@ -74,7 +84,7 @@ export default function MobileNavDrawer({ open, onClose }) {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-3">
-          {PRODUCER_NAV_SECTIONS.map((section, si) => (
+          {sections.map((section, si) => (
             <div key={section.label || `section-${si}`}>
               {section.label && (
                 <p className="px-3 pt-4 pb-1 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -84,6 +94,7 @@ export default function MobileNavDrawer({ open, onClose }) {
               {section.items.map(item => {
                 const isActive = location.pathname === item.path ||
                   (item.path !== '/' && location.pathname.startsWith(item.path));
+                const Icon = item.icon && typeof item.icon === 'string' ? (iconMap?.[item.icon] || ChevronRight) : item.icon;
                 return (
                   <Link
                     key={item.path}
@@ -96,7 +107,7 @@ export default function MobileNavDrawer({ open, onClose }) {
                     }`}
                   >
                     {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-berna-orange rounded-r" />}
-                    <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-berna-purple' : ''}`} />
+                    {Icon && <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-berna-purple' : ''}`} />}
                     <span className="text-sm font-medium">{item.label}</span>
                     {isActive && <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground" />}
                   </Link>
@@ -104,8 +115,20 @@ export default function MobileNavDrawer({ open, onClose }) {
               })}
             </div>
           ))}
-          <AdminSidebarSection variant="producer" onNavigate={onClose} />
+          <AdminSidebarSection variant={variant} onNavigate={onClose} />
         </nav>
+
+        {/* Switch Production Type */}
+        <div className="p-3 border-t border-white/[0.06] flex-shrink-0">
+          <Link
+            to="/production-types"
+            onClick={onClose}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-white hover:bg-white/[0.04] transition-colors"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Switch Production Type
+          </Link>
+        </div>
       </aside>
     </>
   );

@@ -4,6 +4,7 @@ import ProducerHeader from './ProducerHeader';
 import ProducerSidebar from './ProducerSidebar';
 import ProducerFooter from './ProducerFooter';
 import MobileNavDrawer from './MobileNavDrawer';
+import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 
 export default function ProducerLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,7 +23,12 @@ export default function ProducerLayout() {
         </main>
       </div>
       <ProducerFooter />
-      <MobileNavDrawer open={navDrawerOpen} onClose={() => setNavDrawerOpen(false)} />
+      <MobileNavDrawer
+        open={navDrawerOpen}
+        onClose={() => setNavDrawerOpen(false)}
+        navItems={PRODUCER_NAV_ITEMS}
+        variant="producer"
+      />
     </div>
   );
 }

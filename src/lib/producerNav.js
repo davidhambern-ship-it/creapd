@@ -77,6 +77,10 @@ export const PRODUCTION_MODES = [
   { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
 ];
 
+export const PRODUCER_NAV_ITEMS = PRODUCER_NAV_SECTIONS.flatMap(section =>
+  section.items.map(item => ({ ...item, section: section.label }))
+);
+
 export function getActiveProductionMode(pathname) {
   if (pathname.startsWith('/music')) return 'radio';
   if (pathname.startsWith('/spiritual')) return 'spiritual';
