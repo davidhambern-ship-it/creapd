@@ -269,7 +269,7 @@ async function handlerOpenScripturesStrongs(base44, source, job) {
   } catch {}
 
   let totalImported = cursor.total_imported || 0;
-  let totalEntries = 0;
+  let totalEntries = cursor.total_entries || 0;
   let totalSkipped = 0;
   let allDictionariesComplete = true;
 
@@ -296,7 +296,10 @@ async function handlerOpenScripturesStrongs(base44, source, job) {
     }
 
     const keys = Object.keys(entries);
-    totalEntries += keys.length;
+    // Only count entries once per dictionary (skip if resuming mid-dictionary)
+    if (cursor.keys_done === 0) {
+      totalEntries += keys.length;
+    }
 
     // Only delete on first run (when cursor is at the start of this dictionary)
     const sourceTag = `strongs-${dict.prefix.toLowerCase()}`;
