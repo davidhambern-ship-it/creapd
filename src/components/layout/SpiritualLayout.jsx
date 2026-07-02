@@ -11,6 +11,15 @@ import SidebarNavSections from './SidebarNavSections';
 import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
+import MobileBottomNav from './MobileBottomNav';
+
+const MOBILE_NAV_ITEMS = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/spiritual/dashboard' },
+  { icon: Search, label: 'Research', path: '/spiritual/research' },
+  { icon: GraduationCap, label: 'Study', path: '/spiritual/study' },
+  { icon: PenTool, label: 'Message', path: '/spiritual/message' },
+  { icon: Library, label: 'Library', path: '/spiritual/library' },
+];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, BookOpen,
@@ -42,12 +51,13 @@ export default function SpiritualLayout() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
           <Outlet />
         </main>
       </div>
 
       <ProductionFooter variant="spiritual" />
+      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
 
       <MobileNavDrawer
         open={mobileNavOpen}
