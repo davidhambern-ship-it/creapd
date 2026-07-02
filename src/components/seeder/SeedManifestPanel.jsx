@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Loader2, Search, Database, Play, Pause, RefreshCw, ExternalLink, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FOUNDATION_CATEGORIES, IMPORTANCE_LEVELS } from '@/lib/seedManifest';
@@ -27,7 +28,7 @@ function parseArray(str) {
   try { return JSON.parse(str); } catch { return []; }
 }
 
-export default function SeedManifestPanel({ foundationWorks, onImport, onQueue, onRetry, actionLoading }) {
+export default function SeedManifestPanel({ foundationWorks, onImport, onQueue, onRetry, onAcquireSource, actionLoading }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -169,9 +170,26 @@ export default function SeedManifestPanel({ foundationWorks, onImport, onQueue, 
                       </Button>
                     )}
                     {['Missing', 'Source Needed'].includes(work.roadmap_status) && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1 py-1.5">
-                        <AlertCircle className="w-3 h-3" /> Needs source approval in SMC
-                      </span>
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => onAcquireSource(work)}
+                          disabled={isLoading}
+                          className="glow-purple"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          ) : (
+                            <Search className="w-3 h-3 mr-1" />
+                          )}
+                          {isLoading ? 'Acquiring...' : 'Get Source from SMC'}
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/admin/source-management-center" className="flex items-center gap-1">
+                            <Database className="w-3 h-3" /> Open SMC
+                          </Link>
+                        </Button>
+                      </>
                     )}
                     {work.roadmap_status === 'License Blocked' && (
                       <span className="text-xs text-destructive flex items-center gap-1 py-1.5">

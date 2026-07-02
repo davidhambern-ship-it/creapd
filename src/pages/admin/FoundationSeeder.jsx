@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronRight, Database, BarChart3, ListChecks, FileCode } from 'lucide-react';
+import { Loader2, ChevronRight, Database, BarChart3, ListChecks, FileCode, Search } from 'lucide-react';
 import SeederOverview from '@/components/seeder/SeederOverview';
 import SeedManifestPanel from '@/components/seeder/SeedManifestPanel';
 import ImportQueuePanel from '@/components/seeder/ImportQueuePanel';
@@ -177,6 +177,25 @@ export default function FoundationSeeder() {
     setActionLoading(null);
   };
 
+  // ─── SMC Source Acquisition ───
+  // Automated pipeline: discovers, approves, and links an SMC source to a foundation work
+  const handleAcquireSource = async (work) => {
+    setActionLoading(work.id);
+    try {
+      const resp = await base44.functions.invoke('acquireFoundationSource', { work_id: work.id });
+      const data = resp.data || resp;
+      await loadAll();
+      // Surface result to the user via a toast or alert (simplified — the UI refresh shows the new status)
+      if (!data.source_found) {
+        console.warn('SMC acquisition: no source approved automatically', data);
+      }
+    } catch (err) {
+      console.error('SMC acquisition error:', err);
+      await loadAll();
+    }
+    setActionLoading(null);
+  };
+
   // ─── Import job actions ───
   const handleExecuteJob = async (job) => {
     setActionLoading(job.id);
@@ -308,6 +327,7 @@ export default function FoundationSeeder() {
             onImport={handleImportNow}
             onQueue={handleQueueImport}
             onRetry={handleRetryImport}
+            onAcquireSource={handleAcquireSource}
             actionLoading={actionLoading}
           />
         )}
