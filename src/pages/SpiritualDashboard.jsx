@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Loader2, Church, BookOpen, Search, PenTool, Sparkles, Package, Download, RefreshCw, GraduationCap, ListChecks, Clock, FileText, CheckCircle2, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import CreateMessageButton from '@/components/message/CreateMessageButton';
+import MessageArchive from '@/components/message/MessageArchive';
 import { SECTION_TYPE_LABELS, ASSET_TYPE_LABELS, formatDuration } from '@/lib/spiritualConstants';
 
 export default function SpiritualDashboard() {
@@ -285,6 +286,8 @@ export default function SpiritualDashboard() {
             )}
           </div>
         </div>
+
+        <MessageArchive currentConfigId={config.id} />
       </div>
     </div>
   );
