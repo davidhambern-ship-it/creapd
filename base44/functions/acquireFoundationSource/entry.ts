@@ -225,8 +225,18 @@ async function acquireWorkSource(base44, work_id) {
       // Require a minimum combined score of 120 (60+60) for auto-approval
       if (combinedScore < 120) continue;
 
-      // Skip sources that require API keys — seeder needs anonymous/public sources
-      if (candidate.api_key_required) continue;
+      // Don't skip authenticated sources — check if a credential exists in the Key Vault.
+      // If a credential exists, the import handler will use it automatically.
+      // If not, still approve but disable seeder until credentials are set up.
+      let hasCredential = false;
+      if (candidate.api_key_required) {
+        const existingAccounts = await base44.asServiceRole.entities.SMCProviderAccount.filter(
+          { provider_name: candidate.provider_name },
+          '-created_date',
+          5
+        ).catch(() => []);
+        hasCredential = existingAccounts.some(a => a.credential_id);
+      }
 
       const source = await base44.asServiceRole.entities.SMCSource.create({
         source_name: candidate.source_name,
@@ -250,7 +260,7 @@ async function acquireWorkSource(base44, work_id) {
         recommended_use: candidate.recommended_use || 'Seeder Ready',
         evidence_links: candidate.evidence_links,
         discovery_method: candidate.discovery_method,
-        seeder_enabled: true,
+        seeder_enabled: hasCredential || !candidate.api_key_required,
         seeder_compatible: true,
         cae_enabled: false,
         research_enabled: true,
@@ -260,7 +270,9 @@ async function acquireWorkSource(base44, work_id) {
         supported_languages: candidate.supported_languages,
         supported_formats: candidate.detected_formats,
         last_checked_at: timestamp,
-        admin_notes: `Auto-approved by Foundation Seeder for "${work.work_title}"`
+        admin_notes: candidate.api_key_required && !hasCredential
+          ? `Auto-approved by Foundation Seeder for "${work.work_title}". API key required — set up a credential in SMC → Key Vault to enable seeding.`
+          : `Auto-approved by Foundation Seeder for "${work.work_title}"`
       });
 
       // Mark candidate as approved + linked

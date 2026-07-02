@@ -93,9 +93,67 @@ Deno.serve(async (req) => {
       allPassed = false;
     }
 
-    // 4. Authentication check
-    const authValid = !source?.api_key_required; // If no API key required, auth is trivially valid
-    checks.push({ check_name: 'Authentication Valid', passed: authValid, detail: source?.api_key_required ? 'API key required — not verified in this test' : 'No auth required', response_time_ms: 0 });
+    // 4. Authentication check — look up credential from Key Vault and actually test it
+    let authValid = false;
+    let authDetail = 'No auth required';
+    if (source?.api_key_required || (source?.authentication_type && source.authentication_type !== 'None' && source.authentication_type !== 'Anonymous')) {
+      authDetail = 'API key required — checking Key Vault...';
+      try {
+        const vaultAccounts = await base44.asServiceRole.entities.SMCProviderAccount.filter(
+          { source_id: source.id },
+          '-created_date',
+          5
+        ).catch(() => []);
+
+        if (vaultAccounts && vaultAccounts.length > 0) {
+          const acct = vaultAccounts.find(a => a.credential_id) || vaultAccounts[0];
+          if (acct.credential_id) {
+            const cred = await base44.asServiceRole.entities.SMCCredential.get(acct.credential_id).catch(() => null);
+            if (cred && cred.encrypted_secret) {
+              // Check expiry
+              if (cred.expiration_date && new Date(cred.expiration_date) < new Date()) {
+                authDetail = `Credential expired on ${cred.expiration_date}`;
+              } else {
+                // Decrypt and test with an authenticated request
+                let secret = '';
+                try { secret = atob(cred.encrypted_secret); } catch { secret = cred.encrypted_secret; }
+                const authType = (acct.authentication_type || cred.authentication_type || '').toLowerCase();
+                let testHeaders = {};
+                if (authType === 'bearer token' || authType === 'oauth 2.0' || authType === 'jwt') {
+                  testHeaders = { 'Authorization': `Bearer ${secret}` };
+                } else if (authType === 'basic auth') {
+                  const isBase64 = /^[A-Za-z0-9+/=]+$/.test(secret) && secret.includes('=');
+                  testHeaders = { 'Authorization': `Basic ${isBase64 ? secret : btoa(secret)}` };
+                } else if (authType === 'api key') {
+                  testHeaders = { 'X-API-Key': secret };
+                }
+                // Re-fetch the test URL with auth headers
+                if (testUrl && Object.keys(testHeaders).length > 0) {
+                  const authResp = await fetch(testUrl, { headers: testHeaders, signal: AbortSignal.timeout(10000) });
+                  authValid = authResp.status !== 401 && authResp.status !== 403;
+                  authDetail = authValid
+                    ? `Authenticated successfully (${acct.authentication_type})`
+                    : `Authentication rejected (HTTP ${authResp.status}) — credential may be invalid`;
+                } else {
+                  authDetail = 'Credential found but auth type not supported for test';
+                }
+              }
+            } else {
+              authDetail = 'No credential linked to provider account';
+            }
+          } else {
+            authDetail = 'Provider account exists but no credential linked';
+          }
+        } else {
+          authDetail = 'API key required — no provider account in Key Vault. Set one up in SMC → Key Vault.';
+        }
+      } catch (err) {
+        authDetail = `Credential lookup error: ${err.message}`;
+      }
+    } else {
+      authValid = true;
+    }
+    checks.push({ check_name: 'Authentication Valid', passed: authValid, detail: authDetail, response_time_ms: 0 });
     if (!authValid) allPassed = false;
 
     // 5. Rate limit detection

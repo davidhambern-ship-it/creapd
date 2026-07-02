@@ -760,6 +760,75 @@ async function findOrCreateInline(base44, entityName, filter, createData) {
   return await base44.asServiceRole.entities[entityName].create(createData);
 }
 
+// ─── Authenticated Fetch: resolves credentials from SMC Key Vault ──
+// Looks up SMCProviderAccount → SMCCredential for the source, decrypts
+// the stored secret, and attaches the appropriate auth header.
+// Falls through to unauthenticated fetch if no credential exists.
+async function resolveAuthHeaders(base44, source) {
+  if (!source) return {};
+
+  // If source doesn't require auth, skip lookup
+  const needsAuth = source.api_key_required || source.authentication_type === 'API Key' ||
+    source.authentication_type === 'Bearer Token' || source.authentication_type === 'Basic Auth' ||
+    source.authentication_type === 'OAuth 2.0' || source.authentication_type === 'JWT';
+  if (!needsAuth) return {};
+
+  // Find a provider account with seeder_enabled (or any enabled subsystem)
+  const accounts = await base44.asServiceRole.entities.SMCProviderAccount.filter(
+    { source_id: source.id },
+    '-created_date',
+    10
+  ).catch(() => []);
+
+  if (!accounts || accounts.length === 0) return {};
+
+  // Prefer accounts with seeder_enabled, fall back to any
+  const account = accounts.find(a => a.seeder_enabled) || accounts.find(a => a.credential_id) || accounts[0];
+  if (!account || !account.credential_id) return {};
+
+  const credential = await base44.asServiceRole.entities.SMCCredential.get(account.credential_id).catch(() => null);
+  if (!credential || !credential.encrypted_secret) return {};
+
+  // Check expiry
+  if (credential.expiration_date) {
+    const exp = new Date(credential.expiration_date);
+    if (exp < new Date()) {
+      // Mark credential as expired so the vault UI shows it
+      try {
+        await base44.asServiceRole.entities.SMCCredential.update(credential.id, { status: 'Expired' });
+      } catch {}
+      return {};
+    }
+  }
+
+  // Decrypt — stored as base64 in the Key Vault wizard
+  let secret = '';
+  try { secret = atob(credential.encrypted_secret); } catch { secret = credential.encrypted_secret; }
+  if (!secret) return {};
+
+  const authType = (account.authentication_type || credential.authentication_type || '').toLowerCase();
+
+  if (authType === 'bearer token' || authType === 'oauth 2.0' || authType === 'jwt') {
+    return { 'Authorization': `Bearer ${secret}` };
+  } else if (authType === 'basic auth') {
+    // secret may already be base64(user:pass) or plain — try both
+    const isBase64Pair = /^[A-Za-z0-9+/=]+$/.test(secret) && secret.includes('=');
+    return { 'Authorization': `Basic ${isBase64Pair ? secret : btoa(secret)}` };
+  } else if (authType === 'api key') {
+    // Default to X-API-Key; some APIs use Authorization or custom headers
+    return { 'X-API-Key': secret };
+  }
+
+  return {};
+}
+
+// Wrapper around fetch() that attaches auth headers from the Key Vault
+async function authenticatedFetch(base44, source, url, options = {}) {
+  const authHeaders = await resolveAuthHeaders(base44, source);
+  const mergedHeaders = { ...authHeaders, ...(options.headers || {}) };
+  return fetch(url, { ...options, headers: mergedHeaders });
+}
+
 // ─── Handler: OpenScriptures Strong's Greek & Hebrew ──────────────
 // Resumable: stores cursor in job metadata so re-runs continue where they left off
 async function handlerOpenScripturesStrongs(base44, source, job) {
@@ -1083,16 +1152,22 @@ async function handlerLLMAutoDetect(base44, source, job) {
   let sampleData = '';
   let contentType = '';
   try {
-    const resp = await fetch(apiUrl, { headers: { Accept: 'application/json, text/plain, */*' } });
+    const resp = await authenticatedFetch(base44, source, apiUrl, { headers: { Accept: 'application/json, text/plain, */*' } });
     contentType = resp.headers.get('content-type') || '';
+    if (resp.status === 401 || resp.status === 403) {
+      throw new Error(`Authentication failed (HTTP ${resp.status}) for ${apiUrl}. No valid credential found in Key Vault, or the stored credential is expired/invalid. Set up a provider account in SMC → Key Vault.`);
+    }
     if (resp.ok) {
       const text = await resp.text();
       sampleData = text.substring(0, 5000); // First 5KB as sample
     }
-  } catch {}
+  } catch (err) {
+    if (err.message.includes('Authentication failed')) throw err;
+    throw new Error(`Could not fetch data from ${apiUrl}: ${err.message}. The source may require authentication (check SMC → Key Vault) or be offline.`);
+  }
 
   if (!sampleData) {
-    throw new Error(`Could not fetch data from ${apiUrl}. The source may require authentication or be offline.`);
+    throw new Error(`No data received from ${apiUrl}. The source may require authentication — set up a credential in SMC → Key Vault.`);
   }
 
   await base44.asServiceRole.entities.SMCImportJob.update(job.id, { progress_percent: 20 });
@@ -1148,7 +1223,7 @@ Respond with a JSON object containing:
   }
 
   // Step 4: Fetch full data and attempt import based on LLM's mapping
-  const fullResp = await fetch(apiUrl);
+  const fullResp = await authenticatedFetch(base44, source, apiUrl);
   if (!fullResp.ok) {
     return {
       handler_name: 'llm_auto_detect',
