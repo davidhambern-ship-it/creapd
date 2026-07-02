@@ -374,6 +374,8 @@ async function seedBible(base44, body) {
   let versesCreated = 0;
   const completedBooks = [];
   const remainingBooks = [];
+  const allBookKeys = Object.keys(BIBLE_BOOKS);
+  const PARALLEL_FETCH_SIZE = 8;
 
   for (const bookKey of requestedBooks) {
     // Time budget check — return remaining books if we're approaching the timeout
@@ -385,63 +387,93 @@ async function seedBible(base44, body) {
     const bookInfo = BIBLE_BOOKS[bookKey];
     if (!bookInfo) continue;
 
+    const bookIndex = allBookKeys.indexOf(bookKey);
     const division = divisions[bookInfo.division];
+
+    // Batch existence check — fetch all existing chapters for this book in one DB call
+    const existingChapters = await base44.entities.SectionChapter.filter(
+      { text_work_id: textWorkId, book_name: bookInfo.name },
+      'chapter_number',
+      200
+    );
+    const existingChapterNums = new Set(existingChapters.map(c => c.chapter_number));
+
+    // Determine which chapters need fetching
+    const missingChapters = [];
+    for (let chapterNum = 1; chapterNum <= bookInfo.chapters; chapterNum++) {
+      if (!existingChapterNums.has(chapterNum)) {
+        missingChapters.push(chapterNum);
+      }
+    }
+
+    if (missingChapters.length === 0) {
+      completedBooks.push(bookKey);
+      continue;
+    }
+
     let bookFullySeeded = true;
 
-    for (let chapterNum = 1; chapterNum <= bookInfo.chapters; chapterNum++) {
-      // Time budget check mid-book
+    // Fetch missing chapters in parallel batches
+    for (let i = 0; i < missingChapters.length; i += PARALLEL_FETCH_SIZE) {
       if (Date.now() - startTime > TIME_BUDGET_MS) {
         bookFullySeeded = false;
         break;
       }
 
-      // Check if chapter already exists (skip if already seeded)
-      const existingCh = await base44.entities.SectionChapter.filter({ text_work_id: textWorkId, book_name: bookInfo.name, chapter_number: chapterNum }, '-updated_date', 1);
-      if (existingCh && existingCh.length > 0) continue;
-
-      const apiUrl = `${BIBLE_API_BASE}/${bookKey}+${chapterNum}`;
-      let data = null;
-      for (let attempt = 0; attempt < 4 && !data; attempt++) {
-        if (attempt > 0) await sleep(2000);
-        try {
-          const resp = await fetch(apiUrl);
-          if (resp.ok) {
-            data = await resp.json();
-            if (!data.verses || data.verses.length === 0) data = null;
+      const batch = missingChapters.slice(i, i + PARALLEL_FETCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (chapterNum) => {
+          const apiUrl = `${BIBLE_API_BASE}/${bookKey}+${chapterNum}`;
+          let data = null;
+          for (let attempt = 0; attempt < 3 && !data; attempt++) {
+            if (attempt > 0) await sleep(1500);
+            try {
+              const resp = await fetch(apiUrl);
+              if (resp.ok) {
+                data = await resp.json();
+                if (!data.verses || data.verses.length === 0) data = null;
+              }
+            } catch {}
           }
-        } catch {}
+          return { chapterNum, data };
+        })
+      );
+
+      // Create chapters and verses for successful fetches
+      for (const result of results) {
+        if (result.status !== 'fulfilled' || !result.value.data) continue;
+        const { chapterNum, data } = result.value;
+
+        const chapter = await base44.entities.SectionChapter.create({
+          division_id: division.id,
+          text_work_id: textWorkId,
+          edition_translation_id: edition.id,
+          name: `${bookInfo.name} ${chapterNum}`,
+          book_name: bookInfo.name,
+          order: bookIndex * 1000 + chapterNum,
+          chapter_number: chapterNum,
+          verse_count: data.verses.length,
+          source_api_identifier: `${bookKey}+${chapterNum}`
+        });
+        chaptersCreated++;
+
+        const verseBatch = data.verses.map(v => ({
+          section_chapter_id: chapter.id,
+          division_id: division.id,
+          text_work_id: textWorkId,
+          edition_translation_id: edition.id,
+          tradition_id: traditionId,
+          verse_number: v.verse,
+          verse_reference: `${bookInfo.name} ${chapterNum}:${v.verse}`,
+          verse_text: v.text.trim(),
+          order_index: globalOrder++,
+          citation: `${bookInfo.name} ${chapterNum}:${v.verse} (KJV)`,
+          source_provider: 'bible-api.com',
+          source_url: `https://bible-api.com/${bookKey}+${chapterNum}:${v.verse}`
+        }));
+        await base44.entities.SegmentVerse.bulkCreate(verseBatch);
+        versesCreated += verseBatch.length;
       }
-      if (!data) continue;
-
-      const chapter = await base44.entities.SectionChapter.create({
-        division_id: division.id,
-        text_work_id: textWorkId,
-        edition_translation_id: edition.id,
-        name: `${bookInfo.name} ${chapterNum}`,
-        book_name: bookInfo.name,
-        order: chapterNum,
-        chapter_number: chapterNum,
-        verse_count: data.verses.length,
-        source_api_identifier: `${bookKey}+${chapterNum}`
-      });
-      chaptersCreated++;
-
-      const verseBatch = data.verses.map(v => ({
-        section_chapter_id: chapter.id,
-        division_id: division.id,
-        text_work_id: textWorkId,
-        edition_translation_id: edition.id,
-        tradition_id: traditionId,
-        verse_number: v.verse,
-        verse_reference: `${bookInfo.name} ${chapterNum}:${v.verse}`,
-        verse_text: v.text.trim(),
-        order_index: globalOrder++,
-        citation: `${bookInfo.name} ${chapterNum}:${v.verse} (KJV)`,
-        source_provider: 'bible-api.com',
-        source_url: `https://bible-api.com/${bookKey}+${chapterNum}:${v.verse}`
-      }));
-      await base44.entities.SegmentVerse.bulkCreate(verseBatch);
-      versesCreated += verseBatch.length;
     }
 
     if (bookFullySeeded) {
