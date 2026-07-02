@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   Archive, Settings, Activity, ChevronLeft, ChevronRight, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark, ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, LayoutGrid
+  ShieldCheck, LayoutGrid, Database, Globe, Cpu, BookOpen
 } from 'lucide-react';
 
 const navItems = [
@@ -34,36 +35,61 @@ const navItems = [
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
+const adminItems = [
+  { icon: Globe, label: 'Scripture Registry', path: '/admin/world-scripture-registry' },
+  { icon: Cpu, label: 'Content Acquisition', path: '/admin/content-acquisition-engine' },
+  { icon: Database, label: 'Source Management', path: '/admin/source-management-center' },
+  { icon: BookOpen, label: 'Foundation Seeder', path: '/admin/foundation-seeder' },
+];
+
 export default function ProducerSidebar({ collapsed, onToggle }) {
   const location = useLocation();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    base44.auth.me().then(u => setIsAdmin(u?.role === 'admin')).catch(() => {});
+  }, []);
+
+  const renderNavLink = (item) => {
+    const isActive = location.pathname === item.path ||
+      (item.path !== '/' && location.pathname.startsWith(item.path));
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative ${
+          isActive
+            ? 'bg-white/[0.06] text-white'
+            : 'text-muted-foreground hover:text-white hover:bg-white/[0.04]'
+        }`}
+      >
+        {isActive && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-berna-orange rounded-r" />
+        )}
+        <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-berna-purple' : 'group-hover:text-berna-purple/70'}`} />
+        {!collapsed && (
+          <span className="text-sm font-medium truncate">{item.label}</span>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-16' : 'w-56'} transition-all duration-300 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-r border-white/[0.06] relative z-40`}>
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto overflow-x-hidden">
-          {navItems.map(item => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative ${
-                  isActive
-                    ? 'bg-white/[0.06] text-white'
-                    : 'text-muted-foreground hover:text-white hover:bg-white/[0.04]'
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-berna-orange rounded-r" />
-                )}
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-berna-purple' : 'group-hover:text-berna-purple/70'}`} />
-                {!collapsed && (
-                  <span className="text-sm font-medium truncate">{item.label}</span>
-                )}
-              </Link>
-            );
-          })}
+          {navItems.map(renderNavLink)}
+          {isAdmin && (
+            <>
+              {!collapsed && (
+                <p className="px-3 pt-4 pb-1 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  Administration
+                </p>
+              )}
+              {adminItems.map(renderNavLink)}
+            </>
+          )}
         </nav>
         <div className="p-2 border-t border-white/[0.06]">
           <Link
