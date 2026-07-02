@@ -266,7 +266,7 @@
   100% { transform: translateX(-50%); }
 }
 .animate-ticker {
-  animation: ticker 60s linear infinite;
+  animation: ticker 120s linear infinite;
 }
 
 /* Pulse animation for status indicators */
