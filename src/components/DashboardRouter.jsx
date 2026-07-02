@@ -1,6 +1,6 @@
 import React from 'react';
-import Dashboard from '@/pages/Dashboard';
+import Newsroom from '@/pages/Newsroom';
 
 export default function DashboardRouter() {
-  return <Dashboard />;
+  return <Newsroom />;
 }
