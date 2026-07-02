@@ -68,7 +68,7 @@ export default function SourceManagementCenter() {
     switch (activeTab) {
       case 'overview': return <SMCDashboard sources={sources} onNavigate={setActiveTab} />;
       case 'sources': return <SMCSourceRegistry sources={sources} onRefresh={loadSources} onSelect={handleSourceSelect} />;
-      case 'discovery': return <SMCDiscovery />;
+      case 'discovery': return <SMCDiscovery onSourcesChanged={loadSources} />;
       case 'vault': return <SMCKeyVault />;
       case 'monitoring': return <SMCMonitoring />;
       case 'seeder': return <SMCSeederIntegration />;

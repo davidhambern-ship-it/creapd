@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Loader2, Play, Plus, CheckCircle2, XCircle, FlaskConical, Trash2, Clock } from 'lucide-react';
 import { DISCOVERY_METHODS, RECOMMENDED_USES } from '@/lib/smcConstants';
 
-export default function SMCDiscovery() {
+export default function SMCDiscovery({ onSourcesChanged }) {
   const [jobs, setJobs] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +44,7 @@ export default function SMCDiscovery() {
         discovery_method: candidate.discovery_method, health_status: 'Unknown',
       });
       await base44.entities.SMCCandidateSource.update(candidate.id, { review_status: 'Approved', converted_to_source_id: source.id });
+      if (onSourcesChanged) onSourcesChanged();
       load();
     } catch (err) { console.error('Approve candidate error:', err); }
   };
