@@ -85,7 +85,7 @@ export default function PresentationPreview({ sections, config, onClose }) {
       {/* Slide area */}
       <div className="flex-1 relative flex items-center justify-center">
         <div className="relative w-full h-full max-w-[1920px] mx-auto">
-          <PresentationSlide section={currentSection} isActive={true} />
+          <PresentationSlide key={currentIdx} section={currentSection} isActive={true} />
         </div>
 
         {/* Close button */}
