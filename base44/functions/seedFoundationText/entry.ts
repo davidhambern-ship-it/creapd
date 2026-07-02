@@ -279,6 +279,8 @@ async function seedQuran(base44, body) {
 
 async function seedBible(base44, body) {
   const requestedBooks = body.books || ['john', 'genesis', 'psalms', 'matthew', 'romans'];
+  const startTime = Date.now();
+  const TIME_BUDGET_MS = 25000;
 
   // 1. Create or find Tradition
   let tradition = await findOrCreate(base44, 'Tradition', { name: 'Christianity' }, {
@@ -336,16 +338,8 @@ async function seedBible(base44, body) {
   const textWorkId = textWork.id;
   const traditionId = tradition.id;
 
-  // 4. Clean up old data for the requested books only (if re-seeding)
-  for (const bookKey of requestedBooks) {
-    const bookInfo = BIBLE_BOOKS[bookKey];
-    if (!bookInfo) continue;
-    const chapters = await base44.entities.SectionChapter.filter({ text_work_id: textWorkId, book_name: bookInfo.name });
-    for (const ch of chapters) {
-      await base44.entities.SegmentVerse.deleteMany({ section_chapter_id: ch.id });
-      await base44.entities.SectionChapter.delete(ch.id);
-    }
-  }
+  // 4. Skip-existing logic handles re-seeding automatically — no destructive cleanup needed.
+  //    The per-chapter existence check below ensures idempotent, resumable seeding.
 
   // 5. Create EditionTranslation
   let edition = await findOrCreate(base44, 'EditionTranslation', { text_work_id: textWorkId, source_api_identifier: 'kjv' }, {
@@ -378,14 +372,29 @@ async function seedBible(base44, body) {
   let globalOrder = 0;
   let chaptersCreated = 0;
   let versesCreated = 0;
+  const completedBooks = [];
+  const remainingBooks = [];
 
   for (const bookKey of requestedBooks) {
+    // Time budget check — return remaining books if we're approaching the timeout
+    if (Date.now() - startTime > TIME_BUDGET_MS) {
+      remainingBooks.push(bookKey);
+      continue;
+    }
+
     const bookInfo = BIBLE_BOOKS[bookKey];
     if (!bookInfo) continue;
 
     const division = divisions[bookInfo.division];
+    let bookFullySeeded = true;
 
     for (let chapterNum = 1; chapterNum <= bookInfo.chapters; chapterNum++) {
+      // Time budget check mid-book
+      if (Date.now() - startTime > TIME_BUDGET_MS) {
+        bookFullySeeded = false;
+        break;
+      }
+
       // Check if chapter already exists (skip if already seeded)
       const existingCh = await base44.entities.SectionChapter.filter({ text_work_id: textWorkId, book_name: bookInfo.name, chapter_number: chapterNum }, '-updated_date', 1);
       if (existingCh && existingCh.length > 0) continue;
@@ -434,6 +443,12 @@ async function seedBible(base44, body) {
       await base44.entities.SegmentVerse.bulkCreate(verseBatch);
       versesCreated += verseBatch.length;
     }
+
+    if (bookFullySeeded) {
+      completedBooks.push(bookKey);
+    } else {
+      remainingBooks.push(bookKey);
+    }
   }
 
   // 8. Update TextWork with counts
@@ -452,9 +467,11 @@ async function seedBible(base44, body) {
     library_text_id: libraryText.id,
     tradition_id: traditionId,
     edition_id: edition.id,
-    books_seeded: requestedBooks,
+    books_seeded: completedBooks,
+    books_remaining: remainingBooks,
     chapters_created: chaptersCreated,
-    verses_created: versesCreated
+    verses_created: versesCreated,
+    partial: remainingBooks.length > 0
   });
 }
 
