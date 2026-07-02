@@ -1,0 +1,29 @@
+{
+  "name": "Division",
+  "type": "object",
+  "properties": {
+    "text_work_id": {
+      "type": "string",
+      "description": "ID of the TextWork this division belongs to"
+    },
+    "edition_translation_id": {
+      "type": "string",
+      "description": "Optional \u2014 some divisions are edition-specific"
+    },
+    "name": {
+      "type": "string",
+      "description": "Division name (e.g. Old Testament, New Testament, or single division for non-divided texts)"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "text_work_id",
+    "name"
+  ]
+}

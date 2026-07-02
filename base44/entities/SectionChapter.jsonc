@@ -1,0 +1,48 @@
+{
+  "name": "SectionChapter",
+  "type": "object",
+  "properties": {
+    "division_id": {
+      "type": "string",
+      "description": "ID of the Division this chapter belongs to"
+    },
+    "text_work_id": {
+      "type": "string",
+      "description": "Denormalized TextWork ID for easier queries"
+    },
+    "edition_translation_id": {
+      "type": "string",
+      "description": "Denormalized EditionTranslation ID"
+    },
+    "name": {
+      "type": "string",
+      "description": "Chapter name (e.g. Al-Fatihah, Genesis 1, John 3)"
+    },
+    "book_name": {
+      "type": "string",
+      "description": "For Bibles: the book name (e.g. Genesis, John, Psalms)"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "chapter_number": {
+      "type": "number",
+      "description": "Chapter/surah/sutta number"
+    },
+    "verse_count": {
+      "type": "number",
+      "default": 0
+    },
+    "description": {
+      "type": "string"
+    },
+    "source_api_identifier": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "text_work_id",
+    "name"
+  ]
+}

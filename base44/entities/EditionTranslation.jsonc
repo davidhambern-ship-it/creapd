@@ -1,0 +1,63 @@
+{
+  "name": "EditionTranslation",
+  "type": "object",
+  "properties": {
+    "text_work_id": {
+      "type": "string",
+      "description": "ID of the TextWork this edition translates"
+    },
+    "edition_name": {
+      "type": "string",
+      "description": "Display name (e.g. King James Version, Saheeh International)"
+    },
+    "translator": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "description": "Language of this translation (e.g. English, Arabic)"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "publication_year": {
+      "type": "string"
+    },
+    "source_provider": {
+      "type": "string",
+      "description": "Data source for this edition"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Provider URL for this edition"
+    },
+    "source_api_identifier": {
+      "type": "string",
+      "description": "API-specific edition identifier (e.g. en.sahih, quran-uthmani)"
+    },
+    "license_status": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "open_license",
+        "official_free_access",
+        "licensed",
+        "unknown"
+      ],
+      "default": "public_domain"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is the default edition for the TextWork"
+    },
+    "citation": {
+      "type": "string",
+      "description": "Full citation string for this edition"
+    }
+  },
+  "required": [
+    "text_work_id",
+    "edition_name"
+  ]
+}

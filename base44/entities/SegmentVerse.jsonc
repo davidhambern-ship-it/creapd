@@ -1,0 +1,70 @@
+{
+  "name": "SegmentVerse",
+  "type": "object",
+  "properties": {
+    "section_chapter_id": {
+      "type": "string",
+      "description": "ID of the SectionChapter this verse belongs to"
+    },
+    "division_id": {
+      "type": "string",
+      "description": "Denormalized Division ID"
+    },
+    "text_work_id": {
+      "type": "string",
+      "description": "Denormalized TextWork ID"
+    },
+    "edition_translation_id": {
+      "type": "string",
+      "description": "Denormalized EditionTranslation ID"
+    },
+    "tradition_id": {
+      "type": "string",
+      "description": "Denormalized Tradition ID"
+    },
+    "verse_number": {
+      "type": "number",
+      "description": "Verse/ayah/segment number within the chapter"
+    },
+    "verse_reference": {
+      "type": "string",
+      "description": "Human-readable reference (e.g. John 3:16, Quran 2:255, DN 16.5.1)"
+    },
+    "verse_text": {
+      "type": "string",
+      "description": "The verse content in the translation language"
+    },
+    "verse_text_original": {
+      "type": "string",
+      "description": "Original language text if available"
+    },
+    "transliteration": {
+      "type": "string",
+      "description": "Transliteration of original language text"
+    },
+    "order_index": {
+      "type": "number",
+      "default": 0,
+      "description": "Global order index within the text work"
+    },
+    "source_api_identifier": {
+      "type": "string"
+    },
+    "citation": {
+      "type": "string",
+      "description": "Full citation for this verse"
+    },
+    "source_provider": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Provider URL for this verse \u2014 source metadata only"
+    }
+  },
+  "required": [
+    "section_chapter_id",
+    "verse_reference",
+    "verse_text"
+  ]
+}

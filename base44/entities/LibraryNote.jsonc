@@ -11,6 +11,10 @@
     "passage_reference": {
       "type": "string"
     },
+    "segment_verse_id": {
+      "type": "string",
+      "description": "ID of the SegmentVerse this note is attached to (foundation texts)"
+    },
     "note_content": {
       "type": "string",
       "description": "Rich text note content"

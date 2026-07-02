@@ -1,0 +1,109 @@
+{
+  "name": "TextWork",
+  "type": "object",
+  "properties": {
+    "library_text_id": {
+      "type": "string",
+      "description": "ID of the linked LibraryText record if one exists"
+    },
+    "tradition_id": {
+      "type": "string",
+      "description": "ID of the Tradition this work belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Primary title (e.g. The Bible, The Quran, Digha Nikaya)"
+    },
+    "alternate_titles": {
+      "type": "string",
+      "description": "JSON array of alternate titles or transliterations"
+    },
+    "original_language": {
+      "type": "string"
+    },
+    "writing_system": {
+      "type": "string"
+    },
+    "traditional_attribution": {
+      "type": "string"
+    },
+    "scholarly_dating": {
+      "type": "string"
+    },
+    "structure_description": {
+      "type": "string",
+      "description": "Description of the work's structure (books, surahs, suttas, etc.)"
+    },
+    "major_themes": {
+      "type": "string",
+      "description": "JSON array of major themes"
+    },
+    "geographic_origin": {
+      "type": "string"
+    },
+    "is_foundation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a Foundation Library text"
+    },
+    "source_provider": {
+      "type": "string",
+      "description": "Data source provider (e.g. Al Quran Cloud, API.Bible, SuttaCentral)"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Provider URL \u2014 stored in source metadata only, never as a library book link"
+    },
+    "source_api_endpoint": {
+      "type": "string",
+      "description": "Base API endpoint used for seeding"
+    },
+    "citation_template": {
+      "type": "string",
+      "description": "Template for citing verses from this work"
+    },
+    "license_status": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "open_license",
+        "official_free_access",
+        "licensed",
+        "unknown"
+      ],
+      "default": "public_domain"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "source_verified",
+        "admin_verified",
+        "automated_verified"
+      ],
+      "default": "source_verified"
+    },
+    "seeding_status": {
+      "type": "string",
+      "enum": [
+        "not_seeded",
+        "seeding",
+        "seeded",
+        "failed"
+      ],
+      "default": "not_seeded"
+    },
+    "total_verses": {
+      "type": "number",
+      "default": 0
+    },
+    "total_chapters": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "title",
+    "tradition_id"
+  ]
+}

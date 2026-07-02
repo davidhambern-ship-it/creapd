@@ -1,0 +1,32 @@
+{
+  "name": "Tradition",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Faith tradition name (e.g. Christianity, Islam, Buddhism)"
+    },
+    "description": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string",
+      "description": "Geographic region of origin"
+    },
+    "founded_date": {
+      "type": "string",
+      "description": "Approximate founding date or era"
+    },
+    "original_languages": {
+      "type": "string",
+      "description": "JSON array of original languages"
+    },
+    "sacred_texts_summary": {
+      "type": "string",
+      "description": "Summary of sacred texts in this tradition"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

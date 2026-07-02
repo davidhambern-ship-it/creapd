@@ -13,6 +13,7 @@ import PassageActions from '@/components/library/PassageActions';
 import WordInteractionModal from '@/components/library/WordInteractionModal';
 import { HIGHLIGHT_CATEGORIES, READING_MODES } from '@/lib/spiritualConstants';
 import NativeTextReader from '@/components/library/NativeTextReader';
+import FoundationTextReader from '@/components/library/FoundationTextReader';
 import CreateMessageButton from '@/components/message/CreateMessageButton';
 
 export default function LibraryReader() {
@@ -32,6 +33,7 @@ export default function LibraryReader() {
   const [noteText, setNoteText] = useState('');
   const [highlightCategory, setHighlightCategory] = useState('important');
   const [chapters, setChapters] = useState([]);
+  const [isFoundation, setIsFoundation] = useState(false);
 
   const loadText = useCallback(async () => {
     if (!textId) return;
@@ -39,6 +41,11 @@ export default function LibraryReader() {
     try {
       const t = await base44.entities.LibraryText.get(textId);
       setText(t);
+      // Check if this is a foundation text with structured verse data
+      if (t.is_foundation) {
+        const works = await base44.entities.TextWork.filter({ library_text_id: textId }, '-updated_date', 1).catch(() => []);
+        if (works && works.length > 0) setIsFoundation(true);
+      }
       const [h, n, b] = await Promise.all([
         base44.entities.LibraryHighlight.filter({ text_id: textId }, '-created_date', 50).catch(() => []),
         base44.entities.LibraryNote.filter({ text_id: textId }, '-created_date', 50).catch(() => []),
@@ -251,7 +258,9 @@ export default function LibraryReader() {
           </div>
 
           {/* Reading Area */}
-          {text.full_text_available && text.full_text ? (
+          {isFoundation ? (
+            <FoundationTextReader text={text} textId={textId} />
+          ) : text.full_text_available && text.full_text ? (
             chapters.length > 0 ? (
               <NativeTextReader
                 text={text}
