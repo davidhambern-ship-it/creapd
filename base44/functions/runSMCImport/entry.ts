@@ -133,6 +133,22 @@ async function executeJob(base44, jobId) {
       progress_percent: 5
     });
 
+    // ─── Auto-acquire credential if source needs auth but has none in the Key Vault ───
+    if (source.api_key_required || (source.authentication_type && !['None', 'Anonymous'].includes(source.authentication_type))) {
+      const existingAccounts = await base44.asServiceRole.entities.SMCProviderAccount.filter(
+        { source_id: source.id }, '-created_date', 5
+      ).catch(() => []);
+      const hasCredential = existingAccounts.some(a => a.credential_id);
+      if (!hasCredential) {
+        try {
+          await base44.asServiceRole.functions.invoke('acquireCredential', { source_id: source.id });
+          // Reload source to pick up any metadata changes (e.g., no_key_needed flag)
+          const refreshed = await base44.asServiceRole.entities.SMCSource.get(source.id);
+          if (refreshed) Object.assign(source, refreshed);
+        } catch {}
+      }
+    }
+
     const handlerResult = await findHandler(base44, source);
     const result = await handlerResult.fn(base44, source, job);
     if (handlerResult.handler) {
@@ -806,8 +822,43 @@ async function resolveAuthHeaders(base44, source) {
   try { secret = atob(credential.encrypted_secret); } catch { secret = credential.encrypted_secret; }
   if (!secret) return {};
 
+  // Check if credential has a custom header format from auto-acquisition (stored in admin_notes as JSON)
+  let customHeaderFormat = '';
+  try {
+    if (credential.admin_notes) {
+      const parsed = JSON.parse(credential.admin_notes);
+      if (parsed.header_format) customHeaderFormat = parsed.header_format;
+    }
+  } catch {}
+
   const authType = (account.authentication_type || credential.authentication_type || '').toLowerCase();
 
+  // Custom header format from auto-acquisition takes priority
+  if (customHeaderFormat) {
+    const hf = customHeaderFormat.toLowerCase();
+    if (hf.includes('authorization: bearer')) {
+      return { 'Authorization': `Bearer ${secret}` };
+    } else if (hf.includes('authorization:')) {
+      const val = customHeaderFormat.replace(/^authorization:\s*/i, '').replace(/\{key\}/gi, secret).replace(/\{api_key\}/gi, secret);
+      return { 'Authorization': val };
+    } else if (hf.includes('x-api-key')) {
+      return { 'X-API-Key': secret };
+    } else if (hf.includes('?key=') || hf.includes('&key=')) {
+      // Query parameter auth — handled in authenticatedFetch via special marker
+      const paramName = customHeaderFormat.match(/[?&](\w+)=/)?.[1] || 'key';
+      return { '_query_auth_key': paramName, '_query_auth_value': secret };
+    } else {
+      // Try to parse as "Header-Name: {key}"
+      const colonIdx = customHeaderFormat.indexOf(':');
+      if (colonIdx > 0) {
+        const headerName = customHeaderFormat.substring(0, colonIdx).trim();
+        const headerVal = customHeaderFormat.substring(colonIdx + 1).trim().replace(/\{key\}/gi, secret).replace(/\{api_key\}/gi, secret);
+        if (headerName && headerVal) return { [headerName]: headerVal };
+      }
+    }
+  }
+
+  // Default auth type handling
   if (authType === 'bearer token' || authType === 'oauth 2.0' || authType === 'jwt') {
     return { 'Authorization': `Bearer ${secret}` };
   } else if (authType === 'basic auth') {
@@ -825,6 +876,15 @@ async function resolveAuthHeaders(base44, source) {
 // Wrapper around fetch() that attaches auth headers from the Key Vault
 async function authenticatedFetch(base44, source, url, options = {}) {
   const authHeaders = await resolveAuthHeaders(base44, source);
+
+  // Handle query parameter auth (e.g., ?key=xxx)
+  if (authHeaders._query_auth_key) {
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}${authHeaders._query_auth_key}=${encodeURIComponent(authHeaders._query_auth_value)}`;
+    delete authHeaders._query_auth_key;
+    delete authHeaders._query_auth_value;
+  }
+
   const mergedHeaders = { ...authHeaders, ...(options.headers || {}) };
   return fetch(url, { ...options, headers: mergedHeaders });
 }

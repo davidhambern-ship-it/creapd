@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Plus, KeyRound, ShieldCheck, AlertTriangle, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Lock } from 'lucide-react';
+import { Loader2, Plus, KeyRound, ShieldCheck, AlertTriangle, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Lock, Sparkles } from 'lucide-react';
 import { AUTH_TYPES, CREDENTIAL_STATUSES } from '@/lib/smcConstants';
 
 export default function SMCKeyVault() {
@@ -10,6 +10,8 @@ export default function SMCKeyVault() {
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [testing, setTesting] = useState(null);
+  const [acquiring, setAcquiring] = useState(false);
+  const [acquireResult, setAcquireResult] = useState(null);
 
   const load = async () => {
     try {
@@ -37,6 +39,20 @@ export default function SMCKeyVault() {
     catch (err) { console.error(err); }
   };
 
+  const handleAutoAcquire = async () => {
+    setAcquiring(true);
+    setAcquireResult(null);
+    try {
+      const res = await base44.functions.invoke('acquireCredential', { mode: 'auto' });
+      setAcquireResult(res.data);
+      load();
+    } catch (err) {
+      setAcquireResult({ error: err.message });
+    } finally {
+      setAcquiring(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const healthy = credentials.filter(c => c.status === 'Healthy').length;
@@ -53,8 +69,43 @@ export default function SMCKeyVault() {
 
       <div className="flex items-center justify-between">
         <h3 className="font-heading font-semibold">Provider Accounts & Credentials</h3>
-        <button onClick={() => setShowWizard(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm"><Plus className="w-4 h-4" /> Connect Provider</button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleAutoAcquire} disabled={acquiring} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-accent-foreground text-sm disabled:opacity-50">
+            {acquiring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {acquiring ? 'Acquiring...' : 'Auto-Acquire Keys'}
+          </button>
+          <button onClick={() => setShowWizard(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm"><Plus className="w-4 h-4" /> Connect Provider</button>
+        </div>
       </div>
+
+      {acquireResult && (
+        <div className="glass-panel p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-heading font-semibold text-sm">Auto-Acquisition Results</h4>
+            <button onClick={() => setAcquireResult(null)} className="text-muted-foreground hover:text-foreground text-xs">Dismiss</button>
+          </div>
+          {acquireResult.error ? (
+            <p className="text-sm text-red-400">{acquireResult.error}</p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Processed {acquireResult.sources_processed} sources — acquired {acquireResult.credentials_acquired} credential(s).
+              </p>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {(acquireResult.results || []).map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs py-1">
+                    {r.acquired ? <CheckCircle2 className="w-3.5 h-3.5 text-berna-emerald" /> : r.no_key_needed ? <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
+                    <span className="flex-1 font-medium">{r.source_name}</span>
+                    {r.acquired && <span className="text-berna-emerald">Acquired ••••{r.secret_hint?.slice(-4)}</span>}
+                    {r.no_key_needed && <span className="text-blue-400">No key needed</span>}
+                    {!r.acquired && !r.no_key_needed && <span className="text-amber-400">{r.skipped || 'Manual registration required'}</span>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         {accounts.map(account => {
@@ -91,7 +142,13 @@ export default function SMCKeyVault() {
 
       {sources.length > 0 && (
         <div className="glass-panel p-4">
-          <h4 className="font-heading font-semibold text-sm mb-2">Sources Needing API Keys</h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-heading font-semibold text-sm">Sources Needing API Keys</h4>
+            <button onClick={handleAutoAcquire} disabled={acquiring} className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-accent/20 text-accent hover:bg-accent/30 disabled:opacity-50">
+              {acquiring ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Auto-Acquire All
+            </button>
+          </div>
           <div className="space-y-1">
             {sources.map(s => (
               <div key={s.id} className="flex items-center gap-2 text-sm">
