@@ -381,81 +381,121 @@ async function handlerOpenScripturesStrongs(base44, source, job) {
 }
 
 // ─── Handler: STEP Bible Data (TSV lexicons from GitHub) ──────────
+// Resumable: stores cursor in job metadata so re-runs continue where they left off.
+// STEP Bible TSV files have ~90 lines of preamble (license/docs) before the actual data.
+// There is no column header row — data uses fixed positional columns:
+//   0: Strong's #, 1: mapping, 2: internal ID, 3: original script, 4: transliteration,
+//   5: morphology code, 6: brief gloss, 7: full definition (HTML)
 async function handlerStepBible(base44, source, job) {
   const startTime = Date.now();
   const TIME_BUDGET_MS = 22000;
 
-  // STEP Bible data is on GitHub — the api_base_url may point to the REST API,
-  // but the actual downloadable data is in the STEPBible-Data repo
   const dataRepoBase = 'https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/';
 
-  // Known TSV lexicon files in the repo
   const lexiconFiles = [
     { path: 'Lexicons/TBESG - Translators Brief lexicon of Extended Strongs for Greek - STEPBible.org CC BY.txt', language: 'Koine Greek', type: 'greek_lexicon' },
     { path: 'Lexicons/TBESH - Translators Brief lexicon of Extended Strongs for Hebrew - STEPBible.org CC BY.txt', language: 'Biblical Hebrew', type: 'hebrew_lexicon' }
   ];
 
-  let totalImported = 0;
-  let totalEntries = 0;
+  // Read cursor from job metadata (for resumable imports)
+  let cursor = { file_index: 0, line_index: 0, total_imported: 0, total_entries: 0 };
+  try {
+    if (job.metadata) {
+      const parsed = typeof job.metadata === 'string' ? JSON.parse(job.metadata) : job.metadata;
+      if (parsed.cursor) cursor = { ...cursor, ...parsed.cursor };
+    }
+  } catch {}
+
+  let totalImported = cursor.total_imported || 0;
+  let totalEntries = cursor.total_entries || 0;
   let totalSkipped = 0;
   const filesProcessed = [];
 
-  for (const file of lexiconFiles) {
+  function stripHtml(s) {
+    return s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+  }
+
+  for (let fi = cursor.file_index; fi < lexiconFiles.length; fi++) {
     if (Date.now() - startTime > TIME_BUDGET_MS) break;
 
-    const resp = await fetch(dataRepoBase + file.path);
+    const file = lexiconFiles[fi];
+    const resp = await fetch(encodeURI(dataRepoBase + file.path));
     if (!resp.ok) continue;
     const tsv = await resp.text();
 
-    const lines = tsv.split('\n').filter(l => l.trim());
-    if (lines.length === 0) continue;
+    const allLines = tsv.split('\n');
 
-    // Parse TSV — first line is header
-    const header = lines[0].split('\t');
-    const entries = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split('\t');
-      const row = {};
-      for (let j = 0; j < header.length && j < cols.length; j++) {
-        row[header[j].trim()] = cols[j].trim();
-      }
-      entries.push(row);
+    // Find where actual data starts — first line matching [GH] + 4 digits + tab
+    let dataStart = 0;
+    for (let i = 0; i < allLines.length; i++) {
+      if (/^[GH]\d{4}\t/.test(allLines[i])) { dataStart = i; break; }
     }
 
-    totalEntries += entries.length;
+    const dataLines = allLines.slice(dataStart).filter(l => l.trim());
+    if (dataLines.length === 0) continue;
+
+    // Count entries only once per file (skip if resuming mid-file)
+    if (cursor.line_index === 0) {
+      totalEntries += dataLines.length;
+    }
     filesProcessed.push(file.type);
 
-    // Clear existing entries with this tag to make import idempotent
+    // Clear existing entries only on first run of this file
     const sourceTag = `stepbible-${file.type}`;
-    await base44.asServiceRole.entities.WordStudy.deleteMany({ tags: sourceTag });
+    if (cursor.line_index === 0) {
+      await base44.asServiceRole.entities.WordStudy.deleteMany({ tags: sourceTag });
+    }
 
-    // Map TSV columns to WordStudy — column names vary, so be flexible
     const batch = [];
-    for (const row of entries) {
-      if (Date.now() - startTime > TIME_BUDGET_MS) break;
+    const startIdx = cursor.line_index;
 
-      // Try to find the word/lemma column
-      const word = row.Lemma || row.lemma || row.Word || row.word || row.Strongs || row['Strong\'s'] || '';
-      if (!word) { totalSkipped++; continue; }
+    for (let li = startIdx; li < dataLines.length; li++) {
+      if (Date.now() - startTime > TIME_BUDGET_MS) {
+        if (batch.length > 0) {
+          await base44.asServiceRole.entities.WordStudy.bulkCreate(batch);
+          totalImported += batch.length;
+        }
+        await base44.asServiceRole.entities.SMCImportJob.update(job.id, {
+          progress_percent: Math.min(90, 10 + Math.floor(totalImported / Math.max(totalEntries, 1) * 80)),
+          records_imported: totalImported,
+          metadata: JSON.stringify({
+            handler_name: 'step_bible_tsv',
+            cursor: { file_index: fi, line_index: li, total_imported: totalImported, total_entries: totalEntries }
+          })
+        });
+        return {
+          handler_name: 'step_bible_tsv',
+          records_imported: totalImported,
+          total_records: totalEntries,
+          skipped: totalSkipped,
+          partial: true,
+          cursor: { file_index: fi, line_index: li, total_imported: totalImported, total_entries: totalEntries },
+          resume_info: `Processed ${li}/${dataLines.length} lines in file ${fi + 1}/${lexiconFiles.length}. Re-run to continue.`
+        };
+      }
 
-      const translit = row.Transliteration || row.transliteration || row.Translit || '';
-      const definition = row.Definition || row.definition || row.Meaning || row.meaning || row.Gloss || '';
-      const strongsDef = row.StrongsDef || row['Strong\'s Definition'] || '';
-      const kjvDef = row.KJVDef || row['KJV Definition'] || row.KJV || '';
-      const derivation = row.Derivation || row.derivation || row.Related || '';
+      const cols = dataLines[li].split('\t');
+      const strongsNumber = (cols[0] || '').trim();
+      const originalScript = (cols[3] || '').trim();
+      const translit = (cols[4] || '').trim();
+      const morphology = (cols[5] || '').trim();
+      const briefGloss = (cols[6] || '').trim();
+      const fullDef = cols[7] ? stripHtml(cols[7]) : '';
+
+      if (!originalScript && !translit) { totalSkipped++; continue; }
 
       batch.push({
-        word,
-        original_script: row.Original || row.Hebrew || row.Greek || row.Unicode || '',
+        word: originalScript || translit || strongsNumber,
+        original_script: originalScript,
         language: file.language,
         transliteration: translit,
-        literal_meaning: strongsDef || definition,
-        contextual_meaning: kjvDef || definition,
-        grammar: derivation,
-        part_of_speech: row.PartOfSpeech || row['Part of Speech'] || row.POS || '',
-        root: derivation,
+        literal_meaning: briefGloss || fullDef,
+        contextual_meaning: fullDef || briefGloss,
+        grammar: morphology,
+        part_of_speech: morphology,
+        root: '',
         tags: sourceTag,
-        notes: `Imported from STEP Bible Data (CC BY 4.0) — ${file.type}`
+        notes: `Strong's ${strongsNumber} — imported from STEP Bible Data (CC BY 4.0)`
       });
 
       if (batch.length >= 500) {
@@ -473,6 +513,10 @@ async function handlerStepBible(base44, source, job) {
       await base44.asServiceRole.entities.WordStudy.bulkCreate(batch);
       totalImported += batch.length;
     }
+
+    // Reset cursor for next file
+    cursor.file_index = fi + 1;
+    cursor.line_index = 0;
   }
 
   return {
@@ -480,7 +524,8 @@ async function handlerStepBible(base44, source, job) {
     records_imported: totalImported,
     total_records: totalEntries,
     skipped: totalSkipped,
-    partial: totalImported < totalEntries,
+    partial: false,
+    cursor: null,
     files_processed: filesProcessed
   };
 }
