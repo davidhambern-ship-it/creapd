@@ -17,8 +17,10 @@ export default function ProductionStatusBar({ generating, configStatus, generati
 
   useEffect(() => {
     if (!generating && configStatus !== 'building') return;
+    // Only advance through build-phase stages (0-3: research, topics, message, slides).
+    // Voice, images, assets, and package are separate post-build phases with their own UI.
     const interval = setInterval(() => {
-      setActiveStage(prev => Math.min(prev + 1, STAGES.length - 1));
+      setActiveStage(prev => Math.min(prev + 1, 3));
     }, 8000);
     return () => clearInterval(interval);
   }, [generating, configStatus]);

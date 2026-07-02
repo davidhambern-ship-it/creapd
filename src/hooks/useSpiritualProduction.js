@@ -103,15 +103,33 @@ export function useSpiritualProduction(configId) {
           // After build completes, trigger voice generation
           if (updated.status === 'ready') {
             setGeneratingVoice(true);
+            const voiceTimeout = setTimeout(() => {
+              console.error('Voice generation timed out after 5 minutes');
+              setGeneratingVoice(false);
+              setGeneratingImages(false);
+              loadAll(true);
+            }, 300000);
             base44.functions.invoke('generateSpiritualVoiceovers', { configuration_id: activeId })
               .then(async () => {
+                clearTimeout(voiceTimeout);
                 setGeneratingVoice(false);
                 setGeneratingImages(true);
-                await generateSceneImages(activeId);
+                const imageTimeout = setTimeout(() => {
+                  console.error('Image generation timed out after 5 minutes');
+                  setGeneratingImages(false);
+                  loadAll(true);
+                }, 300000);
+                try {
+                  await generateSceneImages(activeId);
+                } catch (err) {
+                  console.error('Scene image generation failed:', err);
+                }
+                clearTimeout(imageTimeout);
                 setGeneratingImages(false);
                 await loadAll(true);
               })
               .catch(err => {
+                clearTimeout(voiceTimeout);
                 console.error('Voice generation error:', err);
                 setGeneratingVoice(false);
                 setGeneratingImages(false);
