@@ -1,0 +1,366 @@
+{
+  "name": "SMCSource",
+  "type": "object",
+  "properties": {
+    "source_name": {
+      "type": "string",
+      "description": "Display name of the source"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Organization providing the source"
+    },
+    "provider_type": {
+      "type": "string",
+      "enum": [
+        "Official Religious Organization",
+        "University",
+        "Museum",
+        "Government",
+        "Publisher",
+        "Digital Library",
+        "Academic Journal",
+        "Research Institute",
+        "Historical Society",
+        "Open Source Project",
+        "Public Domain Repository",
+        "Open Access Repository",
+        "Archive",
+        "Individual Scholar",
+        "Community Project",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "API",
+        "Structured Dataset",
+        "Bulk Download",
+        "Metadata Feed",
+        "Digital Archive",
+        "Repository",
+        "Publisher Portal",
+        "Official Organization Library",
+        "Museum Collection",
+        "University Collection",
+        "Government Collection",
+        "RSS Feed",
+        "OAI-PMH Endpoint",
+        "IIIF Endpoint",
+        "GitHub Repository",
+        "Manual Source",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "website": {
+      "type": "string"
+    },
+    "documentation_url": {
+      "type": "string"
+    },
+    "developer_portal_url": {
+      "type": "string"
+    },
+    "support_contact": {
+      "type": "string"
+    },
+    "api_base_url": {
+      "type": "string"
+    },
+    "data_endpoint": {
+      "type": "string",
+      "description": "Primary data endpoint URL"
+    },
+    "available_endpoints": {
+      "type": "string",
+      "description": "JSON array of endpoint objects {name, path, method, description}"
+    },
+    "supported_collections": {
+      "type": "string",
+      "description": "JSON array of supported collections (Bible, Quran, Bhagavad Gita, etc.)"
+    },
+    "supported_traditions": {
+      "type": "string",
+      "description": "JSON array of supported faith traditions"
+    },
+    "supported_languages": {
+      "type": "string",
+      "description": "JSON array of supported languages"
+    },
+    "supported_formats": {
+      "type": "string",
+      "description": "JSON array of supported formats (JSON, XML, CSV, etc.)"
+    },
+    "metadata_standards": {
+      "type": "string",
+      "description": "JSON array of supported metadata standards"
+    },
+    "authentication_type": {
+      "type": "string",
+      "enum": [
+        "API Key",
+        "OAuth 2.0",
+        "Bearer Token",
+        "Basic Auth",
+        "JWT",
+        "Service Account",
+        "Client ID/Secret",
+        "Anonymous",
+        "Custom",
+        "None"
+      ],
+      "default": "None"
+    },
+    "api_key_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "account_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "license_status": {
+      "type": "string",
+      "enum": [
+        "Public Domain",
+        "Creative Commons",
+        "Open Access",
+        "Free Redistribution",
+        "Personal License",
+        "Commercial License",
+        "Subscription Required",
+        "Institutional License",
+        "Negotiation Required",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "usage_rights": {
+      "type": "string"
+    },
+    "redistribution_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "commercial_use_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "modification_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "translation_rights": {
+      "type": "boolean",
+      "default": false
+    },
+    "digital_rights": {
+      "type": "boolean",
+      "default": false
+    },
+    "citation_requirements": {
+      "type": "string"
+    },
+    "rate_limits": {
+      "type": "string",
+      "description": "Description of API rate limits"
+    },
+    "trust_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 trust score"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 confidence score"
+    },
+    "health_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 health score"
+    },
+    "health_status": {
+      "type": "string",
+      "enum": [
+        "Healthy",
+        "Monitoring",
+        "Slow Response",
+        "Rate Limited",
+        "Authentication Error",
+        "Schema Changed",
+        "Connection Failed",
+        "Documentation Missing",
+        "License Review Needed",
+        "Offline",
+        "Deprecated",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "Discovered",
+        "Candidate",
+        "Under Review",
+        "Approved",
+        "Rejected",
+        "Paused",
+        "Archived"
+      ],
+      "default": "Discovered"
+    },
+    "seeder_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "cae_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "research_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "library_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "seeder_compatible": {
+      "type": "boolean",
+      "default": false
+    },
+    "cae_compatible": {
+      "type": "boolean",
+      "default": false
+    },
+    "research_compatible": {
+      "type": "boolean",
+      "default": false
+    },
+    "library_compatible": {
+      "type": "boolean",
+      "default": false
+    },
+    "recommended_use": {
+      "type": "string",
+      "enum": [
+        "Seeder Ready",
+        "CAE Ready",
+        "Research Only",
+        "Metadata Only",
+        "Manual Review Required",
+        "License Review Required",
+        "Not Recommended"
+      ],
+      "default": "Manual Review Required"
+    },
+    "provider_capabilities": {
+      "type": "string",
+      "description": "JSON array of capability strings (Full Text, Metadata, Search, etc.)"
+    },
+    "capability_scores": {
+      "type": "string",
+      "description": "JSON object of capability name to score %"
+    },
+    "overall_capability_score": {
+      "type": "number",
+      "default": 0
+    },
+    "monitoring_frequency": {
+      "type": "string",
+      "enum": [
+        "Hourly",
+        "Every 6 Hours",
+        "Daily",
+        "Weekly",
+        "Monthly",
+        "Custom"
+      ],
+      "default": "Daily"
+    },
+    "last_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_successful_connection": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_failed_connection": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "current_response_time_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "average_response_time_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "api_version": {
+      "type": "string"
+    },
+    "backup_source_id": {
+      "type": "string",
+      "description": "ID of backup SMCSource"
+    },
+    "parent_organization": {
+      "type": "string"
+    },
+    "related_providers": {
+      "type": "string",
+      "description": "JSON array of related provider names"
+    },
+    "reliability_trend": {
+      "type": "string",
+      "enum": [
+        "Very Stable",
+        "Likely Stable",
+        "Moderate Risk",
+        "High Risk",
+        "End-of-Life Risk",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "next_review": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version_history": {
+      "type": "string",
+      "description": "JSON array of version change objects"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "discovery_method": {
+      "type": "string",
+      "description": "How this source was discovered"
+    },
+    "evidence_links": {
+      "type": "string",
+      "description": "JSON array of evidence URLs"
+    },
+    "is_approved": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "source_name"
+  ]
+}

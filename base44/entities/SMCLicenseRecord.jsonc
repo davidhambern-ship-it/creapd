@@ -1,0 +1,138 @@
+{
+  "name": "SMCLicenseRecord",
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "description": "Associated SMCSource"
+    },
+    "work_title": {
+      "type": "string"
+    },
+    "edition": {
+      "type": "string"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "rights_holder": {
+      "type": "string"
+    },
+    "rights_classification": {
+      "type": "string",
+      "enum": [
+        "Public Domain",
+        "Creative Commons",
+        "Open Access",
+        "Free Redistribution",
+        "Personal License",
+        "Commercial License",
+        "Subscription Required",
+        "Institutional License",
+        "Negotiation Required",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "copyright_status": {
+      "type": "string"
+    },
+    "commercial_use": {
+      "type": "boolean",
+      "default": false
+    },
+    "redistribution": {
+      "type": "boolean",
+      "default": false
+    },
+    "modification": {
+      "type": "boolean",
+      "default": false
+    },
+    "translation_rights": {
+      "type": "boolean",
+      "default": false
+    },
+    "digital_rights": {
+      "type": "boolean",
+      "default": false
+    },
+    "purchase_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "purchase_price": {
+      "type": "number",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "renewal_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "renewal_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "license_expiration": {
+      "type": "string",
+      "format": "date"
+    },
+    "restrictions": {
+      "type": "string"
+    },
+    "citation_requirements": {
+      "type": "string"
+    },
+    "acquisition_priority": {
+      "type": "string",
+      "enum": [
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "default": "Medium"
+    },
+    "acquisition_status": {
+      "type": "string",
+      "enum": [
+        "Not Needed",
+        "Planned",
+        "Budgeting",
+        "Saving",
+        "Negotiating",
+        "Purchased",
+        "Acquired",
+        "Rejected",
+        "Deferred"
+      ],
+      "default": "Not Needed"
+    },
+    "budget_account_id": {
+      "type": "string"
+    },
+    "savings_goal_id": {
+      "type": "string"
+    },
+    "opportunity_type": {
+      "type": "string",
+      "description": "Discount, Open Access Release, Public Domain, Free Trial, Educational Discount, Grant, New Free API"
+    },
+    "opportunity_details": {
+      "type": "string"
+    },
+    "opportunity_expires": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "work_title"
+  ]
+}

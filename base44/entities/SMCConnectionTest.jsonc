@@ -1,0 +1,83 @@
+{
+  "name": "SMCConnectionTest",
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "provider_account_id": {
+      "type": "string"
+    },
+    "test_type": {
+      "type": "string",
+      "enum": [
+        "Pre-Approval",
+        "Health Check",
+        "Manual",
+        "Auto-Recovery",
+        "Credential Validation"
+      ],
+      "default": "Manual"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Running",
+        "Passed",
+        "Failed",
+        "Partial"
+      ],
+      "default": "Pending"
+    },
+    "checks": {
+      "type": "string",
+      "description": "JSON array of check results {check_name, passed, detail, response_time_ms}"
+    },
+    "url_reachable": {
+      "type": "boolean",
+      "default": false
+    },
+    "api_reachable": {
+      "type": "boolean",
+      "default": false
+    },
+    "auth_valid": {
+      "type": "boolean",
+      "default": false
+    },
+    "response_format_valid": {
+      "type": "boolean",
+      "default": false
+    },
+    "rate_limit_detected": {
+      "type": "boolean",
+      "default": false
+    },
+    "expected_data_returned": {
+      "type": "boolean",
+      "default": false
+    },
+    "license_valid": {
+      "type": "boolean",
+      "default": false
+    },
+    "response_time_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "http_status_code": {
+      "type": "number"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "sample_response": {
+      "type": "string",
+      "description": "Truncated sample response for verification"
+    }
+  },
+  "required": [
+    "source_id"
+  ]
+}

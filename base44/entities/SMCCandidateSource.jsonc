@@ -1,0 +1,119 @@
+{
+  "name": "SMCCandidateSource",
+  "type": "object",
+  "properties": {
+    "discovery_job_id": {
+      "type": "string",
+      "description": "ID of the SMCDiscoveryJob that found this candidate"
+    },
+    "source_name": {
+      "type": "string"
+    },
+    "provider_name": {
+      "type": "string"
+    },
+    "provider_type": {
+      "type": "string",
+      "default": "Unknown"
+    },
+    "source_type": {
+      "type": "string",
+      "default": "Unknown"
+    },
+    "website": {
+      "type": "string"
+    },
+    "documentation_url": {
+      "type": "string"
+    },
+    "api_base_url": {
+      "type": "string"
+    },
+    "sample_endpoint": {
+      "type": "string"
+    },
+    "detected_formats": {
+      "type": "string",
+      "description": "JSON array of detected formats"
+    },
+    "supported_collections": {
+      "type": "string",
+      "description": "JSON array"
+    },
+    "supported_traditions": {
+      "type": "string",
+      "description": "JSON array"
+    },
+    "supported_languages": {
+      "type": "string",
+      "description": "JSON array"
+    },
+    "authentication_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "api_key_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "license_summary": {
+      "type": "string"
+    },
+    "redistribution_notes": {
+      "type": "string"
+    },
+    "commercial_use_notes": {
+      "type": "string"
+    },
+    "evidence_links": {
+      "type": "string",
+      "description": "JSON array of evidence URLs"
+    },
+    "discovery_method": {
+      "type": "string"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0
+    },
+    "trust_score": {
+      "type": "number",
+      "default": 0
+    },
+    "recommended_use": {
+      "type": "string",
+      "default": "Manual Review Required"
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Under Review",
+        "Approved",
+        "Rejected",
+        "License Review",
+        "Metadata Only",
+        "Merged"
+      ],
+      "default": "New"
+    },
+    "test_results": {
+      "type": "string",
+      "description": "JSON object of connection test results"
+    },
+    "duplicate_of_source_id": {
+      "type": "string",
+      "description": "If duplicate, ID of the existing SMCSource"
+    },
+    "converted_to_source_id": {
+      "type": "string",
+      "description": "ID of SMCSource if approved and converted"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_name"
+  ]
+}

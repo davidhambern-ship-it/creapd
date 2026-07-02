@@ -215,6 +215,8 @@ export default function FoundationSeeder() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
             <Link to="/admin/world-scripture-registry" className="hover:text-foreground">Admin</Link>
             <ChevronRight className="w-3 h-3" />
+            <Link to="/admin/source-management-center" className="hover:text-foreground">Source Management Center</Link>
+            <ChevronRight className="w-3 h-3" />
             <span>Foundation Text Seeder</span>
           </div>
           <div className="flex items-center gap-3">

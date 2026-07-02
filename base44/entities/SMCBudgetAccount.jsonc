@@ -1,0 +1,95 @@
+{
+  "name": "SMCBudgetAccount",
+  "type": "object",
+  "properties": {
+    "account_name": {
+      "type": "string",
+      "description": "Name of the budget account (e.g. Books Budget, API Subscriptions)"
+    },
+    "budget_category": {
+      "type": "string",
+      "enum": [
+        "Books",
+        "APIs",
+        "Subscriptions",
+        "Archives",
+        "Academic Journals",
+        "Language Resources",
+        "Media Assets",
+        "General"
+      ],
+      "default": "General"
+    },
+    "budget_period": {
+      "type": "string",
+      "enum": [
+        "Weekly",
+        "Biweekly",
+        "Monthly",
+        "Quarterly",
+        "Annual",
+        "Custom"
+      ],
+      "default": "Monthly"
+    },
+    "total_budget": {
+      "type": "number",
+      "default": 0
+    },
+    "spent_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "reserved_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "emergency_reserve": {
+      "type": "number",
+      "default": 0
+    },
+    "minimum_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "carryover_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "carryover_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "max_single_purchase": {
+      "type": "number",
+      "default": 100
+    },
+    "approval_threshold": {
+      "type": "number",
+      "default": 50,
+      "description": "Purchases above this require manual approval"
+    },
+    "allow_automatic_purchases": {
+      "type": "boolean",
+      "default": false
+    },
+    "savings_goals": {
+      "type": "string",
+      "description": "JSON array of {goal_name, target_amount, current_amount, target_work}"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "account_name"
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "name": "SMCImportJob",
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "description": "ID of the SMCSource providing data"
+    },
+    "work_title": {
+      "type": "string",
+      "description": "Title of the work being imported"
+    },
+    "tradition": {
+      "type": "string"
+    },
+    "collection": {
+      "type": "string"
+    },
+    "parser_id": {
+      "type": "string",
+      "description": "ID of the SMCParser to use"
+    },
+    "provider_account_id": {
+      "type": "string",
+      "description": "Credentials to use for authenticated access"
+    },
+    "import_method": {
+      "type": "string",
+      "enum": [
+        "API Fetch",
+        "Bulk Download",
+        "Manual Upload",
+        "OAI-PMH",
+        "IIIF",
+        "RSS",
+        "GitHub Clone"
+      ],
+      "default": "API Fetch"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Queued",
+        "Running",
+        "Completed",
+        "Failed",
+        "Paused",
+        "Cancelled",
+        "Retry",
+        "Validating"
+      ],
+      "default": "Queued"
+    },
+    "progress_percent": {
+      "type": "number",
+      "default": 0
+    },
+    "records_imported": {
+      "type": "number",
+      "default": 0
+    },
+    "total_records_expected": {
+      "type": "number",
+      "default": 0
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Validated",
+        "Validation Failed",
+        "Skipped"
+      ],
+      "default": "Pending"
+    },
+    "validation_results": {
+      "type": "string",
+      "description": "JSON object of validation checks"
+    },
+    "metadata": {
+      "type": "string",
+      "description": "JSON object of import metadata (title, translator, edition, language, etc.)"
+    },
+    "checksum": {
+      "type": "string"
+    },
+    "duplicate_check_status": {
+      "type": "string",
+      "enum": [
+        "Not Checked",
+        "No Duplicates",
+        "Duplicate Found",
+        "Updated Existing",
+        "Archived Previous"
+      ],
+      "default": "Not Checked"
+    },
+    "error_log": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "rollback_available": {
+      "type": "boolean",
+      "default": true
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id",
+    "work_title"
+  ]
+}

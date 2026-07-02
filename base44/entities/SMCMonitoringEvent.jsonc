@@ -1,0 +1,68 @@
+{
+  "name": "SMCMonitoringEvent",
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "Health Check Passed",
+        "Health Check Failed",
+        "Schema Updated",
+        "Authentication Renewed",
+        "Authentication Failed",
+        "License Reviewed",
+        "Endpoint Updated",
+        "Recovery Successful",
+        "Recovery Failed",
+        "Provider Disabled",
+        "Provider Offline",
+        "Rate Limited",
+        "Response Time Degraded",
+        "New API Version",
+        "Documentation Updated"
+      ],
+      "default": "Health Check Passed"
+    },
+    "health_status": {
+      "type": "string",
+      "default": "Healthy"
+    },
+    "response_time_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "details": {
+      "type": "string"
+    },
+    "recommended_action": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "Info",
+        "Warning",
+        "Critical"
+      ],
+      "default": "Info"
+    },
+    "auto_recovery_attempted": {
+      "type": "boolean",
+      "default": false
+    },
+    "auto_recovery_successful": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "source_id",
+    "event_type"
+  ]
+}

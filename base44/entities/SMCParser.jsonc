@@ -1,0 +1,106 @@
+{
+  "name": "SMCParser",
+  "type": "object",
+  "properties": {
+    "parser_name": {
+      "type": "string"
+    },
+    "parser_type": {
+      "type": "string",
+      "enum": [
+        "Bible Parser",
+        "Quran Parser",
+        "XML Parser",
+        "JSON Parser",
+        "CSV Parser",
+        "HTML Parser",
+        "Markdown Parser",
+        "EPUB Parser",
+        "PDF Parser",
+        "IIIF Parser",
+        "OAI-PMH Parser",
+        "RSS Parser",
+        "Plain Text Parser",
+        "Image OCR Parser",
+        "AI Parser",
+        "Custom Parser"
+      ],
+      "default": "JSON Parser"
+    },
+    "supported_formats": {
+      "type": "string",
+      "description": "JSON array of input formats"
+    },
+    "supported_providers": {
+      "type": "string",
+      "description": "JSON array of provider names this parser works with"
+    },
+    "supported_collections": {
+      "type": "string",
+      "description": "JSON array of collection types"
+    },
+    "input_schema": {
+      "type": "string",
+      "description": "JSON schema description of expected input"
+    },
+    "output_schema": {
+      "type": "string",
+      "description": "JSON schema description of output structure"
+    },
+    "validation_rules": {
+      "type": "string",
+      "description": "JSON array of validation rules"
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "maintainer": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Deprecated",
+        "Beta",
+        "Experimental",
+        "Retired"
+      ],
+      "default": "Active"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is the default parser for its type"
+    },
+    "success_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 success rate"
+    },
+    "average_runtime_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "total_parses": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_parses": {
+      "type": "number",
+      "default": 0
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "parser_name",
+    "parser_type"
+  ]
+}

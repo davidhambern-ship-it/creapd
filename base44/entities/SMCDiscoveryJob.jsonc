@@ -1,0 +1,105 @@
+{
+  "name": "SMCDiscoveryJob",
+  "type": "object",
+  "properties": {
+    "job_name": {
+      "type": "string"
+    },
+    "discovery_type": {
+      "type": "string",
+      "description": "Type of discovery (API search, dataset search, repository search, etc.)"
+    },
+    "query": {
+      "type": "string",
+      "description": "Search query for discovery"
+    },
+    "target_tradition": {
+      "type": "string",
+      "description": "Faith tradition to target"
+    },
+    "target_collection": {
+      "type": "string",
+      "description": "Collection type to target"
+    },
+    "target_format": {
+      "type": "string",
+      "description": "Preferred data format"
+    },
+    "target_provider_type": {
+      "type": "string",
+      "description": "Preferred provider type"
+    },
+    "discovery_methods": {
+      "type": "string",
+      "description": "JSON array of methods (targeted search, API directories, GitHub search, university domain search, etc.)"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "On Demand",
+        "Daily",
+        "Weekly",
+        "Biweekly",
+        "Monthly",
+        "Quarterly"
+      ],
+      "default": "On Demand"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Idle",
+        "Running",
+        "Completed",
+        "Failed",
+        "Paused"
+      ],
+      "default": "Idle"
+    },
+    "last_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "next_run": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "results_found": {
+      "type": "number",
+      "default": 0
+    },
+    "candidates_created": {
+      "type": "number",
+      "default": 0
+    },
+    "auto_approve": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to auto-approve high-confidence candidates"
+    },
+    "min_trust_threshold": {
+      "type": "number",
+      "default": 80,
+      "description": "Minimum trust score for auto-approval"
+    },
+    "min_confidence_threshold": {
+      "type": "number",
+      "default": 80,
+      "description": "Minimum confidence score for auto-approval"
+    },
+    "errors": {
+      "type": "string"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "job_name",
+    "discovery_type"
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "name": "SMCFoundationWork",
+  "type": "object",
+  "properties": {
+    "work_title": {
+      "type": "string"
+    },
+    "tradition": {
+      "type": "string"
+    },
+    "collection_category": {
+      "type": "string",
+      "description": "Collection category (Abrahamic, Christianity, Judaism, Islam, Hinduism, Buddhism, etc.)"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "ID of associated SMCSource if discovered"
+    },
+    "roadmap_status": {
+      "type": "string",
+      "enum": [
+        "Missing",
+        "Discovered",
+        "Approved",
+        "Ready to Seed",
+        "Queued",
+        "Importing",
+        "Imported",
+        "Needs Update",
+        "License Required",
+        "Unavailable",
+        "Deprecated"
+      ],
+      "default": "Missing"
+    },
+    "priority_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Foundation priority score 0-100"
+    },
+    "historical_importance": {
+      "type": "number",
+      "default": 0
+    },
+    "religious_importance": {
+      "type": "number",
+      "default": 0
+    },
+    "academic_importance": {
+      "type": "number",
+      "default": 0
+    },
+    "popularity": {
+      "type": "number",
+      "default": 0
+    },
+    "open_availability": {
+      "type": "boolean",
+      "default": false
+    },
+    "public_domain": {
+      "type": "boolean",
+      "default": false
+    },
+    "import_complexity": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "estimated_import_time_minutes": {
+      "type": "number",
+      "default": 0
+    },
+    "language_coverage": {
+      "type": "string",
+      "description": "JSON array of available languages"
+    },
+    "missing_languages": {
+      "type": "string",
+      "description": "JSON array of missing languages"
+    },
+    "dependencies": {
+      "type": "string",
+      "description": "JSON array of dependency work titles"
+    },
+    "import_job_id": {
+      "type": "string",
+      "description": "ID of associated SMCImportJob"
+    },
+    "community_requests": {
+      "type": "number",
+      "default": 0
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "work_title"
+  ]
+}
