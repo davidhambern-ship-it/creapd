@@ -7,6 +7,7 @@ import {
   Library, Languages, Columns2, Star, Clock3
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
+import SidebarNavSections from './SidebarNavSections';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, BookOpen,
@@ -34,25 +35,8 @@ export default function SpiritualLayout() {
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {SPIRITUAL_NAV_ITEMS.map((item) => {
-            const Icon = ICON_MAP[item.icon] || Circle;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? 'bg-primary/15 text-primary font-medium'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+          <SidebarNavSections items={SPIRITUAL_NAV_ITEMS} iconMap={ICON_MAP} />
           <AdminSidebarSection variant="spiritual" onNavigate={() => {}} />
         </nav>
 
@@ -79,24 +63,8 @@ export default function SpiritualLayout() {
         </header>
 
         {mobileNavOpen && (
-          <nav className="md:hidden p-3 space-y-1 border-b border-border bg-sidebar">
-            {SPIRITUAL_NAV_ITEMS.map((item) => {
-              const Icon = ICON_MAP[item.icon] || Circle;
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileNavOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    isActive ? 'bg-primary/15 text-primary font-medium' : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {item.label}
-                </Link>
-              );
-            })}
+          <nav className="md:hidden p-3 space-y-0.5 border-b border-border bg-sidebar max-h-[70vh] overflow-y-auto">
+            <SidebarNavSections items={SPIRITUAL_NAV_ITEMS} iconMap={ICON_MAP} onNavigate={() => setMobileNavOpen(false)} />
             <AdminSidebarSection variant="spiritual" onNavigate={() => setMobileNavOpen(false)} />
           </nav>
         )}

@@ -140,19 +140,19 @@ export const DEFAULT_AI_AUTOMATION = [
 export const RUNTIME_OPTIONS = ['10 Minutes', '15 Minutes', '20 Minutes', '30 Minutes', '45 Minutes', '60 Minutes', '90 Minutes', 'Custom'];
 
 export const SPIRITUAL_NAV_ITEMS = [
-  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/spiritual/dashboard' },
-  { icon: 'Settings2', label: 'Configuration', path: '/spiritual/configure' },
-  { icon: 'Search', label: 'Research', path: '/spiritual/research' },
-  { icon: 'Library', label: 'Library Home', path: '/spiritual/library' },
-  { icon: 'BookOpen', label: 'Sacred Texts', path: '/spiritual/library?browse=collection' },
-  { icon: 'Languages', label: 'Languages', path: '/spiritual/library/languages' },
-  { icon: 'Columns2', label: 'Comparisons', path: '/spiritual/library/compare' },
-  { icon: 'GraduationCap', label: 'Study Workspace', path: '/spiritual/study' },
-  { icon: 'PenTool', label: 'Message Builder', path: '/spiritual/message' },
-  { icon: 'Sparkles', label: 'AI Assets', path: '/spiritual/assets' },
-  { icon: 'Package', label: 'Production Package', path: '/spiritual/package' },
-  { icon: 'Download', label: 'Export', path: '/spiritual/export' },
-  { icon: 'Settings', label: 'Settings', path: '/settings/default-production' }
+  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/spiritual/dashboard', section: null },
+  { icon: 'Settings2', label: 'Configuration', path: '/spiritual/configure', section: 'Workflow' },
+  { icon: 'Search', label: 'Research', path: '/spiritual/research', section: 'Workflow' },
+  { icon: 'GraduationCap', label: 'Study Workspace', path: '/spiritual/study', section: 'Workflow' },
+  { icon: 'PenTool', label: 'Message Builder', path: '/spiritual/message', section: 'Workflow' },
+  { icon: 'Library', label: 'Library Home', path: '/spiritual/library', section: 'World Scripture Library' },
+  { icon: 'BookOpen', label: 'Sacred Texts', path: '/spiritual/library?browse=collection', section: 'World Scripture Library' },
+  { icon: 'Languages', label: 'Languages', path: '/spiritual/library/languages', section: 'World Scripture Library' },
+  { icon: 'Columns2', label: 'Comparisons', path: '/spiritual/library/compare', section: 'World Scripture Library' },
+  { icon: 'Sparkles', label: 'AI Assets', path: '/spiritual/assets', section: 'Output' },
+  { icon: 'Package', label: 'Production Package', path: '/spiritual/package', section: 'Output' },
+  { icon: 'Download', label: 'Export', path: '/spiritual/export', section: 'Output' },
+  { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 
 export const ASSET_TYPE_LABELS = {

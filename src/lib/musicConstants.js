@@ -93,15 +93,15 @@ export const RUNTIME_DEFAULTS = {
 };
 
 export const MUSIC_NAV_ITEMS = [
-  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/music/dashboard' },
-  { icon: 'Settings2', label: 'Configuration', path: '/music/configure' },
-  { icon: 'Search', label: 'Research', path: '/music/research' },
-  { icon: 'ListMusic', label: 'Playlist Builder', path: '/music/playlist' },
-  { icon: 'Mic', label: 'Music Topics', path: '/music/topics' },
-  { icon: 'ClipboardList', label: 'Show Rundown', path: '/music/rundown' },
-  { icon: 'Sparkles', label: 'AI Assets', path: '/music/assets' },
-  { icon: 'Download', label: 'Export', path: '/music/export' },
-  { icon: 'Settings', label: 'Settings', path: '/settings/default-production' }
+  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/music/dashboard', section: null },
+  { icon: 'Settings2', label: 'Configuration', path: '/music/configure', section: 'Workflow' },
+  { icon: 'Search', label: 'Research', path: '/music/research', section: 'Workflow' },
+  { icon: 'ListMusic', label: 'Playlist Builder', path: '/music/playlist', section: 'Workflow' },
+  { icon: 'Mic', label: 'Music Topics', path: '/music/topics', section: 'Workflow' },
+  { icon: 'ClipboardList', label: 'Show Rundown', path: '/music/rundown', section: 'Workflow' },
+  { icon: 'Sparkles', label: 'AI Assets', path: '/music/assets', section: 'Output' },
+  { icon: 'Download', label: 'Export', path: '/music/export', section: 'Output' },
+  { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 
 export const ASSET_TYPE_LABELS = {
