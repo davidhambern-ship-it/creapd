@@ -31,6 +31,25 @@ export default function FoundationTextReader({ text, textId }) {
   const [showChapterList, setShowChapterList] = useState(false);
   const [collapsedBooks, setCollapsedBooks] = useState({});
 
+  // Paginate through all chapters — SDK caps results per call, but the Bible has 1189 chapters
+  const fetchAllChapters = async (workId) => {
+    const all = [];
+    const PAGE_SIZE = 500;
+    let lastOrder = -1;
+    while (true) {
+      const batch = await base44.entities.SectionChapter.filter(
+        { text_work_id: workId, order: { $gt: lastOrder } },
+        'order',
+        PAGE_SIZE
+      );
+      if (!batch || batch.length === 0) break;
+      all.push(...batch);
+      if (batch.length < PAGE_SIZE) break;
+      lastOrder = batch[batch.length - 1].order;
+    }
+    return all;
+  };
+
   // Load TextWork and chapters
   useEffect(() => {
     if (!textId) return;
@@ -41,8 +60,8 @@ export default function FoundationTextReader({ text, textId }) {
         const work = works[0];
         setTextWork(work);
 
-        const chaps = await base44.entities.SectionChapter.filter({ text_work_id: work.id }, 'order', 500);
-        setChapters(chaps || []);
+        const chaps = await fetchAllChapters(work.id);
+        setChapters(chaps);
         if (chaps && chaps.length > 0) setActiveChapterId(chaps[0].id);
 
         const [h, n, b] = await Promise.all([
