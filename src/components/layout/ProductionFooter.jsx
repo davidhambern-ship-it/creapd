@@ -50,7 +50,7 @@ export default function ProductionFooter({ variant = 'news' }) {
   const ActionIcon = config.action.icon;
 
   return (
-    <footer className="hidden lg:flex h-8 glass-panel-navy border-t border-white/[0.06] items-center px-4 gap-6 text-[10px] font-mono text-muted-foreground">
+    <footer className="flex h-8 glass-panel-navy border-t border-white/[0.06] items-center px-4 gap-4 lg:gap-6 text-[10px] font-mono text-muted-foreground overflow-x-auto">
       <div className="flex items-center gap-1.5">
         <VariantIcon className="w-3 h-3 text-berna-purple" />
         <span className="text-berna-purple font-medium">{config.label}</span>
