@@ -20,7 +20,8 @@ import RegistryIssuePanel from '@/components/admin/RegistryIssuePanel';
 import RegistryConnections from '@/components/admin/RegistryConnections';
 
 function safeJsonParse(str, fallback) {
-  try { return JSON.parse(str); } catch { return fallback; }
+  if (str == null) return fallback;
+  try { const val = JSON.parse(str); return val == null ? fallback : val; } catch { return fallback; }
 }
 
 function MetaRow({ label, value }) {
