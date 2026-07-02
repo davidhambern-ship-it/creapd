@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   Loader2, ChevronLeft, BookOpen, BookMarked,
   Highlighter, Search, Shield, ExternalLink,
-  ChevronDown, ChevronUp, Columns2, GraduationCap
+  ChevronDown, ChevronUp, Columns2, GraduationCap, PanelRight
 } from 'lucide-react';
 import SourceIntegrityBadge from '@/components/library/SourceIntegrityBadge';
 import WordInteractionModal from '@/components/library/WordInteractionModal';
@@ -34,6 +35,7 @@ export default function LibraryReader() {
   const [isFoundation, setIsFoundation] = useState(false);
   const [profileExpanded, setProfileExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('highlights');
+  const [showTools, setShowTools] = useState(false);
 
   const loadText = useCallback(async () => {
     if (!textId) return;
@@ -155,6 +157,8 @@ export default function LibraryReader() {
     ? passages.filter(p => p.toLowerCase().includes(searchQuery.toLowerCase()))
     : passages;
 
+  const showReaderControls = !isFoundation;
+
   return (
     <div className="flex flex-col lg:h-full">
       {/* ─── Reader Header ─── */}
@@ -175,22 +179,38 @@ export default function LibraryReader() {
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setShowSearch(!showSearch)}
-                className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
-              >
-                <Search className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setShowSourceIntegrity(!showSourceIntegrity)}
-                className={`p-2 rounded-lg transition-colors ${showSourceIntegrity ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
-              >
-                <Shield className="w-4 h-4" />
-              </button>
+              {showReaderControls && (
+                <>
+                  <button
+                    onClick={() => setShowSearch(!showSearch)}
+                    className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
+                    title="Search"
+                  >
+                    <Search className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowSourceIntegrity(!showSourceIntegrity)}
+                    className={`p-2 rounded-lg transition-colors ${showSourceIntegrity ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
+                    title="Source Integrity"
+                  >
+                    <Shield className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowTools(true)}
+                    className="p-2 rounded-lg hover:bg-secondary/50 relative"
+                    title="Notes & Highlights"
+                  >
+                    <PanelRight className="w-4 h-4" />
+                    {(highlights.length > 0 || notes.length > 0 || bookmarks.length > 0) && (
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {showSearch && (
+          {showReaderControls && showSearch && (
             <input
               type="text"
               value={searchQuery}
@@ -200,103 +220,110 @@ export default function LibraryReader() {
             />
           )}
 
-          {/* Reading Mode segmented control */}
-          <div className="mt-2 overflow-x-auto">
-            <div className="inline-flex items-center gap-0.5 rounded-lg bg-secondary/40 p-0.5">
-              {READING_MODES.map(mode => (
-                <button
-                  key={mode.key}
-                  onClick={() => setReadingMode(mode.key)}
-                  className={`px-3 py-1 rounded-md text-xs whitespace-nowrap transition-colors ${
-                    readingMode === mode.key
-                      ? 'bg-white/10 text-foreground font-medium'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
+          {/* Reading Mode segmented control — only for plain text */}
+          {showReaderControls && !isFoundation && chapters.length === 0 && (
+            <div className="mt-2 overflow-x-auto">
+              <div className="inline-flex items-center gap-0.5 rounded-lg bg-secondary/40 p-0.5">
+                {READING_MODES.map(mode => (
+                  <button
+                    key={mode.key}
+                    onClick={() => setReadingMode(mode.key)}
+                    className={`px-3 py-1 rounded-md text-xs whitespace-nowrap transition-colors ${
+                      readingMode === mode.key
+                        ? 'bg-white/10 text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* ─── Split Workspace ─── */}
-      <div className="flex-1 lg:grid lg:grid-cols-[1fr_380px] gap-4 p-4 lg:overflow-hidden">
-        {/* Left: Reading Area */}
-        <div className="lg:overflow-y-auto space-y-4 pr-1">
-          {/* Source Integrity (compact, toggled) */}
-          {showSourceIntegrity && (
+      {/* ─── Reading Area (centered, full-width) ─── */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* Source Integrity (compact, toggled) */}
+        {showReaderControls && showSourceIntegrity && (
+          <div className="max-w-4xl mx-auto mb-4">
             <div className="glass-panel p-3 rounded-xl">
               <SourceIntegrityBadge text={text} />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Text Profile (collapsible) */}
-          <div className="glass-panel rounded-xl">
-            <button
-              onClick={() => setProfileExpanded(!profileExpanded)}
-              className="w-full flex items-center justify-between p-4"
-            >
-              <h2 className="font-heading font-semibold flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-primary" /> Text Profile
-              </h2>
-              {profileExpanded
-                ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            </button>
-            {profileExpanded && (
-              <div className="px-4 pb-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-muted-foreground">Tradition:</span> {text.tradition}</div>
-                  <div><span className="text-muted-foreground">Collection:</span> {text.collection?.replace(/_/g, ' ')}</div>
-                  <div><span className="text-muted-foreground">Original Language:</span> {text.original_language || 'N/A'}</div>
-                  <div><span className="text-muted-foreground">Writing System:</span> {text.writing_system || 'N/A'}</div>
-                  {text.traditional_attribution && <div><span className="text-muted-foreground">Attribution:</span> {text.traditional_attribution}</div>}
-                  {text.scholarly_dating && <div><span className="text-muted-foreground">Scholarly Dating:</span> {text.scholarly_dating}</div>}
-                  {text.geographic_origin && <div><span className="text-muted-foreground">Geographic Origin:</span> {text.geographic_origin}</div>}
-                  {text.structure && <div><span className="text-muted-foreground">Structure:</span> {text.structure}</div>}
-                </div>
-                {themes.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {themes.map(t => (
-                      <span key={t} className="px-2 py-0.5 rounded-md text-xs bg-primary/15 text-primary">{t}</span>
-                    ))}
+        {/* Text Profile (collapsible) */}
+        {showReaderControls && (
+          <div className="max-w-4xl mx-auto mb-4">
+            <div className="glass-panel rounded-xl">
+              <button
+                onClick={() => setProfileExpanded(!profileExpanded)}
+                className="w-full flex items-center justify-between p-4"
+              >
+                <h2 className="font-heading font-semibold flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" /> Text Profile
+                </h2>
+                {profileExpanded
+                  ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              {profileExpanded && (
+                <div className="px-4 pb-4">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Tradition:</span> {text.tradition}</div>
+                    <div><span className="text-muted-foreground">Collection:</span> {text.collection?.replace(/_/g, ' ')}</div>
+                    <div><span className="text-muted-foreground">Original Language:</span> {text.original_language || 'N/A'}</div>
+                    <div><span className="text-muted-foreground">Writing System:</span> {text.writing_system || 'N/A'}</div>
+                    {text.traditional_attribution && <div><span className="text-muted-foreground">Attribution:</span> {text.traditional_attribution}</div>}
+                    {text.scholarly_dating && <div><span className="text-muted-foreground">Scholarly Dating:</span> {text.scholarly_dating}</div>}
+                    {text.geographic_origin && <div><span className="text-muted-foreground">Geographic Origin:</span> {text.geographic_origin}</div>}
+                    {text.structure && <div><span className="text-muted-foreground">Structure:</span> {text.structure}</div>}
                   </div>
-                )}
-                {text.historical_context && (
-                  <p className="text-sm text-muted-foreground mt-3">{text.historical_context}</p>
-                )}
-                {translations.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Available Translations</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {translations.map(t => (
-                        <span key={t} className="px-2 py-0.5 rounded-md text-xs bg-secondary/40">{t}</span>
+                  {themes.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {themes.map(t => (
+                        <span key={t} className="px-2 py-0.5 rounded-md text-xs bg-primary/15 text-primary">{t}</span>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                  {text.historical_context && (
+                    <p className="text-sm text-muted-foreground mt-3">{text.historical_context}</p>
+                  )}
+                  {translations.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Available Translations</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {translations.map(t => (
+                          <span key={t} className="px-2 py-0.5 rounded-md text-xs bg-secondary/40">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
+        )}
 
-          {/* Reading Content */}
-          {isFoundation ? (
-            <FoundationTextReader text={text} textId={textId} />
-          ) : text.full_text_available && text.full_text ? (
-            chapters.length > 0 ? (
-              <NativeTextReader
-                text={text}
-                chapters={chapters}
-                onWordClick={handleWordClick}
-                onPassageClick={handlePassageClick}
-                onAddHighlight={handleAddHighlight}
-                onBookmark={handleBookmark}
-                bookmarks={bookmarks}
-                highlights={highlights}
-              />
-            ) : (
+        {/* Reading Content */}
+        {isFoundation ? (
+          <FoundationTextReader text={text} textId={textId} />
+        ) : text.full_text_available && text.full_text ? (
+          chapters.length > 0 ? (
+            <NativeTextReader
+              text={text}
+              chapters={chapters}
+              onWordClick={handleWordClick}
+              onPassageClick={handlePassageClick}
+              onAddHighlight={handleAddHighlight}
+              onBookmark={handleBookmark}
+              bookmarks={bookmarks}
+              highlights={highlights}
+            />
+          ) : (
+            <div className="max-w-4xl mx-auto">
               <div className="glass-panel p-6 md:p-8 rounded-xl">
                 {readingMode === 'focus' ? (
                   <div className="prose prose-invert max-w-none">
@@ -351,8 +378,10 @@ export default function LibraryReader() {
                   </div>
                 )}
               </div>
-            )
-          ) : (
+            </div>
+          )
+        ) : (
+          <div className="max-w-4xl mx-auto">
             <div className="glass-panel p-8 text-center rounded-xl">
               <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="font-heading font-semibold mb-2">Native Acquisition Pending</h3>
@@ -376,30 +405,39 @@ export default function LibraryReader() {
                 </div>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Right: Tools Panel */}
-        <div className="lg:overflow-y-auto">
-          <ReaderToolsPanel
-            highlights={highlights}
-            notes={notes}
-            bookmarks={bookmarks}
-            highlightCategory={highlightCategory}
-            setHighlightCategory={setHighlightCategory}
-            noteText={noteText}
-            setNoteText={setNoteText}
-            onAddNote={handleAddNote}
-            activePassage={activePassage}
-            setActivePassage={setActivePassage}
-            onSelectWordFromPassage={handleSelectWordFromPassage}
-            text={text}
-            onNavigate={navigate}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-          />
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Tools Slide-out (for non-foundation texts) */}
+      {showReaderControls && (
+        <Sheet open={showTools} onOpenChange={setShowTools}>
+          <SheetContent side="right" className="w-[400px] sm:max-w-[400px] overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Reader Tools</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              <ReaderToolsPanel
+                highlights={highlights}
+                notes={notes}
+                bookmarks={bookmarks}
+                highlightCategory={highlightCategory}
+                setHighlightCategory={setHighlightCategory}
+                noteText={noteText}
+                setNoteText={setNoteText}
+                onAddNote={handleAddNote}
+                activePassage={activePassage}
+                setActivePassage={setActivePassage}
+                onSelectWordFromPassage={handleSelectWordFromPassage}
+                text={text}
+                onNavigate={navigate}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
 
       <WordInteractionModal
         word={activeWord}

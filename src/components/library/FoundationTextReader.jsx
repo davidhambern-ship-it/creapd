@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   Loader2, Search, Highlighter, StickyNote, BookMarked, GraduationCap,
-  ChevronLeft, ChevronRight, X, Shield, Copy, Check, Columns2, ExternalLink
+  ChevronLeft, ChevronRight, X, Shield, Copy, Check, Navigation, PanelRight,
+  Columns2, ExternalLink
 } from 'lucide-react';
 import { HIGHLIGHT_CATEGORIES } from '@/lib/spiritualConstants';
 import CreateMessageButton from '@/components/message/CreateMessageButton';
+import PassageNavigator from './PassageNavigator';
+import FoundationToolsPanel from './FoundationToolsPanel';
 
 export default function FoundationTextReader({ text, textId }) {
   const navigate = useNavigate();
@@ -28,10 +32,12 @@ export default function FoundationTextReader({ text, textId }) {
   const [noteText, setNoteText] = useState('');
   const [highlightCategory, setHighlightCategory] = useState('important');
   const [copiedRef, setCopiedRef] = useState(null);
-  const [showChapterList, setShowChapterList] = useState(false);
-  const [collapsedBooks, setCollapsedBooks] = useState({});
+  const [showNavigator, setShowNavigator] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const [pendingVerseScroll, setPendingVerseScroll] = useState(null);
+  const verseRefs = useRef({});
 
-  // Paginate through all chapters — SDK caps results per call, but the Bible has 1189 chapters
   const fetchAllChapters = async (workId) => {
     const all = [];
     const PAGE_SIZE = 500;
@@ -50,7 +56,6 @@ export default function FoundationTextReader({ text, textId }) {
     return all;
   };
 
-  // Load TextWork and chapters
   useEffect(() => {
     if (!textId) return;
     (async () => {
@@ -59,11 +64,9 @@ export default function FoundationTextReader({ text, textId }) {
         if (!works || works.length === 0) { setLoading(false); return; }
         const work = works[0];
         setTextWork(work);
-
         const chaps = await fetchAllChapters(work.id);
         setChapters(chaps);
         if (chaps && chaps.length > 0) setActiveChapterId(chaps[0].id);
-
         const [h, n, b] = await Promise.all([
           base44.entities.LibraryHighlight.filter({ text_id: textId }, '-created_date', 50).catch(() => []),
           base44.entities.LibraryNote.filter({ text_id: textId }, '-created_date', 50).catch(() => []),
@@ -80,7 +83,6 @@ export default function FoundationTextReader({ text, textId }) {
     })();
   }, [textId]);
 
-  // Load verses when chapter changes
   const loadVerses = useCallback(async (chapterId) => {
     if (!chapterId) return;
     setLoadingVerses(true);
@@ -98,7 +100,20 @@ export default function FoundationTextReader({ text, textId }) {
     if (activeChapterId) loadVerses(activeChapterId);
   }, [activeChapterId, loadVerses]);
 
-  // Search across all verses
+  // Scroll to verse after verses load (from PassageNavigator)
+  useEffect(() => {
+    if (pendingVerseScroll !== null && verses.length > 0) {
+      const verse = verses.find(v => v.verse_number === pendingVerseScroll);
+      if (verse) {
+        setTimeout(() => {
+          verseRefs.current[verse.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setSelectedVerse(verse);
+        }, 150);
+      }
+      setPendingVerseScroll(null);
+    }
+  }, [pendingVerseScroll, verses]);
+
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim() || !textWork) return;
     setSearching(true);
@@ -119,10 +134,6 @@ export default function FoundationTextReader({ text, textId }) {
   const clearSearch = () => {
     setSearchQuery('');
     setSearchResults(null);
-  };
-
-  const handleVerseClick = (verse) => {
-    setSelectedVerse(verse);
   };
 
   const handleAddHighlight = async (verse) => {
@@ -185,21 +196,25 @@ export default function FoundationTextReader({ text, textId }) {
     }
   };
 
+  const handlePassageSelect = (chapter, verseNumber) => {
+    clearSearch();
+    setActiveChapterId(chapter.id);
+    setSelectedVerse(null);
+    if (verseNumber !== null) {
+      setPendingVerseScroll(verseNumber);
+    }
+  };
+
   const currentChapter = chapters.find(c => c.id === activeChapterId);
   const currentIdx = chapters.findIndex(c => c.id === activeChapterId);
 
-  // Group chapters by book
   const bookGroups = chapters.reduce((acc, ch) => {
-    const book = ch.book_name || 'Unknown';
+    const book = ch.book_name || 'Chapters';
     if (!acc[book]) acc[book] = [];
     acc[book].push(ch);
     return acc;
   }, {});
-  const bookNames = Object.keys(bookGroups);
-
-  const toggleBook = (book) => {
-    setCollapsedBooks(prev => ({ ...prev, [book]: !prev[book] }));
-  };
+  const currentBookName = currentChapter ? (currentChapter.book_name || 'Chapters') : '';
 
   if (loading) {
     return (
@@ -210,66 +225,42 @@ export default function FoundationTextReader({ text, textId }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-      {/* Chapter Navigation */}
-      <div className="lg:col-span-1">
-        <div className="glass-panel p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
-          <h3 className="font-heading font-semibold text-sm mb-3 flex items-center gap-2">
-            <BookMarked className="w-4 h-4 text-primary" />
-            Chapters ({chapters.length})
-          </h3>
-          {textWork?.seeding_status === 'seeding' && (
-            <div className="mb-3 p-2 rounded-md bg-primary/10 text-primary text-xs flex items-center gap-2">
-              <Loader2 className="w-3 h-3 animate-spin" /> Seeding in progress...
-            </div>
-          )}
-          <div className="space-y-1">
-            {bookNames.map(book => {
-              const isCollapsed = collapsedBooks[book];
-              const bookChapters = bookGroups[book];
-              const hasActive = bookChapters.some(c => c.id === activeChapterId);
-              return (
-                <div key={book}>
-                  <button
-                    onClick={() => toggleBook(book)}
-                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      hasActive ? 'text-primary' : 'text-foreground hover:bg-secondary/40'
-                    }`}
-                  >
-                    {isCollapsed
-                      ? <ChevronRight className="w-3 h-3 shrink-0" />
-                      : <ChevronLeft className="w-3 h-3 shrink-0 rotate-90" />}
-                    <span className="truncate">{book}</span>
-                    <span className="text-muted-foreground/50 ml-auto">{bookChapters.length}</span>
-                  </button>
-                  {!isCollapsed && (
-                    <div className="ml-3 space-y-0.5">
-                      {bookChapters.map(chap => (
-                        <button
-                          key={chap.id}
-                          onClick={() => { setActiveChapterId(chap.id); setSelectedVerse(null); clearSearch(); }}
-                          className={`w-full text-left px-2.5 py-1 rounded-md text-xs transition-colors ${
-                            activeChapterId === chap.id
-                              ? 'bg-primary/20 text-primary font-medium'
-                              : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
-                          }`}
-                        >
-                          {chap.name.replace(book + ' ', '')}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+    <div className="max-w-4xl mx-auto space-y-4">
+      {/* Sub-header: location + Navigate + Search + Tools */}
+      <div className="glass-panel p-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground truncate">
+            {currentBookName} {currentChapter && `· ${currentChapter.chapter_number}`}
+          </p>
+          <p className="text-sm font-medium truncate">{currentChapter?.name || 'Select a passage'}</p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Button size="sm" variant="outline" onClick={() => setShowNavigator(true)}>
+            <Navigation className="w-3.5 h-3.5 mr-1.5" /> Navigate
+          </Button>
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
+            title="Search"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowTools(true)}
+            className="p-2 rounded-lg hover:bg-secondary/50 relative"
+            title="Notes & Highlights"
+          >
+            <PanelRight className="w-4 h-4" />
+            {(highlights.length > 0 || notes.length > 0 || bookmarks.length > 0) && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Main Reading Area */}
-      <div className="lg:col-span-2">
-        {/* Search Bar */}
-        <div className="glass-panel p-3 mb-4">
+      {/* Search bar (collapsible) */}
+      {showSearch && (
+        <div className="glass-panel p-3">
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
@@ -295,243 +286,191 @@ export default function FoundationTextReader({ text, textId }) {
             </p>
           )}
         </div>
+      )}
 
-        {/* Source Metadata */}
-        {textWork && (
-          <div className="glass-panel p-3 mb-4 flex items-center gap-3 text-xs">
-            <Shield className="w-4 h-4 text-berna-emerald shrink-0" />
-            <div className="flex-1">
-              <span className="text-muted-foreground">Source: </span>
-              <span className="font-medium">{textWork.source_provider}</span>
-              <span className="text-muted-foreground mx-1.5">·</span>
-              <span className="text-muted-foreground">License: </span>
-              <span className="font-medium capitalize">{textWork.license_status?.replace(/_/g, ' ')}</span>
-              {textWork.source_url && (
-                <>
-                  <span className="text-muted-foreground mx-1.5">·</span>
-                  <a href={textWork.source_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
-                    Provider <ExternalLink className="w-3 h-3" />
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Search Results or Chapter Verses */}
-        {searchResults ? (
-          <div className="glass-panel p-5 md:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-heading font-semibold text-sm">Search Results</h3>
-              <Button size="sm" variant="ghost" onClick={clearSearch}>Clear</Button>
-            </div>
-            {searchResults.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No verses found matching "{searchQuery}"</p>
-            ) : (
-              <div className="space-y-3">
-                {searchResults.map(verse => (
-                  <VerseRow
-                    key={verse.id}
-                    verse={verse}
-                    onClick={() => handleVerseClick(verse)}
-                    onHighlight={() => handleAddHighlight(verse)}
-                    onBookmark={() => handleBookmark(verse)}
-                    onCopy={() => copyReference(verse)}
-                    onNavigate={() => { clearSearch(); setActiveChapterId(verse.section_chapter_id); }}
-                    isSelected={selectedVerse?.id === verse.id}
-                    isHighlighted={isVerseHighlighted(verse.id)}
-                    isBookmarked={isVerseBookmarked(verse.verse_reference)}
-                    copied={copiedRef === verse.id}
-                    showChapter
-                  />
-                ))}
-              </div>
+      {/* Source metadata */}
+      {textWork && (
+        <div className="glass-panel p-3 flex items-center gap-3 text-xs">
+          <Shield className="w-4 h-4 text-berna-emerald shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-muted-foreground">Source: </span>
+            <span className="font-medium">{textWork.source_provider}</span>
+            <span className="text-muted-foreground mx-1.5">·</span>
+            <span className="text-muted-foreground">License: </span>
+            <span className="font-medium capitalize">{textWork.license_status?.replace(/_/g, ' ')}</span>
+            {textWork.source_url && (
+              <>
+                <span className="text-muted-foreground mx-1.5">·</span>
+                <a href={textWork.source_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">
+                  Provider <ExternalLink className="w-3 h-3" />
+                </a>
+              </>
             )}
-          </div>
-        ) : (
-          <div className="glass-panel p-5 md:p-6">
-            {/* Chapter Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
-              <div>
-                <h2 className="font-heading font-bold text-lg">{currentChapter?.name}</h2>
-                <p className="text-xs text-muted-foreground">{verses.length} verses</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" onClick={() => navigateChapter('prev')} disabled={currentIdx <= 0}>
-                  <ChevronLeft className="w-4 h-4" /> Prev
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => navigateChapter('next')} disabled={currentIdx >= chapters.length - 1}>
-                  Next <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Verses */}
-            {loadingVerses ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {verses.map(verse => (
-                  <VerseRow
-                    key={verse.id}
-                    verse={verse}
-                    onClick={() => handleVerseClick(verse)}
-                    onHighlight={() => handleAddHighlight(verse)}
-                    onBookmark={() => handleBookmark(verse)}
-                    onCopy={() => copyReference(verse)}
-                    isSelected={selectedVerse?.id === verse.id}
-                    isHighlighted={isVerseHighlighted(verse.id)}
-                    isBookmarked={isVerseBookmarked(verse.verse_reference)}
-                    copied={copiedRef === verse.id}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Selected Verse Actions */}
-        {selectedVerse && (
-          <div className="glass-panel p-4 mt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="font-heading font-semibold text-sm">{selectedVerse.verse_reference}</h3>
-                <p className="text-xs text-muted-foreground">{selectedVerse.citation}</p>
-              </div>
-              <button onClick={() => setSelectedVerse(null)} className="p-1 rounded hover:bg-secondary/50">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-sm text-foreground leading-relaxed mb-3 p-2 rounded-md bg-secondary/20">{selectedVerse.verse_text}</p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              <Button size="sm" variant={isVerseHighlighted(selectedVerse.id) ? 'secondary' : 'outline'} onClick={() => handleAddHighlight(selectedVerse)}>
-                <Highlighter className="w-3.5 h-3.5 mr-1" /> {isVerseHighlighted(selectedVerse.id) ? 'Highlighted' : 'Highlight'}
-              </Button>
-              <Button size="sm" variant={isVerseBookmarked(selectedVerse.verse_reference) ? 'secondary' : 'outline'} onClick={() => handleBookmark(selectedVerse)}>
-                <BookMarked className="w-3.5 h-3.5 mr-1" /> {isVerseBookmarked(selectedVerse.verse_reference) ? 'Bookmarked' : 'Bookmark'}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => copyReference(selectedVerse)}>
-                {copiedRef === selectedVerse.id ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                {copiedRef === selectedVerse.id ? 'Copied' : 'Copy'}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => navigate(`/spiritual/study?query=${encodeURIComponent(selectedVerse.verse_reference + ' — ' + selectedVerse.verse_text)}&autoRun=true&source=library-reader`)}>
-                <GraduationCap className="w-3.5 h-3.5 mr-1" /> Study
-              </Button>
-              <CreateMessageButton
-                context={{
-                  title: `Message: ${selectedVerse.verse_reference}`,
-                  topic: selectedVerse.verse_reference,
-                  faith_tradition: text?.tradition,
-                  study_topics: JSON.stringify([selectedVerse.verse_reference]),
-                }}
-                variant="outline"
-                size="sm"
-                label="Create Message"
-              />
-            </div>
-            <div className="flex items-start gap-2">
-              <Textarea
-                value={noteText}
-                onChange={e => setNoteText(e.target.value)}
-                placeholder={`Add a note to ${selectedVerse.verse_reference}...`}
-                rows={2}
-                className="flex-1"
-              />
-              <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
-                <StickyNote className="w-3.5 h-3.5 mr-1" /> Save
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Right Sidebar */}
-      <div className="lg:col-span-1 space-y-4">
-        {/* Highlight Category */}
-        <div className="glass-panel p-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Highlight Category</p>
-          <div className="flex flex-wrap gap-1">
-            {HIGHLIGHT_CATEGORIES.map(cat => (
-              <button
-                key={cat.key}
-                onClick={() => setHighlightCategory(cat.key)}
-                className={`px-2 py-1 rounded-md text-xs transition-all ${cat.color} ${highlightCategory === cat.key ? 'ring-1 ring-primary' : ''}`}
-              >
-                {cat.label}
-              </button>
-            ))}
           </div>
         </div>
+      )}
 
-        {/* Highlights */}
-        <div className="glass-panel p-4">
-          <h4 className="font-heading font-semibold text-sm flex items-center gap-2 mb-3">
-            <Highlighter className="w-4 h-4 text-accent" /> Highlights ({highlights.length})
-          </h4>
-          {highlights.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Click a verse and highlight it to save here.</p>
+      {/* Reading Content */}
+      {searchResults ? (
+        <div className="glass-panel p-5 md:p-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading font-semibold text-sm">Search Results</h3>
+            <Button size="sm" variant="ghost" onClick={clearSearch}>Clear</Button>
+          </div>
+          {searchResults.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No verses found matching "{searchQuery}"</p>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {highlights.slice(0, 10).map(h => {
-                const cat = HIGHLIGHT_CATEGORIES.find(c => c.key === h.highlight_category);
-                return (
-                  <button
-                    key={h.id}
-                    onClick={() => { if (h.segment_verse_id) { /* could navigate to verse */ } }}
-                    className="w-full text-left p-2 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-1 mb-1">
-                      {cat && <span className={`px-1.5 py-0.5 rounded text-xs ${cat.color}`}>{cat.label}</span>}
-                      {h.passage_reference && <span className="text-xs text-primary font-medium">{h.passage_reference}</span>}
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{h.highlighted_text}</p>
-                  </button>
-                );
-              })}
+            <div className="space-y-3">
+              {searchResults.map(verse => (
+                <VerseRow
+                  key={verse.id}
+                  verse={verse}
+                  onClick={() => setSelectedVerse(verse)}
+                  onHighlight={() => handleAddHighlight(verse)}
+                  onBookmark={() => handleBookmark(verse)}
+                  onCopy={() => copyReference(verse)}
+                  onNavigate={() => { clearSearch(); setActiveChapterId(verse.section_chapter_id); }}
+                  isSelected={selectedVerse?.id === verse.id}
+                  isHighlighted={isVerseHighlighted(verse.id)}
+                  isBookmarked={isVerseBookmarked(verse.verse_reference)}
+                  copied={copiedRef === verse.id}
+                  showChapter
+                />
+              ))}
             </div>
           )}
         </div>
+      ) : (
+        <div className="glass-panel p-5 md:p-8">
+          {/* Chapter header */}
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+            <div>
+              <h2 className="font-heading font-bold text-lg">{currentChapter?.name}</h2>
+              <p className="text-xs text-muted-foreground">{verses.length} verses</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={() => navigateChapter('prev')} disabled={currentIdx <= 0}>
+                <ChevronLeft className="w-4 h-4" /> Prev
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => navigateChapter('next')} disabled={currentIdx >= chapters.length - 1}>
+                Next <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
 
-        {/* Notes */}
-        <div className="glass-panel p-4">
-          <h4 className="font-heading font-semibold text-sm flex items-center gap-2 mb-3">
-            <StickyNote className="w-4 h-4 text-primary" /> Notes ({notes.length})
-          </h4>
-          {notes.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Select a verse and write a note.</p>
+          {loadingVerses ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {notes.slice(0, 10).map(n => (
-                <div key={n.id} className="p-2 rounded-md bg-secondary/30">
-                  {n.passage_reference && <p className="text-xs text-primary font-medium mb-1">{n.passage_reference}</p>}
-                  <p className="text-xs text-muted-foreground line-clamp-3">{n.note_content}</p>
+            <div className="space-y-2">
+              {verses.map(verse => (
+                <div key={verse.id} ref={el => { if (el) verseRefs.current[verse.id] = el; }}>
+                  <VerseRow
+                    verse={verse}
+                    onClick={() => setSelectedVerse(verse)}
+                    onHighlight={() => handleAddHighlight(verse)}
+                    onBookmark={() => handleBookmark(verse)}
+                    onCopy={() => copyReference(verse)}
+                    isSelected={selectedVerse?.id === verse.id}
+                    isHighlighted={isVerseHighlighted(verse.id)}
+                    isBookmarked={isVerseBookmarked(verse.verse_reference)}
+                    copied={copiedRef === verse.id}
+                  />
                 </div>
               ))}
             </div>
           )}
         </div>
+      )}
 
-        {/* Bookmarks */}
+      {/* Selected verse actions (inline) */}
+      {selectedVerse && (
         <div className="glass-panel p-4">
-          <h4 className="font-heading font-semibold text-sm flex items-center gap-2 mb-3">
-            <BookMarked className="w-4 h-4 text-accent" /> Bookmarks ({bookmarks.length})
-          </h4>
-          {bookmarks.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Bookmark verses to return to them.</p>
-          ) : (
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {bookmarks.map(b => (
-                <div key={b.id} className="flex items-center gap-2 p-1.5 rounded-md bg-secondary/30 text-xs">
-                  <BookMarked className="w-3 h-3 text-accent shrink-0" />
-                  <span className="truncate">{b.passage_reference}</span>
-                </div>
-              ))}
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-heading font-semibold text-sm">{selectedVerse.verse_reference}</h3>
+              <p className="text-xs text-muted-foreground">{selectedVerse.citation}</p>
             </div>
-          )}
+            <button onClick={() => setSelectedVerse(null)} className="p-1 rounded hover:bg-secondary/50">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed mb-3 p-2 rounded-md bg-secondary/20">{selectedVerse.verse_text}</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <Button size="sm" variant={isVerseHighlighted(selectedVerse.id) ? 'secondary' : 'outline'} onClick={() => handleAddHighlight(selectedVerse)}>
+              <Highlighter className="w-3.5 h-3.5 mr-1" /> {isVerseHighlighted(selectedVerse.id) ? 'Highlighted' : 'Highlight'}
+            </Button>
+            <Button size="sm" variant={isVerseBookmarked(selectedVerse.verse_reference) ? 'secondary' : 'outline'} onClick={() => handleBookmark(selectedVerse)}>
+              <BookMarked className="w-3.5 h-3.5 mr-1" /> {isVerseBookmarked(selectedVerse.verse_reference) ? 'Bookmarked' : 'Bookmark'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copyReference(selectedVerse)}>
+              {copiedRef === selectedVerse.id ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+              {copiedRef === selectedVerse.id ? 'Copied' : 'Copy'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/spiritual/study?query=${encodeURIComponent(selectedVerse.verse_reference + ' — ' + selectedVerse.verse_text)}&autoRun=true&source=library-reader`)}>
+              <GraduationCap className="w-3.5 h-3.5 mr-1" /> Study
+            </Button>
+            <CreateMessageButton
+              context={{
+                title: `Message: ${selectedVerse.verse_reference}`,
+                topic: selectedVerse.verse_reference,
+                faith_tradition: text?.tradition,
+                study_topics: JSON.stringify([selectedVerse.verse_reference]),
+              }}
+              variant="outline"
+              size="sm"
+              label="Create Message"
+            />
+          </div>
+          <div className="flex items-start gap-2">
+            <Textarea
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              placeholder={`Add a note to ${selectedVerse.verse_reference}...`}
+              rows={2}
+              className="flex-1"
+            />
+            <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
+              <StickyNote className="w-3.5 h-3.5 mr-1" /> Save
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Passage Navigator Modal */}
+      <PassageNavigator
+        open={showNavigator}
+        onClose={() => setShowNavigator(false)}
+        chapters={chapters}
+        onSelect={handlePassageSelect}
+        tradition={text?.tradition}
+      />
+
+      {/* Tools Slide-out */}
+      <Sheet open={showTools} onOpenChange={setShowTools}>
+        <SheetContent side="right" className="w-[400px] sm:max-w-[400px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Reader Tools</SheetTitle>
+          </SheetHeader>
+          <FoundationToolsPanel
+            highlights={highlights}
+            notes={notes}
+            bookmarks={bookmarks}
+            highlightCategory={highlightCategory}
+            setHighlightCategory={setHighlightCategory}
+            noteText={noteText}
+            setNoteText={setNoteText}
+            onAddNote={handleAddNote}
+            selectedVerse={selectedVerse}
+            setSelectedVerse={setSelectedVerse}
+            onAddHighlight={handleAddHighlight}
+            onBookmark={handleBookmark}
+            onCopy={copyReference}
+            copiedRef={copiedRef}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -560,7 +499,6 @@ function VerseRow({ verse, onClick, onHighlight, onBookmark, onCopy, onNavigate,
           <p className="text-sm text-foreground leading-relaxed">{verse.verse_text}</p>
         </div>
       </div>
-      {/* Hover actions */}
       <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
         <button onClick={onHighlight} className="p-1 rounded hover:bg-secondary/50" title="Highlight">
           <Highlighter className={`w-3.5 h-3.5 ${isHighlighted ? 'text-accent' : 'text-muted-foreground'}`} />
