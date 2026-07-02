@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import LibraryHero from '@/components/library/LibraryHero';
 import LibraryCollections from '@/components/library/LibraryCollections';
+import LexiconBrowser from '@/components/library/LexiconBrowser';
 import { resolveTextAccess } from '@/lib/registryAccess';
 import { REGISTRY_ACCESS_STATUS, getStatusBadge } from '@/lib/registryConstants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -185,6 +186,7 @@ export default function SpiritualLibrary() {
             { key: 'activity', label: 'Recent Activity', icon: Clock3 },
             { key: 'collections', label: 'Saved Collections', icon: Star },
             { key: 'learning', label: 'Learning Dashboard', icon: GraduationCap },
+            { key: 'lexicons', label: 'Lexicons', icon: BookMarked },
             { key: 'research', label: 'Research Dashboard', icon: FileText }
           ].map(tab => {
             const Icon = tab.icon;
@@ -654,6 +656,11 @@ export default function SpiritualLibrary() {
               </div>
             )}
           </div>
+        )}
+
+        {/* LEXICONS TAB */}
+        {activeTab === 'lexicons' && (
+          <LexiconBrowser />
         )}
 
         {/* RESEARCH DASHBOARD TAB */}
