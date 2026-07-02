@@ -119,20 +119,20 @@ async function autoCreateJobs(base44) {
 async function executeJob(base44, jobId) {
   if (!jobId) return Response.json({ error: 'job_id is required' }, { status: 400 });
 
-  const job = await base44.asServiceRole.entities.SMCImportJob.get(jobId);
-  if (!job) return Response.json({ error: 'Import job not found' }, { status: 404 });
-  if (job.status === 'Running') return Response.json({ error: 'Job is already running' }, { status: 409 });
-
-  const source = await base44.asServiceRole.entities.SMCSource.get(job.source_id);
-  if (!source) return Response.json({ error: 'Source not found' }, { status: 404 });
-
-  await base44.asServiceRole.entities.SMCImportJob.update(jobId, {
-    status: 'Running',
-    started_at: new Date().toISOString(),
-    progress_percent: 5
-  });
-
   try {
+    const job = await base44.asServiceRole.entities.SMCImportJob.get(jobId);
+    if (!job) return Response.json({ error: 'Import job not found' }, { status: 404 });
+    if (job.status === 'Running') return Response.json({ error: 'Job is already running' }, { status: 409 });
+
+    const source = await base44.asServiceRole.entities.SMCSource.get(job.source_id);
+    if (!source) return Response.json({ error: 'Source not found' }, { status: 404 });
+
+    await base44.asServiceRole.entities.SMCImportJob.update(jobId, {
+      status: 'Running',
+      started_at: new Date().toISOString(),
+      progress_percent: 5
+    });
+
     const handlerResult = await findHandler(base44, source);
     const result = await handlerResult.fn(base44, source, job);
     if (handlerResult.handler) {
@@ -140,8 +140,6 @@ async function executeJob(base44, jobId) {
     }
 
     if (result.partial) {
-      // Partial import — keep job in "Queued" so user can re-run to continue.
-      // Preserve cursor in metadata for resumable imports.
       await base44.asServiceRole.entities.SMCImportJob.update(jobId, {
         status: 'Queued',
         progress_percent: 50,
@@ -149,8 +147,6 @@ async function executeJob(base44, jobId) {
         total_records_expected: result.total_records || 0,
         metadata: JSON.stringify(result)
       });
-      // Re-read the job so the handler's intermediate cursor update isn't lost
-      // (executeJob's update above includes the cursor from result)
 
       return Response.json({
         success: true,
@@ -189,23 +185,49 @@ async function executeJob(base44, jobId) {
       partial: false
     });
   } catch (error) {
-    await base44.asServiceRole.entities.SMCImportJob.update(jobId, {
-      status: 'Failed',
-      error_log: error.message,
-      completed_at: new Date().toISOString()
-    });
-    return Response.json({ error: error.message, job_id: jobId }, { status: 500 });
+    // Capture full error details for diagnostics
+    const errorMsg = error.response?.data?.error || error.message;
+    const errorStatus = error.response?.status;
+
+    try {
+      await base44.asServiceRole.entities.SMCImportJob.update(jobId, {
+        status: 'Failed',
+        error_log: `${errorMsg}${errorStatus ? ` (HTTP ${errorStatus})` : ''}`,
+        completed_at: new Date().toISOString()
+      });
+    } catch {}
+    return Response.json({ error: errorMsg, job_id: jobId }, { status: 500 });
   }
 }
+// (executeJob body moved into try block above — old duplicate code removed)
 
 // ─── Auto-Execute Queued Jobs ──────────────────────────────────────
 // Picks up Queued jobs and executes them through the handler-selected pipeline.
 // Called directly by the "Import Auto-Executor" scheduled automation.
 async function autoExecuteJobs(base44) {
+  // ─── Stuck-job recovery: reset jobs stuck in 'Running' for >5 min back to 'Queued' ───
+  const stuckJobs = await base44.asServiceRole.entities.SMCImportJob.filter(
+    { status: 'Running' },
+    'created_date',
+    20
+  );
+  const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+  let recovered = 0;
+  for (const stuck of stuckJobs) {
+    const startedAt = stuck.started_at ? new Date(stuck.started_at).getTime() : 0;
+    if (startedAt < fiveMinAgo) {
+      await base44.asServiceRole.entities.SMCImportJob.update(stuck.id, {
+        status: 'Queued',
+        error_log: 'Recovered from stuck Running state by autoExecuteJobs'
+      });
+      recovered++;
+    }
+  }
+
   const queuedJobs = await base44.asServiceRole.entities.SMCImportJob.filter(
     { status: 'Queued' },
     'created_date',
-    5
+    3
   );
 
   const results = [];
@@ -213,7 +235,14 @@ async function autoExecuteJobs(base44) {
     try {
       const result = await executeJob(base44, job.id);
       const data = await result.json();
-      results.push({ job_id: job.id, work_title: job.work_title, status: 'completed', records: data.records_imported || 0 });
+      const ok = result.ok;
+      results.push({
+        job_id: job.id,
+        work_title: job.work_title,
+        status: ok ? 'completed' : 'failed',
+        records: data.records_imported || 0,
+        error: ok ? undefined : data.error
+      });
     } catch (err) {
       results.push({ job_id: job.id, work_title: job.work_title, status: 'failed', error: err.message });
     }
@@ -222,6 +251,7 @@ async function autoExecuteJobs(base44) {
   return Response.json({
     success: true,
     mode: 'auto_execute',
+    stuck_recovered: recovered,
     queued_found: queuedJobs.length,
     executed: results.length,
     results
@@ -1094,7 +1124,7 @@ Respond with a JSON object containing:
         data_type: { type: 'string' },
         importable: { type: 'boolean' },
         entity_target: { type: 'string' },
-        field_mapping: { type: 'object', additionalProperties: true },
+        field_mapping: { type: 'string', description: 'JSON string mapping source fields to entity fields' },
         record_count_estimate: { type: 'string' },
         next_steps: { type: 'string' }
       },
@@ -1168,8 +1198,15 @@ Respond with a JSON object containing:
     }
   }
 
-  // Map records to WordStudy using LLM's field mapping
-  const mapping = llmResponse.field_mapping || {};
+  // Map records to WordStudy using LLM's field mapping (returned as JSON string)
+  let mapping = {};
+  try {
+    if (typeof llmResponse.field_mapping === 'string') {
+      mapping = JSON.parse(llmResponse.field_mapping);
+    } else if (typeof llmResponse.field_mapping === 'object') {
+      mapping = llmResponse.field_mapping;
+    }
+  } catch {}
   const batch = [];
   let totalImported = 0;
   const sourceTag = `auto-${source.source_name?.toLowerCase().replace(/\s+/g, '-').substring(0, 30)}`;
