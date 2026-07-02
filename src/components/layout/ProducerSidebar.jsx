@@ -1,86 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, FileText, Layers, Search, Radio,
-  Archive, Settings, Activity, ChevronLeft, ChevronRight,
-  CalendarDays, Package, Palette, Tv, Download,
-  Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
-  ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, LayoutGrid
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
+import { PRODUCER_NAV_SECTIONS } from '@/lib/producerNav';
 import AdminSidebarSection from './AdminSidebarSection';
 
-const navSections = [
-  {
-    label: null,
-    items: [{ icon: LayoutDashboard, label: 'Dashboard', path: '/' }]
-  },
-  {
-    label: 'Planning',
-    items: [
-      { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
-      { icon: FileText, label: "Today's Brief", path: '/brief' },
-    ]
-  },
-  {
-    label: 'Content',
-    items: [
-      { icon: Layers, label: 'Story Queue', path: '/queue' },
-      { icon: Bookmark, label: 'Story Library', path: '/library' },
-      { icon: ClipboardList, label: 'Story Manager', path: '/workspace' },
-    ]
-  },
-  {
-    label: 'Production',
-    items: [
-      { icon: Package, label: 'Production', path: '/production' },
-      { icon: Palette, label: 'Brand Profiles', path: '/brands' },
-      { icon: Tv, label: 'Show Profiles', path: '/shows' },
-      { icon: ImageIcon, label: 'Image/Video Library', path: '/images' },
-    ]
-  },
-  {
-    label: 'Output',
-    items: [
-      { icon: Download, label: 'Export Center', path: '/export' },
-    ]
-  },
-  {
-    label: 'Research & Sources',
-    items: [
-      { icon: Search, label: 'Research Desk', path: '/research' },
-      { icon: Radio, label: 'Sources', path: '/sources' },
-      { icon: FileInput, label: 'Import URL', path: '/import' },
-    ]
-  },
-  {
-    label: 'Templates',
-    items: [
-      { icon: LayoutTemplate, label: 'Templates', path: '/templates' },
-      { icon: ImageIcon, label: 'Graphics Templates', path: '/graphics-templates' },
-      { icon: MessageSquareCode, label: 'Prompt Templates', path: '/prompt-templates' },
-    ]
-  },
-  {
-    label: 'System',
-    items: [
-      { icon: Archive, label: 'Archive', path: '/archive' },
-      { icon: ShieldCheck, label: 'Security & Privacy', path: '/security' },
-      { icon: Activity, label: 'Automation', path: '/automation' },
-      { icon: Building2, label: 'Organizations', path: '/organizations' },
-      { icon: Bell, label: 'Activity Center', path: '/activity' },
-      { icon: UserCircle, label: 'My Profile', path: '/profile' },
-      { icon: Settings, label: 'Settings', path: '/settings' },
-    ]
-  },
-];
-
 const mobileItems = [
-  navSections[0].items[0], // Dashboard
-  navSections[1].items[1], // Today's Brief
-  navSections[2].items[0], // Story Queue
-  navSections[3].items[0], // Production
-  navSections[4].items[0], // Export Center
+  PRODUCER_NAV_SECTIONS[0].items[0], // Dashboard
+  PRODUCER_NAV_SECTIONS[1].items[1], // Today's Brief
+  PRODUCER_NAV_SECTIONS[2].items[0], // Story Queue
+  PRODUCER_NAV_SECTIONS[3].items[0], // Production
+  PRODUCER_NAV_SECTIONS[4].items[0], // Export Center
 ];
 
 export default function ProducerSidebar({ collapsed, onToggle }) {
@@ -115,7 +44,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
       {/* Desktop sidebar */}
       <aside className={`hidden lg:flex flex-col ${collapsed ? 'w-16' : 'w-56'} transition-all duration-300 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-r border-white/[0.06] relative z-40`}>
         <nav className="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto overflow-x-hidden">
-          {navSections.map((section, si) => (
+          {PRODUCER_NAV_SECTIONS.map((section, si) => (
             <div key={section.label || `section-${si}`}>
               {!collapsed && section.label && (
                 <p className="px-3 pt-4 pb-1 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -169,7 +98,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
           <span className="text-[9px]">Switch</span>
         </Link>
         <Link to="/settings" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/settings' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
-          <Settings className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4" />
           <span className="text-[9px]">More</span>
         </Link>
       </nav>
