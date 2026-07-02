@@ -41,6 +41,14 @@ export default function SourceManagementCenter() {
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [pipelineResult, setPipelineResult] = useState(null);
 
+  const loadSources = useCallback(async () => {
+    try {
+      const data = await base44.entities.SMCSource.list('-created_date', 200);
+      setSources(data || []);
+    } catch (err) { console.error('SMC source load error:', err); }
+    finally { setLoading(false); }
+  }, []);
+
   const handleRunPipeline = useCallback(async () => {
     setPipelineRunning(true);
     setPipelineResult(null);
@@ -55,14 +63,6 @@ export default function SourceManagementCenter() {
       setPipelineRunning(false);
     }
   }, [loadSources]);
-
-  const loadSources = useCallback(async () => {
-    try {
-      const data = await base44.entities.SMCSource.list('-created_date', 200);
-      setSources(data || []);
-    } catch (err) { console.error('SMC source load error:', err); }
-    finally { setLoading(false); }
-  }, []);
 
   useEffect(() => { loadSources(); }, [loadSources]);
 
