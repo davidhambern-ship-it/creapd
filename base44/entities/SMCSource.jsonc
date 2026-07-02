@@ -313,6 +313,10 @@
       "type": "string",
       "description": "ID of backup SMCSource"
     },
+    "handler_id": {
+      "type": "string",
+      "description": "ID of the SMCHandler for this source (admin override for handler selection)"
+    },
     "parent_organization": {
       "type": "string"
     },

@@ -73,6 +73,7 @@ import WorldScriptureRegistryDetail from '@/pages/admin/WorldScriptureRegistryDe
 import ContentAcquisitionEngine from '@/pages/admin/ContentAcquisitionEngine';
 import FoundationSeeder from '@/pages/admin/FoundationSeeder';
 import SourceManagementCenter from '@/pages/admin/SourceManagementCenter';
+import HandlerRegistry from '@/pages/admin/HandlerRegistry';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -176,6 +177,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/content-acquisition-engine" element={<ContentAcquisitionEngine />} />
         <Route path="/admin/foundation-seeder" element={<FoundationSeeder />} />
         <Route path="/admin/source-management-center" element={<SourceManagementCenter />} />
+        <Route path="/admin/handler-registry" element={<HandlerRegistry />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

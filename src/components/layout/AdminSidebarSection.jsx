@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Database, Globe, Cpu, BookOpen, ShieldCheck } from 'lucide-react';
+import { Database, Globe, Cpu, BookOpen, ShieldCheck, Server } from 'lucide-react';
 
 const ADMIN_ITEMS = [
   { icon: Globe, label: 'Scripture Registry', path: '/admin/world-scripture-registry' },
   { icon: Cpu, label: 'Content Acquisition', path: '/admin/content-acquisition-engine' },
   { icon: Database, label: 'Source Management', path: '/admin/source-management-center' },
+  { icon: Server, label: 'Handler Registry', path: '/admin/handler-registry' },
   { icon: BookOpen, label: 'Foundation Seeder', path: '/admin/foundation-seeder' },
 ];
 

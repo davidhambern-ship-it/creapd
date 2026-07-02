@@ -1,0 +1,177 @@
+{
+  "name": "SMCHandler",
+  "type": "object",
+  "properties": {
+    "handler_name": {
+      "type": "string",
+      "description": "Display name of the handler"
+    },
+    "handler_type": {
+      "type": "string",
+      "enum": [
+        "Generic REST API",
+        "Bible API",
+        "Quran API",
+        "SuttaCentral API",
+        "Open Scripture API",
+        "Project Gutenberg",
+        "Internet Archive",
+        "Wikisource",
+        "GitHub Repository",
+        "Bulk Download",
+        "ZIP Archive",
+        "EPUB Source",
+        "PDF Source",
+        "XML Feed",
+        "JSON Feed",
+        "CSV Feed",
+        "RSS Feed",
+        "OAI-PMH",
+        "IIIF",
+        "HTML Page",
+        "Manual Upload",
+        "Future Custom Handler"
+      ],
+      "default": "Generic REST API"
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Beta",
+        "Experimental",
+        "Deprecated",
+        "Retired",
+        "Disabled",
+        "Needs Update"
+      ],
+      "default": "Active"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this handler does and how it retrieves data"
+    },
+    "supported_providers": {
+      "type": "string",
+      "description": "JSON array of provider names this handler works with"
+    },
+    "supported_source_types": {
+      "type": "string",
+      "description": "JSON array of source types (API, GitHub Repository, Bulk Download, etc.)"
+    },
+    "supported_authentication": {
+      "type": "string",
+      "description": "JSON array (API Key, OAuth 2.0, Bearer Token, Basic Auth, Anonymous, None, etc.)"
+    },
+    "supported_formats": {
+      "type": "string",
+      "description": "JSON array of output formats (JSON, XML, CSV, HTML, Plain Text, etc.)"
+    },
+    "supported_methods": {
+      "type": "string",
+      "description": "JSON array of HTTP methods (GET, POST, Download, etc.)"
+    },
+    "rate_limit_rules": {
+      "type": "string",
+      "description": "JSON object of rate limit configuration"
+    },
+    "retry_rules": {
+      "type": "string",
+      "description": "JSON object of retry configuration"
+    },
+    "timeout_rules": {
+      "type": "string",
+      "description": "JSON object of timeout configuration"
+    },
+    "batching_rules": {
+      "type": "string",
+      "description": "JSON object of batching configuration"
+    },
+    "pagination_rules": {
+      "type": "string",
+      "description": "JSON object of pagination configuration"
+    },
+    "cache_rules": {
+      "type": "string",
+      "description": "JSON object of cache configuration"
+    },
+    "output_package_schema": {
+      "type": "string",
+      "description": "JSON schema describing the standardized response package this handler returns"
+    },
+    "compatible_parsers": {
+      "type": "string",
+      "description": "JSON array of compatible parser names or types from the Parser Registry"
+    },
+    "health_status": {
+      "type": "string",
+      "enum": [
+        "Healthy",
+        "Warning",
+        "Failing",
+        "Deprecated",
+        "Disabled",
+        "Needs Update",
+        "Unknown"
+      ],
+      "default": "Unknown"
+    },
+    "total_runs": {
+      "type": "number",
+      "default": 0
+    },
+    "successful_runs": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_runs": {
+      "type": "number",
+      "default": 0
+    },
+    "average_runtime_ms": {
+      "type": "number",
+      "default": 0
+    },
+    "success_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 success rate"
+    },
+    "failure_rate": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 failure rate"
+    },
+    "rate_limit_events": {
+      "type": "number",
+      "default": 0
+    },
+    "timeout_events": {
+      "type": "number",
+      "default": 0
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0
+    },
+    "last_used_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_tested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "handler_name",
+    "handler_type"
+  ]
+}

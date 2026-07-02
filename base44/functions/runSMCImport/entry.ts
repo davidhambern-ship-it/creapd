@@ -131,8 +131,11 @@ async function executeJob(base44, jobId) {
   });
 
   try {
-    const handler = findHandler(source);
-    const result = await handler(base44, source, job);
+    const handlerResult = await findHandler(base44, source);
+    const result = await handlerResult.fn(base44, source, job);
+    if (handlerResult.handler) {
+      await updateHandlerStats(base44, handlerResult.handler, result);
+    }
 
     if (result.partial) {
       // Partial import — keep job in "Queued" so user can re-run to continue.
@@ -196,7 +199,72 @@ async function executeJob(base44, jobId) {
 // ─── Handler Registry ──────────────────────────────────────────────
 // Each handler: (base44, source, job) => { handler_name, records_imported, total_records, skipped, partial, ... }
 
-function findHandler(source) {
+// ─── Handler Registry Integration ──────────────────────────────────
+// 1. Admin override: if source.handler_id is set, use that handler
+// 2. Auto-select: query SMCHandler registry for matching handlers
+// 3. Fall back to name-based detection (existing logic)
+async function findHandler(base44, source) {
+  // 1. Admin override
+  if (source.handler_id) {
+    try {
+      const handler = await base44.asServiceRole.entities.SMCHandler.get(source.handler_id);
+      if (handler && ['Active', 'Beta'].includes(handler.status)) {
+        const fn = routeByHandlerType(handler.handler_type);
+        if (fn) return { fn, handler };
+      }
+    } catch {}
+  }
+
+  // 2. Auto-select from Handler Registry
+  try {
+    const handlers = await base44.asServiceRole.entities.SMCHandler.filter(
+      { status: 'Active' },
+      '-updated_date',
+      50
+    );
+    const matched = matchHandlerToSource(handlers || [], source);
+    if (matched) {
+      const fn = routeByHandlerType(matched.handler_type);
+      if (fn) return { fn, handler: matched };
+    }
+  } catch {}
+
+  // 3. Fall back to name-based detection
+  return { fn: findHandlerByName(source), handler: null };
+}
+
+function routeByHandlerType(type) {
+  switch (type) {
+    case 'Bible API': return handlerQuranBible;
+    case 'Quran API': return handlerQuranBible;
+    case 'Open Scripture API': return handlerOpenScripturesStrongs;
+    default: return null;
+  }
+}
+
+function matchHandlerToSource(handlers, source) {
+  const sourceName = (source.source_name || '').toLowerCase();
+  const sourceType = source.source_type || '';
+  const providerName = (source.provider_name || '').toLowerCase();
+
+  // Match by supported providers
+  for (const h of handlers) {
+    const providers = parseHandlerJsonArray(h.supported_providers);
+    if (providers.some(p =>
+      p && (sourceName.includes(p.toLowerCase()) || providerName.includes(p.toLowerCase()))
+    )) return h;
+  }
+
+  // Match by supported source types
+  for (const h of handlers) {
+    const sourceTypes = parseHandlerJsonArray(h.supported_source_types);
+    if (sourceTypes.includes(sourceType)) return h;
+  }
+
+  return null;
+}
+
+function findHandlerByName(source) {
   const name = (source.source_name || '').toLowerCase();
   const url = (source.api_base_url || '').toLowerCase();
   const website = (source.website || '').toLowerCase();
@@ -222,6 +290,33 @@ function findHandler(source) {
 
   // Fallback: LLM-assisted auto-detect
   return handlerLLMAutoDetect;
+}
+
+async function updateHandlerStats(base44, handler, result) {
+  try {
+    const totalRuns = (handler.total_runs || 0) + 1;
+    const success = (result.records_imported || 0) > 0;
+    const successfulRuns = success ? (handler.successful_runs || 0) + 1 : (handler.successful_runs || 0);
+    const failedRuns = !success ? (handler.failed_runs || 0) + 1 : (handler.failed_runs || 0);
+    const successRate = Math.round((successfulRuns / totalRuns) * 100);
+    const failureRate = Math.round((failedRuns / totalRuns) * 100);
+
+    await base44.asServiceRole.entities.SMCHandler.update(handler.id, {
+      total_runs: totalRuns,
+      successful_runs: successfulRuns,
+      failed_runs: failedRuns,
+      success_rate: successRate,
+      failure_rate: failureRate,
+      last_used_at: new Date().toISOString(),
+      health_status: success ? 'Healthy' : (handler.health_status === 'Healthy' ? 'Warning' : (handler.health_status || 'Unknown'))
+    });
+  } catch {}
+}
+
+function parseHandlerJsonArray(str) {
+  if (!str) return [];
+  if (Array.isArray(str)) return str;
+  try { return JSON.parse(str); } catch { return []; }
 }
 
 // ─── Handler: Quran / Bible (delegates to seedFoundationText) ─────
