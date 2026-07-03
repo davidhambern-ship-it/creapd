@@ -114,7 +114,7 @@ export default function SpiritualMessage() {
               <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> {totalWords} words</span>
               <span className="flex items-center gap-1"><Package className="w-4 h-4" /> {assets.length} assets</span>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowPreview(true)} disabled={messageSections.length === 0}>
+            <Button size="sm" variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:text-accent" onClick={() => setShowPreview(true)} disabled={messageSections.length === 0}>
               <Play className="w-3.5 h-3.5 mr-1" /> Preview Presentation
             </Button>
             <Button size="sm" onClick={handleGenerate} disabled={generating}>
