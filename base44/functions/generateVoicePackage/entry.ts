@@ -41,132 +41,127 @@ Deno.serve(async (req) => {
       audioUrl = speechResult.url;
     }
 
-    if (!estimatedDuration || estimatedDuration < 1) {
-      const wc = script_text.split(/\s+/).filter(Boolean).length;
-      estimatedDuration = Math.max(3, Math.round((wc / 150) * 60));
-    }
+    // ===== STEP 2: Transcribe audio with Whisper for real word-level timestamps =====
+    const audioResponse = await fetch(audioUrl);
+    const audioBlob = await audioResponse.blob();
 
-    const wordCount = script_text.split(/\s+/).filter(Boolean).length;
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'narration.mp3');
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'verbose_json');
+    formData.append('timestamp_granularities[]', 'word');
+    formData.append('timestamp_granularities[]', 'segment');
 
-    // ===== STEP 2: Generate VP timeline data via LLM =====
-    const vpPrompt = `You are a Voice Package timing analyzer. Given a narration script and its estimated total duration, produce a complete timing dataset.
-
-NARRATION SCRIPT:
-${script_text.substring(0, 4000)}
-
-ESTIMATED TOTAL DURATION: ${estimatedDuration} seconds
-
-YOUR TASK:
-Break down this narration into a structured timing dataset. All times are in seconds, starting from 0.
-
-1. SENTENCE TIMELINE: Split the script into sentences. Distribute the total duration proportionally based on each sentence's word count. Leave ~0.35s gaps between sentences for pauses. Each sentence object has: sentence_id (number), sentence_text (string), start_time (number), end_time (number), duration (number).
-
-2. PARAGRAPH TIMELINE: Group sentences into paragraphs by topical breaks. Each paragraph object has: paragraph_id (number), start_time (number), end_time (number), duration (number).
-
-3. PAUSE TIMELINE: Detect meaningful pauses between sentences and paragraphs. Use these pause_type values: "Sentence Pause" (0.3-0.4s), "Paragraph Pause" (0.6-1.0s), "Dramatic Pause" (0.8-1.5s), "Natural Breath Pause" (0.15-0.25s). Each pause object has: pause_start (number), pause_end (number), duration (number), pause_type (string).
-
-4. TIMESTAMPED TRANSCRIPT: Each sentence on its own line, prefixed with "MM:SS  " (e.g., "00:14  Today's top story...")
-
-5. TRANSCRIPT: Plain text transcript of the full narration, no timestamps.
-
-6. RUNTIME STATS object with: total_words (number), total_sentences (number), total_paragraphs (number), wpm (number), avg_sentence_duration (number), avg_pause_duration (number), reading_level (string).
-
-You MUST populate sentence_timeline, paragraph_timeline, and pause_timeline with at least one entry each. Do NOT return empty arrays.`;
-
-    const vpResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: vpPrompt,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          transcript: { type: 'string' },
-          timestamped_transcript: { type: 'string' },
-          sentence_timeline: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                sentence_id: { type: 'number' },
-                sentence_text: { type: 'string' },
-                start_time: { type: 'number' },
-                end_time: { type: 'number' },
-                duration: { type: 'number' }
-              }
-            }
-          },
-          paragraph_timeline: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                paragraph_id: { type: 'number' },
-                start_time: { type: 'number' },
-                end_time: { type: 'number' },
-                duration: { type: 'number' }
-              }
-            }
-          },
-          pause_timeline: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                pause_start: { type: 'number' },
-                pause_end: { type: 'number' },
-                duration: { type: 'number' },
-                pause_type: { type: 'string' }
-              }
-            }
-          },
-          runtime_stats: {
-            type: 'object',
-            properties: {
-              total_words: { type: 'number' },
-              total_sentences: { type: 'number' },
-              total_paragraphs: { type: 'number' },
-              wpm: { type: 'number' },
-              avg_sentence_duration: { type: 'number' },
-              avg_pause_duration: { type: 'number' },
-              reading_level: { type: 'string' }
-            }
-          }
-        },
-        required: ['transcript', 'timestamped_transcript', 'sentence_timeline', 'paragraph_timeline', 'pause_timeline', 'runtime_stats']
-      }
+    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`
+      },
+      body: formData
     });
 
-    function safeParse(val, fallback) {
-      if (!val) return fallback;
-      if (typeof val === 'string') {
-        try { return JSON.parse(val); } catch { return fallback; }
-      }
-      return Array.isArray(val) || typeof val === 'object' ? val : fallback;
+    if (!whisperResponse.ok) {
+      const errText = await whisperResponse.text();
+      throw new Error(`Whisper transcription failed: ${errText}`);
     }
 
-    const sentenceTimeline = safeParse(vpResponse.sentence_timeline, []);
-    const paragraphTimeline = safeParse(vpResponse.paragraph_timeline, []);
-    const pauseTimeline = safeParse(vpResponse.pause_timeline, []);
-    const runtimeStats = safeParse(vpResponse.runtime_stats, {});
+    const whisperData = await whisperResponse.json();
+    const whisperWords = whisperData.words || [];
+    const actualDuration = whisperData.duration || (whisperWords.length > 0 ? whisperWords[whisperWords.length - 1].end : 0);
+    // ===== STEP 3: Build word timeline from real Whisper timestamps =====
+    const wordTimeline = whisperWords.map(w => ({
+      word: w.word,
+      start_time: +w.start.toFixed(2),
+      end_time: +w.end.toFixed(2),
+      confidence_score: 0.97
+    }));
 
-    // ===== STEP 3: Compute word timeline from sentence timeline =====
-    const wordTimeline = [];
-    if (Array.isArray(sentenceTimeline) && sentenceTimeline.length > 0) {
-      sentenceTimeline.forEach((sentence) => {
-        const words = (sentence.sentence_text || '').split(/\s+/).filter(Boolean);
-        const sStart = sentence.start_time || 0;
-        const sDur = sentence.duration || ((sentence.end_time || 0) - sStart) || 1;
-        const wordDur = sDur / Math.max(words.length, 1);
-        words.forEach((word, wIdx) => {
-          wordTimeline.push({
-            word: word,
-            start_time: +(sStart + wIdx * wordDur).toFixed(2),
-            end_time: +(sStart + (wIdx + 1) * wordDur).toFixed(2),
-            confidence_score: 0.97
-          });
+    // ===== STEP 4: Build sentence timeline from real word timestamps =====
+    const sentenceTimeline = [];
+    let currentSentence = [];
+    let sentenceId = 0;
+
+    for (const w of whisperWords) {
+      currentSentence.push(w);
+      if (/[.!?]$/.test(w.word.trim())) {
+        const start = currentSentence[0].start;
+        const end = currentSentence[currentSentence.length - 1].end;
+        sentenceTimeline.push({
+          sentence_id: sentenceId++,
+          sentence_text: currentSentence.map(x => x.word).join(' '),
+          start_time: +start.toFixed(2),
+          end_time: +end.toFixed(2),
+          duration: +(end - start).toFixed(2)
         });
+        currentSentence = [];
+      }
+    }
+    if (currentSentence.length > 0) {
+      const start = currentSentence[0].start;
+      const end = currentSentence[currentSentence.length - 1].end;
+      sentenceTimeline.push({
+        sentence_id: sentenceId++,
+        sentence_text: currentSentence.map(x => x.word).join(' '),
+        start_time: +start.toFixed(2),
+        end_time: +end.toFixed(2),
+        duration: +(end - start).toFixed(2)
       });
     }
 
-    // ===== STEP 4: Build voice metadata =====
+    // ===== STEP 5: Build pause timeline from real gaps between words =====
+    const pauseTimeline = [];
+    for (let i = 1; i < whisperWords.length; i++) {
+      const gap = whisperWords[i].start - whisperWords[i - 1].end;
+      if (gap > 0.1) {
+        let pauseType;
+        if (gap >= 0.8) pauseType = 'Dramatic Pause';
+        else if (gap >= 0.5) pauseType = 'Paragraph Pause';
+        else if (gap >= 0.3) pauseType = 'Sentence Pause';
+        else pauseType = 'Natural Breath Pause';
+        pauseTimeline.push({
+          pause_start: +whisperWords[i - 1].end.toFixed(2),
+          pause_end: +whisperWords[i].start.toFixed(2),
+          duration: +gap.toFixed(2),
+          pause_type: pauseType
+        });
+      }
+    }
+
+    // ===== STEP 6: Build paragraph timeline from sentence-level gaps =====
+    const paragraphTimeline = [];
+    if (sentenceTimeline.length > 0) {
+      let paraStart = sentenceTimeline[0].start_time;
+      let paraEnd = sentenceTimeline[0].end_time;
+      let paraId = 0;
+      for (let i = 1; i < sentenceTimeline.length; i++) {
+        const gap = sentenceTimeline[i].start_time - sentenceTimeline[i - 1].end_time;
+        if (gap >= 0.5) {
+          paragraphTimeline.push({
+            paragraph_id: paraId++,
+            start_time: paraStart,
+            end_time: paraEnd,
+            duration: +(paraEnd - paraStart).toFixed(2)
+          });
+          paraStart = sentenceTimeline[i].start_time;
+        }
+        paraEnd = sentenceTimeline[i].end_time;
+      }
+      paragraphTimeline.push({
+        paragraph_id: paraId++,
+        start_time: paraStart,
+        end_time: paraEnd,
+        duration: +(paraEnd - paraStart).toFixed(2)
+      });
+    }
+
+    // ===== STEP 7: Build timestamped transcript =====
+    const timestampedTranscript = sentenceTimeline.map(s => {
+      const mins = Math.floor(s.start_time / 60);
+      const secs = Math.floor(s.start_time % 60);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}  ${s.sentence_text}`;
+    }).join('\n');
+
+    // ===== STEP 8: Build voice metadata =====
     const voiceMetadata = {
       voice_id: voice || 'river',
       voice_name: VOICE_LABELS[voice] || 'River',
@@ -177,24 +172,25 @@ You MUST populate sentence_timeline, paragraph_timeline, and pause_timeline with
       emotion: 'neutral',
       pitch: 'default',
       speed: '1.0',
-      generation_engine: 'Base44 Core',
+      generation_engine: 'Base44 Core + OpenAI Whisper',
       generation_date: new Date().toISOString()
     };
 
-    // ===== STEP 5: Calculate runtime statistics =====
+    // ===== STEP 9: Calculate runtime statistics from real data =====
+    const wordCount = whisperWords.length;
     const finalStats = {
-      total_runtime: estimatedDuration,
+      total_runtime: +actualDuration.toFixed(2),
       total_words: wordCount,
       total_sentences: sentenceTimeline.length,
       total_paragraphs: paragraphTimeline.length,
-      wpm: Math.round(wordCount / Math.max(estimatedDuration / 60, 0.1)),
+      wpm: Math.round(wordCount / Math.max(actualDuration / 60, 0.1)),
       avg_sentence_duration: sentenceTimeline.length > 0
-        ? +(sentenceTimeline.reduce((s, x) => s + (x.duration || 0), 0) / sentenceTimeline.length).toFixed(2)
+        ? +(sentenceTimeline.reduce((s, x) => s + x.duration, 0) / sentenceTimeline.length).toFixed(2)
         : 0,
       avg_pause_duration: pauseTimeline.length > 0
-        ? +(pauseTimeline.reduce((s, x) => s + (x.duration || 0), 0) / pauseTimeline.length).toFixed(2)
+        ? +(pauseTimeline.reduce((s, x) => s + x.duration, 0) / pauseTimeline.length).toFixed(2)
         : 0,
-      reading_level: runtimeStats.reading_level || 'N/A'
+      reading_level: 'N/A'
     };
 
     // ===== STEP 6: Create or update VoicePackage entity =====
@@ -207,15 +203,15 @@ You MUST populate sentence_timeline, paragraph_timeline, and pause_timeline with
     const vpData = {
       voice_audio_url: audioUrl,
       teleprompter_script: script_text,
-      transcript: vpResponse.transcript || script_text,
-      timestamped_transcript: vpResponse.timestamped_transcript || '',
+      transcript: whisperData.text || script_text,
+      timestamped_transcript: timestampedTranscript,
       sentence_timeline: JSON.stringify(sentenceTimeline),
       word_timeline: JSON.stringify(wordTimeline),
       paragraph_timeline: JSON.stringify(paragraphTimeline),
       pause_timeline: JSON.stringify(pauseTimeline),
       voice_metadata: JSON.stringify(voiceMetadata),
       runtime_stats: JSON.stringify(finalStats),
-      total_duration_seconds: estimatedDuration,
+      total_duration_seconds: +actualDuration.toFixed(2),
       status: 'generated'
     };
 
