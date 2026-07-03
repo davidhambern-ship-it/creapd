@@ -7,14 +7,9 @@ import {
   StickyNote, BookMarked, MessageSquareCode, Cpu, Download, RefreshCw,
   Music, Mic2, ChefHat, BookOpen, Lightbulb, ListOrdered
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import CategoryBadge from '@/components/shared/CategoryBadge';
-import OpportunityScore from '@/components/shared/OpportunityScore';
-import AssetEditor from '@/components/production/AssetEditor';
-import MediaGenerator from '@/components/production/MediaGenerator';
-import TranslationPanel from '@/components/production/TranslationPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
+import DesktopPackageWorkspace from '@/components/production/DesktopPackageWorkspace';
+import MobilePackageWorkspace from '@/components/production/mobile/MobilePackageWorkspace';
 import { logActivity } from '@/lib/activityUtils';
 
 const ALL_ASSET_DEFS = {
@@ -38,12 +33,8 @@ const ALL_ASSET_DEFS = {
   reflection_notes: { label: 'Reflection Notes', icon: Lightbulb },
 };
 
-const TONES = ['professional', 'conversational', 'energetic', 'serious', 'investigative', 'educational', 'inspirational', 'neutral', 'urgent', 'humorous'];
-const READING_STYLES = ['broadcast_news', 'podcast', 'livestream', 'interview', 'documentary', 'educational_presentation', 'corporate_communication', 'storytelling'];
-const AUDIENCES = ['General Public', 'Local Community', 'National Audience', 'Business Professionals', 'Students', 'Families', 'Church Congregations', 'Sports Fans', 'Industry Professionals'];
-const RUNTIMES = ['15 Seconds', '30 Seconds', '45 Seconds', '1 Minute', '2 Minutes', '5 Minutes', 'Custom'];
-
-export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPackageApproved }) {
+export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPackageApproved, onBack }) {
+  const isMobile = useIsMobile();
   const [config, setConfig] = useState({
     tone: pkg?.tone || 'professional',
     reading_style: pkg?.reading_style || 'broadcast_news',
@@ -63,6 +54,11 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
   const [contentDomains, setContentDomains] = useState([]);
   const [selectedDomain, setSelectedDomain] = useState('news');
   const [activeDomainConfig, setActiveDomainConfig] = useState(null);
+
+  // Mobile stage-specific loading states
+  const [generatingVoice, setGeneratingVoice] = useState(false);
+  const [generatingMedia, setGeneratingMedia] = useState(false);
+  const [generatingPresentation, setGeneratingPresentation] = useState(false);
 
   useEffect(() => {
     if (pkg) {
@@ -107,7 +103,7 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
         const types = JSON.parse(activeDomainConfig.asset_types);
         if (types.includes('show_script')) return 'show_script';
         if (types.includes('teleprompter_script')) return 'teleprompter_script';
-      } catch {}
+      } catch { /* */ }
     }
     return 'teleprompter_script';
   }, [activeDomainConfig]);
@@ -120,7 +116,6 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
       content_domain: selectedDomain,
       preferred_text_model: preferredTextModel,
     };
-    // PRD 9.12-9.13: Pass custom prompt or prompt template if set
     if (customPrompt.trim()) {
       params.custom_prompt = customPrompt;
     } else if (selectedTemplateId) {
@@ -134,7 +129,6 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
     setGeneratingAll(true);
     setMediaStep(null);
     try {
-      // ===== STEP 1: Generate text assets (scripts, prompts, talking points) =====
       const updated = await callGenerate(assetDefs.map(a => a.key));
       onPackageUpdate(updated);
       logActivity('generate', {
@@ -144,8 +138,6 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
         details: `Generated full package (${updated?.tone || 'professional'}, ${updated?.reading_style || 'broadcast_news'})`,
       });
 
-      // ===== STEP 2: Generate voiceover audio (provides timing via Voice Package) =====
-      // This must run first because the VP timing data is the master clock for all downstream media.
       setMediaStep('voiceover');
       try {
         const vpResult = await base44.functions.invoke('generateVoicePackage', {
@@ -157,12 +149,11 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
         });
         const audioUrl = vpResult?.data?.audio_url;
         if (audioUrl) {
-          const withAudio = await base44.entities.ProductionPackage.update(updated.id, { generated_audio_url: audioUrl });
+          const withAudio = await base44.entities.ProductionPackage.update(updated.id, { generated_audio_url: audioUrl, voice_package_id: vpResult?.data?.voice_package_id || updated.voice_package_id });
           onPackageUpdate(withAudio);
         }
       } catch (err) { console.error('Voiceover generation failed:', err); }
 
-      // ===== STEP 3: Generate thumbnail image =====
       setMediaStep('thumbnail');
       try {
         const thumbResult = await base44.integrations.Core.GenerateImage({ prompt: updated.thumbnail_prompt });
@@ -173,7 +164,6 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
         }
       } catch (err) { console.error('Thumbnail generation failed:', err); }
 
-      // ===== STEP 4: Generate story image (visual reference for video) =====
       setMediaStep('story_image');
       try {
         const imgResult = await base44.integrations.Core.GenerateImage({ prompt: updated.image_prompt });
@@ -184,8 +174,6 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
         }
       } catch (err) { console.error('Story image generation failed:', err); }
 
-      // ===== STEP 5: Generate promo video (uses image prompts + audio timing) =====
-      // The video prompt incorporates the visual scene established by the generated images.
       setMediaStep('video');
       try {
         const vidResult = await base44.integrations.Core.GenerateVideo({ prompt: updated.image_prompt, duration: 6, aspect_ratio: '16:9' });
@@ -220,6 +208,83 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
       console.error(err);
     } finally {
       setGenerating(null);
+    }
+  };
+
+  // Mobile stage handler: regenerate a group of assets in one call
+  const handleRegenerateAssets = async (assetKeys) => {
+    setGenerating('group');
+    try {
+      const updated = await callGenerate(assetKeys);
+      onPackageUpdate(updated);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  // Mobile stage handler: generate only the voice package
+  const handleGenerateVoice = async () => {
+    if (!pkg) return;
+    setGeneratingVoice(true);
+    try {
+      const vpResult = await base44.functions.invoke('generateVoicePackage', {
+        script_text: pkg[scriptField],
+        voice: 'river',
+        language_code: 'en',
+        source_type: 'production_package',
+        source_id: pkg.id,
+      });
+      const audioUrl = vpResult?.data?.audio_url;
+      if (audioUrl) {
+        const withAudio = await base44.entities.ProductionPackage.update(pkg.id, { generated_audio_url: audioUrl, voice_package_id: vpResult?.data?.voice_package_id || pkg.voice_package_id });
+        onPackageUpdate(withAudio);
+      }
+    } catch (err) {
+      console.error('Voice generation failed:', err);
+    } finally {
+      setGeneratingVoice(false);
+    }
+  };
+
+  // Mobile stage handler: generate only media (thumbnail, image, video)
+  const handleGenerateMedia = async () => {
+    if (!pkg) return;
+    setGeneratingMedia(true);
+    try {
+      try {
+        const thumbResult = await base44.integrations.Core.GenerateImage({ prompt: pkg.thumbnail_prompt });
+        const thumbUrl = thumbResult?.url || thumbResult?.data?.url;
+        if (thumbUrl) { const u = await base44.entities.ProductionPackage.update(pkg.id, { generated_thumbnail_url: thumbUrl }); onPackageUpdate(u); }
+      } catch (err) { console.error('Thumbnail generation failed:', err); }
+      try {
+        const imgResult = await base44.integrations.Core.GenerateImage({ prompt: pkg.image_prompt });
+        const imgUrl = imgResult?.url || imgResult?.data?.url;
+        if (imgUrl) { const u = await base44.entities.ProductionPackage.update(pkg.id, { generated_image_url: imgUrl }); onPackageUpdate(u); }
+      } catch (err) { console.error('Story image generation failed:', err); }
+      try {
+        const vidResult = await base44.integrations.Core.GenerateVideo({ prompt: pkg.image_prompt, duration: 6, aspect_ratio: '16:9' });
+        const vidUrl = vidResult?.url || vidResult?.data?.url;
+        if (vidUrl) { const u = await base44.entities.ProductionPackage.update(pkg.id, { generated_video_url: vidUrl }); onPackageUpdate(u); }
+      } catch (err) { console.error('Video generation failed:', err); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGeneratingMedia(false);
+    }
+  };
+
+  // Mobile stage handler: generate presentation via APD
+  const handleGeneratePresentation = async () => {
+    if (!pkg) return;
+    setGeneratingPresentation(true);
+    try {
+      await base44.functions.invoke('generateNewsPresentation', { package_ids: [pkg.id] });
+    } catch (err) {
+      console.error('Presentation generation failed:', err);
+    } finally {
+      setGeneratingPresentation(false);
     }
   };
 
@@ -277,299 +342,24 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
     });
   };
 
-  return (
-    <div className="flex flex-col">
-      {/* Header */}
-      <div className="glass-panel p-4 mb-3 flex-shrink-0">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-bold text-white leading-snug mb-2">{article.title}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              {article.category && <CategoryBadge category={article.category} />}
-              <OpportunityScore score={article.opportunity_score} />
-              {article.source_name && <span className="text-[10px] text-muted-foreground">{article.source_name}</span>}
-              {pkg?.estimated_runtime && (
-                <span className="text-[10px] text-berna-emerald flex items-center gap-0.5">
-                  <Clock className="w-3 h-3" />{pkg.estimated_runtime}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {pkg && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-berna-purple hover:text-berna-purple hover:bg-berna-purple/10 text-xs h-7"
-                onClick={() => handleQuickExport()}
-                disabled={!pkg.teleprompter_script}
-                title="Quick export as PDF"
-              >
-                <Download className="w-3 h-3 mr-1" />Export
-              </Button>
-            )}
-            {article.url && (
-              <a href={article.url} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-white text-xs h-7">
-                  <ExternalLink className="w-3 h-3 mr-1" />Source
-                </Button>
-              </a>
-            )}
-          </div>
-        </div>
+  const sharedProps = {
+    article, pkg, onPackageUpdate,
+    config, setConfig,
+    generating, generatingAll, mediaStep,
+    edits, handleAssetChange, handleSaveAll, saving, hasEdits,
+    handleGenerateAll, handleRegenerate, handleRegenerateAssets,
+    handleApprove, handleQuickExport,
+    handleGenerateVoice, generatingVoice,
+    handleGenerateMedia, generatingMedia,
+    handleGeneratePresentation, generatingPresentation,
+    selectedDomain, setSelectedDomain, contentDomains,
+    promptTemplates, selectedTemplateId, setSelectedTemplateId,
+    customPrompt, setCustomPrompt, showPromptEditor, setShowPromptEditor,
+    preferredTextModel, activeDomainConfig, assetDefs, scriptField,
+  };
 
-        {/* Customization controls */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
-          <Select value={selectedDomain} onValueChange={setSelectedDomain}>
-            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Type" /></SelectTrigger>
-            <SelectContent className="bg-card border-white/10">{contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key} className="text-xs">{d.display_name}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={config.tone} onValueChange={v => setConfig(p => ({ ...p, tone: v }))}>
-            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Tone" /></SelectTrigger>
-            <SelectContent className="bg-card border-white/10">{TONES.map(t => <SelectItem key={t} value={t} className="text-xs capitalize">{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={config.reading_style} onValueChange={v => setConfig(p => ({ ...p, reading_style: v }))}>
-            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Style" /></SelectTrigger>
-            <SelectContent className="bg-card border-white/10">{READING_STYLES.map(s => <SelectItem key={s} value={s} className="text-xs capitalize">{s.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={config.audience} onValueChange={v => setConfig(p => ({ ...p, audience: v }))}>
-            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Audience" /></SelectTrigger>
-            <SelectContent className="bg-card border-white/10">{AUDIENCES.map(a => <SelectItem key={a} value={a} className="text-xs">{a}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={config.target_runtime} onValueChange={v => setConfig(p => ({ ...p, target_runtime: v }))}>
-            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8"><SelectValue placeholder="Runtime" /></SelectTrigger>
-            <SelectContent className="bg-card border-white/10">{RUNTIMES.map(r => <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-
-        {/* PRD 9.12-9.13: Prompt Template & Custom Prompt */}
-        <div className="mt-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] space-y-2">
-          <div className="flex items-center gap-2">
-            <MessageSquareCode className="w-3.5 h-3.5 text-berna-purple" />
-            <span className="text-[10px] font-semibold text-white">Prompt Template</span>
-            <span className="text-[9px] text-muted-foreground">— edit or override the AI prompt before generation</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={selectedTemplateId || 'none'} onValueChange={v => { setSelectedTemplateId(v === 'none' ? '' : v); setCustomPrompt(''); }}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs h-8 flex-1"><SelectValue placeholder="Default system prompt" /></SelectTrigger>
-              <SelectContent className="bg-card border-white/10">
-                <SelectItem value="none" className="text-xs">Default system prompt</SelectItem>
-                {promptTemplates.map(t => <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button size="sm" variant="outline" className="h-8 text-[10px] border-white/10 text-white hover:bg-white/[0.04]" onClick={() => setShowPromptEditor(!showPromptEditor)}>
-              {showPromptEditor ? 'Hide' : 'Custom'}
-            </Button>
-          </div>
-          {showPromptEditor && (
-            <div className="space-y-1.5">
-              <p className="text-[9px] text-muted-foreground">Write a custom prompt. Use variables: {'{title}'}, {'{summary}'}, {'{tone}'}, {'{audience}'}</p>
-              <Textarea
-                value={customPrompt}
-                onChange={e => setCustomPrompt(e.target.value)}
-                placeholder="Leave empty to use the default or selected template prompt..."
-                className="bg-white/[0.02] border-white/[0.06] text-white text-[10px] min-h-20 font-mono resize-y"
-              />
-              {customPrompt && <p className="text-[9px] text-berna-emerald">Custom prompt active — overrides template and default</p>}
-            </div>
-          )}
-          {/* PRD 9.8: AI Provider display */}
-          <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
-            <Cpu className="w-3 h-3" />
-            <span>Text model: <span className="text-white">{preferredTextModel}</span></span>
-          </div>
-        </div>
-
-        {/* PRD 9.21: AI Transparency badges */}
-        {pkg?.generated_at && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
-            <span className="text-[9px] text-muted-foreground">AI:</span>
-            <span className="text-[9px] text-berna-purple bg-berna-purple/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-              <Cpu className="w-2.5 h-2.5" />{pkg.generation_provider || 'automatic'}
-            </span>
-            <span className="text-[9px] text-muted-foreground bg-white/[0.04] px-1.5 py-0.5 rounded">
-              {new Date(pkg.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </span>
-            {pkg.is_regenerated && <span className="text-[9px] text-berna-orange bg-berna-orange/10 px-1.5 py-0.5 rounded">Regenerated ×{pkg.generation_count || 1}</span>}
-            {pkg.is_edited && <span className="text-[9px] text-berna-emerald bg-berna-emerald/10 px-1.5 py-0.5 rounded">Edited</span>}
-            {pkg.translation_language && <span className="text-[9px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">Translated</span>}
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="flex flex-wrap items-center gap-2 mt-3">
-          <Button
-            size="sm"
-            className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
-            onClick={handleGenerateAll}
-            disabled={generatingAll || generating !== null}
-          >
-            {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-            {generatingAll
-              ? (mediaStep === 'voiceover' ? 'Generating Voiceover...'
-                : mediaStep === 'thumbnail' ? 'Generating Thumbnail...'
-                : mediaStep === 'story_image' ? 'Generating Story Image...'
-                : mediaStep === 'video' ? 'Generating Promo Video...'
-                : 'Generating Package...')
-              : pkg ? 'Regenerate Full Package' : 'Generate Full Package'}
-          </Button>
-          {hasEdits && (
-            <Button size="sm" variant="outline" className="border-white/10 text-white text-xs h-8 hover:bg-white/[0.04]" onClick={handleSaveAll} disabled={saving}>
-              <Save className="w-3 h-3 mr-1" />{saving ? 'Saving...' : `Save Changes (${Object.keys(edits).length})`}
-            </Button>
-          )}
-          {pkg && pkg.status !== 'approved' && (
-            <Button size="sm" variant="outline" className="border-berna-emerald/20 text-berna-emerald text-xs h-8 hover:bg-berna-emerald/10" onClick={handleApprove}>
-              <CheckCircle className="w-3 h-3 mr-1" />Approve Package
-            </Button>
-          )}
-          {pkg?.status === 'approved' && (
-            <span className="text-[10px] text-berna-emerald flex items-center gap-0.5"><CheckCircle className="w-3 h-3" />Approved</span>
-          )}
-        </div>
-      </div>
-
-      {/* Assets */}
-      <div className="space-y-3 pr-1">
-        {assetDefs.map(def => (
-          <AssetEditor
-            key={def.key}
-            assetKey={def.key}
-            label={def.label}
-            icon={def.icon}
-            value={pkg?.[def.key] || ''}
-            onChange={handleAssetChange}
-            onRegenerate={handleRegenerate}
-            generating={generating}
-          />
-        ))}
-
-        {/* Producer Notes — manual, no AI generation (PRD 7.4) */}
-        <AssetEditor
-          assetKey="producer_notes"
-          label="Producer Notes"
-          icon={StickyNote}
-          value={pkg?.producer_notes || ''}
-          onChange={handleAssetChange}
-          onRegenerate={handleRegenerate}
-          generating={generating}
-          manual
-        />
-
-        {/* Source References (PRD 7.18) */}
-        <div className="glass-panel overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
-            <BookMarked className="w-3.5 h-3.5 text-berna-purple" />
-            <span className="text-xs font-semibold text-white">Source References</span>
-          </div>
-          <div className="p-3 space-y-1.5">
-            <div className="flex gap-2 text-xs">
-              <span className="text-muted-foreground w-28 flex-shrink-0">Original Source</span>
-              <span className="text-white">{article.source_name || '—'}</span>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <span className="text-muted-foreground w-28 flex-shrink-0">Publication</span>
-              <span className="text-white">{article.publication || '—'}</span>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <span className="text-muted-foreground w-28 flex-shrink-0">Publication Date</span>
-              <span className="text-white">{article.published_at ? new Date(article.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <span className="text-muted-foreground w-28 flex-shrink-0">Article Link</span>
-              {article.url ? (
-                <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-berna-purple hover:underline truncate flex items-center gap-1">
-                  <ExternalLink className="w-3 h-3 flex-shrink-0" />{article.url}
-                </a>
-              ) : <span className="text-white">—</span>}
-            </div>
-            {article.additional_sources && (
-              <div className="flex gap-2 text-xs">
-                <span className="text-muted-foreground w-28 flex-shrink-0">Additional Sources</span>
-                <span className="text-white whitespace-pre-wrap">{article.additional_sources}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* AI Media Generation */}
-        {pkg && (
-          <div className="pt-2">
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <Sparkles className="w-3.5 h-3.5 text-berna-orange" />
-              <span className="text-xs font-bold text-white uppercase tracking-wider">AI Media Generation</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MediaGenerator
-                pkg={pkg}
-                mediaType="image"
-                promptField="thumbnail_prompt"
-                urlField="generated_thumbnail_url"
-                label="Thumbnail Image"
-                icon={ImageIcon}
-                onMediaUpdate={onPackageUpdate}
-              />
-              <MediaGenerator
-                pkg={pkg}
-                mediaType="image"
-                promptField="image_prompt"
-                urlField="generated_image_url"
-                label="Story Image"
-                icon={Image}
-                onMediaUpdate={onPackageUpdate}
-              />
-              <MediaGenerator
-                pkg={pkg}
-                mediaType="audio"
-                promptField={scriptField}
-                urlField="generated_audio_url"
-                label="Voiceover Audio"
-                icon={Volume2}
-                onMediaUpdate={onPackageUpdate}
-              />
-              <MediaGenerator
-                pkg={pkg}
-                mediaType="video"
-                promptField="image_prompt"
-                urlField="generated_video_url"
-                label="Promo Video"
-                icon={Film}
-                onMediaUpdate={onPackageUpdate}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Approve + Regenerate — right above translation */}
-        {pkg && (
-          <div className="glass-panel p-3 flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground mr-auto">Package ready — approve to send to Production</span>
-            <Button
-              size="sm"
-              className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
-              onClick={handleGenerateAll}
-              disabled={generatingAll || generating !== null}
-            >
-              {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-              {generatingAll ? 'Regenerating...' : 'Regenerate'}
-            </Button>
-            {pkg.status !== 'approved' ? (
-              <Button size="sm" variant="outline" className="border-berna-emerald/20 text-berna-emerald text-xs h-8 hover:bg-berna-emerald/10" onClick={handleApprove}>
-                <CheckCircle className="w-3 h-3 mr-1" />Approve Package
-              </Button>
-            ) : (
-              <span className="text-[10px] text-berna-emerald flex items-center gap-0.5"><CheckCircle className="w-3 h-3" />Approved</span>
-            )}
-          </div>
-        )}
-
-        {/* PRD 9.19: Translation */}
-        {pkg && (
-          <div className="pt-2">
-            <TranslationPanel pkg={pkg} onPackageUpdate={onPackageUpdate} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  if (isMobile) {
+    return <MobilePackageWorkspace {...sharedProps} onBack={onBack} />;
+  }
+  return <DesktopPackageWorkspace {...sharedProps} />;
 }

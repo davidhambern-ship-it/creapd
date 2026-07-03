@@ -543,16 +543,8 @@ export default function StoryManager() {
         {/* Package Detail Panel — Text Generation + AI Media Generation + Approve/Regenerate + Translation */}
         {(!isMobile || mobileShowDetail) && (
         <div className="flex-1 min-w-0">
-          {isMobile && selectedStory && (
-            <button
-              onClick={() => setMobileShowDetail(false)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-white mb-2 transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Stories
-            </button>
-          )}
           {selectedStory ?
-          <PackageWorkspace article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} onPackageApproved={handlePackageApproved} /> :
+          <PackageWorkspace article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} onPackageApproved={handlePackageApproved} onBack={() => setMobileShowDetail(false)} /> :
 
           <div className="glass-panel p-12 text-center h-full flex flex-col items-center justify-center">
               <Package className="w-12 h-12 text-muted-foreground mb-3" />
