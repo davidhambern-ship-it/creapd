@@ -226,6 +226,33 @@ export default function StoryManager() {
     });
   };
 
+  const handlePackageApproved = async (article, approvedPkg) => {
+    try {
+      await base44.entities.Article.update(article.id, {
+        status: 'archived',
+        archived_date: new Date().toISOString(),
+      });
+    } catch (e) { console.error('Failed to archive article:', e); }
+    // Remove from stories list and clear selection
+    setStories(prev => prev.filter(s => s.id !== article.id));
+    setPkgMap(prev => {
+      const next = { ...prev };
+      delete next[article.id];
+      return next;
+    });
+    setSelectedStoryId(prev => {
+      if (prev !== article.id) return prev;
+      const remaining = stories.filter(s => s.id !== article.id);
+      return remaining.length > 0 ? remaining[0].id : null;
+    });
+    logActivity('approve', {
+      entity_type: 'ProductionPackage',
+      entity_id: approvedPkg?.id || '',
+      entity_name: article.title,
+      details: 'Package approved — sent to Production and archived',
+    });
+  };
+
   // Auto-save (debounced)
   useEffect(() => {
     if (!production?.id || skipSave.current) return;
@@ -502,7 +529,7 @@ export default function StoryManager() {
         {/* Package Detail Panel — Text Generation + AI Media Generation + Approve/Regenerate + Translation */}
         <div className="flex-1 min-w-0">
           {selectedStory ?
-          <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} /> :
+          <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} onPackageApproved={handlePackageApproved} /> :
 
           <div className="glass-panel p-12 text-center h-full flex flex-col items-center justify-center">
               <Package className="w-12 h-12 text-muted-foreground mb-3" />
