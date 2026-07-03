@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
         image_prompt: pkg.image_prompt || '',
         visual_suggestions: pkg.visual_suggestions || '',
         broll_suggestions: pkg.broll_suggestions || '',
+        fact_check_notes: pkg.fact_check_notes || '',
         tone: pkg.tone || 'professional',
         generated_image_url: pkg.generated_image_url || '',
         generated_thumbnail_url: pkg.generated_thumbnail_url || '',
@@ -114,6 +115,7 @@ CRITICAL TIMING RULES:
 - Use the sentence_timeline (when available) to sync on-screen text with the spoken words — show text overlays as the narrator reaches that part of the script.
 - Lower thirds and headlines should appear shortly after the voiceover starts and stay for most of the slide.
 - Image elements should timed to appear when the narrator discusses the relevant content.
+- CRITICAL — FACT CHECK: Each package includes fact_check_notes. You MUST use these notes to verify that every on-screen text element (headlines, lower thirds, text overlays, quote cards) is factually accurate. If the fact check notes correct or clarify any claim from the script, the on-screen text must reflect the corrected/verified version — never show an unverified claim. If a statistic, date, name, or figure appears in the script, cross-reference it against the fact_check_notes before displaying it on screen. If the fact check notes flag something as uncertain, either omit it from on-screen text or add a "source: pending verification" qualifier.
 
 For each story package, create one presentation scene. For each scene, provide:
 1. package_id: The package_id from the input
