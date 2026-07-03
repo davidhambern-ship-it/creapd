@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
@@ -64,21 +63,6 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate, onPa
   const [contentDomains, setContentDomains] = useState([]);
   const [selectedDomain, setSelectedDomain] = useState('news');
   const [activeDomainConfig, setActiveDomainConfig] = useState(null);
-  const [activeTab, setActiveTab] = useState('content');
-  const [touchStart, setTouchStart] = useState(null);
-
-  const TAB_KEYS = ['content', 'media', 'details'];
-  const handleTouchStart = (e) => setTouchStart(e.touches[0].clientX);
-  const handleTouchEnd = (e) => {
-    if (touchStart === null) return;
-    const diff = touchStart - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) {
-      const idx = TAB_KEYS.indexOf(activeTab);
-      if (diff > 0 && idx < TAB_KEYS.length - 1) setActiveTab(TAB_KEYS[idx + 1]);
-      else if (diff < 0 && idx > 0) setActiveTab(TAB_KEYS[idx - 1]);
-    }
-    setTouchStart(null);
-  };
 
   useEffect(() => {
     if (pkg) {
@@ -445,174 +429,147 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate, onPa
         </div>
       </div>
 
-      {/* Tabbed Content — swipe between sections on mobile */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full bg-white/[0.03] border border-white/[0.06] h-9 mb-3 sticky top-0 z-10">
-          <TabsTrigger value="content" className="text-xs data-[state=active]:bg-berna-purple/20 data-[state=active]:text-berna-purple">
-            <FileText className="w-3 h-3 mr-1" />Script
-          </TabsTrigger>
-          <TabsTrigger value="media" className="text-xs data-[state=active]:bg-berna-purple/20 data-[state=active]:text-berna-purple">
-            <Sparkles className="w-3 h-3 mr-1" />Media
-          </TabsTrigger>
-          <TabsTrigger value="details" className="text-xs data-[state=active]:bg-berna-purple/20 data-[state=active]:text-berna-purple">
-            <BookMarked className="w-3 h-3 mr-1" />Details
-          </TabsTrigger>
-        </TabsList>
-
-        <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        {/* Tab 1: Script & Content Assets */}
-        <TabsContent value="content" className="space-y-3 pr-1 mt-0 focus-visible:outline-none">
-          {assetDefs.map(def => (
-            <AssetEditor
-              key={def.key}
-              assetKey={def.key}
-              label={def.label}
-              icon={def.icon}
-              value={pkg?.[def.key] || ''}
-              onChange={handleAssetChange}
-              onRegenerate={handleRegenerate}
-              generating={generating}
-            />
-          ))}
-
-          {/* Producer Notes — manual, no AI generation (PRD 7.4) */}
+      {/* Assets */}
+      <div className="space-y-3 pr-1">
+        {assetDefs.map(def => (
           <AssetEditor
-            assetKey="producer_notes"
-            label="Producer Notes"
-            icon={StickyNote}
-            value={pkg?.producer_notes || ''}
+            key={def.key}
+            assetKey={def.key}
+            label={def.label}
+            icon={def.icon}
+            value={pkg?.[def.key] || ''}
             onChange={handleAssetChange}
             onRegenerate={handleRegenerate}
             generating={generating}
-            manual
           />
-        </TabsContent>
+        ))}
 
-        {/* Tab 2: AI Media Generation + Approve */}
-        <TabsContent value="media" className="space-y-3 pr-1 mt-0 focus-visible:outline-none">
-          {pkg ? (
-            <>
-              <div className="pt-2">
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <Sparkles className="w-3.5 h-3.5 text-berna-orange" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">AI Media Generation</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <MediaGenerator
-                    pkg={pkg}
-                    mediaType="image"
-                    promptField="thumbnail_prompt"
-                    urlField="generated_thumbnail_url"
-                    label="Thumbnail Image"
-                    icon={ImageIcon}
-                    onMediaUpdate={onPackageUpdate}
-                  />
-                  <MediaGenerator
-                    pkg={pkg}
-                    mediaType="image"
-                    promptField="image_prompt"
-                    urlField="generated_image_url"
-                    label="Story Image"
-                    icon={Image}
-                    onMediaUpdate={onPackageUpdate}
-                  />
-                  <MediaGenerator
-                    pkg={pkg}
-                    mediaType="audio"
-                    promptField={scriptField}
-                    urlField="generated_audio_url"
-                    label="Voiceover Audio"
-                    icon={Volume2}
-                    onMediaUpdate={onPackageUpdate}
-                  />
-                  <MediaGenerator
-                    pkg={pkg}
-                    mediaType="video"
-                    promptField="image_prompt"
-                    urlField="generated_video_url"
-                    label="Promo Video"
-                    icon={Film}
-                    onMediaUpdate={onPackageUpdate}
-                  />
-                </div>
-              </div>
+        {/* Producer Notes — manual, no AI generation (PRD 7.4) */}
+        <AssetEditor
+          assetKey="producer_notes"
+          label="Producer Notes"
+          icon={StickyNote}
+          value={pkg?.producer_notes || ''}
+          onChange={handleAssetChange}
+          onRegenerate={handleRegenerate}
+          generating={generating}
+          manual
+        />
 
-              {/* Approve + Regenerate */}
-              <div className="glass-panel p-3 flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground mr-auto">Package ready — approve to send to Production</span>
-                <Button
-                  size="sm"
-                  className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
-                  onClick={handleGenerateAll}
-                  disabled={generatingAll || generating !== null}
-                >
-                  {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                  {generatingAll ? 'Regenerating...' : 'Regenerate'}
-                </Button>
-                {pkg.status !== 'approved' ? (
-                  <Button size="sm" variant="outline" className="border-berna-emerald/20 text-berna-emerald text-xs h-8 hover:bg-berna-emerald/10" onClick={handleApprove}>
-                    <CheckCircle className="w-3 h-3 mr-1" />Approve Package
-                  </Button>
-                ) : (
-                  <span className="text-[10px] text-berna-emerald flex items-center gap-0.5"><CheckCircle className="w-3 h-3" />Approved</span>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="glass-panel p-8 text-center">
-              <Sparkles className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Generate a package first to access media tools.</p>
+        {/* Source References (PRD 7.18) */}
+        <div className="glass-panel overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
+            <BookMarked className="w-3.5 h-3.5 text-berna-purple" />
+            <span className="text-xs font-semibold text-white">Source References</span>
+          </div>
+          <div className="p-3 space-y-1.5">
+            <div className="flex gap-2 text-xs">
+              <span className="text-muted-foreground w-28 flex-shrink-0">Original Source</span>
+              <span className="text-white">{article.source_name || '—'}</span>
             </div>
-          )}
-        </TabsContent>
-
-        {/* Tab 3: Source References + Translation */}
-        <TabsContent value="details" className="space-y-3 pr-1 mt-0 focus-visible:outline-none">
-          {/* Source References (PRD 7.18) */}
-          <div className="glass-panel overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
-              <BookMarked className="w-3.5 h-3.5 text-berna-purple" />
-              <span className="text-xs font-semibold text-white">Source References</span>
+            <div className="flex gap-2 text-xs">
+              <span className="text-muted-foreground w-28 flex-shrink-0">Publication</span>
+              <span className="text-white">{article.publication || '—'}</span>
             </div>
-            <div className="p-3 space-y-1.5">
+            <div className="flex gap-2 text-xs">
+              <span className="text-muted-foreground w-28 flex-shrink-0">Publication Date</span>
+              <span className="text-white">{article.published_at ? new Date(article.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span>
+            </div>
+            <div className="flex gap-2 text-xs">
+              <span className="text-muted-foreground w-28 flex-shrink-0">Article Link</span>
+              {article.url ? (
+                <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-berna-purple hover:underline truncate flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3 flex-shrink-0" />{article.url}
+                </a>
+              ) : <span className="text-white">—</span>}
+            </div>
+            {article.additional_sources && (
               <div className="flex gap-2 text-xs">
-                <span className="text-muted-foreground w-28 flex-shrink-0">Original Source</span>
-                <span className="text-white">{article.source_name || '—'}</span>
+                <span className="text-muted-foreground w-28 flex-shrink-0">Additional Sources</span>
+                <span className="text-white whitespace-pre-wrap">{article.additional_sources}</span>
               </div>
-              <div className="flex gap-2 text-xs">
-                <span className="text-muted-foreground w-28 flex-shrink-0">Publication</span>
-                <span className="text-white">{article.publication || '—'}</span>
-              </div>
-              <div className="flex gap-2 text-xs">
-                <span className="text-muted-foreground w-28 flex-shrink-0">Publication Date</span>
-                <span className="text-white">{article.published_at ? new Date(article.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</span>
-              </div>
-              <div className="flex gap-2 text-xs">
-                <span className="text-muted-foreground w-28 flex-shrink-0">Article Link</span>
-                {article.url ? (
-                  <a href={article.url} target="_blank" rel="noopener noreferrer" className="text-berna-purple hover:underline truncate flex items-center gap-1">
-                    <ExternalLink className="w-3 h-3 flex-shrink-0" />{article.url}
-                  </a>
-                ) : <span className="text-white">—</span>}
-              </div>
-              {article.additional_sources && (
-                <div className="flex gap-2 text-xs">
-                  <span className="text-muted-foreground w-28 flex-shrink-0">Additional Sources</span>
-                  <span className="text-white whitespace-pre-wrap">{article.additional_sources}</span>
-                </div>
-              )}
+            )}
+          </div>
+        </div>
+
+        {/* AI Media Generation */}
+        {pkg && (
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <Sparkles className="w-3.5 h-3.5 text-berna-orange" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">AI Media Generation</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="image"
+                promptField="thumbnail_prompt"
+                urlField="generated_thumbnail_url"
+                label="Thumbnail Image"
+                icon={ImageIcon}
+                onMediaUpdate={onPackageUpdate}
+              />
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="image"
+                promptField="image_prompt"
+                urlField="generated_image_url"
+                label="Story Image"
+                icon={Image}
+                onMediaUpdate={onPackageUpdate}
+              />
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="audio"
+                promptField={scriptField}
+                urlField="generated_audio_url"
+                label="Voiceover Audio"
+                icon={Volume2}
+                onMediaUpdate={onPackageUpdate}
+              />
+              <MediaGenerator
+                pkg={pkg}
+                mediaType="video"
+                promptField="image_prompt"
+                urlField="generated_video_url"
+                label="Promo Video"
+                icon={Film}
+                onMediaUpdate={onPackageUpdate}
+              />
             </div>
           </div>
+        )}
 
-          {/* PRD 9.19: Translation */}
-          {pkg && (
-            <div className="pt-2">
-              <TranslationPanel pkg={pkg} onPackageUpdate={onPackageUpdate} />
-            </div>
-          )}
-        </TabsContent>
-        </div>
-      </Tabs>
+        {/* Approve + Regenerate — right above translation */}
+        {pkg && (
+          <div className="glass-panel p-3 flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground mr-auto">Package ready — approve to send to Production</span>
+            <Button
+              size="sm"
+              className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
+              onClick={handleGenerateAll}
+              disabled={generatingAll || generating !== null}
+            >
+              {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+              {generatingAll ? 'Regenerating...' : 'Regenerate'}
+            </Button>
+            {pkg.status !== 'approved' ? (
+              <Button size="sm" variant="outline" className="border-berna-emerald/20 text-berna-emerald text-xs h-8 hover:bg-berna-emerald/10" onClick={handleApprove}>
+                <CheckCircle className="w-3 h-3 mr-1" />Approve Package
+              </Button>
+            ) : (
+              <span className="text-[10px] text-berna-emerald flex items-center gap-0.5"><CheckCircle className="w-3 h-3" />Approved</span>
+            )}
+          </div>
+        )}
+
+        {/* PRD 9.19: Translation */}
+        {pkg && (
+          <div className="pt-2">
+            <TranslationPanel pkg={pkg} onPackageUpdate={onPackageUpdate} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
