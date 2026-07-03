@@ -23,8 +23,17 @@ export default function StoryLibrary() {
   const loadSaved = async () => {
     setLoading(true);
     try {
-      const saved = await base44.entities.Article.filter({ is_saved: true }, '-created_date', 100);
-      setArticles(saved);
+      const [saved, pkgs] = await Promise.all([
+        base44.entities.Article.filter({ is_saved: true }, '-created_date', 100),
+        base44.entities.ProductionPackage.filter({ status: { $in: ['generated', 'edited', 'approved'] } }, '-created_date', 200),
+      ]);
+      const packageArticleIds = pkgs.map(p => p.article_id).filter(Boolean);
+      const packageArticles = packageArticleIds.length > 0
+        ? await base44.entities.Article.filter({ _id: { $in: packageArticleIds } }, '-created_date', 200)
+        : [];
+      const savedIds = new Set(saved.map(a => a.id));
+      const merged = [...saved, ...packageArticles.filter(a => !savedIds.has(a.id))];
+      setArticles(merged);
     } finally {
       setLoading(false);
     }
@@ -85,11 +94,11 @@ export default function StoryLibrary() {
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <Bookmark className="w-5 h-5 text-blue-400" />
-            Story Library
+            Story Package Library
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">Your saved stories — review, categorize, and add to future productions</p>
+          <p className="text-xs text-muted-foreground mt-1">Your saved stories and generated packages — review, categorize, and add to future productions</p>
         </div>
-        <span className="text-xs text-muted-foreground">{articles.length} saved</span>
+        <span className="text-xs text-muted-foreground">{articles.length} stories</span>
       </div>
 
       {/* Filters */}
@@ -120,7 +129,7 @@ export default function StoryLibrary() {
         <div className="glass-panel p-12 text-center">
           <Bookmark className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">
-            {articles.length === 0 ? 'No saved stories yet. Save stories from the Story Queue to build your library.' : 'No stories match your filters.'}
+            {articles.length === 0 ? 'No stories yet. Save stories from the Story Queue or generate packages to build your library.' : 'No stories match your filters.'}
           </p>
           {articles.length === 0 && (
             <Link to="/queue" className="inline-block mt-4">

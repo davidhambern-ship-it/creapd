@@ -22,7 +22,7 @@ export const PRODUCER_NAV_SECTIONS = [
     label: 'Content',
     items: [
       { icon: Layers, label: 'Story Queue', path: '/queue' },
-      { icon: Bookmark, label: 'Story Library', path: '/library' },
+      { icon: Bookmark, label: 'Story Package Library', path: '/library' },
       { icon: ClipboardList, label: 'Story Manager', path: '/workspace' },
     ]
   },
