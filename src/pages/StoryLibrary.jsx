@@ -25,12 +25,12 @@ export default function StoryLibrary() {
     try {
       const [saved, pkgs] = await Promise.all([
         base44.entities.Article.filter({ is_saved: true }, '-created_date', 100),
-        base44.entities.ProductionPackage.filter({ status: { $in: ['generated', 'edited', 'approved'] } }, '-created_date', 200),
+        base44.entities.ProductionPackage.filter({ status: 'generated' }, '-created_date', 100),
       ]);
-      const packageArticleIds = pkgs.map(p => p.article_id).filter(Boolean);
-      const packageArticles = packageArticleIds.length > 0
-        ? await base44.entities.Article.filter({ _id: { $in: packageArticleIds } }, '-created_date', 200)
-        : [];
+      const packageArticleIds = [...new Set(pkgs.map(p => p.article_id).filter(Boolean))];
+      const packageArticles = (await Promise.all(
+        packageArticleIds.map(id => base44.entities.Article.get(id).catch(() => null))
+      )).filter(Boolean);
       const savedIds = new Set(saved.map(a => a.id));
       const merged = [...saved, ...packageArticles.filter(a => !savedIds.has(a.id))];
       setArticles(merged);
