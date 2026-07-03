@@ -51,6 +51,15 @@ Deno.serve(async (req) => {
           language_code: 'en'
         });
 
+        // Generate transcript from the voice over audio
+        let voiceTranscript = '';
+        try {
+          const transcriptResult = await base44.integrations.Core.TranscribeAudio({
+            audio_url: voiceResult.url
+          });
+          voiceTranscript = typeof transcriptResult === 'string' ? transcriptResult : (transcriptResult.text || transcriptResult.transcript || '');
+        } catch {}
+
         const wordCount = text.split(/\s+/).filter(Boolean).length;
         const voiceDuration = Math.round(wordCount / 2.5);
         const status = voiceDuration < perSectionTarget * 0.7 ? 'too_short'
@@ -59,6 +68,7 @@ Deno.serve(async (req) => {
 
         await base44.entities.SpiritualMessageSection.update(section.id, {
           voice_url: voiceResult.url,
+          voice_transcript: voiceTranscript,
           voice_duration_seconds: voiceDuration,
           target_runtime_seconds: perSectionTarget,
           runtime_status: status
@@ -99,6 +109,15 @@ Deno.serve(async (req) => {
           language_code: 'en'
         });
 
+        // Generate transcript from the adjusted voice over audio
+        let newTranscript = '';
+        try {
+          const transcriptResult = await base44.integrations.Core.TranscribeAudio({
+            audio_url: newVoice.url
+          });
+          newTranscript = typeof transcriptResult === 'string' ? transcriptResult : (transcriptResult.text || transcriptResult.transcript || '');
+        } catch {}
+
         const newWordCount = adjustedText.split(/\s+/).filter(Boolean).length;
         const newDuration = Math.round(newWordCount / 2.5);
         const newStatus = newDuration < target * 0.7 ? 'too_short'
@@ -108,6 +127,7 @@ Deno.serve(async (req) => {
         await base44.entities.SpiritualMessageSection.update(section.id, {
           content: adjustedText,
           voice_url: newVoice.url,
+          voice_transcript: newTranscript,
           voice_duration_seconds: newDuration,
           runtime_status: newStatus,
           estimated_duration_seconds: newDuration

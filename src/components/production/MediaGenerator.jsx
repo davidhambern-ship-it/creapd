@@ -64,6 +64,20 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
 
       // PRD 9.15: Store variation history for images
       const updateData = { [urlField]: url };
+
+      // Generate transcript from voice over audio
+      if (mediaType === 'audio') {
+        try {
+          const transcriptResult = await base44.integrations.Core.TranscribeAudio({
+            audio_url: url
+          });
+          updateData.voice_transcript = typeof transcriptResult === 'string'
+            ? transcriptResult
+            : (transcriptResult.text || transcriptResult.transcript || '');
+        } catch (e) {
+          console.error('Transcript generation failed:', e);
+        }
+      }
       if (mediaType === 'image' && mediaUrl) {
         const varField = urlField === 'generated_thumbnail_url' ? 'thumbnail_variations' : 'image_variations';
         const existingVars = variations.filter(v => v.url !== mediaUrl);

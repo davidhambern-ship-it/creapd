@@ -136,6 +136,10 @@
     "generated_audio_url": {
       "type": "string"
     },
+    "voice_transcript": {
+      "type": "string",
+      "description": "Transcript generated from the voice over audio via speech recognition"
+    },
     "image_variations": {
       "type": "string"
     },
