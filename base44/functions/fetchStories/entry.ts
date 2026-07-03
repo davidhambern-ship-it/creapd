@@ -82,9 +82,6 @@ Deno.serve(async (req) => {
 
     let fetched = 0, created = 0, dupes = 0;
     const errors = [];
-    const articleBatch = [];
-    const sourceUpdates = [];
-    const nowIso = new Date().toISOString();
 
     for (const src of feedSources) {
       try {
@@ -102,12 +99,12 @@ Deno.serve(async (req) => {
           const tl = (item.title || '').toLowerCase().trim();
           if (tl && titles.some(t => t === tl || titleSimilarity(t, tl) > 0.85)) { dupes++; continue; }
 
-          articleBatch.push({
+          await base44.asServiceRole.entities.Article.create({
             title: item.title,
             url: item.link,
             summary: (item.description || '').substring(0, 500),
             source_name: src.name,
-            published_at: item.pubDate ? new Date(item.pubDate).toISOString() : nowIso,
+            published_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
             category: src.category || 'general',
             status: 'pending',
             credibility_score: src.trust_rating || 3,
@@ -117,19 +114,10 @@ Deno.serve(async (req) => {
           created++;
         }
 
-        sourceUpdates.push({ id: src.id, last_checked: nowIso });
+        await base44.asServiceRole.entities.Source.update(src.id, { last_checked: new Date().toISOString() });
       } catch (e) {
         errors.push(`${src.name}: ${e.message}`);
       }
-    }
-
-    // Batch-create articles and batch-update sources to minimize API calls
-    // (previously called create() per article and update() per source — exhausted rate limits)
-    for (let i = 0; i < articleBatch.length; i += 500) {
-      await base44.asServiceRole.entities.Article.bulkCreate(articleBatch.slice(i, i + 500));
-    }
-    if (sourceUpdates.length > 0) {
-      await base44.asServiceRole.entities.Source.bulkUpdate(sourceUpdates);
     }
 
     await base44.asServiceRole.entities.AutomationLog.create({

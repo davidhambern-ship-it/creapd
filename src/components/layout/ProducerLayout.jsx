@@ -11,7 +11,7 @@ export default function ProducerLayout() {
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden env-atmosphere-mission">
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
       <ProducerHeader
         onGenerateBrief={() => {}}
         onOpenNav={() => setNavDrawerOpen(true)}

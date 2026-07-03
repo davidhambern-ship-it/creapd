@@ -33,7 +33,7 @@ export default function SpiritualLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="flex h-screen env-atmosphere-library overflow-hidden flex-col">
+    <div className="flex h-screen bg-background overflow-hidden flex-col">
       <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden">
