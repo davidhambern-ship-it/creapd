@@ -177,7 +177,12 @@ export default function StoryManager() {
 
   // Sorted story list (from old Production page)
   const sortedStories = useMemo(() => {
-    let result = stories.filter((a) => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
+    let result = stories.filter((a) => {
+      // Hide stories whose package is already approved — they've been sent to Production
+      const p = pkgMap[a.id];
+      if (p?.status === 'approved') return false;
+      return !search || a.title?.toLowerCase().includes(search.toLowerCase());
+    });
     switch (sortBy) {
       case 'newest':return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
       case 'oldest':return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
@@ -240,6 +245,8 @@ export default function StoryManager() {
       delete next[article.id];
       return next;
     });
+    setPackages(prev => prev.filter(p => p.article_id !== article.id));
+    setStoryOrder(prev => prev.filter(id => id !== article.id));
     setSelectedStoryId(prev => {
       if (prev !== article.id) return prev;
       const remaining = stories.filter(s => s.id !== article.id);
