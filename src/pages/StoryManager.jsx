@@ -51,7 +51,7 @@ const DEFAULT_CHECKLIST = {
   graphics_ready: false,
   fact_check_complete: false,
   producer_review_complete: false,
-  export_ready: false,
+  export_ready: false
 };
 
 export default function StoryManager() {
@@ -81,7 +81,7 @@ export default function StoryManager() {
     title: '',
     brand_profile_id: '',
     show_profile_id: '',
-    production_date: new Date().toISOString().split('T')[0],
+    production_date: new Date().toISOString().split('T')[0]
   });
   const skipSave = useRef(true);
 
@@ -92,13 +92,13 @@ export default function StoryManager() {
   const loadData = async () => {
     try {
       const [prods, brandList, showList, approved, picks, pkgs] = await Promise.all([
-        base44.entities.Production.filter({ status: 'in_progress' }, '-created_date', 1),
-        base44.entities.BrandProfile.list(),
-        base44.entities.ShowProfile.list(),
-        base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 50),
-        base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 10),
-        base44.entities.ProductionPackage.list('-created_date', 200),
-      ]);
+      base44.entities.Production.filter({ status: 'in_progress' }, '-created_date', 1),
+      base44.entities.BrandProfile.list(),
+      base44.entities.ShowProfile.list(),
+      base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 50),
+      base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 10),
+      base44.entities.ProductionPackage.list('-created_date', 200)]
+      );
       setBrands(brandList);
       setShows(showList);
 
@@ -106,7 +106,7 @@ export default function StoryManager() {
       const arts = [...picks, ...approved];
       setStories(arts);
       const map = {};
-      pkgs.forEach(p => { if (p.article_id) map[p.article_id] = p; });
+      pkgs.forEach((p) => {if (p.article_id) map[p.article_id] = p;});
       setPkgMap(map);
       if (arts.length > 0 && !selectedStoryId) setSelectedStoryId(arts[0].id);
 
@@ -123,7 +123,7 @@ export default function StoryManager() {
       console.error('Failed to load data:', e);
     } finally {
       setLoading(false);
-      setTimeout(() => { skipSave.current = false; }, 200);
+      setTimeout(() => {skipSave.current = false;}, 200);
     }
   };
 
@@ -136,21 +136,21 @@ export default function StoryManager() {
     }
     try {
       const [allArticles, allNotes] = await Promise.all([
-        base44.entities.Article.filter({ production_id: prod.id }),
-        base44.entities.ProducerNote.list('-created_date', 100),
-      ]);
-      const rundownArticles = order.map(id => allArticles.find(a => a.id === id)).filter(Boolean);
-      const pkgs = (existingPkgs || []).filter(p => order.includes(p.article_id));
+      base44.entities.Article.filter({ production_id: prod.id }),
+      base44.entities.ProducerNote.list('-created_date', 100)]
+      );
+      const rundownArticles = order.map((id) => allArticles.find((a) => a.id === id)).filter(Boolean);
+      const pkgs = (existingPkgs || []).filter((p) => order.includes(p.article_id));
       setPackages(pkgs);
       // Merge rundown articles into the stories list
-      setStories(prev => {
-        const ids = new Set(prev.map(s => s.id));
+      setStories((prev) => {
+        const ids = new Set(prev.map((s) => s.id));
         const merged = [...prev];
-        rundownArticles.forEach(a => { if (!ids.has(a.id)) merged.push(a); });
+        rundownArticles.forEach((a) => {if (!ids.has(a.id)) merged.push(a);});
         return merged;
       });
       const notes = {};
-      allNotes.filter(n => order.includes(n.article_id)).forEach(n => {
+      allNotes.filter((n) => order.includes(n.article_id)).forEach((n) => {
         notes[n.article_id] = (notes[n.article_id] || 0) + 1;
       });
       setNotesMap(notes);
@@ -162,31 +162,31 @@ export default function StoryManager() {
         { entity_type: 'Production', entity_id: prod.id }, '-created_date', 20
       );
       setHistory(hist);
-    } catch (e) { /* ignore */ }
+    } catch (e) {/* ignore */}
   };
 
   // Estimated runtime
   const estimatedRuntimeSeconds = storyOrder.reduce((total, id) => {
-    const pkg = packages.find(p => p.article_id === id);
+    const pkg = packages.find((p) => p.article_id === id);
     return total + parseRuntime(pkg?.estimated_runtime);
   }, 0);
   const estimatedRuntime = formatRuntime(estimatedRuntimeSeconds);
 
-  const selectedStory = stories.find(s => s.id === selectedStoryId);
-  const selectedPkg = pkgMap[selectedStoryId] || packages.find(p => p.article_id === selectedStoryId);
+  const selectedStory = stories.find((s) => s.id === selectedStoryId);
+  const selectedPkg = pkgMap[selectedStoryId] || packages.find((p) => p.article_id === selectedStoryId);
 
   // Sorted story list (from old Production page)
   const sortedStories = useMemo(() => {
-    let result = stories.filter(a => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
+    let result = stories.filter((a) => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
     switch (sortBy) {
-      case 'newest': return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-      case 'alphabetical': return result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-      case 'package_status': return result.sort((a, b) => {
-        const order = { approved: 0, edited: 1, generated: 2, generating: 3, not_generated: 4 };
-        return (order[pkgMap[a.id]?.status] || 5) - (order[pkgMap[b.id]?.status] || 5);
-      });
-      default: return result.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
+      case 'newest':return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      case 'oldest':return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical':return result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'package_status':return result.sort((a, b) => {
+          const order = { approved: 0, edited: 1, generated: 2, generating: 3, not_generated: 4 };
+          return (order[pkgMap[a.id]?.status] || 5) - (order[pkgMap[b.id]?.status] || 5);
+        });
+      default:return result.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
     }
   }, [stories, sortBy, search, pkgMap]);
 
@@ -201,27 +201,27 @@ export default function StoryManager() {
           tone: 'professional',
           reading_style: 'broadcast_news',
           audience: 'General Public',
-          target_runtime: '1 Minute',
+          target_runtime: '1 Minute'
         });
         if (res.data?.package) {
           const updatedPkg = res.data.package;
-          setPkgMap(prev => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
+          setPkgMap((prev) => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
         }
-      } catch (err) { console.error(err); }
+      } catch (err) {console.error(err);}
     }
     setGeneratingAll(false);
     logActivity('generate', {
       entity_type: 'ProductionPackage',
       entity_name: `Bulk generate — ${stories.length} stories`,
-      details: `Generated production packages for ${stories.length} approved stories`,
+      details: `Generated production packages for ${stories.length} approved stories`
     });
   };
 
   const handlePackageUpdate = (updatedPkg) => {
-    setPkgMap(prev => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
-    setPackages(prev => {
-      const exists = prev.find(p => p.id === updatedPkg.id);
-      if (exists) return prev.map(p => p.id === updatedPkg.id ? updatedPkg : p);
+    setPkgMap((prev) => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
+    setPackages((prev) => {
+      const exists = prev.find((p) => p.id === updatedPkg.id);
+      if (exists) return prev.map((p) => p.id === updatedPkg.id ? updatedPkg : p);
       return [...prev, updatedPkg];
     });
   };
@@ -240,7 +240,7 @@ export default function StoryManager() {
         story_order: JSON.stringify(storyOrder),
         global_notes: globalNotes,
         checklist: JSON.stringify(checklist),
-        estimated_runtime: estimatedRuntime,
+        estimated_runtime: estimatedRuntime
       });
     }, 1500);
     return () => clearTimeout(timer);
@@ -250,9 +250,9 @@ export default function StoryManager() {
   const autoChecklist = {
     briefing: true,
     stories: storyOrder.length > 0,
-    scripts: stories.length > 0 && stories.every(s => s.production_status === 'approved'),
-    graphics: packages.length > 0 && packages.every(p => p.generated_image_url),
-    export: production?.status === 'ready_for_export' || production?.status === 'exported',
+    scripts: stories.length > 0 && stories.every((s) => s.production_status === 'approved'),
+    graphics: packages.length > 0 && packages.every((p) => p.generated_image_url),
+    export: production?.status === 'ready_for_export' || production?.status === 'exported'
   };
 
   const logActivity = async (action, details) => {
@@ -263,13 +263,13 @@ export default function StoryManager() {
         entity_type: 'Production',
         entity_id: production.id,
         entity_name: production.title,
-        details,
+        details
       });
       const hist = await base44.entities.ActivityLog.filter(
         { entity_type: 'Production', entity_id: production.id }, '-created_date', 20
       );
       setHistory(hist);
-    } catch (e) { /* ignore */ }
+    } catch (e) {/* ignore */}
   };
 
   const handleCreate = async () => {
@@ -279,8 +279,8 @@ export default function StoryManager() {
     try {
       const selectedIds = getSelectedStoryIds();
       const allArticles = await base44.entities.Article.list('-created_date', 100);
-      const selectedArticles = allArticles.filter(a => selectedIds.includes(a.id));
-      const order = selectedArticles.map(a => a.id);
+      const selectedArticles = allArticles.filter((a) => selectedIds.includes(a.id));
+      const order = selectedArticles.map((a) => a.id);
       const prod = await base44.entities.Production.create({
         title: newProd.title,
         brand_profile_id: newProd.brand_profile_id,
@@ -289,10 +289,10 @@ export default function StoryManager() {
         status: 'in_progress',
         story_order: JSON.stringify(order),
         target_runtime: '30 Minutes',
-        checklist: JSON.stringify(DEFAULT_CHECKLIST),
+        checklist: JSON.stringify(DEFAULT_CHECKLIST)
       });
-      await Promise.all(selectedArticles.map(a =>
-        base44.entities.Article.update(a.id, { production_id: prod.id, production_status: 'selected' })
+      await Promise.all(selectedArticles.map((a) =>
+      base44.entities.Article.update(a.id, { production_id: prod.id, production_status: 'selected' })
       ));
       setProduction(prod);
       setStoryOrder(order);
@@ -303,7 +303,7 @@ export default function StoryManager() {
       console.error('Failed to create production:', e);
     } finally {
       setCreating(false);
-      setTimeout(() => { skipSave.current = false; }, 200);
+      setTimeout(() => {skipSave.current = false;}, 200);
     }
   };
 
@@ -313,9 +313,9 @@ export default function StoryManager() {
   };
 
   const handleRemoveStory = async (articleId) => {
-    const newOrder = storyOrder.filter(id => id !== articleId);
+    const newOrder = storyOrder.filter((id) => id !== articleId);
     setStoryOrder(newOrder);
-    setStories(prev => prev.filter(s => s.id !== articleId));
+    setStories((prev) => prev.filter((s) => s.id !== articleId));
     await base44.entities.Article.update(articleId, { production_id: '', production_status: 'selected' });
     logActivity('delete', 'Story removed from rundown');
   };
@@ -327,45 +327,45 @@ export default function StoryManager() {
       title: `${story.title} (Copy)`,
       production_id: production.id,
       production_status: 'selected',
-      locked: false,
+      locked: false
     });
     const idx = storyOrder.indexOf(story.id);
     const newOrder = [...storyOrder];
     newOrder.splice(idx + 1, 0, copy.id);
     setStoryOrder(newOrder);
-    setStories(prev => [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
+    setStories((prev) => [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)]);
     logActivity('create', `Story duplicated: ${story.title}`);
   };
 
   const handleArchiveStory = async (articleId) => {
-    const newOrder = storyOrder.filter(id => id !== articleId);
+    const newOrder = storyOrder.filter((id) => id !== articleId);
     setStoryOrder(newOrder);
-    setStories(prev => prev.filter(s => s.id !== articleId));
+    setStories((prev) => prev.filter((s) => s.id !== articleId));
     await base44.entities.Article.update(articleId, { production_status: 'archived', production_id: '' });
     logActivity('update', 'Story archived from rundown');
   };
 
   const handleUpdateStoryStatus = async (articleId, status) => {
     await base44.entities.Article.update(articleId, { production_status: status });
-    setStories(prev => prev.map(s => s.id === articleId ? { ...s, production_status: status } : s));
+    setStories((prev) => prev.map((s) => s.id === articleId ? { ...s, production_status: status } : s));
     logActivity('update', `Story status changed to ${status}`);
   };
 
   const handleUpdatePriority = async (articleId, priority) => {
     await base44.entities.Article.update(articleId, { production_priority: priority });
-    setStories(prev => prev.map(s => s.id === articleId ? { ...s, production_priority: priority } : s));
+    setStories((prev) => prev.map((s) => s.id === articleId ? { ...s, production_priority: priority } : s));
   };
 
   const handleToggleLock = async (articleId, locked) => {
     await base44.entities.Article.update(articleId, { locked });
-    setStories(prev => prev.map(s => s.id === articleId ? { ...s, locked } : s));
+    setStories((prev) => prev.map((s) => s.id === articleId ? { ...s, locked } : s));
     logActivity('update', locked ? 'Story locked' : 'Story unlocked');
   };
 
   const handleOpenAddModal = async () => {
     const selectedIds = getSelectedStoryIds();
     const allArticles = await base44.entities.Article.list('-created_date', 100);
-    const available = allArticles.filter(a => selectedIds.includes(a.id) && !storyOrder.includes(a.id));
+    const available = allArticles.filter((a) => selectedIds.includes(a.id) && !storyOrder.includes(a.id));
     setAvailableStories(available);
     setShowAddModal(true);
   };
@@ -373,8 +373,8 @@ export default function StoryManager() {
   const handleAddStories = async (articleIds) => {
     const newOrder = [...storyOrder, ...articleIds];
     setStoryOrder(newOrder);
-    await Promise.all(articleIds.map(id =>
-      base44.entities.Article.update(id, { production_id: production.id, production_status: 'selected' })
+    await Promise.all(articleIds.map((id) =>
+    base44.entities.Article.update(id, { production_id: production.id, production_status: 'selected' })
     ));
     await loadRundownData({ ...production, story_order: JSON.stringify(newOrder) });
     logActivity('create', `${articleIds.length} stories added to rundown`);
@@ -382,7 +382,7 @@ export default function StoryManager() {
   };
 
   const handleToggleChecklist = (key) => {
-    setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+    setChecklist((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleOpenPackage = (storyId) => {
@@ -390,15 +390,15 @@ export default function StoryManager() {
   };
 
   useEffect(() => {
-    base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
+    base44.entities.ContentDomain.list().then((d) => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
   }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>
-    );
+      </div>);
+
   }
 
   const statusStyles = {
@@ -406,7 +406,7 @@ export default function StoryManager() {
     generating: { label: 'Generating', color: 'text-berna-purple', dot: 'bg-berna-purple animate-pulse' },
     generated: { label: 'Generated', color: 'text-blue-400', dot: 'bg-blue-400' },
     edited: { label: 'Edited', color: 'text-berna-orange', dot: 'bg-berna-orange' },
-    approved: { label: 'Approved', color: 'text-berna-emerald', dot: 'bg-berna-emerald' },
+    approved: { label: 'Approved', color: 'text-berna-emerald', dot: 'bg-berna-emerald' }
   };
 
   return (
@@ -421,22 +421,22 @@ export default function StoryManager() {
           <span className="text-xs text-muted-foreground">{stories.length} stories</span>
           <span className="text-xs text-berna-emerald flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
-            {Object.values(pkgMap).filter(p => p.status === 'approved' || p.status === 'edited').length} approved
+            {Object.values(pkgMap).filter((p) => p.status === 'approved' || p.status === 'edited').length} approved
           </span>
           <Button
             size="sm"
             variant="outline"
-            className="border-berna-purple/30 text-berna-purple hover:bg-berna-purple/10 text-xs h-8"
-            onClick={() => setShowStartupOpen(true)}
-          >
+            className="border-berna-purple/30 hover:bg-berna-purple/10 text-xs h-8 text-[hsl(var(--accent))]"
+            onClick={() => setShowStartupOpen(true)}>
+            
             <Play className="w-3 h-3 mr-1" />Start Production
           </Button>
           <Button
             size="sm"
             className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
             onClick={handleGenerateAllStories}
-            disabled={generatingAll || stories.length === 0}
-          >
+            disabled={generatingAll || stories.length === 0}>
+            
             {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
             {generatingAll ? 'Generating All...' : 'Generate All Packages'}
           </Button>
@@ -447,22 +447,22 @@ export default function StoryManager() {
       <div className="flex gap-2">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search stories..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
+          <Input placeholder="Search stories..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
         </div>
         <SortDropdown value={sortBy} onChange={setSortBy} storageKey="productionSort" options={[
-          { value: 'priority', label: 'Story Priority' },
-          { value: 'newest', label: 'Newest First' },
-          { value: 'oldest', label: 'Oldest First' },
-          { value: 'alphabetical', label: 'Alphabetical' },
-          { value: 'package_status', label: 'Package Status' },
-        ]} />
+        { value: 'priority', label: 'Story Priority' },
+        { value: 'newest', label: 'Newest First' },
+        { value: 'oldest', label: 'Oldest First' },
+        { value: 'alphabetical', label: 'Alphabetical' },
+        { value: 'package_status', label: 'Package Status' }]
+        } />
       </div>
 
       {/* Two-column: story list + package detail panel */}
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Story list */}
         <div className="w-full lg:w-72 flex-shrink-0 space-y-2 lg:self-stretch">
-          {sortedStories.map(article => {
+          {sortedStories.map((article) => {
             const pkg = pkgMap[article.id];
             const status = pkg?.status || 'not_generated';
             const st = statusStyles[status];
@@ -472,59 +472,59 @@ export default function StoryManager() {
               <button
                 key={article.id}
                 onClick={() => setSelectedStoryId(article.id)}
-                className={`w-full text-left glass-panel p-3 transition-all ${isSelected ? 'border-berna-purple/40 glow-purple' : 'hover:border-white/[0.12]'}`}
-              >
+                className={`w-full text-left glass-panel p-3 transition-all ${isSelected ? 'border-berna-purple/40 glow-purple' : 'hover:border-white/[0.12]'}`}>
+                
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${st.dot} flex-shrink-0`} />
                   <span className={`text-[9px] uppercase tracking-wider ${st.color}`}>{st.label}</span>
-                  {exportReady && (
-                    <span className="text-[9px] text-berna-emerald flex items-center gap-0.5" title="Ready for production">
+                  {exportReady &&
+                  <span className="text-[9px] text-berna-emerald flex items-center gap-0.5" title="Ready for production">
                       <CheckCircle2 className="w-2.5 h-2.5" />Approved
                     </span>
-                  )}
+                  }
                 </div>
                 <h3 className="text-xs font-semibold text-white leading-snug line-clamp-2 mb-1.5">{article.title}</h3>
                 <div className="flex items-center gap-2">
                   {article.category && <CategoryBadge category={article.category} />}
                   <OpportunityScore score={article.opportunity_score} />
                 </div>
-              </button>
-            );
+              </button>);
+
           })}
-          {stories.length === 0 && (
-            <div className="glass-panel p-8 text-center">
+          {stories.length === 0 &&
+          <div className="glass-panel p-8 text-center">
               <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-xs text-muted-foreground">No approved stories yet. Approve stories from the Story Queue first.</p>
             </div>
-          )}
+          }
         </div>
 
         {/* Package Detail Panel — Text Generation + AI Media Generation + Approve/Regenerate + Translation */}
         <div className="flex-1 min-w-0">
-          {selectedStory ? (
-            <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} />
-          ) : (
-            <div className="glass-panel p-12 text-center h-full flex flex-col items-center justify-center">
+          {selectedStory ?
+          <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} /> :
+
+          <div className="glass-panel p-12 text-center h-full flex flex-col items-center justify-center">
               <Package className="w-12 h-12 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">Select a story to generate its story package</p>
             </div>
-          )}
+          }
         </div>
       </div>
 
       {/* Production workspace sections (rundown, progress, checklist, notes, history) — shown when a production exists */}
-      {production && (
-        <div className="space-y-4 border-t border-white/[0.06] pt-4">
+      {production &&
+      <div className="space-y-4 border-t border-white/[0.06] pt-4">
           <WorkspaceHeader
-            production={production}
-            brands={brands}
-            shows={shows}
-            storyCount={storyOrder.length}
-            estimatedRuntime={estimatedRuntime}
-            onUpdate={setProduction}
-            packages={packages}
-            articles={stories}
-          />
+          production={production}
+          brands={brands}
+          shows={shows}
+          storyCount={storyOrder.length}
+          estimatedRuntime={estimatedRuntime}
+          onUpdate={setProduction}
+          packages={packages}
+          articles={stories} />
+        
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
@@ -533,20 +533,20 @@ export default function StoryManager() {
                 <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
               </div>
               <ProductionRundown
-                stories={stories}
-                packages={packages}
-                notesMap={notesMap}
-                storyOrder={storyOrder}
-                onReorder={handleReorder}
-                onRemoveStory={handleRemoveStory}
-                onDuplicateStory={handleDuplicateStory}
-                onArchiveStory={handleArchiveStory}
-                onUpdateStoryStatus={handleUpdateStoryStatus}
-                onUpdateStoryPriority={handleUpdatePriority}
-                onToggleLock={handleToggleLock}
-                onOpenPackage={handleOpenPackage}
-                onAddStories={handleOpenAddModal}
-              />
+              stories={stories}
+              packages={packages}
+              notesMap={notesMap}
+              storyOrder={storyOrder}
+              onReorder={handleReorder}
+              onRemoveStory={handleRemoveStory}
+              onDuplicateStory={handleDuplicateStory}
+              onArchiveStory={handleArchiveStory}
+              onUpdateStoryStatus={handleUpdateStoryStatus}
+              onUpdateStoryPriority={handleUpdatePriority}
+              onToggleLock={handleToggleLock}
+              onOpenPackage={handleOpenPackage}
+              onAddStories={handleOpenAddModal} />
+            
             </div>
 
             <div className="space-y-4">
@@ -557,11 +557,11 @@ export default function StoryManager() {
             </div>
           </div>
         </div>
-      )}
+      }
 
       {/* Create Production button — inline, not a gate */}
-      {!production && (
-        <div className="glass-panel p-4 flex items-center justify-between">
+      {!production &&
+      <div className="glass-panel p-4 flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-white">No active production</p>
             <p className="text-xs text-muted-foreground">Create a production workspace to build a story rundown</p>
@@ -570,15 +570,15 @@ export default function StoryManager() {
             <Play className="w-3 h-3 mr-1" />Start Production
           </Button>
         </div>
-      )}
+      }
 
       <AddStoriesModal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
         availableStories={availableStories}
-        onAdd={handleAddStories}
-      />
+        onAdd={handleAddStories} />
+      
       <ShowStartupModal open={showStartupOpen} onClose={() => setShowStartupOpen(false)} />
-    </div>
-  );
+    </div>);
+
 }
