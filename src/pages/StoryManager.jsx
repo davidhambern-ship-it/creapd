@@ -238,20 +238,19 @@ export default function StoryManager() {
         archived_date: new Date().toISOString(),
       });
     } catch (e) { console.error('Failed to archive article:', e); }
-    // Remove from stories list and clear selection
-    setStories(prev => prev.filter(s => s.id !== article.id));
-    setPkgMap(prev => {
-      const next = { ...prev };
-      delete next[article.id];
-      return next;
+    // Remove from stories list, pkg map, rundown; auto-select next unapproved story
+    const remaining = stories.filter(s => s.id !== article.id);
+    const nextPkgMap = { ...pkgMap };
+    delete nextPkgMap[article.id];
+    const nextStory = remaining.find(s => {
+      const p = nextPkgMap[s.id];
+      return !p || p.status !== 'approved';
     });
+    setStories(remaining);
+    setPkgMap(nextPkgMap);
     setPackages(prev => prev.filter(p => p.article_id !== article.id));
     setStoryOrder(prev => prev.filter(id => id !== article.id));
-    setSelectedStoryId(prev => {
-      if (prev !== article.id) return prev;
-      const remaining = stories.filter(s => s.id !== article.id);
-      return remaining.length > 0 ? remaining[0].id : null;
-    });
+    setSelectedStoryId(nextStory ? nextStory.id : (remaining.length > 0 ? remaining[0].id : null));
     logActivity('approve', {
       entity_type: 'ProductionPackage',
       entity_id: approvedPkg?.id || '',
