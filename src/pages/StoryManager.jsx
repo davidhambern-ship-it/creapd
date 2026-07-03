@@ -551,53 +551,6 @@ export default function StoryManager() {
         </div>
       </div>
 
-      {/* Production workspace sections (rundown, progress, checklist, notes, history) — shown when a production exists */}
-      {production &&
-      <div className="space-y-4 border-t border-white/[0.06] pt-4">
-          <WorkspaceHeader
-          production={production}
-          brands={brands}
-          shows={shows}
-          storyCount={storyOrder.length}
-          estimatedRuntime={estimatedRuntime}
-          onUpdate={setProduction}
-          packages={packages}
-          articles={stories} />
-        
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white neon-underline">Story Rundown</h2>
-                <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
-              </div>
-              <ProductionRundown
-              stories={stories}
-              packages={packages}
-              notesMap={notesMap}
-              storyOrder={storyOrder}
-              onReorder={handleReorder}
-              onRemoveStory={handleRemoveStory}
-              onDuplicateStory={handleDuplicateStory}
-              onArchiveStory={handleArchiveStory}
-              onUpdateStoryStatus={handleUpdateStoryStatus}
-              onUpdateStoryPriority={handleUpdatePriority}
-              onToggleLock={handleToggleLock}
-              onOpenPackage={handleOpenPackage}
-              onAddStories={handleOpenAddModal} />
-            
-            </div>
-
-            <div className="space-y-4">
-              <WorkspaceProgress stories={stories} packages={packages} production={production} />
-              <WorkspaceChecklist checklist={checklist} onToggle={handleToggleChecklist} autoValues={autoChecklist} />
-              <GlobalNotes notes={globalNotes} onChange={setGlobalNotes} />
-              <WorkspaceHistory history={history} />
-            </div>
-          </div>
-        </div>
-      }
-
       {/* Create Production button — inline, not a gate */}
       {!production &&
       <div className="glass-panel p-4 flex items-center justify-between">
