@@ -469,7 +469,7 @@ export default function StoryManager() {
       {/* Two-column: story list + package detail panel */}
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Story list */}
-        <div className="w-full lg:w-72 flex-shrink-0 space-y-2 lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto">
+        <div className="w-full lg:w-72 flex-shrink-0 space-y-2 lg:self-stretch">
           {sortedStories.map(article => {
             const pkg = pkgMap[article.id];
             const status = pkg?.status || 'not_generated';
