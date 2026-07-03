@@ -38,13 +38,13 @@ export default function AssignmentWhiteboard({ articles = [], onUpdateStatus }) 
   };
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-gradient-to-br from-zinc-800/40 to-zinc-900/60 p-4">
+    <div className="rounded-xl border border-zinc-200 bg-white p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-1 h-4 bg-white/60 rounded-full" />
-          <h3 className="text-sm font-mono font-bold text-white/80 tracking-wider uppercase">Assignment Whiteboard</h3>
+          <div className="w-1 h-4 bg-zinc-400 rounded-full" />
+          <h3 className="text-sm font-mono font-bold text-zinc-800 tracking-wider uppercase">Assignment Whiteboard</h3>
         </div>
-        <span className="text-[10px] font-mono text-white/30">DRAG TO ASSIGN</span>
+        <span className="text-[10px] font-mono text-zinc-400">DRAG TO ASSIGN</span>
       </div>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
