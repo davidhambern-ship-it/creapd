@@ -195,7 +195,7 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
               <img src={mediaUrl} alt={label} className="w-full rounded-lg border border-white/[0.06]" />
             )}
             {mediaType === 'video' && (
-              <video src={mediaUrl} controls className="w-full rounded-lg border border-white/[0.06]" />
+              <video src={mediaUrl} controls muted className="w-full rounded-lg border border-white/[0.06]" />
             )}
             {mediaType === 'audio' && (
               <audio src={mediaUrl} controls className="w-full" />
