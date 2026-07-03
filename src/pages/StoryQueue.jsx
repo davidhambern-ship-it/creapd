@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   Search as SearchIcon, Compass, ArrowUpDown, CheckSquare,
-  Square, Layers, RefreshCw, Bookmark, Copy
+  Square, Layers, RefreshCw, Bookmark, Copy, Loader2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -70,6 +70,8 @@ export default function StoryQueue() {
   const [selectedIds, setSelectedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('selectedStoryIds') || '[]'); } catch { return []; }
   });
+  const navigate = useNavigate();
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('storyQueueSort', sortBy);
@@ -136,6 +138,27 @@ export default function StoryQueue() {
   const handleDeselect = (id) => setSelectedIds(prev => prev.filter(sid => sid !== id));
   const selectAll = () => setSelectedIds(filtered.map(a => a.id));
   const deselectAll = () => setSelectedIds([]);
+
+  const handleSendToManager = async () => {
+    if (selectedIds.length === 0) return;
+    setSending(true);
+    try {
+      await base44.entities.Article.updateMany(
+        { id: { $in: selectedIds } },
+        { $set: { status: 'approved' } }
+      );
+      logActivity('approve', {
+        entity_type: 'Article',
+        entity_name: `${selectedIds.length} story${selectedIds.length > 1 ? 'ies' : ''}`,
+        details: `Sent ${selectedIds.length} story${selectedIds.length > 1 ? 'ies' : ''} to Story Manager`,
+      });
+      navigate('/workspace');
+    } catch (e) {
+      console.error('Failed to send stories to manager:', e);
+    } finally {
+      setSending(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -365,11 +388,15 @@ export default function StoryQueue() {
             {selectedIds.length} selected for production
           </span>
           {selectedIds.length > 0 && (
-            <Link to="/production">
-              <Button size="sm" className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs h-7">
-                <Layers className="w-3 h-3 mr-1" />Send to Production
-              </Button>
-            </Link>
+            <Button
+              size="sm"
+              className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs h-7"
+              onClick={handleSendToManager}
+              disabled={sending}
+            >
+              {sending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Layers className="w-3 h-3 mr-1" />}
+              {sending ? 'Sending...' : 'Send to Manager'}
+            </Button>
           )}
         </div>
       )}
