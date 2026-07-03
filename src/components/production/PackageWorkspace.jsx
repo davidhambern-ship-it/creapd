@@ -43,7 +43,7 @@ const READING_STYLES = ['broadcast_news', 'podcast', 'livestream', 'interview', 
 const AUDIENCES = ['General Public', 'Local Community', 'National Audience', 'Business Professionals', 'Students', 'Families', 'Church Congregations', 'Sports Fans', 'Industry Professionals'];
 const RUNTIMES = ['15 Seconds', '30 Seconds', '45 Seconds', '1 Minute', '2 Minutes', '5 Minutes', 'Custom'];
 
-export default function PackageDetailPanel({ article, pkg, onPackageUpdate, onPackageApproved }) {
+export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPackageApproved }) {
   const [config, setConfig] = useState({
     tone: pkg?.tone || 'professional',
     reading_style: pkg?.reading_style || 'broadcast_news',

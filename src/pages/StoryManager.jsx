@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
-import PackageDetailPanel from '@/components/production/PackageDetailPanel';
+import PackageWorkspace from '@/components/production/PackageWorkspace';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import SortDropdown from '@/components/shared/SortDropdown';
@@ -552,7 +552,7 @@ export default function StoryManager() {
             </button>
           )}
           {selectedStory ?
-          <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} onPackageApproved={handlePackageApproved} /> :
+          <PackageWorkspace article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} onPackageApproved={handlePackageApproved} /> :
 
           <div className="glass-panel p-12 text-center h-full flex flex-col items-center justify-center">
               <Package className="w-12 h-12 text-muted-foreground mb-3" />
