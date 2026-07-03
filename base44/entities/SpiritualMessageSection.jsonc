@@ -60,10 +60,6 @@
       "type": "string",
       "description": "Generated voiceover audio URL"
     },
-    "voice_transcript": {
-      "type": "string",
-      "description": "Transcript generated from the voice over audio via speech recognition"
-    },
     "voice_duration_seconds": {
       "type": "number",
       "description": "Actual voiceover duration in seconds",
