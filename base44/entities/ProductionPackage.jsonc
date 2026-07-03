@@ -136,6 +136,10 @@
     "generated_audio_url": {
       "type": "string"
     },
+    "voice_package_id": {
+      "type": "string",
+      "description": "ID of the VoicePackage (VP) \u2014 the authoritative narration timing source for this production"
+    },
     "image_variations": {
       "type": "string"
     },

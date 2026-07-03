@@ -65,6 +65,10 @@
       "description": "Actual voiceover duration in seconds",
       "default": 0
     },
+    "voice_package_id": {
+      "type": "string",
+      "description": "ID of the VoicePackage (VP) \u2014 authoritative narration timing source for this section"
+    },
     "runtime_status": {
       "type": "string",
       "enum": [

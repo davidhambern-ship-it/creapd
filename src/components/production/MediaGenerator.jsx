@@ -47,19 +47,23 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
     setError(null);
     setEditingPrompt(false);
     try {
-      let result;
+      let url;
       if (mediaType === 'image') {
-        result = await base44.integrations.Core.GenerateImage({ prompt: usePrompt });
+        const result = await base44.integrations.Core.GenerateImage({ prompt: usePrompt });
+        url = result?.url || result?.data?.url;
       } else if (mediaType === 'video') {
-        result = await base44.integrations.Core.GenerateVideo({ prompt: usePrompt, duration: 6, aspect_ratio: '16:9' });
+        const result = await base44.integrations.Core.GenerateVideo({ prompt: usePrompt, duration: 6, aspect_ratio: '16:9' });
+        url = result?.url || result?.data?.url;
       } else if (mediaType === 'audio') {
-        result = await base44.integrations.Core.GenerateSpeech({
-          text: pkg.teleprompter_script,
+        const vpResult = await base44.functions.invoke('generateVoicePackage', {
+          script_text: pkg.teleprompter_script,
           voice,
           language_code: 'en',
+          source_type: 'production_package',
+          source_id: pkg.id,
         });
+        url = vpResult?.data?.audio_url;
       }
-      const url = result?.url || result?.data?.url;
       if (!url) throw new Error('No URL returned');
 
       // PRD 9.15: Store variation history for images
@@ -182,7 +186,7 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
             <span className="text-[10px] text-muted-foreground">
               {mediaType === 'image' ? 'Generating image (5-10s)...' :
                mediaType === 'video' ? 'Generating video (30-60s)...' :
-               'Generating audio...'}
+               'Generating Voice Package...'}
             </span>
           </div>
         ) : mediaUrl ? (

@@ -1,0 +1,83 @@
+{
+  "name": "VoicePackage",
+  "type": "object",
+  "properties": {
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "production_package",
+        "spiritual_section"
+      ],
+      "description": "Type of entity this Voice Package belongs to"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "ID of the source entity"
+    },
+    "voice_audio_url": {
+      "type": "string",
+      "description": "The generated narration audio URL (MP3)"
+    },
+    "teleprompter_script": {
+      "type": "string",
+      "description": "The original script used to generate the narration (immutable unless regenerated)"
+    },
+    "transcript": {
+      "type": "string",
+      "description": "Plain-text transcript of the spoken narration (no timestamps)"
+    },
+    "timestamped_transcript": {
+      "type": "string",
+      "description": "Transcript with readable MM:SS timestamps for navigation and review"
+    },
+    "sentence_timeline": {
+      "type": "string",
+      "description": "JSON array of {sentence_id, sentence_text, start_time, end_time, duration} \u2014 primary timing source for the AI Presentation Director"
+    },
+    "word_timeline": {
+      "type": "string",
+      "description": "JSON array of {word, start_time, end_time, confidence_score} \u2014 for word highlighting, caption sync, precise animations"
+    },
+    "paragraph_timeline": {
+      "type": "string",
+      "description": "JSON array of {paragraph_id, start_time, end_time, duration} \u2014 for slide planning and section transitions"
+    },
+    "pause_timeline": {
+      "type": "string",
+      "description": "JSON array of {pause_start, pause_end, duration, pause_type} \u2014 pause types: Sentence Pause, Paragraph Pause, Dramatic Pause, Natural Breath Pause"
+    },
+    "voice_metadata": {
+      "type": "string",
+      "description": "JSON: voice_id, voice_name, voice_provider, language, accent, speaking_style, emotion, pitch, speed, generation_engine, generation_date"
+    },
+    "runtime_stats": {
+      "type": "string",
+      "description": "JSON: total_runtime, total_words, total_sentences, total_paragraphs, wpm, avg_sentence_duration, avg_pause_duration, reading_level"
+    },
+    "total_duration_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Total narration runtime in seconds"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this is the primary VP for the source entity"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "generating",
+        "generated",
+        "regenerating",
+        "failed"
+      ],
+      "default": "generating"
+    }
+  },
+  "required": [
+    "source_type",
+    "source_id",
+    "teleprompter_script"
+  ]
+}

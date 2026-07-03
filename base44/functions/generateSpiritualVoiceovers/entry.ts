@@ -118,6 +118,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== PASS 3: Generate Voice Packages for all sections with voice =====
+    const voicedSections = await base44.asServiceRole.entities.SpiritualMessageSection.filter({ configuration_id }, 'order');
+    let vpGenerated = 0;
+    for (const section of voicedSections) {
+      if (!section.voice_url || !section.content) continue;
+      try {
+        await base44.asServiceRole.functions.invoke('generateVoicePackage', {
+          script_text: section.content,
+          voice: 'storm',
+          language_code: 'en',
+          source_type: 'spiritual_section',
+          source_id: section.id,
+          existing_audio_url: section.voice_url,
+          existing_duration_seconds: section.voice_duration_seconds
+        });
+        vpGenerated++;
+      } catch (err) {
+        // VP generation failure should not break the flow
+      }
+    }
+
     // Generate thumbnail image for title slide
     let imageGenerated = false;
     try {
@@ -150,6 +171,7 @@ Deno.serve(async (req) => {
       voiceovers_generated: generated,
       voiceovers_failed: failed,
       runtime_adjusted: adjusted,
+      voice_packages_generated: vpGenerated,
       image_generated: imageGenerated
     });
   } catch (error) {
