@@ -109,15 +109,17 @@ export default function ProductionPackages() {
           <Button
             className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple flex-shrink-0"
             onClick={handleGeneratePresentation}
-            disabled={generatingPresentation || packages.length === 0}
+            disabled={generatingPresentation || packages.length < 5}
           >
             {generatingPresentation ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
             {generatingPresentation ? 'Generating...' : 'Generate Full Presentation'}
           </Button>
         </div>
-        {packages.length === 0 && (
+        {packages.length < 5 && (
           <p className="text-[10px] text-muted-foreground mt-3 pt-3 border-t border-white/[0.04]">
-            No approved packages yet. Approve packages from the Story Manager to generate a presentation.
+            {packages.length === 0
+              ? 'No approved packages yet. Approve packages from the Story Manager to generate a presentation.'
+              : `${packages.length}/5 approved packages. The APD requires a minimum of 5 approved packages to generate a presentation.`}
           </p>
         )}
       </div>
