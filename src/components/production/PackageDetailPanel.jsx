@@ -4,7 +4,7 @@ import {
   FileText, AlignLeft, MessageSquare, Type, Heading,
   Image, ImageIcon, Eye, Film, Share2, CheckSquare, Volume2,
   Sparkles, Loader2, Clock, ExternalLink, Save, CheckCircle,
-  StickyNote, BookMarked, MessageSquareCode, Cpu, Download,
+  StickyNote, BookMarked, MessageSquareCode, Cpu, Download, RefreshCw,
   Music, Mic2, ChefHat, BookOpen, Lightbulb, ListOrdered
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -536,6 +536,29 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
                 onMediaUpdate={onPackageUpdate}
               />
             </div>
+          </div>
+        )}
+
+        {/* Approve + Regenerate — right above translation */}
+        {pkg && (
+          <div className="glass-panel p-3 flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground mr-auto">Package ready — approve to send to Production</span>
+            <Button
+              size="sm"
+              className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
+              onClick={handleGenerateAll}
+              disabled={generatingAll || generating !== null}
+            >
+              {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+              {generatingAll ? 'Regenerating...' : 'Regenerate'}
+            </Button>
+            {pkg.status !== 'approved' ? (
+              <Button size="sm" variant="outline" className="border-berna-emerald/20 text-berna-emerald text-xs h-8 hover:bg-berna-emerald/10" onClick={handleApprove}>
+                <CheckCircle className="w-3 h-3 mr-1" />Approve Package
+              </Button>
+            ) : (
+              <span className="text-[10px] text-berna-emerald flex items-center gap-0.5"><CheckCircle className="w-3 h-3" />Approved</span>
+            )}
           </div>
         )}
 

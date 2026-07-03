@@ -12,6 +12,7 @@ import WorkspaceChecklist from '@/components/workspace/WorkspaceChecklist';
 import GlobalNotes from '@/components/workspace/GlobalNotes';
 import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
+import PackageDetailPanel from '@/components/production/PackageDetailPanel';
 
 function getSelectedStoryIds() {
   try {
@@ -65,6 +66,7 @@ export default function StoryManager() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [availableStories, setAvailableStories] = useState([]);
   const [creating, setCreating] = useState(false);
+  const [selectedStoryId, setSelectedStoryId] = useState(null);
   const [newProd, setNewProd] = useState({
     title: '',
     brand_profile_id: '',
@@ -141,6 +143,9 @@ export default function StoryManager() {
     return total + parseRuntime(pkg?.estimated_runtime);
   }, 0);
   const estimatedRuntime = formatRuntime(estimatedRuntimeSeconds);
+
+  const selectedStory = stories.find(s => s.id === selectedStoryId);
+  const selectedPkg = packages.find(p => p.article_id === selectedStoryId);
 
   // Auto-save (debounced)
   useEffect(() => {
@@ -301,8 +306,16 @@ export default function StoryManager() {
     setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleOpenPackage = () => {
-    navigate('/production');
+  const handleOpenPackage = (storyId) => {
+    setSelectedStoryId(storyId);
+  };
+
+  const handlePackageUpdate = (updatedPkg) => {
+    setPackages(prev => {
+      const exists = prev.find(p => p.id === updatedPkg.id);
+      if (exists) return prev.map(p => p.id === updatedPkg.id ? updatedPkg : p);
+      return [...prev, updatedPkg];
+    });
   };
 
   if (loading) {
@@ -391,7 +404,7 @@ export default function StoryManager() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white neon-underline">Production Rundown</h2>
+            <h2 className="text-sm font-semibold text-white neon-underline">Story Rundown</h2>
             <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
           </div>
           <ProductionRundown
@@ -418,6 +431,22 @@ export default function StoryManager() {
           <WorkspaceHistory history={history} />
         </div>
       </div>
+
+      {selectedStoryId && selectedStory && (
+        <div className="mt-4 border-t border-white/[0.06] pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-white neon-underline">Story Package — {selectedStory.title}</h2>
+            <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-white text-xs h-7" onClick={() => setSelectedStoryId(null)}>
+              Close
+            </Button>
+          </div>
+          <PackageDetailPanel
+            article={selectedStory}
+            pkg={selectedPkg}
+            onPackageUpdate={handlePackageUpdate}
+          />
+        </div>
+      )}
 
       <AddStoriesModal
         open={showAddModal}

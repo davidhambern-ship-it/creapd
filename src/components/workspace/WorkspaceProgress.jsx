@@ -27,7 +27,7 @@ export default function WorkspaceProgress({ stories, packages, production }) {
 
   return (
     <div className="glass-panel p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-white neon-underline">Production Progress</h3>
+      <h3 className="text-sm font-semibold text-white neon-underline">Story Progress</h3>
       <ProgressRow label="Stories Selected" percent={stories.length > 0 ? 100 : 0} value={`${stories.length}`} />
       <ProgressRow label="Packages Generated" percent={Math.round(packagesGenerated / total * 100)} value={`${packagesGenerated}/${stories.length}`} />
       <ProgressRow label="Scripts Reviewed" percent={Math.round(scriptsReviewed / total * 100)} value={`${scriptsReviewed}/${stories.length}`} />
