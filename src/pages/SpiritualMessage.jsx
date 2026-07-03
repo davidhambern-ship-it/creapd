@@ -7,7 +7,6 @@ import { Loader2, PenTool, Sparkles, Clock, FileText, Package, ChevronRight, Zap
 import { formatDuration, estimateSpeakingTime } from '@/lib/spiritualConstants';
 import ProductionModule from '@/components/message/ProductionModule';
 import ProductionStatusBar from '@/components/message/ProductionStatusBar';
-import RuntimeOverview from '@/components/message/RuntimeOverview';
 import PresentationStrip from '@/components/message/PresentationStrip';
 import SceneCard from '@/components/message/SceneCard';
 import PresentationPreview from '@/components/message/PresentationPreview';
@@ -191,11 +190,6 @@ export default function SpiritualMessage() {
             </Button>
           </div>
         </div>
-
-            {/* Runtime Overview */}
-            <div className="mb-4">
-              <RuntimeOverview sections={messageSections} targetRuntime={config.target_runtime} />
-            </div>
 
             {/* Presentation Strip */}
             <div className="mb-4">
