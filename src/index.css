@@ -244,30 +244,6 @@
   border-radius: 1px;
 }
 
-/* PDS — Monitor Screen Effect */
-.monitor-screen {
-  position: relative;
-  background: radial-gradient(ellipse at center, hsl(220 30% 10%), hsl(220 30% 5%));
-  box-shadow: inset 0 0 40px hsl(0 0% 0% / 0.7), inset 0 0 6px hsl(0 0% 0% / 0.9);
-}
-.monitor-screen::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, hsl(0 0% 0% / 0.18) 2px, hsl(0 0% 0% / 0.18) 3px);
-  pointer-events: none;
-  z-index: 10;
-  opacity: 0.5;
-}
-.monitor-screen::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, hsl(0 0% 100% / 0.05) 0%, transparent 40%, transparent 60%, hsl(0 0% 100% / 0.02) 100%);
-  pointer-events: none;
-  z-index: 11;
-}
-
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
