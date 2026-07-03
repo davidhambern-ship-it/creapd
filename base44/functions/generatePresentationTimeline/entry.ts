@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { configuration_id } = body;
+    const { configuration_id, regeneration_count = 0, feedback = null } = body;
     if (!configuration_id) {
       return Response.json({ error: 'configuration_id is required' }, { status: 400 });
     }
@@ -23,6 +23,47 @@ Deno.serve(async (req) => {
 
     // Fetch config
     const config = await base44.asServiceRole.entities.SpiritualProductionConfiguration.get(configuration_id);
+
+    // REGENERATION: On third attempt, ask the producer for structured feedback
+    if (regeneration_count === 2 && !feedback) {
+      return Response.json({
+        needs_feedback: true,
+        improvement_options: [
+          { id: 'timing_mismatch', label: 'Text appears at the wrong time', description: 'Visual elements appear too early or too late relative to the voiceover' },
+          { id: 'animation_speed', label: 'Animations are too fast or slow', description: 'Animation timing feels rushed or dragging' },
+          { id: 'too_many_elements', label: 'Too many elements on screen', description: 'Scenes feel cluttered with too much text or visuals at once' },
+          { id: 'too_few_elements', label: 'Not enough visual variety', description: 'Scenes feel empty or static — needs more dynamic elements' },
+          { id: 'scripture_missing', label: 'Scripture passages missing or incomplete', description: 'Key scripture references do not include the actual verse text' },
+          { id: 'pacing_issues', label: 'Scene pacing feels off', description: 'Some scenes feel rushed, others drag on too long' },
+          { id: 'transition_issues', label: 'Transitions are jarring', description: 'Scene-to-scene transitions feel abrupt or disjointed' },
+          { id: 'background_mismatch', label: 'Backgrounds do not match content', description: 'Visual backgrounds do not relate to the script content' },
+          { id: 'text_readability', label: 'Text is hard to read', description: 'Text is too small, too long, or poorly positioned' },
+          { id: 'emphasis_wrong', label: 'Wrong words emphasized', description: 'The AI emphasizes the wrong phrases or misses key moments' },
+        ]
+      });
+    }
+
+    // Build refinement directives based on regeneration count and feedback
+    const REFINEMENT_INSTRUCTIONS = {
+      timing_mismatch: 'FIX TIMING: Recalculate every element timestamp. Map each text element to the EXACT word position in the script. If a phrase appears at word 30 of a 100-word section that is 45 seconds long, the element should appear at (30/100) * 45 = 13.5 seconds into the scene. Do not guess — calculate.',
+      animation_speed: 'FIX ANIMATION SPEED: Vary animation durations. Use faster transitions (0.3s) for quick emphasis, slower ones (0.8s) for dramatic reveals. Word-by-word animations should have 0.12s per word delay.',
+      too_many_elements: 'FIX CLUTTER: Reduce to maximum 3 elements per scene. Remove low-priority elements. One core idea per scene. Elements should appear one at a time, not simultaneously.',
+      too_few_elements: 'FIX VARIETY: Add more visual elements. Break long scenes into multiple beats. Add emphasis text for key phrases, lower_third elements for supporting points, and motion graphics for concepts.',
+      scripture_missing: 'FIX SCRIPTURE: Every scripture_reference in the script MUST have a scripture_element with the FULL verse text. Include the actual passage, not just the reference. If unsure, include best knowledge with [Verify] tag.',
+      pacing_issues: 'FIX PACING: Balance scene durations. No scene should be shorter than 5 seconds or longer than 90 seconds. Split long scenes, merge very short ones. Ensure smooth flow.',
+      transition_issues: 'FIX TRANSITIONS: Use smooth transitions between scenes. Match transition type to content — fade for contemplative moments, dissolve for theme shifts, zoom for emphasis, slide for forward momentum. Never use abrupt cuts.',
+      background_mismatch: 'FIX BACKGROUNDS: Every background_prompt must directly relate to the scene content. Describe specific, concrete visual scenes that illustrate the script message. No generic backgrounds.',
+      text_readability: 'FIX READABILITY: Keep text elements short — maximum 8 words for emphasis, 12 for subtitles. Use clear positioning (center for main, lower_third for supporting). Break long text into multiple timed elements.',
+      emphasis_wrong: 'FIX EMPHASIS: Identify the 2-3 most important phrases per section. Use word_by_word animation for these. Use pop or zoom for key revelations. Do not emphasize filler or transitional phrases.',
+    };
+
+    let refinementDirectives = '';
+    if (regeneration_count === 1) {
+      refinementDirectives = '\n\nREFINEMENT PASS 2 — AUTOMATIC IMPROVEMENT:\nThis is a REGENERATION. The previous version had timing and animation issues. You MUST improve:\n- PRECISE TIMING: Calculate exact timestamps by mapping word positions to seconds. If a phrase is at word 15 of a 60-word section lasting 28 seconds, it should appear at (15/60)*28 = 7 seconds into the scene.\n- ANIMATION VARIETY: Use word_by_word for key emphasis phrases, zoom for revelations, lower_third for supporting text, fade for subtitles. Do not use the same animation for every element.\n- PROGRESSIVE REVEAL: Elements should appear one at a time, not all at once. Spread element start_times across the scene duration.\n- SCENE PACING: Each scene should have 2-4 elements, timed to appear progressively as the narration unfolds.';
+    } else if (regeneration_count >= 2 && feedback) {
+      const selectedFixes = (feedback.options || []).map(opt => REFINEMENT_INSTRUCTIONS[opt] || '').filter(Boolean);
+      refinementDirectives = '\n\nREFINEMENT PASS ' + (regeneration_count + 1) + ' — PRODUCER FEEDBACK:\nThe producer reviewed the presentation and identified these specific issues. You MUST fix ALL of them:\n' + selectedFixes.map((f, i) => (i + 1) + '. ' + f).join('\n') + '\n' + (feedback.notes ? '\nPRODUCER ADDITIONAL NOTES: ' + feedback.notes + '\n' : '') + '\nApply these fixes while maintaining the strengths of the previous version. The producer is counting on you to get this right.';
+    }
 
     // Build script with cumulative timing
     function estimateSpeakingTime(text) {
@@ -138,7 +179,7 @@ AI REASONING:
 
 OUTPUT: A JSON object with a "scenes" array. Each scene represents one narrative beat.
 - voice_start_time and voice_end_time are GLOBAL times (seconds from presentation start)
-- Element start_time and end_time are SCENE-RELATIVE (0 = scene begins)`;
+- Element start_time and end_time are SCENE-RELATIVE (0 = scene begins)${refinementDirectives}`;
 
     // Call LLM with JSON schema — nested arrays stored as JSON strings to avoid strict schema validation
     const llmResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({

@@ -11,9 +11,9 @@ import RuntimeOverview from '@/components/message/RuntimeOverview';
 import PresentationStrip from '@/components/message/PresentationStrip';
 import SceneCard from '@/components/message/SceneCard';
 import PresentationPreview from '@/components/message/PresentationPreview';
-import PresentationTimeline from '@/components/message/PresentationTimeline';
 import DirectorPreview from '@/components/message/DirectorPreview';
-import { Clapperboard, Film, ListVideo } from 'lucide-react';
+import RegenerationFeedbackModal from '@/components/message/RegenerationFeedbackModal';
+import { Clapperboard, Film, RefreshCw } from 'lucide-react';
 
 export default function SpiritualMessage() {
   const { config, messageSections, assets, packageItems, presentationScenes, loading, generatingVoice, generatingImages, refresh } = useSpiritualProduction();
@@ -21,8 +21,11 @@ export default function SpiritualMessage() {
   const [directing, setDirecting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showDirectorPreview, setShowDirectorPreview] = useState(false);
-  const [view, setView] = useState('script');
   const moduleRefs = useRef({});
+  const [regenerationCount, setRegenerationCount] = useState(0);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackOptions, setFeedbackOptions] = useState([]);
+  const [lastFeedback, setLastFeedback] = useState(null);
 
   if (loading) {
     return (
@@ -62,12 +65,45 @@ export default function SpiritualMessage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const handleDirect = async () => {
+  const handleDirect = async (isRegeneration = false) => {
     setDirecting(true);
     try {
-      await base44.functions.invoke('generatePresentationTimeline', { configuration_id: config.id });
+      const count = isRegeneration ? regenerationCount : 0;
+      const response = await base44.functions.invoke('generatePresentationTimeline', {
+        configuration_id: config.id,
+        regeneration_count: count,
+        feedback: isRegeneration ? lastFeedback : null
+      });
+
+      if (response.data?.needs_feedback) {
+        setFeedbackOptions(response.data.improvement_options);
+        setShowFeedbackModal(true);
+        setDirecting(false);
+        return;
+      }
+
       await refresh();
-      setView('timeline');
+      setRegenerationCount(isRegeneration ? count + 1 : 1);
+      setShowDirectorPreview(true);
+    } catch (err) {
+      console.error(err);
+    }
+    setDirecting(false);
+  };
+
+  const handleSubmitFeedback = async (selectedOptions, notes) => {
+    setShowFeedbackModal(false);
+    setLastFeedback({ options: selectedOptions, notes });
+    setDirecting(true);
+    try {
+      await base44.functions.invoke('generatePresentationTimeline', {
+        configuration_id: config.id,
+        regeneration_count: regenerationCount,
+        feedback: { options: selectedOptions, notes }
+      });
+      await refresh();
+      setRegenerationCount(prev => prev + 1);
+      setShowDirectorPreview(true);
     } catch (err) {
       console.error(err);
     }
@@ -140,7 +176,13 @@ export default function SpiritualMessage() {
                 <Film className="w-3.5 h-3.5 mr-1" /> Play Director
               </Button>
             )}
-            <Button size="sm" onClick={handleDirect} disabled={directing || messageSections.length === 0}>
+            {presentationScenes.length > 0 && (
+              <Button size="sm" variant="outline" className="border-accent/30 text-accent hover:bg-accent/10" onClick={() => handleDirect(true)} disabled={directing}>
+                {directing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                {directing ? 'Improving...' : 'Re-Direct'}
+              </Button>
+            )}
+            <Button size="sm" onClick={() => handleDirect(false)} disabled={directing || messageSections.length === 0}>
               {directing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Clapperboard className="w-3.5 h-3.5 mr-1" />}
               {directing ? 'Directing...' : 'Direct Presentation'}
             </Button>
@@ -150,55 +192,6 @@ export default function SpiritualMessage() {
           </div>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center gap-1 mb-4 p-1 rounded-lg bg-secondary/20 w-fit">
-          <button
-            onClick={() => setView('script')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'script' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            <PenTool className="w-3.5 h-3.5" /> Script View
-          </button>
-          <button
-            onClick={() => setView('timeline')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'timeline' ? 'bg-accent/20 text-accent' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            <ListVideo className="w-3.5 h-3.5" /> Timeline View
-            {presentationScenes.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-accent/20 text-accent text-[10px]">{presentationScenes.length}</span>
-            )}
-          </button>
-        </div>
-
-        {/* Timeline View */}
-        {view === 'timeline' && presentationScenes.length > 0 && (
-          <div className="mb-6">
-            <PresentationTimeline
-              scenes={presentationScenes}
-              sections={messageSections}
-              onRefresh={refresh}
-            />
-          </div>
-        )}
-
-        {/* Timeline empty state */}
-        {view === 'timeline' && presentationScenes.length === 0 && (
-          <div className="mb-6 glass-panel p-8 text-center">
-            <Clapperboard className="w-12 h-12 text-accent mx-auto mb-3" />
-            <h3 className="font-heading font-semibold mb-1">No Presentation Timeline Yet</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              The Presentation Director AI will analyze your full script and voiceover timing, then build a timed visual presentation
-              with animated text, scripture passages, image scenes, and transitions — treating every slide like a video scene.
-            </p>
-            <Button onClick={handleDirect} disabled={directing || messageSections.length === 0}>
-              {directing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Clapperboard className="w-4 h-4 mr-2" />}
-              {directing ? 'Directing Presentation...' : 'Direct Presentation'}
-            </Button>
-          </div>
-        )}
-
-        {/* Script View */}
-        {view === 'script' && (
-          <>
             {/* Runtime Overview */}
             <div className="mb-4">
               <RuntimeOverview sections={messageSections} targetRuntime={config.target_runtime} />
@@ -237,9 +230,6 @@ export default function SpiritualMessage() {
                 );
               })}
             </div>
-          </>
-        )}
-
         {/* Delivery Package */}
         <div className="glass-panel p-5">
           <div className="flex items-center justify-between mb-3">
@@ -285,7 +275,20 @@ export default function SpiritualMessage() {
           scenes={presentationScenes}
           sections={messageSections}
           config={config}
+          regenerationCount={regenerationCount}
           onClose={() => setShowDirectorPreview(false)}
+          onRegenerate={() => {
+            setShowDirectorPreview(false);
+            handleDirect(true);
+          }}
+        />
+      )}
+
+      {showFeedbackModal && (
+        <RegenerationFeedbackModal
+          options={feedbackOptions}
+          onCancel={() => setShowFeedbackModal(false)}
+          onSubmit={handleSubmitFeedback}
         />
       )}
     </div>

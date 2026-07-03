@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, ChevronLeft, ChevronRight, X, Volume2, VolumeX, Clock } from 'lucide-react';
+import { Play, Pause, ChevronLeft, ChevronRight, X, Volume2, VolumeX, Clock, RefreshCw } from 'lucide-react';
 import { formatDuration } from '@/lib/spiritualConstants';
 
 function safeParse(str) {
@@ -136,7 +136,7 @@ function ScriptureElement({ element, elapsed }) {
   );
 }
 
-export default function DirectorPreview({ scenes, sections, config, onClose }) {
+export default function DirectorPreview({ scenes, sections, config, onClose, onRegenerate, regenerationCount = 0 }) {
   const [globalTime, setGlobalTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -308,13 +308,28 @@ export default function DirectorPreview({ scenes, sections, config, onClose }) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors z-20"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Regenerate + Close buttons */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+          {regenerationCount > 0 && (
+            <span className="px-2.5 py-1 rounded-full bg-accent/80 backdrop-blur-sm text-xs font-medium text-white">
+              v{regenerationCount + 1}
+            </span>
+          )}
+          {onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-accent/90 backdrop-blur-sm text-xs font-medium text-white hover:bg-accent transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" /> Regenerate
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-black/80 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         {/* Navigation arrows */}
         <button
