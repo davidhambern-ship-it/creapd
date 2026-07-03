@@ -52,6 +52,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   });
   const [generating, setGenerating] = useState(null);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [mediaStep, setMediaStep] = useState(null);
   const [saving, setSaving] = useState(false);
   const [edits, setEdits] = useState({});
   const [promptTemplates, setPromptTemplates] = useState([]);
@@ -131,7 +132,9 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
 
   const handleGenerateAll = async () => {
     setGeneratingAll(true);
+    setMediaStep(null);
     try {
+      // ===== STEP 1: Generate text assets (scripts, prompts, talking points) =====
       const updated = await callGenerate(assetDefs.map(a => a.key));
       onPackageUpdate(updated);
       logActivity('generate', {
@@ -140,10 +143,71 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
         entity_name: article.title,
         details: `Generated full package (${updated?.tone || 'professional'}, ${updated?.reading_style || 'broadcast_news'})`,
       });
+
+      // ===== STEP 2: Generate voiceover audio (provides timing via Voice Package) =====
+      // This must run first because the VP timing data is the master clock for all downstream media.
+      setMediaStep('voiceover');
+      try {
+        const vpResult = await base44.functions.invoke('generateVoicePackage', {
+          script_text: updated[scriptField],
+          voice: 'river',
+          language_code: 'en',
+          source_type: 'production_package',
+          source_id: updated.id,
+        });
+        const audioUrl = vpResult?.data?.audio_url;
+        if (audioUrl) {
+          const withAudio = await base44.entities.ProductionPackage.update(updated.id, { generated_audio_url: audioUrl });
+          onPackageUpdate(withAudio);
+        }
+      } catch (err) { console.error('Voiceover generation failed:', err); }
+
+      // ===== STEP 3: Generate thumbnail image =====
+      setMediaStep('thumbnail');
+      try {
+        const thumbResult = await base44.integrations.Core.GenerateImage({ prompt: updated.thumbnail_prompt });
+        const thumbUrl = thumbResult?.url || thumbResult?.data?.url;
+        if (thumbUrl) {
+          const withThumb = await base44.entities.ProductionPackage.update(updated.id, { generated_thumbnail_url: thumbUrl });
+          onPackageUpdate(withThumb);
+        }
+      } catch (err) { console.error('Thumbnail generation failed:', err); }
+
+      // ===== STEP 4: Generate story image (visual reference for video) =====
+      setMediaStep('story_image');
+      try {
+        const imgResult = await base44.integrations.Core.GenerateImage({ prompt: updated.image_prompt });
+        const imgUrl = imgResult?.url || imgResult?.data?.url;
+        if (imgUrl) {
+          const withImg = await base44.entities.ProductionPackage.update(updated.id, { generated_image_url: imgUrl });
+          onPackageUpdate(withImg);
+        }
+      } catch (err) { console.error('Story image generation failed:', err); }
+
+      // ===== STEP 5: Generate promo video (uses image prompts + audio timing) =====
+      // The video prompt incorporates the visual scene established by the generated images.
+      setMediaStep('video');
+      try {
+        const vidResult = await base44.integrations.Core.GenerateVideo({ prompt: updated.image_prompt, duration: 6, aspect_ratio: '16:9' });
+        const vidUrl = vidResult?.url || vidResult?.data?.url;
+        if (vidUrl) {
+          const withVid = await base44.entities.ProductionPackage.update(updated.id, { generated_video_url: vidUrl });
+          onPackageUpdate(withVid);
+        }
+      } catch (err) { console.error('Video generation failed:', err); }
+
+      setMediaStep('done');
+      logActivity('generate', {
+        entity_type: 'ProductionPackage',
+        entity_id: updated?.id || '',
+        entity_name: article.title,
+        details: 'Full package generated with automated media chain (voiceover → thumbnail → story image → video)',
+      });
     } catch (err) {
       console.error(err);
     } finally {
       setGeneratingAll(false);
+      setMediaStep(null);
     }
   };
 
@@ -340,7 +404,13 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
             disabled={generatingAll || generating !== null}
           >
             {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-            {generatingAll ? 'Generating Package...' : pkg ? 'Regenerate Full Package' : 'Generate Full Package'}
+            {generatingAll
+              ? (mediaStep === 'voiceover' ? 'Generating Voiceover...'
+                : mediaStep === 'thumbnail' ? 'Generating Thumbnail...'
+                : mediaStep === 'story_image' ? 'Generating Story Image...'
+                : mediaStep === 'video' ? 'Generating Promo Video...'
+                : 'Generating Package...')
+              : pkg ? 'Regenerate Full Package' : 'Generate Full Package'}
           </Button>
           {hasEdits && (
             <Button size="sm" variant="outline" className="border-white/10 text-white text-xs h-8 hover:bg-white/[0.04]" onClick={handleSaveAll} disabled={saving}>
