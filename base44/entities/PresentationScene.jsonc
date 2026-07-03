@@ -1,0 +1,115 @@
+{
+  "name": "PresentationScene",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SpiritualProductionConfiguration"
+    },
+    "section_id": {
+      "type": "string",
+      "description": "ID of the source SpiritualMessageSection"
+    },
+    "section_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Order index of the source section"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Global order of this scene in the presentation"
+    },
+    "slide_id": {
+      "type": "string",
+      "description": "Unique identifier for this slide/scene"
+    },
+    "slide_title": {
+      "type": "string"
+    },
+    "beat_type": {
+      "type": "string",
+      "enum": [
+        "title_reveal",
+        "host_intro",
+        "emphasis_text",
+        "scripture_passage",
+        "image_scene",
+        "icon_highlight",
+        "motion_graphic",
+        "quote_card",
+        "question_prompt",
+        "transition",
+        "closing_momentum"
+      ],
+      "default": "emphasis_text"
+    },
+    "voice_start_time": {
+      "type": "number",
+      "description": "Start time in seconds from beginning of presentation"
+    },
+    "voice_end_time": {
+      "type": "number",
+      "description": "End time in seconds from beginning of presentation"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "visual_theme": {
+      "type": "string",
+      "description": "Overall visual theme/mood for this scene"
+    },
+    "background_prompt": {
+      "type": "string",
+      "description": "AI image generation prompt for the scene background"
+    },
+    "text_elements": {
+      "type": "string",
+      "description": "JSON array of {text, element_type, start_time, end_time, animation_in, animation_out, position, priority, purpose}"
+    },
+    "image_elements": {
+      "type": "string",
+      "description": "JSON array of {prompt, start_time, end_time, animation_in, animation_out, position, priority, purpose}"
+    },
+    "scripture_elements": {
+      "type": "string",
+      "description": "JSON array of {reference, text, start_time, end_time, animation_in, animation_out, position}"
+    },
+    "animation_plan": {
+      "type": "string",
+      "description": "JSON describing overall animation strategy for this scene"
+    },
+    "transition_plan": {
+      "type": "string",
+      "description": "Transition effect to the next scene"
+    },
+    "speaker_notes": {
+      "type": "string"
+    },
+    "production_notes": {
+      "type": "string"
+    },
+    "ai_reasoning": {
+      "type": "string",
+      "description": "AI's explanation of why each visual element was chosen"
+    },
+    "generated_image_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "generated",
+        "edited",
+        "approved"
+      ],
+      "default": "draft"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "slide_title"
+  ]
+}

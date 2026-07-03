@@ -8,24 +8,27 @@ export function useSpiritualProduction(configId) {
   const [messageSections, setMessageSections] = useState([]);
   const [assets, setAssets] = useState([]);
   const [packageItems, setPackageItems] = useState([]);
+  const [presentationScenes, setPresentationScenes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingVoice, setGeneratingVoice] = useState(false);
   const [generatingImages, setGeneratingImages] = useState(false);
   const pollRef = useRef(null);
 
   const fetchSubEntities = async (activeId) => {
-    const [r, t, m, a, p] = await Promise.all([
+    const [r, t, m, a, p, ps] = await Promise.all([
       base44.entities.SpiritualResearchItem.filter({ configuration_id: activeId }),
       base44.entities.SpiritualStudyTopic.filter({ configuration_id: activeId }),
       base44.entities.SpiritualMessageSection.filter({ configuration_id: activeId }, 'order'),
       base44.entities.SpiritualAsset.filter({ configuration_id: activeId }),
-      base44.entities.SpiritualPackageItem.filter({ configuration_id: activeId }, 'order')
+      base44.entities.SpiritualPackageItem.filter({ configuration_id: activeId }, 'order'),
+      base44.entities.PresentationScene.filter({ configuration_id: activeId }, 'order')
     ]);
     setResearch(r || []);
     setTopics(t || []);
     setMessageSections(m || []);
     setAssets(a || []);
     setPackageItems(p || []);
+    setPresentationScenes(ps || []);
   };
 
   const loadAll = useCallback(async (silent = false) => {
@@ -147,5 +150,5 @@ export function useSpiritualProduction(configId) {
     loadAll(false);
   }, [loadAll]);
 
-  return { config, setConfig, research, topics, messageSections, assets, packageItems, loading, generatingVoice, generatingImages, refresh: () => loadAll(true) };
+  return { config, setConfig, research, topics, messageSections, assets, packageItems, presentationScenes, loading, generatingVoice, generatingImages, refresh: () => loadAll(true) };
 }

@@ -11,11 +11,17 @@ import RuntimeOverview from '@/components/message/RuntimeOverview';
 import PresentationStrip from '@/components/message/PresentationStrip';
 import SceneCard from '@/components/message/SceneCard';
 import PresentationPreview from '@/components/message/PresentationPreview';
+import PresentationTimeline from '@/components/message/PresentationTimeline';
+import DirectorPreview from '@/components/message/DirectorPreview';
+import { Clapperboard, Film, ListVideo } from 'lucide-react';
 
 export default function SpiritualMessage() {
-  const { config, messageSections, assets, packageItems, loading, generatingVoice, generatingImages, refresh } = useSpiritualProduction();
+  const { config, messageSections, assets, packageItems, presentationScenes, loading, generatingVoice, generatingImages, refresh } = useSpiritualProduction();
   const [generating, setGenerating] = useState(false);
+  const [directing, setDirecting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showDirectorPreview, setShowDirectorPreview] = useState(false);
+  const [view, setView] = useState('script');
   const moduleRefs = useRef({});
 
   if (loading) {
@@ -54,6 +60,18 @@ export default function SpiritualMessage() {
   const scrollToModule = (sectionId) => {
     const el = moduleRefs.current[sectionId];
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const handleDirect = async () => {
+    setDirecting(true);
+    try {
+      await base44.functions.invoke('generatePresentationTimeline', { configuration_id: config.id });
+      await refresh();
+      setView('timeline');
+    } catch (err) {
+      console.error(err);
+    }
+    setDirecting(false);
   };
 
   // Building state
@@ -114,53 +132,113 @@ export default function SpiritualMessage() {
               <span className="flex items-center gap-1"><FileText className="w-4 h-4" /> {totalWords} words</span>
               <span className="flex items-center gap-1"><Package className="w-4 h-4" /> {assets.length} assets</span>
             </div>
-            <Button size="sm" variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:text-accent" onClick={() => setShowPreview(true)} disabled={messageSections.length === 0}>
-              <Play className="w-3.5 h-3.5 mr-1" /> Preview Presentation
+            <Button size="sm" variant="outline" onClick={() => setShowPreview(true)} disabled={messageSections.length === 0}>
+              <Play className="w-3.5 h-3.5 mr-1" /> Preview Slides
             </Button>
-            <Button size="sm" onClick={handleGenerate} disabled={generating}>
+            {presentationScenes.length > 0 && (
+              <Button size="sm" variant="outline" className="border-accent/50 text-accent hover:bg-accent/10 hover:text-accent" onClick={() => setShowDirectorPreview(true)}>
+                <Film className="w-3.5 h-3.5 mr-1" /> Play Director
+              </Button>
+            )}
+            <Button size="sm" onClick={handleDirect} disabled={directing || messageSections.length === 0}>
+              {directing ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Clapperboard className="w-3.5 h-3.5 mr-1" />}
+              {directing ? 'Directing...' : 'Direct Presentation'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleGenerate} disabled={generating}>
               <Sparkles className="w-3.5 h-3.5 mr-1" /> Regenerate
             </Button>
           </div>
         </div>
 
-        {/* Runtime Overview */}
-        <div className="mb-4">
-          <RuntimeOverview sections={messageSections} targetRuntime={config.target_runtime} />
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 mb-4 p-1 rounded-lg bg-secondary/20 w-fit">
+          <button
+            onClick={() => setView('script')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'script' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <PenTool className="w-3.5 h-3.5" /> Script View
+          </button>
+          <button
+            onClick={() => setView('timeline')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${view === 'timeline' ? 'bg-accent/20 text-accent' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <ListVideo className="w-3.5 h-3.5" /> Timeline View
+            {presentationScenes.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-accent/20 text-accent text-[10px]">{presentationScenes.length}</span>
+            )}
+          </button>
         </div>
 
-        {/* Presentation Strip */}
-        <div className="mb-4">
-          <PresentationStrip sections={messageSections} assets={assets} onSlideClick={scrollToModule} />
-        </div>
-
-        {/* Presentation Scenes Grid */}
-        <div className="mb-6">
-          <h3 className="text-sm font-heading font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-            <ImageIcon className="w-4 h-4" /> Presentation Scenes
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {messageSections.map((section, idx) => (
-              <SceneCard key={section.id} section={section} index={idx} onClick={() => scrollToModule(section.id)} />
-            ))}
+        {/* Timeline View */}
+        {view === 'timeline' && presentationScenes.length > 0 && (
+          <div className="mb-6">
+            <PresentationTimeline
+              scenes={presentationScenes}
+              sections={messageSections}
+              onRefresh={refresh}
+            />
           </div>
-        </div>
+        )}
 
-        {/* Production Modules */}
-        <div className="space-y-3 mb-6">
-          {messageSections.map((section, idx) => {
-            const slide = assets.find(a => a.associated_section_id === section.id);
-            return (
-              <div key={section.id} ref={el => { moduleRefs.current[section.id] = el; }}>
-                <ProductionModule
-                  section={section}
-                  slide={slide}
-                  index={idx}
-                  onRefresh={refresh}
-                />
+        {/* Timeline empty state */}
+        {view === 'timeline' && presentationScenes.length === 0 && (
+          <div className="mb-6 glass-panel p-8 text-center">
+            <Clapperboard className="w-12 h-12 text-accent mx-auto mb-3" />
+            <h3 className="font-heading font-semibold mb-1">No Presentation Timeline Yet</h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+              The Presentation Director AI will analyze your full script and voiceover timing, then build a timed visual presentation
+              with animated text, scripture passages, image scenes, and transitions — treating every slide like a video scene.
+            </p>
+            <Button onClick={handleDirect} disabled={directing || messageSections.length === 0}>
+              {directing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Clapperboard className="w-4 h-4 mr-2" />}
+              {directing ? 'Directing Presentation...' : 'Direct Presentation'}
+            </Button>
+          </div>
+        )}
+
+        {/* Script View */}
+        {view === 'script' && (
+          <>
+            {/* Runtime Overview */}
+            <div className="mb-4">
+              <RuntimeOverview sections={messageSections} targetRuntime={config.target_runtime} />
+            </div>
+
+            {/* Presentation Strip */}
+            <div className="mb-4">
+              <PresentationStrip sections={messageSections} assets={assets} onSlideClick={scrollToModule} />
+            </div>
+
+            {/* Presentation Scenes Grid */}
+            <div className="mb-6">
+              <h3 className="text-sm font-heading font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4" /> Presentation Scenes
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {messageSections.map((section, idx) => (
+                  <SceneCard key={section.id} section={section} index={idx} onClick={() => scrollToModule(section.id)} />
+                ))}
               </div>
-            );
-          })}
-        </div>
+            </div>
+
+            {/* Production Modules */}
+            <div className="space-y-3 mb-6">
+              {messageSections.map((section, idx) => {
+                const slide = assets.find(a => a.associated_section_id === section.id);
+                return (
+                  <div key={section.id} ref={el => { moduleRefs.current[section.id] = el; }}>
+                    <ProductionModule
+                      section={section}
+                      slide={slide}
+                      index={idx}
+                      onRefresh={refresh}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {/* Delivery Package */}
         <div className="glass-panel p-5">
@@ -199,6 +277,15 @@ export default function SpiritualMessage() {
           sections={messageSections}
           config={config}
           onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {showDirectorPreview && presentationScenes.length > 0 && (
+        <DirectorPreview
+          scenes={presentationScenes}
+          sections={messageSections}
+          config={config}
+          onClose={() => setShowDirectorPreview(false)}
         />
       )}
     </div>
