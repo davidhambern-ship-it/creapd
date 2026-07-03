@@ -91,10 +91,9 @@ export default function Newsroom() {
 
       <MonitorWall articles={articles} automationLog={lastLog} packages={packages} />
 
+      <AssignmentWhiteboard articles={articles} onUpdateStatus={handleStatusUpdate} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4">
-        <div className="lg:col-span-2">
-          <AssignmentWhiteboard articles={articles} onUpdateStatus={handleStatusUpdate} />
-        </div>
         <StickyNoteBoard articles={articles} />
       </div>
 
