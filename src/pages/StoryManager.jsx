@@ -108,7 +108,13 @@ export default function StoryManager() {
       const map = {};
       pkgs.forEach((p) => {if (p.article_id) map[p.article_id] = p;});
       setPkgMap(map);
-      if (arts.length > 0 && !selectedStoryId) setSelectedStoryId(arts[0].id);
+      if (arts.length > 0 && !selectedStoryId) {
+        const firstUnapproved = arts.find(a => {
+          const p = map[a.id];
+          return !p || p.status !== 'approved';
+        });
+        setSelectedStoryId((firstUnapproved || arts[0]).id);
+      }
 
       // Load production workspace if exists
       if (prods.length > 0) {
