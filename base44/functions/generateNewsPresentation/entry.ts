@@ -82,18 +82,43 @@ Deno.serve(async (req) => {
         package_id: pkg.id,
         article_title: article.title || 'Untitled',
         category: article.category || 'general',
+        // Core script content
         story_summary: pkg.story_summary || '',
         teleprompter_script: pkg.teleprompter_script || pkg.show_script || '',
         talking_points: pkg.talking_points || '',
         lower_third_text: pkg.lower_third_text || '',
         headline_suggestions: pkg.headline_suggestions || '',
+        // Visual / media prompts
         image_prompt: pkg.image_prompt || '',
+        thumbnail_prompt: pkg.thumbnail_prompt || '',
         visual_suggestions: pkg.visual_suggestions || '',
         broll_suggestions: pkg.broll_suggestions || '',
+        // Social / marketing
+        social_caption: pkg.social_caption || '',
+        // Fact verification
         fact_check_notes: pkg.fact_check_notes || '',
+        // Domain-specific content
+        artist_facts: pkg.artist_facts || '',
+        playlist_segment: pkg.playlist_segment || '',
+        cooking_notes: pkg.cooking_notes || '',
+        ingredient_list: pkg.ingredient_list || '',
+        scripture_references: pkg.scripture_references || '',
+        reflection_notes: pkg.reflection_notes || '',
+        // Production metadata
+        producer_notes: pkg.producer_notes || '',
         tone: pkg.tone || 'professional',
+        reading_style: pkg.reading_style || '',
+        audience: pkg.audience || '',
+        target_runtime: pkg.target_runtime || '',
+        // Existing generated media
         generated_image_url: pkg.generated_image_url || '',
         generated_thumbnail_url: pkg.generated_thumbnail_url || '',
+        generated_video_url: pkg.generated_video_url || '',
+        generated_audio_url: pkg.generated_audio_url || '',
+        // Translation
+        translation_language: pkg.translation_language || '',
+        translated_script: pkg.translated_script || '',
+        translated_caption: pkg.translated_caption || '',
         // Voiceover timing — this IS the slide duration
         has_voiceover: !!vp,
         slide_duration_seconds: durationSeconds,
@@ -188,16 +213,30 @@ Return a JSON object with:
 
     const scenes = llmResponse.scenes || [];
 
-    // Create PresentationScene records
-    let createdCount = 0;
+    // Delete any existing scenes for these packages so we start fresh (regeneration replaces, not appends)
+    const existingConfigIds = packages.map(p => p.id);
+    for (const configId of existingConfigIds) {
+      try {
+        await base44.asServiceRole.entities.PresentationScene.deleteMany({ configuration_id: configId });
+      } catch (delErr) {
+        console.error(`Failed to clear old scenes for ${configId}:`, delErr.message);
+      }
+    }
+
+    // Create PresentationScene records — each slide MUST be created successfully before the presentation is complete
+    const createdScenes = [];
+    const failedSlides = [];
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
       const pkg = packages.find(p => p.id === scene.package_id) || packages[i];
-      if (!pkg) continue;
+      if (!pkg) {
+        failedSlides.push({ index: i, reason: 'No matching package', package_id: scene.package_id });
+        continue;
+      }
 
       try {
         const summary = packageSummaries[i];
-        await base44.asServiceRole.entities.PresentationScene.create({
+        const created = await base44.asServiceRole.entities.PresentationScene.create({
           configuration_id: pkg.id,
           section_id: pkg.article_id || '',
           section_order: i,
@@ -220,16 +259,28 @@ Return a JSON object with:
           generated_image_url: pkg.generated_image_url || '',
           status: 'generated'
         });
-        createdCount++;
+        createdScenes.push(created);
       } catch (createErr) {
         console.error(`Failed to create scene for package ${pkg.id}:`, createErr.message);
+        failedSlides.push({ index: i, reason: createErr.message, package_id: pkg.id });
       }
+    }
+
+    // Verify ALL slides were created before declaring the presentation complete
+    if (failedSlides.length > 0) {
+      return Response.json({
+        success: false,
+        error: `Presentation incomplete: ${failedSlides.length} of ${packages.length} slides failed to create.`,
+        scenes_created: createdScenes.length,
+        failed_slides: failedSlides
+      }, { status: 500 });
     }
 
     return Response.json({
       success: true,
-      message: `Generated ${createdCount} presentation scenes from ${packages.length} approved packages.`,
-      scenes_created: createdCount
+      message: `Generated ${createdScenes.length} presentation scenes from ${packages.length} approved packages.`,
+      scenes_created: createdScenes.length,
+      scene_ids: createdScenes.map(s => s.id)
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
