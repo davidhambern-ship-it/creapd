@@ -267,7 +267,6 @@ export default function DesktopPackageWorkspace({
         </div>
 
         {/* AI Media Generation */}
-        {pkg && (
           <div className="pt-2">
             <div className="flex items-center gap-2 mb-2 px-1">
               <Sparkles className="w-3.5 h-3.5 text-berna-orange" />
@@ -312,7 +311,6 @@ export default function DesktopPackageWorkspace({
               />
             </div>
           </div>
-        )}
 
         {/* Approve + Regenerate */}
         {pkg && (
