@@ -4,11 +4,13 @@ import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/components/ui/use-toast";
 import ApprovedPackageCard from '@/components/production/ApprovedPackageCard';
+import PresentationTimeline from '@/components/message/PresentationTimeline';
 import { logActivity } from '@/lib/activityUtils';
 
 export default function ProductionPackages() {
   const [packages, setPackages] = useState([]);
   const [articleMap, setArticleMap] = useState({});
+  const [presentationScenes, setPresentationScenes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingPresentation, setGeneratingPresentation] = useState(false);
   const { toast } = useToast();
@@ -28,10 +30,28 @@ export default function ProductionPackages() {
       }
       setPackages(pkgs);
       setArticleMap(map);
+      await loadPresentationScenes(pkgs);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPresentationScenes = async (pkgs) => {
+    const pkgIds = (pkgs || packages).map(p => p.id);
+    if (pkgIds.length === 0) {
+      setPresentationScenes([]);
+      return;
+    }
+    try {
+      const allScenes = await base44.entities.PresentationScene.list('-created_date', 200);
+      const scenes = allScenes
+        .filter(s => pkgIds.includes(s.configuration_id))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      setPresentationScenes(scenes);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -46,6 +66,7 @@ export default function ProductionPackages() {
           title: "Presentation Generated",
           description: res.data.message || `Generated presentation from ${packages.length} approved packages.`,
         });
+        await loadPresentationScenes();
         logActivity('generate', {
           entity_type: 'PresentationScene',
           entity_name: `Full Presentation — ${packages.length} stories`,
@@ -123,6 +144,11 @@ export default function ProductionPackages() {
           </p>
         )}
       </div>
+
+      {/* Presentation Timeline */}
+      {presentationScenes.length > 0 && (
+        <PresentationTimeline scenes={presentationScenes} onRefresh={() => loadPresentationScenes()} />
+      )}
 
       {/* Approved Packages */}
       <div>
