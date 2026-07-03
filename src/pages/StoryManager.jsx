@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Package, Search, Sparkles, Loader2, CheckCircle2, Play } from 'lucide-react';
+import { Package, Search, Sparkles, Loader2, CheckCircle2, Play, ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
-import ProductionRundown from '@/components/workspace/ProductionRundown';
-import WorkspaceProgress from '@/components/workspace/WorkspaceProgress';
-import WorkspaceChecklist from '@/components/workspace/WorkspaceChecklist';
-import GlobalNotes from '@/components/workspace/GlobalNotes';
-import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
 import PackageDetailPanel from '@/components/production/PackageDetailPanel';
 import CategoryBadge from '@/components/shared/CategoryBadge';
@@ -75,6 +69,8 @@ export default function StoryManager() {
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('productionSort') || 'priority');
   const [search, setSearch] = useState('');
   const [showStartupOpen, setShowStartupOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [contentDomains, setContentDomains] = useState([]);
   const [bulkDomain, setBulkDomain] = useState('news');
   const [newProd, setNewProd] = useState({
@@ -451,17 +447,21 @@ export default function StoryManager() {
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-xl font-bold text-white">Story Manager</h1>
-          <p className="text-xs text-muted-foreground mt-1">Generate story packages, approve, and manage your rundown</p>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h1 className="text-xl font-bold text-white">Story Manager</h1>
+            <p className="text-xs text-muted-foreground mt-1 hidden sm:block">Generate story packages, approve, and manage your rundown</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{stories.length} stories</span>
+            <span className="text-xs text-berna-emerald flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              {Object.values(pkgMap).filter((p) => p.status === 'approved' || p.status === 'edited').length} approved
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">{stories.length} stories</span>
-          <span className="text-xs text-berna-emerald flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />
-            {Object.values(pkgMap).filter((p) => p.status === 'approved' || p.status === 'edited').length} approved
-          </span>
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -472,7 +472,7 @@ export default function StoryManager() {
           </Button>
           <Button
             size="sm"
-            className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
+            className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8 flex-1"
             onClick={handleGenerateAllStories}
             disabled={generatingAll || stories.length === 0}>
             
@@ -497,9 +497,10 @@ export default function StoryManager() {
         } />
       </div>
 
-      {/* Two-column: story list + package detail panel */}
+      {/* Two-column on desktop; master-detail with back button on mobile */}
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Story list */}
+        {(!isMobile || !mobileShowDetail) && (
         <div className="w-full lg:w-72 flex-shrink-0 space-y-2 lg:self-stretch">
           {sortedStories.map((article) => {
             const pkg = pkgMap[article.id];
@@ -510,7 +511,7 @@ export default function StoryManager() {
             return (
               <button
                 key={article.id}
-                onClick={() => setSelectedStoryId(article.id)}
+                onClick={() => { setSelectedStoryId(article.id); if (isMobile) setMobileShowDetail(true); }}
                 className={`w-full text-left glass-panel p-3 transition-all ${isSelected ? 'border-berna-purple/40 glow-purple' : 'hover:border-white/[0.12]'}`}>
                 
                 <div className="flex items-center gap-2 mb-1">
@@ -537,9 +538,19 @@ export default function StoryManager() {
             </div>
           }
         </div>
+        )}
 
         {/* Package Detail Panel — Text Generation + AI Media Generation + Approve/Regenerate + Translation */}
+        {(!isMobile || mobileShowDetail) && (
         <div className="flex-1 min-w-0">
+          {isMobile && selectedStory && (
+            <button
+              onClick={() => setMobileShowDetail(false)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-white mb-2 transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Stories
+            </button>
+          )}
           {selectedStory ?
           <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} onPackageApproved={handlePackageApproved} /> :
 
@@ -549,6 +560,7 @@ export default function StoryManager() {
             </div>
           }
         </div>
+        )}
       </div>
 
       {/* Create Production button — inline, not a gate */}
