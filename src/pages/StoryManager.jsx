@@ -431,14 +431,6 @@ export default function StoryManager() {
           >
             <Play className="w-3 h-3 mr-1" />Start Production
           </Button>
-          <Select value={bulkDomain} onValueChange={setBulkDomain}>
-            <SelectTrigger className="w-40 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-white/10">
-              {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key}>{d.display_name}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Button
             size="sm"
             className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
