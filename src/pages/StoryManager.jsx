@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Sparkles } from 'lucide-react';
+import { Package, Search, Sparkles, Loader2, CheckCircle2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +12,11 @@ import GlobalNotes from '@/components/workspace/GlobalNotes';
 import WorkspaceHistory from '@/components/workspace/WorkspaceHistory';
 import AddStoriesModal from '@/components/workspace/AddStoriesModal';
 import PackageDetailPanel from '@/components/production/PackageDetailPanel';
+import CategoryBadge from '@/components/shared/CategoryBadge';
+import OpportunityScore from '@/components/shared/OpportunityScore';
+import SortDropdown from '@/components/shared/SortDropdown';
+import ShowStartupModal from '@/components/profiles/ShowStartupModal';
+import { logActivity } from '@/lib/activityUtils';
 
 function getSelectedStoryIds() {
   try {
@@ -51,11 +55,11 @@ const DEFAULT_CHECKLIST = {
 };
 
 export default function StoryManager() {
-  const navigate = useNavigate();
   const [production, setProduction] = useState(null);
   const [storyOrder, setStoryOrder] = useState([]);
   const [stories, setStories] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [pkgMap, setPkgMap] = useState({});
   const [notesMap, setNotesMap] = useState({});
   const [history, setHistory] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -67,6 +71,12 @@ export default function StoryManager() {
   const [availableStories, setAvailableStories] = useState([]);
   const [creating, setCreating] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState(null);
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('productionSort') || 'priority');
+  const [search, setSearch] = useState('');
+  const [showStartupOpen, setShowStartupOpen] = useState(false);
+  const [contentDomains, setContentDomains] = useState([]);
+  const [bulkDomain, setBulkDomain] = useState('news');
   const [newProd, setNewProd] = useState({
     title: '',
     brand_profile_id: '',
@@ -81,53 +91,71 @@ export default function StoryManager() {
 
   const loadData = async () => {
     try {
-      const [prods, brandList, showList] = await Promise.all([
+      const [prods, brandList, showList, approved, picks, pkgs] = await Promise.all([
         base44.entities.Production.filter({ status: 'in_progress' }, '-created_date', 1),
         base44.entities.BrandProfile.list(),
         base44.entities.ShowProfile.list(),
+        base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 50),
+        base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 10),
+        base44.entities.ProductionPackage.list('-created_date', 200),
       ]);
       setBrands(brandList);
       setShows(showList);
+
+      // Story list (approved + bernas_pick) — from old Production page
+      const arts = [...picks, ...approved];
+      setStories(arts);
+      const map = {};
+      pkgs.forEach(p => { if (p.article_id) map[p.article_id] = p; });
+      setPkgMap(map);
+      if (arts.length > 0 && !selectedStoryId) setSelectedStoryId(arts[0].id);
+
+      // Load production workspace if exists
       if (prods.length > 0) {
         const prod = prods[0];
         setProduction(prod);
         setStoryOrder(JSON.parse(prod.story_order || '[]'));
         setGlobalNotes(prod.global_notes || '');
         setChecklist({ ...DEFAULT_CHECKLIST, ...JSON.parse(prod.checklist || '{}') });
-        await loadStoriesData(prod);
+        await loadRundownData(prod, pkgs);
       }
     } catch (e) {
-      console.error('Failed to load production:', e);
+      console.error('Failed to load data:', e);
     } finally {
       setLoading(false);
       setTimeout(() => { skipSave.current = false; }, 200);
     }
   };
 
-  const loadStoriesData = async (prod) => {
+  const loadRundownData = async (prod, existingPkgs) => {
     const order = JSON.parse(prod.story_order || '[]');
     if (order.length === 0) {
-      setStories([]);
       setPackages([]);
       setNotesMap({});
       return;
     }
     try {
-      const [allArticles, allPkgs, allNotes] = await Promise.all([
+      const [allArticles, allNotes] = await Promise.all([
         base44.entities.Article.filter({ production_id: prod.id }),
-        base44.entities.ProductionPackage.list('-created_date', 100),
         base44.entities.ProducerNote.list('-created_date', 100),
       ]);
-      const sorted = order.map(id => allArticles.find(a => a.id === id)).filter(Boolean);
-      setStories(sorted);
-      setPackages(allPkgs.filter(p => order.includes(p.article_id)));
+      const rundownArticles = order.map(id => allArticles.find(a => a.id === id)).filter(Boolean);
+      const pkgs = (existingPkgs || []).filter(p => order.includes(p.article_id));
+      setPackages(pkgs);
+      // Merge rundown articles into the stories list
+      setStories(prev => {
+        const ids = new Set(prev.map(s => s.id));
+        const merged = [...prev];
+        rundownArticles.forEach(a => { if (!ids.has(a.id)) merged.push(a); });
+        return merged;
+      });
       const notes = {};
       allNotes.filter(n => order.includes(n.article_id)).forEach(n => {
         notes[n.article_id] = (notes[n.article_id] || 0) + 1;
       });
       setNotesMap(notes);
     } catch (e) {
-      console.error('Failed to load stories:', e);
+      console.error('Failed to load rundown:', e);
     }
     try {
       const hist = await base44.entities.ActivityLog.filter(
@@ -145,7 +173,58 @@ export default function StoryManager() {
   const estimatedRuntime = formatRuntime(estimatedRuntimeSeconds);
 
   const selectedStory = stories.find(s => s.id === selectedStoryId);
-  const selectedPkg = packages.find(p => p.article_id === selectedStoryId);
+  const selectedPkg = pkgMap[selectedStoryId] || packages.find(p => p.article_id === selectedStoryId);
+
+  // Sorted story list (from old Production page)
+  const sortedStories = useMemo(() => {
+    let result = stories.filter(a => !search || a.title?.toLowerCase().includes(search.toLowerCase()));
+    switch (sortBy) {
+      case 'newest': return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      case 'oldest': return result.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      case 'alphabetical': return result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'package_status': return result.sort((a, b) => {
+        const order = { approved: 0, edited: 1, generated: 2, generating: 3, not_generated: 4 };
+        return (order[pkgMap[a.id]?.status] || 5) - (order[pkgMap[b.id]?.status] || 5);
+      });
+      default: return result.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
+    }
+  }, [stories, sortBy, search, pkgMap]);
+
+  const handleGenerateAllStories = async () => {
+    setGeneratingAll(true);
+    for (const article of stories) {
+      try {
+        const res = await base44.functions.invoke('generateProductionPackage', {
+          article_id: article.id,
+          asset_types: null,
+          content_domain: bulkDomain,
+          tone: 'professional',
+          reading_style: 'broadcast_news',
+          audience: 'General Public',
+          target_runtime: '1 Minute',
+        });
+        if (res.data?.package) {
+          const updatedPkg = res.data.package;
+          setPkgMap(prev => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
+        }
+      } catch (err) { console.error(err); }
+    }
+    setGeneratingAll(false);
+    logActivity('generate', {
+      entity_type: 'ProductionPackage',
+      entity_name: `Bulk generate — ${stories.length} stories`,
+      details: `Generated production packages for ${stories.length} approved stories`,
+    });
+  };
+
+  const handlePackageUpdate = (updatedPkg) => {
+    setPkgMap(prev => ({ ...prev, [updatedPkg.article_id]: updatedPkg }));
+    setPackages(prev => {
+      const exists = prev.find(p => p.id === updatedPkg.id);
+      if (exists) return prev.map(p => p.id === updatedPkg.id ? updatedPkg : p);
+      return [...prev, updatedPkg];
+    });
+  };
 
   // Auto-save (debounced)
   useEffect(() => {
@@ -218,7 +297,7 @@ export default function StoryManager() {
       setProduction(prod);
       setStoryOrder(order);
       setChecklist(DEFAULT_CHECKLIST);
-      await loadStoriesData(prod);
+      await loadRundownData(prod);
       await logActivity('create', `Production created with ${order.length} stories`);
     } catch (e) {
       console.error('Failed to create production:', e);
@@ -297,7 +376,7 @@ export default function StoryManager() {
     await Promise.all(articleIds.map(id =>
       base44.entities.Article.update(id, { production_id: production.id, production_status: 'selected' })
     ));
-    await loadStoriesData({ ...production, story_order: JSON.stringify(newOrder) });
+    await loadRundownData({ ...production, story_order: JSON.stringify(newOrder) });
     logActivity('create', `${articleIds.length} stories added to rundown`);
     setShowAddModal(false);
   };
@@ -310,13 +389,9 @@ export default function StoryManager() {
     setSelectedStoryId(storyId);
   };
 
-  const handlePackageUpdate = (updatedPkg) => {
-    setPackages(prev => {
-      const exists = prev.find(p => p.id === updatedPkg.id);
-      if (exists) return prev.map(p => p.id === updatedPkg.id ? updatedPkg : p);
-      return [...prev, updatedPkg];
-    });
-  };
+  useEffect(() => {
+    base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
+  }, []);
 
   if (loading) {
     return (
@@ -326,125 +401,182 @@ export default function StoryManager() {
     );
   }
 
-  if (!production) {
-    return (
-      <div className="p-4 lg:p-6 max-w-2xl mx-auto">
-        <div className="glass-panel glow-purple p-6 lg:p-8 space-y-4">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-berna-purple" />
-            <h1 className="text-2xl font-bold text-white">Create Production</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Create a new production workspace. All selected stories from the Story Queue will be added automatically.
-          </p>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Production Title</label>
-              <Input
-                value={newProd.title}
-                onChange={(e) => setNewProd({ ...newProd, title: e.target.value })}
-                placeholder="e.g. TNN Morning Brief - June 29"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Brand Profile</label>
-                <Select value={newProd.brand_profile_id} onValueChange={(v) => setNewProd({ ...newProd, brand_profile_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
-                  <SelectContent>
-                    {brands.map(b => <SelectItem key={b.id} value={b.id}>{b.brand_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Show Profile</label>
-                <Select value={newProd.show_profile_id} onValueChange={(v) => setNewProd({ ...newProd, show_profile_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select show" /></SelectTrigger>
-                  <SelectContent>
-                    {shows.map(s => <SelectItem key={s.id} value={s.id}>{s.show_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Production Date</label>
-              <Input
-                type="date"
-                value={newProd.production_date}
-                onChange={(e) => setNewProd({ ...newProd, production_date: e.target.value })}
-              />
-            </div>
-          </div>
-          <Button
-            className="w-full bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple"
-            onClick={handleCreate}
-            disabled={creating || !newProd.title}
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {creating ? 'Creating...' : 'Create Production'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const statusStyles = {
+    not_generated: { label: 'Not Generated', color: 'text-muted-foreground', dot: 'bg-muted-foreground/40' },
+    generating: { label: 'Generating', color: 'text-berna-purple', dot: 'bg-berna-purple animate-pulse' },
+    generated: { label: 'Generated', color: 'text-blue-400', dot: 'bg-blue-400' },
+    edited: { label: 'Edited', color: 'text-berna-orange', dot: 'bg-berna-orange' },
+    approved: { label: 'Approved', color: 'text-berna-emerald', dot: 'bg-berna-emerald' },
+  };
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
-      <WorkspaceHeader
-        production={production}
-        brands={brands}
-        shows={shows}
-        storyCount={storyOrder.length}
-        estimatedRuntime={estimatedRuntime}
-        onUpdate={setProduction}
-        packages={packages}
-        articles={stories}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white neon-underline">Story Rundown</h2>
-            <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
-          </div>
-          <ProductionRundown
-            stories={stories}
-            packages={packages}
-            notesMap={notesMap}
-            storyOrder={storyOrder}
-            onReorder={handleReorder}
-            onRemoveStory={handleRemoveStory}
-            onDuplicateStory={handleDuplicateStory}
-            onArchiveStory={handleArchiveStory}
-            onUpdateStoryStatus={handleUpdateStoryStatus}
-            onUpdateStoryPriority={handleUpdatePriority}
-            onToggleLock={handleToggleLock}
-            onOpenPackage={handleOpenPackage}
-            onAddStories={handleOpenAddModal}
-          />
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-xl font-bold text-white">Story Manager</h1>
+          <p className="text-xs text-muted-foreground mt-1">Generate story packages, approve, and manage your rundown</p>
         </div>
-
-        <div className="space-y-4">
-          <WorkspaceProgress stories={stories} packages={packages} production={production} />
-          <WorkspaceChecklist checklist={checklist} onToggle={handleToggleChecklist} autoValues={autoChecklist} />
-          <GlobalNotes notes={globalNotes} onChange={setGlobalNotes} />
-          <WorkspaceHistory history={history} />
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">{stories.length} stories</span>
+          <span className="text-xs text-berna-emerald flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            {Object.values(pkgMap).filter(p => p.status === 'approved' || p.status === 'edited').length} approved
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-berna-purple/30 text-berna-purple hover:bg-berna-purple/10 text-xs h-8"
+            onClick={() => setShowStartupOpen(true)}
+          >
+            <Play className="w-3 h-3 mr-1" />Start Production
+          </Button>
+          <Select value={bulkDomain} onValueChange={setBulkDomain}>
+            <SelectTrigger className="w-40 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-white/10">
+              {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key}>{d.display_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"
+            onClick={handleGenerateAllStories}
+            disabled={generatingAll || stories.length === 0}
+          >
+            {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+            {generatingAll ? 'Generating All...' : 'Generate All Packages'}
+          </Button>
         </div>
       </div>
 
-      {selectedStoryId && selectedStory && (
-        <div className="mt-4 border-t border-white/[0.06] pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white neon-underline">Story Package — {selectedStory.title}</h2>
-            <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-white text-xs h-7" onClick={() => setSelectedStoryId(null)}>
-              Close
-            </Button>
-          </div>
-          <PackageDetailPanel
-            article={selectedStory}
-            pkg={selectedPkg}
-            onPackageUpdate={handlePackageUpdate}
+      {/* Search + Sort */}
+      <div className="flex gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search stories..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
+        </div>
+        <SortDropdown value={sortBy} onChange={setSortBy} storageKey="productionSort" options={[
+          { value: 'priority', label: 'Story Priority' },
+          { value: 'newest', label: 'Newest First' },
+          { value: 'oldest', label: 'Oldest First' },
+          { value: 'alphabetical', label: 'Alphabetical' },
+          { value: 'package_status', label: 'Package Status' },
+        ]} />
+      </div>
+
+      {/* Two-column: story list + package detail panel */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Story list */}
+        <div className="w-full lg:w-72 flex-shrink-0 space-y-2 lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto">
+          {sortedStories.map(article => {
+            const pkg = pkgMap[article.id];
+            const status = pkg?.status || 'not_generated';
+            const st = statusStyles[status];
+            const isSelected = article.id === selectedStoryId;
+            const exportReady = status === 'approved' || status === 'edited';
+            return (
+              <button
+                key={article.id}
+                onClick={() => setSelectedStoryId(article.id)}
+                className={`w-full text-left glass-panel p-3 transition-all ${isSelected ? 'border-berna-purple/40 glow-purple' : 'hover:border-white/[0.12]'}`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${st.dot} flex-shrink-0`} />
+                  <span className={`text-[9px] uppercase tracking-wider ${st.color}`}>{st.label}</span>
+                  {exportReady && (
+                    <span className="text-[9px] text-berna-emerald flex items-center gap-0.5" title="Ready for production">
+                      <CheckCircle2 className="w-2.5 h-2.5" />Approved
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-xs font-semibold text-white leading-snug line-clamp-2 mb-1.5">{article.title}</h3>
+                <div className="flex items-center gap-2">
+                  {article.category && <CategoryBadge category={article.category} />}
+                  <OpportunityScore score={article.opportunity_score} />
+                </div>
+              </button>
+            );
+          })}
+          {stories.length === 0 && (
+            <div className="glass-panel p-8 text-center">
+              <Package className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">No approved stories yet. Approve stories from the Story Queue first.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Package Detail Panel — Text Generation + AI Media Generation + Approve/Regenerate + Translation */}
+        <div className="flex-1 min-w-0">
+          {selectedStory ? (
+            <PackageDetailPanel article={selectedStory} pkg={selectedPkg} onPackageUpdate={handlePackageUpdate} />
+          ) : (
+            <div className="glass-panel p-12 text-center h-full flex flex-col items-center justify-center">
+              <Package className="w-12 h-12 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Select a story to generate its story package</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Production workspace sections (rundown, progress, checklist, notes, history) — shown when a production exists */}
+      {production && (
+        <div className="space-y-4 border-t border-white/[0.06] pt-4">
+          <WorkspaceHeader
+            production={production}
+            brands={brands}
+            shows={shows}
+            storyCount={storyOrder.length}
+            estimatedRuntime={estimatedRuntime}
+            onUpdate={setProduction}
+            packages={packages}
+            articles={stories}
           />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-white neon-underline">Story Rundown</h2>
+                <span className="text-[10px] text-muted-foreground">Drag to reorder</span>
+              </div>
+              <ProductionRundown
+                stories={stories}
+                packages={packages}
+                notesMap={notesMap}
+                storyOrder={storyOrder}
+                onReorder={handleReorder}
+                onRemoveStory={handleRemoveStory}
+                onDuplicateStory={handleDuplicateStory}
+                onArchiveStory={handleArchiveStory}
+                onUpdateStoryStatus={handleUpdateStoryStatus}
+                onUpdateStoryPriority={handleUpdatePriority}
+                onToggleLock={handleToggleLock}
+                onOpenPackage={handleOpenPackage}
+                onAddStories={handleOpenAddModal}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <WorkspaceProgress stories={stories} packages={packages} production={production} />
+              <WorkspaceChecklist checklist={checklist} onToggle={handleToggleChecklist} autoValues={autoChecklist} />
+              <GlobalNotes notes={globalNotes} onChange={setGlobalNotes} />
+              <WorkspaceHistory history={history} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Production button — inline, not a gate */}
+      {!production && (
+        <div className="glass-panel p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-white">No active production</p>
+            <p className="text-xs text-muted-foreground">Create a production workspace to build a story rundown</p>
+          </div>
+          <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={() => setShowStartupOpen(true)}>
+            <Play className="w-3 h-3 mr-1" />Start Production
+          </Button>
         </div>
       )}
 
@@ -454,6 +586,7 @@ export default function StoryManager() {
         availableStories={availableStories}
         onAdd={handleAddStories}
       />
+      <ShowStartupModal open={showStartupOpen} onClose={() => setShowStartupOpen(false)} />
     </div>
   );
 }
