@@ -213,7 +213,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Header */}
       <div className="glass-panel p-4 mb-3 flex-shrink-0">
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -359,7 +359,7 @@ export default function PackageDetailPanel({ article, pkg, onPackageUpdate }) {
       </div>
 
       {/* Assets */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+      <div className="space-y-3 pr-1">
         {assetDefs.map(def => (
           <AssetEditor
             key={def.key}

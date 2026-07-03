@@ -53,7 +53,7 @@ export default function AssetEditor({ assetKey, label, icon: Icon, value, onChan
             <Textarea
               value={localValue}
               onChange={e => setLocalValue(e.target.value)}
-              className="bg-white/[0.02] border-white/[0.06] text-white text-xs min-h-24 resize-y"
+              className="bg-white/[0.02] border-white/[0.06] text-white text-sm min-h-40 resize-y"
               placeholder={`No ${label.toLowerCase()} generated yet. Click Regenerate to create one.`}
             />
             {localValue !== (value || '') && (

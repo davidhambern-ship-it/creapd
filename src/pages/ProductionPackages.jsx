@@ -165,9 +165,9 @@ export default function ProductionPackages() {
         ]} />
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)]">
+      <div className="flex flex-col lg:flex-row gap-4 min-h-[calc(100vh-180px)]">
         {/* Story list */}
-        <div className="w-full lg:w-72 flex-shrink-0 overflow-y-auto space-y-2 lg:max-h-full">
+        <div className="w-full lg:w-72 flex-shrink-0 overflow-y-auto space-y-2 lg:sticky lg:top-0 lg:max-h-[calc(100vh-180px)]">
           {sortedArticles.map(article => {
             const pkg = packages[article.id];
             const status = pkg?.status || 'not_generated';
