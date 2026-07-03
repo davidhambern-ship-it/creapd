@@ -198,6 +198,11 @@
     "locked": {
       "type": "boolean",
       "default": false
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the article entered the archive (used for 7-day auto-delete countdown on rejected articles)"
     }
   },
   "required": [

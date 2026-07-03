@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import {
-  Search as SearchIcon, Calendar, Star, FileText, ChevronRight, Clock,
-  Image as ImageIcon, Package, Archive as ArchiveIcon, RotateCcw, Trash2, Loader2
+  Search as SearchIcon, Calendar, FileText, ChevronRight, Clock,
+  Archive as ArchiveIcon, RotateCcw, Trash2, Loader2, Package, CheckCircle2, XCircle, AlertTriangle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,16 +12,24 @@ import SortDropdown from '@/components/shared/SortDropdown';
 import { useToast } from '@/components/ui/use-toast';
 
 const TABS = [
-  { key: 'briefings', label: 'Briefings', icon: FileText },
-  { key: 'stories', label: 'Stories', icon: FileText },
-  { key: 'images', label: 'Images', icon: ImageIcon },
+  { key: 'productions', label: 'Productions', icon: Package },
+  { key: 'approved', label: 'Approved Articles', icon: CheckCircle2 },
+  { key: 'rejected', label: 'Rejected Articles', icon: XCircle },
 ];
 
+function daysUntilDeletion(archivedDate) {
+  if (!archivedDate) return null;
+  const archived = new Date(archivedDate);
+  const now = new Date();
+  const elapsed = Math.floor((now.getTime() - archived.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, 7 - elapsed);
+}
+
 export default function ArchivePage() {
-  const [activeTab, setActiveTab] = useState('briefings');
-  const [briefings, setBriefings] = useState([]);
-  const [stories, setStories] = useState([]);
-  const [images, setImages] = useState([]);
+  const [activeTab, setActiveTab] = useState('productions');
+  const [productions, setProductions] = useState([]);
+  const [approvedArticles, setApprovedArticles] = useState([]);
+  const [rejectedArticles, setRejectedArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('archiveSort') || 'newest');
@@ -34,14 +42,15 @@ export default function ArchivePage() {
 
   const loadAll = async () => {
     try {
-      const [briefs, arts, imgs] = await Promise.all([
-        base44.entities.Briefing.filter({}, '-created_date', 50),
-        base44.entities.Article.filter({ status: 'archived' }, '-created_date', 50),
-        base44.entities.ImageAsset.filter({ approval_status: 'archived' }, '-created_date', 50),
+      const [exportedProds, archivedProds, approvedArts, rejectedArts] = await Promise.all([
+        base44.entities.Production.filter({ status: 'exported' }, '-created_date', 100),
+        base44.entities.Production.filter({ status: 'archived' }, '-created_date', 100),
+        base44.entities.Article.filter({ status: 'archived' }, '-archived_date', 100),
+        base44.entities.Article.filter({ status: 'rejected' }, '-archived_date', 100),
       ]);
-      setBriefings(briefs);
-      setStories(arts);
-      setImages(imgs);
+      setProductions([...exportedProds, ...archivedProds]);
+      setApprovedArticles(approvedArts);
+      setRejectedArticles(rejectedArts);
     } catch (e) {
       console.error('Failed to load archive:', e);
     } finally {
@@ -53,44 +62,35 @@ export default function ArchivePage() {
     const sorted = [...items];
     switch (sortBy) {
       case 'oldest': return sorted.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-      case 'alphabetical': return sorted.sort((a, b) => (a.title || a.brand_name || '').localeCompare(b.title || b.brand_name || ''));
-      case 'date': return sorted.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-      default: return sorted.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      case 'alphabetical': return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'date': return sorted.sort((a, b) => new Date(b.date || b.production_date || 0) - new Date(a.date || a.production_date || 0));
+      default: return sorted.sort((a, b) => new Date(b.archived_date || b.created_date) - new Date(a.archived_date || a.created_date));
     }
   };
 
   const currentData = useMemo(() => {
-    let items = activeTab === 'briefings' ? briefings : activeTab === 'stories' ? stories : images;
+    let items = activeTab === 'productions' ? productions : activeTab === 'approved' ? approvedArticles : rejectedArticles;
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       items = items.filter(item => {
-        const title = (item.title || item.brand_name || '').toLowerCase();
-        const sub = (item.theme || item.source_name || item.tags || '').toLowerCase();
+        const title = (item.title || '').toLowerCase();
+        const sub = (item.source_name || item.owner_name || item.tags || '').toLowerCase();
         return title.includes(term) || sub.includes(term);
       });
     }
     return sortItems(items);
-  }, [activeTab, briefings, stories, images, searchTerm, sortBy]);
+  }, [activeTab, productions, approvedArticles, rejectedArticles, searchTerm, sortBy]);
 
-  const handleRestoreStory = async (id) => {
+  const handleRestoreArticle = async (id, type) => {
     setRestoring(id);
     try {
-      await base44.entities.Article.update(id, { status: 'pending' });
-      setStories(prev => prev.filter(s => s.id !== id));
-      toast({ title: 'Story restored', description: 'Story moved back to pending review.' });
-    } catch (e) {
-      toast({ title: 'Restore failed', description: e.message, variant: 'destructive' });
-    } finally {
-      setRestoring(null);
-    }
-  };
-
-  const handleRestoreImage = async (id) => {
-    setRestoring(id);
-    try {
-      await base44.entities.ImageAsset.update(id, { approval_status: 'pending' });
-      setImages(prev => prev.filter(i => i.id !== id));
-      toast({ title: 'Image restored', description: 'Image moved back to pending review.' });
+      await base44.entities.Article.update(id, { status: 'pending', archived_date: null });
+      if (type === 'approved') {
+        setApprovedArticles(prev => prev.filter(a => a.id !== id));
+      } else {
+        setRejectedArticles(prev => prev.filter(a => a.id !== id));
+      }
+      toast({ title: 'Article restored', description: 'Article moved back to pending review.' });
     } catch (e) {
       toast({ title: 'Restore failed', description: e.message, variant: 'destructive' });
     } finally {
@@ -99,19 +99,15 @@ export default function ArchivePage() {
   };
 
   const handlePermanentDelete = async (id, type) => {
-    if (!confirm('Permanently delete this asset? This cannot be undone.')) return;
+    if (!confirm('Permanently delete this article? This cannot be undone.')) return;
     try {
-      if (type === 'story') {
-        await base44.entities.Article.delete(id);
-        setStories(prev => prev.filter(s => s.id !== id));
-      } else if (type === 'image') {
-        await base44.entities.ImageAsset.delete(id);
-        setImages(prev => prev.filter(i => i.id !== id));
-      } else if (type === 'briefing') {
-        await base44.entities.Briefing.delete(id);
-        setBriefings(prev => prev.filter(b => b.id !== id));
+      await base44.entities.Article.delete(id);
+      if (type === 'approved') {
+        setApprovedArticles(prev => prev.filter(a => a.id !== id));
+      } else {
+        setRejectedArticles(prev => prev.filter(a => a.id !== id));
       }
-      toast({ title: 'Asset permanently deleted' });
+      toast({ title: 'Article permanently deleted' });
     } catch (e) {
       toast({ title: 'Delete failed', description: e.message, variant: 'destructive' });
     }
@@ -125,7 +121,7 @@ export default function ArchivePage() {
     );
   }
 
-  const counts = { briefings: briefings.length, stories: stories.length, images: images.length };
+  const counts = { productions: productions.length, approved: approvedArticles.length, rejected: rejectedArticles.length };
 
   return (
     <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-4">
@@ -136,7 +132,7 @@ export default function ArchivePage() {
             <ArchiveIcon className="w-5 h-5 text-berna-purple" />
             Archive
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">Archived briefings, stories, and images — searchable and recoverable</p>
+          <p className="text-xs text-muted-foreground mt-1">Completed productions, approved articles, and rejected articles (auto-deleted after 7 days)</p>
         </div>
         <span className="text-xs text-muted-foreground">{counts[activeTab]} items</span>
       </div>
@@ -187,77 +183,73 @@ export default function ArchivePage() {
             {searchTerm ? `No ${activeTab} match your search` : `No archived ${activeTab} yet`}
           </p>
         </div>
-      ) : activeTab === 'images' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {currentData.map(img => (
-            <div key={img.id} className="glass-panel overflow-hidden group">
-              <div className="aspect-square bg-black/20 relative">
-                {img.image_url && <img src={img.image_url} alt={img.title} className="w-full h-full object-cover" />}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                  <Button size="sm" variant="outline" onClick={() => handleRestoreImage(img.id)} disabled={restoring === img.id} className="border-white/20 text-white text-[10px] h-7 px-2">
-                    {restoring === img.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                    Restore
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handlePermanentDelete(img.id, 'image')} className="text-[10px] h-7 px-2">
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+      ) : activeTab === 'productions' ? (
+        <div className="space-y-3">
+          {currentData.map(prod => (
+            <Link
+              key={prod.id}
+              to={`/workspace?production=${prod.id}`}
+              className="glass-panel p-4 hover:border-white/[0.12] transition-all group flex items-start justify-between gap-4"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Package className="w-3.5 h-3.5 text-berna-purple" />
+                  <span className="text-[10px] text-berna-purple uppercase tracking-wider">{prod.status}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-white mb-1">{prod.title}</h3>
+                <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+                  {prod.production_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{prod.production_date}</span>}
+                  {prod.owner_name && <span>Producer: {prod.owner_name}</span>}
+                  {prod.target_runtime && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{prod.target_runtime}</span>}
                 </div>
               </div>
-              <div className="p-2">
-                <p className="text-[11px] text-white truncate">{img.title}</p>
-                {img.tags && <p className="text-[9px] text-muted-foreground truncate">{img.tags}</p>}
-              </div>
-            </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-white transition-colors" />
+            </Link>
           ))}
         </div>
       ) : (
         <div className="space-y-3">
           {currentData.map(item => {
-            const isStory = activeTab === 'stories';
-            const isBriefing = activeTab === 'briefings';
+            const isRejected = activeTab === 'rejected';
+            const daysLeft = isRejected ? daysUntilDeletion(item.archived_date) : null;
             return (
               <div key={item.id} className="glass-panel p-4 hover:border-white/[0.12] transition-all group">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      {isBriefing && (
-                        <>
-                          <Calendar className="w-3.5 h-3.5 text-berna-purple" />
-                          <span className="text-xs font-mono text-berna-purple">{item.date}</span>
-                          <StatusBadge status={item.status} />
-                        </>
+                      {isRejected ? (
+                        <XCircle className="w-3.5 h-3.5 text-destructive" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-berna-emerald" />
                       )}
-                      {isStory && (
-                        <>
-                          <FileText className="w-3.5 h-3.5 text-berna-orange" />
-                          <span className="text-[10px] text-berna-orange uppercase tracking-wider">Archived Story</span>
-                        </>
-                      )}
+                      <span className={`text-[10px] uppercase tracking-wider ${isRejected ? 'text-destructive' : 'text-berna-emerald'}`}>
+                        {isRejected ? 'Rejected Article' : 'Approved Article'}
+                      </span>
                     </div>
                     <h3 className="text-sm font-semibold text-white mb-1">{item.title}</h3>
                     <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
-                      {item.theme && <span>Theme: {item.theme}</span>}
                       {item.source_name && <span>Source: {item.source_name}</span>}
-                      {item.estimated_read_time && (
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{item.estimated_read_time}</span>
+                      {item.estimated_reading_time && (
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{item.estimated_reading_time}</span>
                       )}
                       {item.tags && <span>Tags: {item.tags}</span>}
                     </div>
-                    {isBriefing && item.berna_pick_title && (
-                      <div className="flex items-center gap-1 mt-2">
-                        <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
-                        <span className="text-xs text-berna-orange">Pick: {item.berna_pick_title}</span>
+                    {isRejected && item.rejection_reason && (
+                      <p className="text-[10px] text-muted-foreground mt-1">Reason: {item.rejection_reason}</p>
+                    )}
+                    {isRejected && daysLeft !== null && (
+                      <div className={`flex items-center gap-1 mt-2 text-xs ${daysLeft <= 2 ? 'text-destructive' : 'text-accent'}`}>
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>Auto-deletes in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {isStory && (
-                      <Button size="sm" variant="outline" onClick={() => handleRestoreStory(item.id)} disabled={restoring === item.id} className="border-berna-emerald/20 text-berna-emerald hover:bg-berna-emerald/10 text-xs h-7">
-                        {restoring === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3 mr-1" />}
-                        Restore
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => handlePermanentDelete(item.id, isStory ? 'story' : 'briefing')} className="text-destructive hover:bg-destructive/10 text-xs h-7 px-2">
+                    <Button size="sm" variant="outline" onClick={() => handleRestoreArticle(item.id, activeTab)} disabled={restoring === item.id} className="border-berna-emerald/20 text-berna-emerald hover:bg-berna-emerald/10 text-xs h-7">
+                      {restoring === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3 mr-1" />}
+                      Restore
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handlePermanentDelete(item.id, activeTab)} className="text-destructive hover:bg-destructive/10 text-xs h-7 px-2">
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
