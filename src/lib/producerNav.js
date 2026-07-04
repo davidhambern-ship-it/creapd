@@ -3,7 +3,7 @@ import {
   Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
   ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Flower2
+  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
@@ -76,7 +76,7 @@ export const PRODUCTION_MODES = [
   { key: 'talk', label: 'Talk', icon: Mic2, path: '/talk/dashboard' },
   { key: 'cooking', label: 'Cooking', icon: ChefHat, path: '/cooking/dashboard' },
   { key: 'sports', label: 'Sports', icon: Trophy, path: '/sports/dashboard' },
-  { key: 'cosmo', label: 'Cosmo', icon: Flower2, path: '/cosmo/dashboard' },
+  { key: 'cosmo', label: 'Cosmo', icon: Brush, path: '/cosmo/dashboard' },
   { key: 'radio', label: 'Radio', icon: Radio, path: '/music/dashboard' },
   { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
 ];
