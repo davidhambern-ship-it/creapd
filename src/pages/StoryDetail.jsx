@@ -113,7 +113,7 @@ export default function StoryDetail() {
   return (
     <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">
       {/* Back link */}
-      <Link to="/queue" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors">
+      <Link to="/queue" className="inline-flex items-center gap-1.5 text-xs text-berna-orange hover:text-berna-orange/80 transition-colors">
         <ArrowLeft className="w-3.5 h-3.5" />
         Back to Story Queue
       </Link>

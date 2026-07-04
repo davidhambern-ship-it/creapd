@@ -134,7 +134,7 @@ export default function SpiritualStudySession() {
     return (
       <div className="min-h-screen p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <Link to="/spiritual/study" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
+          <Link to="/spiritual/study" className="inline-flex items-center gap-1 text-sm text-berna-orange hover:text-berna-orange/80 mb-6">
             <ArrowLeft className="w-4 h-4" /> Back to Study Workspace
           </Link>
           <ResearchProgress session={session} />
@@ -155,7 +155,7 @@ export default function SpiritualStudySession() {
   return (
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <Link to="/spiritual/study" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <Link to="/spiritual/study" className="inline-flex items-center gap-1 text-sm text-berna-orange hover:text-berna-orange/80 mb-4">
           <ArrowLeft className="w-4 h-4" /> Study Workspace
         </Link>
 

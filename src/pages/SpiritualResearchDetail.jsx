@@ -157,7 +157,7 @@ export default function SpiritualResearchDetail() {
   return (
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <Link to="/spiritual/research" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <Link to="/spiritual/research" className="inline-flex items-center gap-1 text-sm text-berna-orange hover:text-berna-orange/80 mb-4">
           <ArrowLeft className="w-4 h-4" /> Back to Research
         </Link>
 

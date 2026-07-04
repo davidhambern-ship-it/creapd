@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Package, Search, Sparkles, Loader2, CheckCircle2, Play, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -50,6 +51,7 @@ const DEFAULT_CHECKLIST = {
 };
 
 export default function StoryManager() {
+  const navigate = useNavigate();
   const [production, setProduction] = useState(null);
   const [storyOrder, setStoryOrder] = useState([]);
   const [stories, setStories] = useState([]);
@@ -477,6 +479,15 @@ export default function StoryManager() {
             {generatingAll ? 'Generating All...' : 'Generate All Packages'}
           </Button>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-berna-orange/40 text-berna-orange hover:bg-berna-orange/10 text-xs h-8 w-full"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="w-3 h-3 mr-1.5" />
+          Go Back
+        </Button>
       </div>
 
       {/* Search + Sort */}

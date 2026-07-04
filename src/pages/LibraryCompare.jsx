@@ -103,7 +103,7 @@ export default function LibraryCompare() {
       <div className="min-h-screen p-6 md:p-8">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <button onClick={() => navigate('/spiritual/library')} className="p-1.5 rounded-lg hover:bg-secondary/50">
+            <button onClick={() => navigate('/spiritual/library')} className="p-1.5 rounded-lg hover:bg-berna-orange/10 text-berna-orange">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
@@ -182,7 +182,7 @@ export default function LibraryCompare() {
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate('/spiritual/library')} className="p-1.5 rounded-lg hover:bg-secondary/50">
+          <button onClick={() => navigate('/spiritual/library')} className="p-1.5 rounded-lg hover:bg-berna-orange/10 text-berna-orange">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">

@@ -97,7 +97,7 @@ export default function WorldScriptureRegistryDetail() {
       <div className="min-h-screen p-6 md:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/world-scripture-registry')}><ArrowLeft className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/admin/world-scripture-registry')}><ArrowLeft className="w-5 h-5" /></Button>
             <h1 className="text-2xl font-heading font-bold">{id === 'new' ? 'New Registry Record' : 'Edit Record'}</h1>
           </div>
           <RegistryRecordForm
@@ -189,7 +189,7 @@ export default function WorldScriptureRegistryDetail() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/admin/world-scripture-registry')}><ArrowLeft className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/admin/world-scripture-registry')}><ArrowLeft className="w-5 h-5" /></Button>
             <div>
               <h1 className="text-2xl font-heading font-bold">{record.title}</h1>
               <p className="text-sm text-muted-foreground">{record.tradition} · {REGISTRY_COLLECTIONS[record.collection] || record.collection}</p>

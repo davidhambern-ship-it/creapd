@@ -6,7 +6,7 @@ export default function MobilePackageHeader({ article, pkg, onBack, status }) {
   const st = STATUS_STYLES[status] || STATUS_STYLES.not_started;
   return (
     <div className="glass-panel px-3 py-2 flex items-center gap-2">
-      <button onClick={onBack} className="text-muted-foreground hover:text-white flex-shrink-0 p-1 -ml-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-berna-purple rounded" aria-label="Back to stories">
+      <button onClick={onBack} className="text-berna-orange hover:text-berna-orange/80 flex-shrink-0 p-1 -ml-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-berna-orange rounded" aria-label="Back to stories">
         <ArrowLeft className="w-4 h-4" />
       </button>
       <div className="flex-1 min-w-0">

@@ -159,7 +159,7 @@ export default function PresentationReview() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/presentations')}>
+          <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/presentations')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
