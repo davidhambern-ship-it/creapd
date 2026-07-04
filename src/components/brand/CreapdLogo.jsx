@@ -45,8 +45,8 @@ export default function CreapdLogo({ showWordmark = true, height = 'h-8 lg:h-9' 
         <div className="flex flex-col leading-none">
           {/* Wordmark */}
           <div
-            className="flex items-center font-heading font-extrabold tracking-tight text-base lg:text-lg"
-            style={{ fontFamily: "'Poppins', 'Inter', sans-serif" }}
+            className="flex items-center tracking-tight text-lg lg:text-xl"
+            style={{ fontFamily: "'Ethnocentric', 'Poppins', sans-serif", fontWeight: 400 }}
           >
             <span style={metallicStyle}>CRE</span>
             <svg
