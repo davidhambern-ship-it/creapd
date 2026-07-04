@@ -1,0 +1,122 @@
+{
+  "name": "CosmoProductionConfiguration",
+  "type": "object",
+  "properties": {
+    "production_name": {
+      "type": "string"
+    },
+    "host_name": {
+      "type": "string"
+    },
+    "co_host_name": {
+      "type": "string"
+    },
+    "show_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "show_start_time": {
+      "type": "string"
+    },
+    "live_or_recorded": {
+      "type": "string",
+      "enum": [
+        "live",
+        "recorded"
+      ],
+      "default": "live"
+    },
+    "station_name": {
+      "type": "string"
+    },
+    "show_description": {
+      "type": "string"
+    },
+    "show_format": {
+      "type": "string",
+      "enum": [
+        "Product Review",
+        "Tutorial / How-To",
+        "Expert Interview",
+        "Trend Discussion",
+        "Routine Walkthrough",
+        "Q&A Session",
+        "Comparison Show",
+        "Before & After",
+        "Myth Busting",
+        "Ingredient Deep Dive",
+        "Self-Care Guide",
+        "Seasonal Tips",
+        "Audience Makeover",
+        "Brand Spotlight",
+        "Wellness Roundtable",
+        "Custom Format"
+      ],
+      "default": "Tutorial / How-To"
+    },
+    "total_show_runtime": {
+      "type": "number",
+      "description": "Total show runtime in minutes",
+      "default": 30
+    },
+    "cosmo_segment_runtime": {
+      "type": "number",
+      "description": "Beauty/health demo runtime in minutes",
+      "default": 22
+    },
+    "commercial_sponsor_runtime": {
+      "type": "number",
+      "description": "Commercial/sponsor runtime in minutes",
+      "default": 4
+    },
+    "intro_runtime": {
+      "type": "number",
+      "description": "Intro runtime in minutes",
+      "default": 2
+    },
+    "outro_runtime": {
+      "type": "number",
+      "description": "Outro runtime in minutes",
+      "default": 2
+    },
+    "topics": {
+      "type": "string",
+      "description": "JSON array of selected health/beauty topics"
+    },
+    "research_sources": {
+      "type": "string",
+      "description": "JSON array of enabled research sources"
+    },
+    "show_tone": {
+      "type": "string",
+      "default": "Warm & Empowering"
+    },
+    "guest_details": {
+      "type": "string",
+      "description": "Free-text guest expert information"
+    },
+    "ai_automation": {
+      "type": "string",
+      "description": "JSON array of selected AI automation options"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "configuring",
+        "building",
+        "ready",
+        "refreshing",
+        "failed"
+      ],
+      "default": "configuring"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "production_name",
+    "show_date"
+  ]
+}

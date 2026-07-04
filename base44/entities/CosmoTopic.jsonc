@@ -1,0 +1,43 @@
+{
+  "name": "CosmoTopic",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the CosmoProductionConfiguration"
+    },
+    "topic_name": {
+      "type": "string"
+    },
+    "generated_summary": {
+      "type": "string",
+      "description": "Summary of current developments on this topic"
+    },
+    "talking_points": {
+      "type": "string",
+      "description": "Key talking points for discussion (line-break separated)"
+    },
+    "sources": {
+      "type": "string",
+      "description": "Sources consulted for this topic"
+    },
+    "suggested_placement": {
+      "type": "string",
+      "description": "Where in the show this topic fits best"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "ready",
+        "approved",
+        "removed"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "topic_name"
+  ]
+}

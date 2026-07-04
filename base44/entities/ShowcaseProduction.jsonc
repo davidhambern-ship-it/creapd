@@ -18,7 +18,8 @@
         "talk",
         "music",
         "sports",
-        "cooking"
+        "cooking",
+        "cosmo"
       ],
       "description": "Which Production Profile this production was created with"
     },

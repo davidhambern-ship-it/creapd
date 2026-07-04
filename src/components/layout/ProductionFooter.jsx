@@ -5,7 +5,7 @@ import {
   Music, ListMusic, Disc3, Headphones,
   Church, BookOpen, GraduationCap, PenTool,
   Mic2, Lightbulb, Users, ClipboardList,
-  ChefHat, Carrot, Trophy,
+  ChefHat, Carrot, Trophy, Sparkles,
   Zap
 } from 'lucide-react';
 
@@ -69,6 +69,18 @@ const VARIANTS = {
       { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
     ],
     action: { icon: Zap, label: 'Open Rundown', path: '/cooking/rundown' },
+  },
+  cosmo: {
+    label: 'Cosmo Production',
+    icon: Sparkles,
+    stats: [
+      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
+      { icon: Sparkles, label: 'Topics', value: '5 ready' },
+      { icon: Users, label: 'Guests', value: '2 confirmed' },
+      { icon: ClipboardList, label: 'Rundown', value: 'Ready', color: 'text-berna-emerald' },
+      { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
+    ],
+    action: { icon: Zap, label: 'Open Rundown', path: '/cosmo/rundown' },
   },
 };
 

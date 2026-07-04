@@ -76,10 +76,19 @@ import SportsAthletes from '@/pages/SportsAthletes';
 import SportsRundown from '@/pages/SportsRundown';
 import SportsAssets from '@/pages/SportsAssets';
 import SportsExport from '@/pages/SportsExport';
+import CosmoConfigure from '@/pages/CosmoConfigure';
+import CosmoDashboard from '@/pages/CosmoDashboard';
+import CosmoResearch from '@/pages/CosmoResearch';
+import CosmoTopics from '@/pages/CosmoTopics';
+import CosmoGuests from '@/pages/CosmoGuests';
+import CosmoRundown from '@/pages/CosmoRundown';
+import CosmoAssets from '@/pages/CosmoAssets';
+import CosmoExport from '@/pages/CosmoExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
+import CosmoLayout from '@/components/layout/CosmoLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
@@ -215,6 +224,18 @@ const AuthenticatedApp = () => {
           <Route path="/sports/rundown" element={<SportsRundown />} />
           <Route path="/sports/assets" element={<SportsAssets />} />
           <Route path="/sports/export" element={<SportsExport />} />
+        </Route>
+
+        {/* Cosmo Production */}
+        <Route element={<CosmoLayout />}>
+          <Route path="/cosmo/configure" element={<CosmoConfigure />} />
+          <Route path="/cosmo/dashboard" element={<CosmoDashboard />} />
+          <Route path="/cosmo/research" element={<CosmoResearch />} />
+          <Route path="/cosmo/topics" element={<CosmoTopics />} />
+          <Route path="/cosmo/guests" element={<CosmoGuests />} />
+          <Route path="/cosmo/rundown" element={<CosmoRundown />} />
+          <Route path="/cosmo/assets" element={<CosmoAssets />} />
+          <Route path="/cosmo/export" element={<CosmoExport />} />
         </Route>
 
         {/* Spiritual Production */}

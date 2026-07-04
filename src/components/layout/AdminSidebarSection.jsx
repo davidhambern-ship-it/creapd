@@ -30,7 +30,7 @@ export default function AdminSidebarSection({ collapsed = false, variant = 'prod
 
   if (!isAdmin) return null;
 
-  const isMusicOrSpiritual = variant === 'music' || variant === 'spiritual' || variant === 'talk' || variant === 'cooking' || variant === 'sports';
+  const isMusicOrSpiritual = variant === 'music' || variant === 'spiritual' || variant === 'talk' || variant === 'cooking' || variant === 'sports' || variant === 'cosmo';
 
   return (
     <div className={isMusicOrSpiritual ? 'pt-2' : ''}>

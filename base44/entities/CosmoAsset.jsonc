@@ -1,0 +1,58 @@
+{
+  "name": "CosmoAsset",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the CosmoProductionConfiguration"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "host_intro",
+        "host_outro",
+        "guest_intro",
+        "talking_points",
+        "discussion_questions",
+        "audience_prompts",
+        "social_caption",
+        "hashtag",
+        "thumbnail_prompt",
+        "presentation_prompt",
+        "ai_image",
+        "production_notes",
+        "host_script",
+        "cohost_script",
+        "host_audio",
+        "cohost_audio"
+      ],
+      "description": "Type of AI-generated asset"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "Generated voiceover audio URL (for host_audio / cohost_audio assets)"
+    },
+    "associated_topic": {
+      "type": "string",
+      "description": "Optional link to a topic"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "approved"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "asset_type"
+  ]
+}

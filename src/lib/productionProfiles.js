@@ -1,5 +1,5 @@
 import {
-  Newspaper, Church, Mic2, Music, Trophy, ChefHat
+  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Sparkles
 } from 'lucide-react';
 
 export const PRODUCTION_PROFILES = [
@@ -146,6 +146,30 @@ export const PRODUCTION_PROFILES = [
     ],
     outputs: 'Recipes, cooking instructions, ingredient guides, host scripts, voiceovers, show rundowns, presentation prompts',
     examples: ['Step-by-Step Tutorial', 'Cuisine Exploration', 'Ingredient Spotlight']
+  },
+  {
+    key: 'cosmo',
+    label: 'Cosmo Production',
+    shortLabel: 'Cosmo',
+    description: 'Health & beauty shows, skincare tutorials, wellness programs, product reviews, and cosmetic education content.',
+    icon: Sparkles,
+    available: true,
+    path: '/cosmo/dashboard',
+    gradient: 'from-pink-500/20 to-fuchsia-500/10',
+    accent: 'text-pink-400',
+    accentBg: 'bg-pink-500/10',
+    accentBorder: 'border-pink-500/20',
+    spotlightFeature: 'Beauty Studio',
+    spotlightDescription: 'Build health & beauty shows with topic research, tutorials, expert interviews, host scripts, voiceovers, and presentation-ready wellness content.',
+    workflow: [
+      'Select health & beauty topics and define your show format',
+      'Generate research, topic summaries, and talking points with AI',
+      'Generate host scripts, co-host scripts, and voiceover audios',
+      'Build a timed show rundown with tutorial and demo segments',
+      'Export or share your finished production'
+    ],
+    outputs: 'Topic summaries, talking points, host scripts, voiceovers, show rundowns, presentation prompts',
+    examples: ['Skincare Tutorial', 'Product Review', 'Wellness Q&A']
   },
 ];
 

@@ -1,0 +1,62 @@
+{
+  "name": "CosmoSegment",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the CosmoProductionConfiguration"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "segment_type": {
+      "type": "string",
+      "enum": [
+        "intro",
+        "host_monologue",
+        "tutorial_demo",
+        "product_review",
+        "expert_interview",
+        "trend_discussion",
+        "audience_qa",
+        "comparison",
+        "sponsor_break",
+        "station_id",
+        "transition",
+        "outro"
+      ],
+      "default": "tutorial_demo"
+    },
+    "title": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Start time HH:MM"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "End time HH:MM"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "approved"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "segment_type"
+  ]
+}
