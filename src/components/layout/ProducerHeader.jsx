@@ -116,14 +116,14 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
       </div>
 
       {/* Production Mode Switcher — sub-bar (mobile only) */}
-      <div className="lg:hidden flex items-center gap-1 px-3 py-1.5 glass-panel-navy border-b border-white/[0.06]">
+      <div className="lg:hidden flex items-center gap-1 px-3 py-1.5 glass-panel-navy border-b border-white/[0.06] overflow-x-auto scrollbar-thin scrollbar-thumb-white/10">
         {PRODUCTION_MODES.map(mode => {
           const isActive = activeMode === mode.key;
           return (
             <Link
               key={mode.key}
               to={mode.path}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
                 isActive
                   ? 'bg-primary/20 text-primary border border-primary/30'
                   : 'text-muted-foreground border border-transparent hover:text-foreground'
