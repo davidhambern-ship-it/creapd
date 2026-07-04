@@ -170,7 +170,7 @@ export default function StoryLibrary() {
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     )}
-                    <Link to="/production" className="text-berna-emerald hover:text-berna-emerald/80 p-1" title="Send to production">
+                    <Link to="/workspace" className="text-berna-emerald hover:text-berna-emerald/80 p-1" title="Send to Manager">
                       <Layers className="w-3.5 h-3.5" />
                     </Link>
                     <button onClick={() => handleArchive(a.id)} className="text-muted-foreground hover:text-yellow-400 p-1" title="Archive">

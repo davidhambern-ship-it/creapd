@@ -139,18 +139,26 @@ export default function StoryQueue() {
   const selectAll = () => setSelectedIds(filtered.map(a => a.id));
   const deselectAll = () => setSelectedIds([]);
 
+  const READY_STATUSES = ['generated', 'edited', 'approved'];
+  const selectedReady = selectedIds.filter(id => {
+    const p = packages[id];
+    return p && READY_STATUSES.includes(p.status);
+  });
+  const allSelectedReady = selectedIds.length > 0 && selectedReady.length === selectedIds.length;
+
   const handleSendToManager = async () => {
-    if (selectedIds.length === 0) return;
+    const readyIds = selectedReady;
+    if (readyIds.length === 0) return;
     setSending(true);
     try {
       await base44.entities.Article.updateMany(
-        { id: { $in: selectedIds } },
+        { id: { $in: readyIds } },
         { $set: { status: 'approved' } }
       );
       logActivity('approve', {
         entity_type: 'Article',
-        entity_name: `${selectedIds.length} story${selectedIds.length > 1 ? 'ies' : ''}`,
-        details: `Sent ${selectedIds.length} story${selectedIds.length > 1 ? 'ies' : ''} to Story Manager`,
+        entity_name: `${readyIds.length} story${readyIds.length > 1 ? 'ies' : ''}`,
+        details: `Sent ${readyIds.length} story${readyIds.length > 1 ? 'ies' : ''} to Story Manager`,
       });
       navigate('/workspace');
     } catch (e) {
@@ -385,14 +393,15 @@ export default function StoryQueue() {
             <Square className="w-3.5 h-3.5" />Deselect All
           </button>
           <span className="text-xs text-muted-foreground ml-auto">
-            {selectedIds.length} selected for production
+            {selectedIds.length} selected · {selectedReady.length} ready
           </span>
           {selectedIds.length > 0 && (
             <Button
               size="sm"
               className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs h-7"
               onClick={handleSendToManager}
-              disabled={sending}
+              disabled={sending || !allSelectedReady}
+              title={!allSelectedReady ? 'All selected stories need a generated package' : ''}
             >
               {sending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Layers className="w-3 h-3 mr-1" />}
               {sending ? 'Sending...' : 'Send to Manager'}

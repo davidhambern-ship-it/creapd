@@ -315,7 +315,7 @@ export default function DesktopPackageWorkspace({
         {/* Approve + Regenerate */}
         {pkg && (
           <div className="glass-panel p-3 flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground mr-auto">Package ready — approve to send to Production</span>
+            <span className="text-[10px] text-muted-foreground mr-auto">Package ready — approve to send to Manager</span>
             <Button
               size="sm"
               className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8"

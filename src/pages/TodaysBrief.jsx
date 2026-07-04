@@ -167,7 +167,7 @@ export default function TodaysBrief() {
     await base44.entities.Briefing.update(briefing.id, { approved_sections: JSON.stringify(newApproved) });
   };
 
-  // Approve all stories + all sections, then send to production
+  // Approve all stories + all sections, then send to Manager
   const handleApproveAll = async () => {
     if (!briefing) return;
 

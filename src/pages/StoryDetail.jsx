@@ -276,7 +276,7 @@ export default function StoryDetail() {
             </Link>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">No production package generated yet. Select this story and send to production to generate assets.</p>
+          <p className="text-xs text-muted-foreground">No production package generated yet. Select this story and send to Manager to generate assets.</p>
         )}
       </div>
 
@@ -357,9 +357,13 @@ export default function StoryDetail() {
           <Bookmark className={`w-3 h-3 mr-1 ${article.is_saved ? 'fill-blue-400 text-blue-400' : ''}`} />
           {article.is_saved ? 'Remove from Library' : 'Save to Library'}
         </Button>
-        <Link to="/production">
-          <Button size="sm" className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs">
-            <Layers className="w-3 h-3 mr-1" />Send to Production
+        <Link to={pkg && ['generated', 'edited', 'approved'].includes(pkg.status) ? "/workspace" : "#"}>
+          <Button
+            size="sm"
+            className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs"
+            disabled={!pkg || !['generated', 'edited', 'approved'].includes(pkg.status)}
+          >
+            <Layers className="w-3 h-3 mr-1" />Send to Manager
           </Button>
         </Link>
       </div>
