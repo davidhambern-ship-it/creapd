@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard } from 'lucide-react';
+import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/components/ui/use-toast";
 import ApprovedPackageCard from '@/components/production/ApprovedPackageCard';
 import PresentationTimeline from '@/components/message/PresentationTimeline';
+import PresentationViewer from '@/components/production/PresentationViewer';
 import { logActivity } from '@/lib/activityUtils';
 
 export default function ProductionPackages() {
@@ -13,6 +14,7 @@ export default function ProductionPackages() {
   const [presentationScenes, setPresentationScenes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingPresentation, setGeneratingPresentation] = useState(false);
+  const [showViewer, setShowViewer] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -127,14 +129,27 @@ export default function ProductionPackages() {
               </p>
             </div>
           </div>
-          <Button
-            className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple flex-shrink-0"
-            onClick={handleGeneratePresentation}
-            disabled={generatingPresentation || packages.length < 5}
-          >
-            {generatingPresentation ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-            {generatingPresentation ? 'Generating...' : 'Generate Full Presentation'}
-          </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {presentationScenes.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-berna-purple/30 text-berna-purple hover:bg-berna-purple/10"
+                onClick={() => setShowViewer(true)}
+              >
+                <Play className="w-3 h-3 mr-1" />
+                Preview
+              </Button>
+            )}
+            <Button
+              className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white glow-purple"
+              onClick={handleGeneratePresentation}
+              disabled={generatingPresentation || packages.length < 5}
+            >
+              {generatingPresentation ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              {generatingPresentation ? 'Generating...' : 'Generate Full Presentation'}
+            </Button>
+          </div>
         </div>
         {packages.length < 5 && (
           <p className="text-[10px] text-muted-foreground mt-3 pt-3 border-t border-white/[0.04]">
@@ -145,9 +160,24 @@ export default function ProductionPackages() {
         )}
       </div>
 
-      {/* Presentation Timeline */}
+      {/* Generated Presentation */}
       {presentationScenes.length > 0 && (
-        <PresentationTimeline scenes={presentationScenes} onRefresh={() => loadPresentationScenes()} />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clapperboard className="w-4 h-4 text-berna-purple" />
+            <h2 className="text-sm font-semibold text-white">Generated Presentation</h2>
+            <span className="text-xs text-muted-foreground">· {presentationScenes.length} scenes</span>
+          </div>
+          <PresentationTimeline scenes={presentationScenes} onRefresh={() => loadPresentationScenes()} />
+        </div>
+      )}
+
+      {/* Full-screen Presentation Viewer */}
+      {showViewer && presentationScenes.length > 0 && (
+        <PresentationViewer
+          scenes={presentationScenes}
+          onClose={() => setShowViewer(false)}
+        />
       )}
 
       {/* Approved Packages */}
