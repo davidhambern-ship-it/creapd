@@ -83,7 +83,7 @@ const AuthenticatedApp = () => {
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground font-mono">Loading Producer...</p>
+          <p className="text-sm text-muted-foreground font-mono">Loading CREAPD...</p>
         </div>
       </div>
     );

@@ -70,7 +70,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
           <Link to="/" className="flex items-center">
             <img
               src="https://media.base44.com/images/public/6a4126962e5804304cc84b12/3a30f6e3d_Producer.png"
-              alt="Producer — Plan. Produce. Publish."
+              alt="CREAPD — Create. Produce. Deliver."
               className="h-8 lg:h-10 w-auto"
               style={{ mixBlendMode: 'screen' }}
             />

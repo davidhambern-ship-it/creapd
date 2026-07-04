@@ -11,10 +11,10 @@ export default function Onboarding() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Sparkles className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-heading font-bold mb-3">Welcome to Producer</h1>
+          <h1 className="text-3xl font-heading font-bold mb-3">Welcome to CREAPD</h1>
           <p className="text-muted-foreground text-lg leading-relaxed">
-            Your automation-first production assistant. Configure your production once,
-            and Producer builds your dashboard, content, and assets automatically — every day.
+            Create. Produce. Deliver. Configure your production once,
+            and CREAPD builds your dashboard, content, and assets automatically — every day.
           </p>
         </div>
 
@@ -38,7 +38,7 @@ export default function Onboarding() {
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary">3</div>
               <div>
-                <p className="font-medium">Producer builds everything</p>
+                <p className="font-medium">CREAPD builds everything</p>
                 <p className="text-sm text-muted-foreground">Your dashboard, playlist, topics, rundown, and AI assets are generated automatically.</p>
               </div>
             </div>
