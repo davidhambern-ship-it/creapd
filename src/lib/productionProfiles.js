@@ -1,5 +1,5 @@
 import {
-  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Sparkles
+  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Flower2
 } from 'lucide-react';
 
 export const PRODUCTION_PROFILES = [
@@ -152,7 +152,7 @@ export const PRODUCTION_PROFILES = [
     label: 'Cosmo Production',
     shortLabel: 'Cosmo',
     description: 'Health & beauty shows, skincare tutorials, wellness programs, product reviews, and cosmetic education content.',
-    icon: Sparkles,
+    icon: Flower2,
     available: true,
     path: '/cosmo/dashboard',
     gradient: 'from-pink-500/20 to-fuchsia-500/10',
