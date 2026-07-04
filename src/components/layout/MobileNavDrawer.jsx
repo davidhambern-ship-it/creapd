@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { X, ChevronRight, LayoutGrid } from 'lucide-react';
-import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
+
 import AdminSidebarSection from './AdminSidebarSection';
 
 export default function MobileNavDrawer({ open, onClose, navItems, iconMap, variant }) {
@@ -54,32 +54,6 @@ export default function MobileNavDrawer({ open, onClose, navItems, iconMap, vari
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* Production Mode Switcher */}
-        <div className="px-4 py-3 border-b border-white/[0.06] flex-shrink-0">
-          <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2">Production Mode</p>
-          <div className="grid grid-cols-3 gap-2">
-            {PRODUCTION_MODES.map(mode => {
-              const activeMode = getActiveProductionMode(location.pathname);
-              const isActive = activeMode === mode.key;
-              return (
-                <Link
-                  key={mode.key}
-                  to={mode.path}
-                  onClick={onClose}
-                  className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-primary/20 text-primary border border-primary/30'
-                      : 'bg-white/[0.03] text-muted-foreground border border-transparent hover:bg-white/[0.06]'
-                  }`}
-                >
-                  <mode.icon className="w-4 h-4" />
-                  <span className="text-[11px] font-medium">{mode.label}</span>
-                </Link>
-              );
-            })}
-          </div>
         </div>
 
         {/* Navigation */}
