@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CategoryBadge from '@/components/shared/CategoryBadge';
+import CreapdLoading from '@/components/shared/CreapdLoading';
 import StatusBadge from '@/components/shared/StatusBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import ProductionStatusIndicator from '@/components/shared/ProductionStatusIndicator';
@@ -96,11 +97,7 @@ export default function StoryDetail() {
   const tags = article?.tags ? article.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>
-    );
+    return <CreapdLoading fullHeight profile="news" />;
   }
 
   if (!article) {

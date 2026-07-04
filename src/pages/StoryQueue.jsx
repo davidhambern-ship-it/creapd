@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import StoryCard from '@/components/stories/StoryCard';
 import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
 import { logActivity } from '@/lib/activityUtils';
+import CreapdLoading from '@/components/shared/CreapdLoading';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
@@ -244,11 +245,7 @@ export default function StoryQueue() {
   }, [filtered, groupDuplicates]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>
-    );
+    return <CreapdLoading fullHeight profile="news" />;
   }
 
   return (

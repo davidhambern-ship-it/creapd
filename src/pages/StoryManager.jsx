@@ -11,6 +11,7 @@ import OpportunityScore from '@/components/shared/OpportunityScore';
 import SortDropdown from '@/components/shared/SortDropdown';
 import ShowStartupModal from '@/components/profiles/ShowStartupModal';
 import { logActivity } from '@/lib/activityUtils';
+import CreapdLoading from '@/components/shared/CreapdLoading';
 
 function getSelectedStoryIds() {
   try {
@@ -429,16 +430,12 @@ export default function StoryManager() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>);
-
+    return <CreapdLoading fullHeight profile="news" />;
   }
 
   const statusStyles = {
     not_generated: { label: 'Not Generated', color: 'text-muted-foreground', dot: 'bg-muted-foreground/40' },
-    generating: { label: 'Generating', color: 'text-berna-purple', dot: 'bg-berna-purple animate-pulse' },
+    generating: { label: 'CREAPing…', color: 'text-berna-purple', dot: 'bg-berna-purple animate-pulse' },
     generated: { label: 'Generated', color: 'text-blue-400', dot: 'bg-blue-400' },
     edited: { label: 'Edited', color: 'text-berna-orange', dot: 'bg-berna-orange' },
     approved: { label: 'Approved', color: 'text-berna-emerald', dot: 'bg-berna-emerald' }

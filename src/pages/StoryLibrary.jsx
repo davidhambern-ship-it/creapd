@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import SortDropdown from '@/components/shared/SortDropdown';
 import { logActivity } from '@/lib/activityUtils';
+import CreapdLoading from '@/components/shared/CreapdLoading';
 
 export default function StoryLibrary() {
   const [articles, setArticles] = useState([]);
@@ -81,11 +82,7 @@ export default function StoryLibrary() {
   }, [articles, search, categoryFilter, sortBy]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>
-    );
+    return <CreapdLoading fullHeight profile="news" />;
   }
 
   return (

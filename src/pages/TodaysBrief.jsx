@@ -14,6 +14,7 @@ import BriefApprovalBar from '@/components/brief/BriefApprovalBar';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
 import { logActivity } from '@/lib/activityUtils';
+import CreapdLoading from '@/components/shared/CreapdLoading';
 
 const BRIEFING_TYPES = [
   { value: 'daily', label: 'Daily Briefing', icon: FileText, desc: 'The day\u2019s most important stories' },
@@ -222,11 +223,7 @@ export default function TodaysBrief() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>
-    );
+    return <CreapdLoading fullHeight profile="news" />;
   }
 
   if (error) {
@@ -300,7 +297,7 @@ export default function TodaysBrief() {
           Refresh
         </Button>
         <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={handleGenerate} disabled={generating}>
-          {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Brief</>}
+          {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />CREAPing your brief…</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Brief</>}
         </Button>
         <Button variant="outline" size="sm" className="border-white/10 text-white text-xs hover:bg-white/[0.04]" onClick={handleCopyBrief}>
           <Copy className="w-3 h-3 mr-1" />
