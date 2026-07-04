@@ -62,11 +62,11 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
         </nav>
         <div className="p-2 border-t border-white/[0.06]">
           <Link
-            to="/production-types"
+            to="/"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-white hover:bg-white/[0.04] transition-colors"
           >
             <LayoutGrid className="w-4 h-4 flex-shrink-0" />
-            {!collapsed && <span className="text-sm font-medium">Switch Production Type</span>}
+            {!collapsed && <span className="text-sm font-medium">CREAPD Home</span>}
           </Link>
         </div>
         <button

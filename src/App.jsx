@@ -43,6 +43,7 @@ import MusicLayout from '@/components/layout/MusicLayout';
 import DashboardRouter from '@/components/DashboardRouter';
 import Onboarding from '@/pages/Onboarding';
 import ProductionTypes from '@/pages/ProductionTypes';
+import CreapdHome from '@/pages/CreapdHome';
 import MusicConfigure from '@/pages/MusicConfigure';
 import MusicDashboard from '@/pages/MusicDashboard';
 import MusicResearch from '@/pages/MusicResearch';
@@ -105,8 +106,9 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route path="/" element={<CreapdHome />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/" element={<DashboardRouter />} />
+          <Route path="/dashboard" element={<DashboardRouter />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
@@ -136,7 +138,7 @@ const AuthenticatedApp = () => {
 
         {/* Onboarding & Production Type Selection */}
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/production-types" element={<ProductionTypes />} />
+        <Route path="/production-types" element={<Navigate to="/" replace />} />
 
         {/* Music Production */}
         <Route element={<MusicLayout />}>

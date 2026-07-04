@@ -1,0 +1,94 @@
+{
+  "name": "ShowcaseProduction",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the shared production"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description or summary"
+    },
+    "production_profile": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking"
+      ],
+      "description": "Which Production Profile this production was created with"
+    },
+    "runtime": {
+      "type": "string",
+      "description": "Human-readable runtime (e.g. '1:30')"
+    },
+    "creator_name": {
+      "type": "string",
+      "description": "Display name of the creator"
+    },
+    "creator_id": {
+      "type": "string",
+      "description": "User ID of the creator"
+    },
+    "source_production_id": {
+      "type": "string",
+      "description": "ID of the original production entity (ProductionPackage, SpiritualProductionConfiguration, etc.)"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "production_package",
+        "spiritual_configuration"
+      ],
+      "default": "production_package",
+      "description": "Type of the source production entity"
+    },
+    "showcase_thumbnail_url": {
+      "type": "string",
+      "description": "CREAPD-branded showcase thumbnail URL (generated, not the original)"
+    },
+    "original_thumbnail_url": {
+      "type": "string",
+      "description": "The original production thumbnail URL before showcase rebranding"
+    },
+    "shared_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": true
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "like_count": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "featured",
+        "hidden",
+        "removed"
+      ],
+      "default": "approved"
+    }
+  },
+  "required": [
+    "title",
+    "production_profile"
+  ]
+}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, ImageIcon, Film, Volume2, CheckCircle } from 'lucide-react';
 import CategoryBadge from '@/components/shared/CategoryBadge';
+import ShareWithCreapdButton from '@/components/production/ShareWithCreapdButton';
 
 export default function ApprovedPackageCard({ pkg, article, index }) {
   const hasMedia = (url) => !!url;
@@ -42,6 +43,10 @@ export default function ApprovedPackageCard({ pkg, article, index }) {
             <span className={`text-[9px] flex items-center gap-0.5 ${hasMedia(pkg.generated_video_url) ? 'text-berna-emerald' : 'text-muted-foreground/40'}`}>
               <Film className="w-3 h-3" />Video
             </span>
+          </div>
+
+          <div className="mt-2">
+            <ShareWithCreapdButton pkg={pkg} article={article} />
           </div>
         </div>
 
