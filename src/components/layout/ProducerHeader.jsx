@@ -112,14 +112,6 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
               <User className="w-4 h-4" />
             </Button>
           </Link>
-          <Button
-            onClick={onGenerateBrief}
-            size="sm"
-            className="hidden sm:flex bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 hover:to-berna-purple/70 text-white text-xs h-8 glow-purple"
-          >
-            <Play className="w-3 h-3 mr-1" />
-            Generate Brief
-          </Button>
         </div>
       </div>
 
