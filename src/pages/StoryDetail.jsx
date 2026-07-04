@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import {
   ArrowLeft, ExternalLink, Clock, MapPin, Tag, StickyNote,
@@ -26,6 +26,7 @@ const NOTE_TYPES = [
 
 export default function StoryDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [article, setArticle] = useState(null);
   const [notes, setNotes] = useState([]);
   const [pkg, setPkg] = useState(null);
@@ -357,15 +358,14 @@ export default function StoryDetail() {
           <Bookmark className={`w-3 h-3 mr-1 ${article.is_saved ? 'fill-blue-400 text-blue-400' : ''}`} />
           {article.is_saved ? 'Remove from Library' : 'Save to Library'}
         </Button>
-        <Link to={pkg && ['generated', 'edited', 'approved'].includes(pkg.status) ? "/workspace" : "#"}>
-          <Button
-            size="sm"
-            className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs"
-            disabled={!pkg || !['generated', 'edited', 'approved'].includes(pkg.status)}
-          >
-            <Layers className="w-3 h-3 mr-1" />Send to Manager
-          </Button>
-        </Link>
+        <Button
+          size="sm"
+          className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs"
+          disabled={!pkg || !['generated', 'edited', 'approved'].includes(pkg.status)}
+          onClick={() => navigate('/workspace')}
+        >
+          <Layers className="w-3 h-3 mr-1" />Send to Manager
+        </Button>
       </div>
     </div>
   );
