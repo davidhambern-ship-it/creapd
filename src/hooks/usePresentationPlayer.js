@@ -6,8 +6,10 @@ export function usePresentationPlayer(storySlides) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [audioError, setAudioError] = useState(null);
+  const [audioReady, setAudioReady] = useState(false);
   const audioRef = useRef(null);
   const rafRef = useRef(null);
+  const playingRef = useRef(false);
 
   const slides = storySlides || [];
 
@@ -34,20 +36,46 @@ export function usePresentationPlayer(storySlides) {
   useEffect(() => {
     audioRef.current = new Audio();
     const audio = audioRef.current;
-    const onError = () => setAudioError('Failed to load voiceover audio for this slide');
+    const onError = () => {
+      setAudioError('Failed to load voiceover audio for this slide');
+      setAudioReady(false);
+    };
+    const onCanPlay = () => {
+      setAudioReady(true);
+      setAudioError(null);
+    };
+    const onEnded = () => {
+      // Advance to next slide when audio ends
+      if (currentSlideIndex < slides.length - 1) {
+        setCurrentSlideIndex(prev => prev + 1);
+      } else {
+        setPlaying(false);
+        playingRef.current = false;
+      }
+    };
     audio.addEventListener('error', onError);
+    audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('ended', onEnded);
     return () => {
       audio.removeEventListener('error', onError);
+      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('ended', onEnded);
       audio.pause();
       audioRef.current = null;
     };
   }, []);
+
+  // Keep playingRef in sync
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
 
   // Load audio when slide changes
   useEffect(() => {
     if (!audioRef.current || !currentSlide) return;
     const url = getSlideAudioUrl(currentSlide);
     const audio = audioRef.current;
+    setAudioReady(false);
     if (url) {
       audio.src = url;
       audio.load();
@@ -63,16 +91,14 @@ export function usePresentationPlayer(storySlides) {
     if (audioRef.current) audioRef.current.playbackRate = playbackRate;
   }, [playbackRate]);
 
-  // Auto-play audio when slide changes (if playing)
+  // When slide changes during playback, auto-play the new slide's audio
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-    if (playing && audio.src) {
+    if (!audio || !playing) return;
+    if (audio.src) {
       audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
-    } else if (!playing) {
-      audio.pause();
     }
-  }, [currentSlideIndex, playing]);
+  }, [currentSlideIndex]);
 
   // RAF loop — advance visual timeline from audio.currentTime
   useEffect(() => {
@@ -87,14 +113,6 @@ export function usePresentationPlayer(storySlides) {
         // Audio is master timeline
         const localMs = (audio.currentTime || 0) * 1000;
         setCurrentTime(slideStart + localMs);
-
-        if (audio.ended) {
-          if (currentSlideIndex < slides.length - 1) {
-            setCurrentSlideIndex(prev => prev + 1);
-          } else {
-            setPlaying(false);
-          }
-        }
       } else if (audio && !audio.src) {
         // No audio — timer fallback
         setCurrentTime(prev => {
@@ -117,8 +135,26 @@ export function usePresentationPlayer(storySlides) {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [playing, currentSlideIndex, slideStarts, slideDurations, slides.length, totalDuration]);
 
-  const play = useCallback(() => setPlaying(true), []);
-  const pause = useCallback(() => setPlaying(false), []);
+  // play() calls audio.play() directly — must be in the user gesture, not a useEffect
+  const play = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && audio.src && !audio.error) {
+      audio.play().then(() => {
+        setPlaying(true);
+      }).catch(() => {
+        setAudioError('Failed to play voiceover audio — browser blocked autoplay');
+      });
+    } else {
+      // No audio — use timer fallback
+      setPlaying(true);
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) audio.pause();
+    setPlaying(false);
+  }, []);
 
   const stop = useCallback(() => {
     const audio = audioRef.current;
@@ -170,6 +206,11 @@ export function usePresentationPlayer(storySlides) {
   const restart = useCallback(() => {
     setCurrentSlideIndex(0);
     setCurrentTime(0);
+    const audio = audioRef.current;
+    if (audio && audio.src) {
+      audio.currentTime = 0;
+      audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
+    }
     setPlaying(true);
   }, []);
 
@@ -189,6 +230,7 @@ export function usePresentationPlayer(storySlides) {
     jumpToSlide,
     restart,
     audioRef,
-    audioError
+    audioError,
+    audioReady
   };
 }

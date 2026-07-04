@@ -30,7 +30,7 @@ function formatTime(ms) {
 
 export default function PresentationPlayer({ storySlides }) {
   const player = usePresentationPlayer(storySlides);
-  const { currentSlide, slideLocalTime, playing, currentTime, totalDuration, currentSlideIndex, audioError } = player;
+  const { currentSlide, slideLocalTime, playing, currentTime, totalDuration, currentSlideIndex, audioError, audioReady } = player;
 
   const sceneGraph = useMemo(() => {
     if (!currentSlide?.scene_graph) return null;
@@ -91,6 +91,15 @@ export default function PresentationPlayer({ storySlides }) {
             <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
             <p className="text-sm text-white font-medium">{audioError}</p>
             <p className="text-xs text-white/60 mt-1">Approval disabled until audio is available</p>
+          </div>
+        )}
+
+        {/* Audio loading indicator */}
+        {!audioError && !audioReady && playing && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1">
+            <span className="text-xs font-mono text-white/80 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" /> Loading audio...
+            </span>
           </div>
         )}
 
