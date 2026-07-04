@@ -53,7 +53,7 @@ export default function PresentationPlayer({ storySlides, aspectRatio }) {
       {/* Presentation Canvas — dynamic aspect ratio */}
       <div
         className="relative w-full bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl"
-        style={{ aspectRatio: aspectRatio || '16 / 9', containerType: 'size' }}
+        style={{ aspectRatio: (aspectRatio || '16 / 9').replace(':', ' / '), containerType: 'size' }}
       >
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-berna-navy to-black" />
