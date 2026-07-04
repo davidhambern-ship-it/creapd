@@ -14,8 +14,8 @@ export const PRODUCER_NAV_SECTIONS = [
   {
     label: 'Planning',
     items: [
-      { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
       { icon: FileText, label: "Today's Brief", path: '/brief' },
+      { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
     ]
   },
   {
