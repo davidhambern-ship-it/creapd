@@ -6,11 +6,11 @@ import AdminSidebarSection from './AdminSidebarSection';
 import MobileBottomNav from './MobileBottomNav';
 
 const mobileItems = [
-  PRODUCER_NAV_SECTIONS[0].items[0], // Dashboard
-  PRODUCER_NAV_SECTIONS[1].items[0], // Daily Brief
-  PRODUCER_NAV_SECTIONS[2].items[0], // Story Queue
-  PRODUCER_NAV_SECTIONS[2].items[1], // Story Manager
-  PRODUCER_NAV_SECTIONS[3].items[0], // Production
+  { ...PRODUCER_NAV_SECTIONS[0].items[0], mobileLabel: 'Dashboard' },
+  { ...PRODUCER_NAV_SECTIONS[1].items[0], mobileLabel: 'Daily Brief' },
+  { ...PRODUCER_NAV_SECTIONS[2].items[0], mobileLabel: 'Queue' },
+  { ...PRODUCER_NAV_SECTIONS[2].items[1], mobileLabel: 'Manager' },
+  { ...PRODUCER_NAV_SECTIONS[3].items[0], mobileLabel: 'Production' },
 ];
 
 export default function ProducerSidebar({ collapsed, onToggle }) {

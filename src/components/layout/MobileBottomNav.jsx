@@ -18,7 +18,7 @@ export default function MobileBottomNav({ items }) {
             }`}
           >
             <item.icon className="w-4 h-4" />
-            <span className="text-[9px] truncate">{item.label.split(' ')[0]}</span>
+            <span className="text-[9px] truncate">{item.mobileLabel || item.label}</span>
           </Link>
         );
       })}
