@@ -109,6 +109,7 @@ const AuthenticatedApp = () => {
         <Route path="/home" element={<CreapdHome />} />
         <Route element={<ProducerLayout />}>
           <Route path="/" element={<DashboardRouter />} />
+          <Route path="/dashboard" element={<DashboardRouter />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
