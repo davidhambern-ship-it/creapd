@@ -66,7 +66,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
             className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-berna-purple/30 to-berna-purple/10 border border-berna-purple/30 text-foreground hover:from-berna-purple/40 hover:to-berna-purple/20 transition-all glow-purple"
           >
             <MenuIcon className="w-4 h-4 text-berna-purple" />
-            <span className="text-xs font-medium">Menu</span>
+            <span className="text-xs font-medium">Sidebar</span>
           </button>
           <Link to="/" className="flex items-center">
             <CreapdLogo height="h-8 lg:h-10" />
