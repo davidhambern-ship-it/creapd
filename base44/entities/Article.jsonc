@@ -147,6 +147,7 @@
         "saved_for_later",
         "bernas_pick",
         "needs_research",
+        "needs_review",
         "used",
         "available",
         "selected",
@@ -229,10 +230,44 @@
         "processing",
         "transcribed",
         "failed",
+        "metadata_only",
         "not_applicable"
       ],
       "default": "pending",
-      "description": "Status of video transcription processing"
+      "description": "Status of video transcription processing. 'metadata_only' means AI summarized from title/description only \u2014 full video was not reviewed."
+    },
+    "suggested_angle": {
+      "type": "string",
+      "description": "AI-suggested coverage angle for this story"
+    },
+    "suggested_segment": {
+      "type": "string",
+      "enum": [
+        "Lead Story",
+        "Quick Hit",
+        "Feature",
+        "Breaking",
+        "Talking Points",
+        "Fact Check",
+        "B-Roll Package"
+      ],
+      "description": "AI-suggested broadcast segment placement"
+    },
+    "source_quality_score": {
+      "type": "number",
+      "description": "Source reliability/authority score (0-10, set by AI review)"
+    },
+    "overall_story_score": {
+      "type": "number",
+      "description": "Overall story newsworthiness score (0-10, set by AI review)"
+    },
+    "safety_flags": {
+      "type": "string",
+      "description": "JSON array of safety flags (e.g. unverified_claim, sensitive_topic, potential_bias)"
+    },
+    "processing_history": {
+      "type": "string",
+      "description": "JSON array of {event, timestamp, details} tracking the article lifecycle"
     }
   },
   "required": [

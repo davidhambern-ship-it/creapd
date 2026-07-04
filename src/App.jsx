@@ -17,6 +17,7 @@ import Dashboard from '@/pages/Dashboard';
 import WeeklyPlanner from '@/pages/WeeklyPlanner';
 import TodaysBrief from '@/pages/TodaysBrief';
 import StoryQueue from '@/pages/StoryQueue';
+import StoryIntelligenceReview from '@/pages/StoryIntelligenceReview';
 import StoryDetail from '@/pages/StoryDetail';
 import StoryLibrary from '@/pages/StoryLibrary';
 import StoryManager from '@/pages/StoryManager';
@@ -149,6 +150,7 @@ const AuthenticatedApp = () => {
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
+          <Route path="/review" element={<StoryIntelligenceReview />} />
           <Route path="/story/:id" element={<StoryDetail />} />
           <Route path="/library" element={<StoryLibrary />} />
           <Route path="/workspace" element={<StoryManager />} />

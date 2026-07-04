@@ -3,7 +3,7 @@ import {
   Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
   ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film
+  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film, Sparkles
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
@@ -22,6 +22,7 @@ export const PRODUCER_NAV_SECTIONS = [
     label: 'Content',
     items: [
       { icon: Layers, label: 'Story Queue', path: '/queue' },
+      { icon: Sparkles, label: 'Intelligence Review', path: '/review' },
       { icon: Bookmark, label: 'Story Package Library', path: '/library' },
       { icon: ClipboardList, label: 'Story Manager', path: '/workspace' },
     ]

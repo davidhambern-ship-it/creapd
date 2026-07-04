@@ -1,5 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+function addHistory(historyStr, event, details) {
+  let history = [];
+  try { history = historyStr ? JSON.parse(historyStr) : []; } catch (e) {}
+  history.push({ event, timestamp: new Date().toISOString(), details });
+  return JSON.stringify(history);
+}
+
 function extractVideoUrls(html, articleUrl) {
   const results = [];
 
@@ -168,7 +175,8 @@ async function processSingleArticle(base44, article) {
   }
 
   // Generate summary using LLM
-  const llmInput = transcript
+  const hasTranscript = !!transcript;
+  const llmInput = hasTranscript
     ? `Based on this video transcript, provide a concise news summary:\n\nTitle: ${article.title}\nSource: ${article.source_name || 'Unknown'}\nTranscript: ${transcript.substring(0, 4000)}`
     : `This article was classified as video content but no transcript could be extracted. Based on the title and description, provide a concise news summary of what this video likely covers:\n\nTitle: ${article.title}\nDescription: ${article.summary || 'N/A'}\nSource: ${article.source_name || 'Unknown'}`;
 
@@ -177,20 +185,29 @@ async function processSingleArticle(base44, article) {
   });
   const summary = typeof llmRes === 'string' ? llmRes : (llmRes?.response || JSON.stringify(llmRes));
 
-  const hasTranscript = !!transcript;
+  // Determine transcription status
+  const transcriptionStatus = hasTranscript ? 'transcribed' : 'metadata_only';
+
+  // Build history
+  let history = addHistory(article.processing_history, 'processed',
+    hasTranscript
+      ? `Video transcribed via ${videoUrl?.includes('youtube') ? 'YouTube captions' : 'Whisper'} — ${transcript.length} chars`
+      : 'No transcript extracted — AI summary generated from metadata only'
+  );
 
   // Update article
   await base44.asServiceRole.entities.Article.update(article.id, {
     transcript: transcript || null,
     video_url: videoUrl,
-    transcription_status: hasTranscript ? 'transcribed' : 'not_applicable',
+    transcription_status: transcriptionStatus,
     summary: summary || article.summary,
     full_text_excerpt: transcript
       ? transcript.substring(0, 500)
       : (summary || article.summary || '').substring(0, 500),
+    processing_history: history,
   });
 
-  return { hasTranscript, videoUrl, summary };
+  return { hasTranscript, videoUrl, summary, transcriptionStatus };
 }
 
 Deno.serve(async (req) => {
@@ -217,7 +234,6 @@ Deno.serve(async (req) => {
       const article = await base44.asServiceRole.entities.Article.get(targetId);
       if (article) articlesToProcess.push(article);
     } else {
-      // Batch: find video articles needing transcription
       articlesToProcess = await base44.asServiceRole.entities.Article.filter(
         { content_type: 'video', transcription_status: 'pending' }, '-created_date', 5
       );
@@ -233,9 +249,14 @@ Deno.serve(async (req) => {
 
     for (const article of articlesToProcess) {
       try {
-        await base44.asServiceRole.entities.Article.update(article.id, { transcription_status: 'processing' });
+        // Set processing status + history
+        const procHistory = addHistory(article.processing_history, 'transcription_started', 'Video transcription processing started');
+        await base44.asServiceRole.entities.Article.update(article.id, {
+          transcription_status: 'processing',
+          processing_history: procHistory,
+        });
 
-        const result = await processSingleArticle(base44, article);
+        const result = await processSingleArticle(base44, { ...article, processing_history: procHistory });
 
         if (result.hasTranscript) transcribed++;
         else summarized++;
@@ -244,13 +265,17 @@ Deno.serve(async (req) => {
         results.push({
           id: article.id,
           title: article.title,
-          status: result.hasTranscript ? 'transcribed' : 'summarized',
+          status: result.transcriptionStatus,
           has_transcript: result.hasTranscript,
         });
       } catch (e) {
         errors.push(`${article.title}: ${e.message}`);
         try {
-          await base44.asServiceRole.entities.Article.update(article.id, { transcription_status: 'failed' });
+          const failHistory = addHistory(article.processing_history, 'transcription_failed', e.message);
+          await base44.asServiceRole.entities.Article.update(article.id, {
+            transcription_status: 'failed',
+            processing_history: failHistory,
+          });
         } catch (e2) {}
       }
     }

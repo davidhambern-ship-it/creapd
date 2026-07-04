@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   Search as SearchIcon, Compass, ArrowUpDown, CheckSquare,
-  Square, Layers, RefreshCw, Bookmark, Copy, Loader2
+  Square, Layers, RefreshCw, Bookmark, Copy, Loader2, Sparkles
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -259,6 +259,11 @@ export default function StoryQueue() {
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
             <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />Refresh
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/review" className="border-berna-purple/20 text-berna-purple text-xs hover:bg-berna-purple/10 inline-flex items-center justify-center gap-2 h-8 rounded-md px-3">
+              <Sparkles className="w-3 h-3" />Intelligence Review
+            </Link>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setDirectionOpen(true)} className="border-berna-orange/20 text-berna-orange text-xs hover:bg-berna-orange/10">
             <Compass className="w-3 h-3 mr-1" />Change Direction
