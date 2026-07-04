@@ -85,6 +85,8 @@ import CosmoRundown from '@/pages/CosmoRundown';
 import CosmoAssets from '@/pages/CosmoAssets';
 import CosmoExport from '@/pages/CosmoExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
+import Presentations from '@/pages/Presentations';
+import PresentationReview from '@/pages/PresentationReview';
 import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
@@ -171,6 +173,8 @@ const AuthenticatedApp = () => {
           <Route path="/security" element={<SecurityCenter />} />
           <Route path="/checklist" element={<AcceptanceChecklist />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/presentations" element={<Presentations />} />
+          <Route path="/presentations/:id" element={<PresentationReview />} />
         </Route>
 
         {/* Onboarding & Production Type Selection */}

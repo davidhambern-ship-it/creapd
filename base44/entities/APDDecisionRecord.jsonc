@@ -1,0 +1,66 @@
+{
+  "name": "APDDecisionRecord",
+  "type": "object",
+  "properties": {
+    "stories_presentation_id": {
+      "type": "string",
+      "description": "ID of the parent StoriesPresentation"
+    },
+    "story_slide_id": {
+      "type": "string",
+      "description": "ID of the StorySlide this decision influenced (optional for presentation-level decisions)"
+    },
+    "decision_type": {
+      "type": "string",
+      "enum": [
+        "presentation_strategy",
+        "visual_storytelling",
+        "image_placement",
+        "scene_creation",
+        "camera_selection",
+        "motion_selection",
+        "visual_hierarchy",
+        "discussion_response",
+        "transition_selection",
+        "layout_variation",
+        "emotional_pacing",
+        "audience_engagement",
+        "communication_optimization"
+      ],
+      "description": "Category of AI reasoning decision"
+    },
+    "decision_inputs": {
+      "type": "string",
+      "description": "JSON: the Story Package fields, Voice Package data, and presentation context that influenced this decision"
+    },
+    "decision_rationale": {
+      "type": "string",
+      "description": "AI's explanation of why this directing decision was made"
+    },
+    "model_version": {
+      "type": "string",
+      "description": "AI model used (e.g. gpt_5_mini, gemini_3_flash)"
+    },
+    "prompt_version": {
+      "type": "string",
+      "description": "Version identifier of the prompt template used"
+    },
+    "temperature": {
+      "type": "number",
+      "description": "Temperature setting used for this decision"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Decision Confidence Score (0-100)"
+    },
+    "decision_summary": {
+      "type": "string",
+      "description": "Brief human-readable summary of the decision"
+    }
+  },
+  "required": [
+    "stories_presentation_id",
+    "decision_type"
+  ]
+}

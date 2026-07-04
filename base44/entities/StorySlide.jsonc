@@ -1,0 +1,72 @@
+{
+  "name": "StorySlide",
+  "type": "object",
+  "properties": {
+    "stories_presentation_id": {
+      "type": "string",
+      "description": "ID of the parent StoriesPresentation"
+    },
+    "story_package_id": {
+      "type": "string",
+      "description": "ID of the source ProductionPackage \u2014 one Story Package always produces one Story Slide"
+    },
+    "story_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Order index within the Stories Presentation"
+    },
+    "voice_package_id": {
+      "type": "string",
+      "description": "ID of the VoicePackage \u2014 the master timing source for this slide"
+    },
+    "scene_graph": {
+      "type": "string",
+      "description": "JSON: complete Scene Graph containing presentation_scenes (each with layers, elements, timeline_events), camera_state, motion_state, synchronization_data, playback_instructions"
+    },
+    "slide_timeline": {
+      "type": "string",
+      "description": "JSON: local slide timeline with start_time, end_time, scene boundaries, element entrances/exits, animation timing \u2014 derived from Voice Package"
+    },
+    "slide_metadata": {
+      "type": "string",
+      "description": "JSON: headline, story_summary, duration_ms, scene_count, element_count, voice_package_reference"
+    },
+    "slide_start_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Start time of this slide within the master presentation timeline (ms)"
+    },
+    "duration_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Duration of this slide in milliseconds (from Voice Package)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "generating",
+        "generated",
+        "reviewing",
+        "approved",
+        "failed"
+      ],
+      "default": "generating"
+    },
+    "is_derived": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if Producer-created (Derived Story Slide) vs APD-generated"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "generation_error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "stories_presentation_id",
+    "story_package_id"
+  ]
+}

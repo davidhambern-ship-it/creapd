@@ -3,7 +3,7 @@ import {
   Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
   ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush
+  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
@@ -38,6 +38,7 @@ export const PRODUCER_NAV_SECTIONS = [
   {
     label: 'Output',
     items: [
+      { icon: Film, label: 'Presentations', path: '/presentations' },
       { icon: Download, label: 'Export Center', path: '/export' },
     ]
   },

@@ -1,0 +1,131 @@
+{
+  "name": "StoriesPresentation",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Presentation title"
+    },
+    "production_profile": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking",
+        "cosmo"
+      ],
+      "description": "Which Production Profile this presentation was created with"
+    },
+    "story_slide_ids": {
+      "type": "string",
+      "description": "JSON array of StorySlide IDs in presentation order"
+    },
+    "story_package_ids": {
+      "type": "string",
+      "description": "JSON array of source ProductionPackage IDs"
+    },
+    "master_timeline": {
+      "type": "string",
+      "description": "JSON: master presentation timeline with all timeline events, scene boundaries, and synchronization data"
+    },
+    "presentation_metadata": {
+      "type": "string",
+      "description": "JSON: title, runtime, story_count, APD version, creator, generation timestamp, presentation version"
+    },
+    "playback_settings": {
+      "type": "string",
+      "description": "JSON: resolution (1920x1080), aspect_ratio (16:9), frame_rate (30), playback_mode, transition_defaults, motion_defaults, export_options, theme_version"
+    },
+    "opening_sequence": {
+      "type": "string",
+      "description": "JSON: CREAPD branding, production profile branding, program title, intro animation, theme music"
+    },
+    "closing_sequence": {
+      "type": "string",
+      "description": "JSON: closing branding, credits, outro animation"
+    },
+    "presentation_version": {
+      "type": "number",
+      "default": 1,
+      "description": "Version number \u2014 increments on Producer edits"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "generating",
+        "generated",
+        "reviewing",
+        "approved",
+        "exported",
+        "archived",
+        "failed"
+      ],
+      "default": "generating"
+    },
+    "producer_id": {
+      "type": "string",
+      "description": "User ID of the Producer who requested generation"
+    },
+    "producer_metadata": {
+      "type": "string",
+      "description": "JSON: review state, approval status, approval timestamp, locked status, approval notes"
+    },
+    "export_metadata": {
+      "type": "string",
+      "description": "JSON: export format, export status, export history, export timestamp"
+    },
+    "qa_scores": {
+      "type": "string",
+      "description": "JSON: story_integrity, timeline, communication, readability, motion, consistency, technical scores (0-100 each)"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Production Confidence Score (0-100) \u2014 derived from all QA category scores"
+    },
+    "qa_result": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "warning",
+        "fail",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "showcase_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending",
+        "showcased",
+        "removed"
+      ],
+      "default": "none"
+    },
+    "total_runtime_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Total presentation runtime in milliseconds"
+    },
+    "story_count": {
+      "type": "number",
+      "default": 0
+    },
+    "generation_error": {
+      "type": "string",
+      "description": "Error message if generation failed"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "title",
+    "production_profile"
+  ]
+}
