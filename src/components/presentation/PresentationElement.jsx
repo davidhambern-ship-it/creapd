@@ -33,11 +33,18 @@ export default function PresentationElement({ element, slideLocalTime }) {
     ? ANIMATION_CLASSES['gentle_float']
     : (ANIMATION_CLASSES[entranceAnim] || 'animate-fade-in');
 
+  // Clamp positions to safe area (0.08–0.92) so elements never overflow
+  const rawX = element.position?.x ?? 0.5;
+  const rawY = element.position?.y ?? 0.5;
+  const clampedX = Math.max(0.08, Math.min(0.92, rawX));
+  const clampedY = Math.max(0.08, Math.min(0.92, rawY));
+  const clampedScale = Math.max(0.5, Math.min(1.5, element.scale || 1));
+
   const style = {
     position: 'absolute',
-    left: `${(element.position?.x || 0.5) * 100}%`,
-    top: `${(element.position?.y || 0.5) * 100}%`,
-    transform: `translate(-50%, -50%) scale(${element.scale || 1})`,
+    left: `${clampedX * 100}%`,
+    top: `${clampedY * 100}%`,
+    transform: `translate(-50%, -50%) scale(${clampedScale})`,
     opacity: isVisible ? (element.opacity || 1) : 0,
     transition: 'opacity 0.3s ease',
   };
@@ -50,8 +57,8 @@ export default function PresentationElement({ element, slideLocalTime }) {
         <img
           src={element.asset_reference}
           alt={content}
-          className="max-w-full max-h-full rounded-lg shadow-2xl"
-          style={{ maxWidth: '60%', maxHeight: '60%' }}
+          className="rounded-lg shadow-2xl object-contain"
+          style={{ maxWidth: '50cqw', maxHeight: '50cqh' }}
         />
       </div>
     );
@@ -60,7 +67,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'headline') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <h2 className="text-4xl md:text-5xl font-heading font-bold text-white text-center drop-shadow-lg px-6 py-3">
+        <h2 className="font-heading font-bold text-white text-center drop-shadow-lg" style={{ fontSize: '3.5cqw', padding: '0.5cqw 1cqw' }}>
           {content}
         </h2>
       </div>
@@ -70,7 +77,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'body_text') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <p className="text-xl md:text-2xl text-white/90 text-center max-w-2xl drop-shadow-md px-4">
+        <p className="text-white/90 text-center drop-shadow-md" style={{ fontSize: '1.8cqw', maxWidth: '60cqw', padding: '0 1cqw' }}>
           {content}
         </p>
       </div>
@@ -80,8 +87,8 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'talking_point_card' || element.element_type === 'discussion_response') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-6 py-4 max-w-md">
-          <p className="text-lg text-white/95 font-medium">{content}</p>
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl" style={{ padding: '1cqw 1.5cqw', maxWidth: '45cqw' }}>
+          <p className="text-white/95 font-medium" style={{ fontSize: '1.6cqw' }}>{content}</p>
         </div>
       </div>
     );
@@ -99,8 +106,8 @@ export default function PresentationElement({ element, slideLocalTime }) {
         }}
         className={isVisible ? animClass : ''}
       >
-        <div className="bg-primary/80 backdrop-blur-sm rounded-r-lg px-5 py-2 border-l-4 border-accent">
-          <p className="text-base text-white font-medium">{content}</p>
+        <div className="bg-primary/80 backdrop-blur-sm rounded-r-lg border-l-4 border-accent" style={{ padding: '0.5cqw 1.5cqw' }}>
+          <p className="text-white font-medium" style={{ fontSize: '1.4cqw' }}>{content}</p>
         </div>
       </div>
     );
@@ -110,7 +117,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
         <div className="text-center">
-          <p className="text-5xl md:text-6xl font-display font-bold text-accent drop-shadow-lg">{content}</p>
+          <p className="font-display font-bold text-accent drop-shadow-lg" style={{ fontSize: '5cqw' }}>{content}</p>
         </div>
       </div>
     );
@@ -119,7 +126,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'quote') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <blockquote className="text-2xl md:text-3xl italic text-white/95 text-center max-w-2xl border-l-4 border-primary pl-4">
+        <blockquote className="italic text-white/95 text-center border-l-4 border-primary" style={{ fontSize: '2.2cqw', maxWidth: '60cqw', paddingLeft: '1cqw' }}>
           "{content}"
         </blockquote>
       </div>
@@ -128,7 +135,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
 
   return (
     <div style={style} className={isVisible ? animClass : ''}>
-      <p className="text-lg text-white/80">{content}</p>
+      <p className="text-white/80" style={{ fontSize: '1.5cqw' }}>{content}</p>
     </div>
   );
 }

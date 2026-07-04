@@ -7,18 +7,18 @@ function getCameraStyle(cameraState, sceneProgress) {
 
   switch (behavior) {
     case 'slow_push':
-      return { transform: `scale(${1 + 0.15 * p})`, transition: 'none' };
+      return { transform: `scale(${1 + 0.08 * p})`, transition: 'none' };
     case 'zoom_in':
-      return { transform: `scale(${1 + 0.2 * p})`, transition: 'none' };
+      return { transform: `scale(${1 + 0.12 * p})`, transition: 'none' };
     case 'zoom_out':
-      return { transform: `scale(${1.2 - 0.2 * p})`, transition: 'none' };
+      return { transform: `scale(${1.12 - 0.12 * p})`, transition: 'none' };
     case 'pan_left':
-      return { transform: `translateX(${-5 * p}%) scale(1.1)`, transition: 'none' };
+      return { transform: `translateX(${-2 * p}%) scale(1.05)`, transition: 'none' };
     case 'pan_right':
-      return { transform: `translateX(${5 * p}%) scale(1.1)`, transition: 'none' };
+      return { transform: `translateX(${2 * p}%) scale(1.05)`, transition: 'none' };
     case 'drift':
       return {
-        transform: `translateX(${Math.sin(p * Math.PI) * 2}%) translateY(${Math.cos(p * Math.PI) * 1}%) scale(${1 + 0.05 * p})`,
+        transform: `translateX(${Math.sin(p * Math.PI) * 1}%) translateY(${Math.cos(p * Math.PI) * 0.5}%) scale(${1 + 0.03 * p})`,
         transition: 'none'
       };
     case 'static':

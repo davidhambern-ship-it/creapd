@@ -152,6 +152,7 @@ export default function PresentationReview() {
   const metadata = (() => { try { return JSON.parse(presentation.presentation_metadata || '{}'); } catch { return {}; } })();
   const qaScores = (() => { try { return JSON.parse(presentation.qa_scores || '{}'); } catch { return {}; } })();
   const producerMeta = (() => { try { return JSON.parse(presentation.producer_metadata || '{}'); } catch { return {}; } })();
+  const playbackSettings = (() => { try { return JSON.parse(presentation.playback_settings || '{}'); } catch { return {}; } })();
   const isApproved = presentation.status === 'approved';
 
   return (
@@ -179,7 +180,7 @@ export default function PresentationReview() {
         {/* Player — spans 2 columns */}
         <div className="lg:col-span-2 space-y-4">
           {storySlides.length > 0 ? (
-            <PresentationPlayer storySlides={storySlides} />
+            <PresentationPlayer storySlides={storySlides} aspectRatio={playbackSettings.aspect_ratio} />
           ) : (
             <div className="w-full aspect-video bg-card rounded-xl flex items-center justify-center border border-border">
               <p className="text-muted-foreground">No story slides available</p>

@@ -7,7 +7,10 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { story_package_ids, production_profile, presentation_title } = body;
+    const { story_package_ids, production_profile, presentation_title, resolution, aspect_ratio } = body;
+
+    const screenResolution = resolution || '1920x1080';
+    const screenAspectRatio = aspect_ratio || '16:9';
 
     if (!story_package_ids || !Array.isArray(story_package_ids) || story_package_ids.length === 0) {
       return Response.json({ error: 'At least one Story Package ID is required' }, { status: 400 });
@@ -80,8 +83,8 @@ Deno.serve(async (req) => {
         presentation_version: 1
       }),
       playback_settings: JSON.stringify({
-        resolution: '1920x1080',
-        aspect_ratio: '16:9',
+        resolution: screenResolution,
+        aspect_ratio: screenAspectRatio,
         frame_rate: 30,
         playback_mode: 'interactive',
         transition_defaults: 'fade',
@@ -141,7 +144,7 @@ Deno.serve(async (req) => {
       // ==========================================================
       // STEP 4: AI REASONING — Generate Scene Graph
       // ==========================================================
-      const sceneGraphPrompt = buildSceneGraphPrompt(pkg, vp, production_profile, sentenceTimeline, i, storyPackages.length);
+      const sceneGraphPrompt = buildSceneGraphPrompt(pkg, vp, production_profile, sentenceTimeline, i, storyPackages.length, screenResolution, screenAspectRatio);
 
       const llmResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt: sceneGraphPrompt,
@@ -447,7 +450,7 @@ Deno.serve(async (req) => {
 // ==========================================================
 // SCENE GRAPH PROMPT BUILDER
 // ==========================================================
-function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, slideIndex, totalSlides) {
+function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, slideIndex, totalSlides, screenResolution, screenAspectRatio) {
   const headline = pkg.headline_suggestions || pkg.article_id || 'Untitled Story';
   const script = vp.teleprompter_script || pkg.teleprompter_script || '';
   const storySummary = pkg.story_summary || '';
@@ -479,6 +482,24 @@ CREAPD APD DIRECTING RULES:
 8. Motion exists to guide attention, not decorate.
 9. Every Story Slide must feel alive — never static.
 10. APD directs, it does not decorate.
+
+DISPLAY SCREEN SPECIFICATION:
+- Resolution: ${screenResolution} pixels
+- Aspect Ratio: ${screenAspectRatio}
+- Screen Width: ${screenResolution.split('x')[0]}px
+- Screen Height: ${screenResolution.split('x')[1]}px
+
+SAFE AREA RULES (CRITICAL — ALL ELEMENTS MUST FIT ON SCREEN):
+1. All element positions use normalized coordinates (0.0 to 1.0). Origin is top-left (0,0), bottom-right is (1,1).
+2. SAFE AREA: Keep ALL element positions within x: 0.08 to 0.92 and y: 0.08 to 0.92. NEVER place an element at x > 0.92, x < 0.08, y > 0.92, or y < 0.08.
+3. Element scale should be between 0.8 and 1.3. Never use scale > 1.5.
+4. No two text elements should overlap. If placing multiple text elements in the same scene, stagger their positions vertically (e.g., headline at y=0.25, body at y=0.55, lower_third at y=0.88).
+5. Headlines should be centered horizontally (x=0.5) and placed in the upper third (y=0.15 to 0.30).
+6. Body text should be centered horizontally (x=0.5) and placed in the middle (y=0.45 to 0.60).
+7. Lower thirds are exempt from safe area x-rules — they anchor to bottom-left (use bottom positioning).
+8. Images should not exceed 60% of screen width — use scale 0.8 to 1.0 for images.
+9. Statistics should be centered (x=0.5, y=0.4 to 0.5) with scale 1.0 to 1.2.
+10. When in doubt, center the element (x=0.5) — centered elements never overflow.
 
 PRESENTATION CONTEXT:
 - Production Profile: ${productionProfile}
@@ -516,6 +537,8 @@ For each scene, determine:
 Element types: image, headline, body_text, talking_point_card, discussion_response, lower_third, chart, logo, icon, callout, statistic, quote.
 
 Use normalized coordinates (0.0 to 1.0) for element positions. Origin is top-left (0,0), bottom-right is (1,1).
+
+CRITICAL: All elements MUST fit within the display screen. Respect the Safe Area Rules above — positions must be within x: 0.08–0.92, y: 0.08–0.92. No element should ever be positioned where it would overflow off-screen.
 
 All timing must be in milliseconds and synchronized with the Voice Package sentence timeline. Elements should appear when their relevant narration begins and disappear when no longer relevant.
 

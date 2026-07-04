@@ -28,7 +28,7 @@ function formatTime(ms) {
   return `${min}:${sec.toString().padStart(2, '0')}`;
 }
 
-export default function PresentationPlayer({ storySlides }) {
+export default function PresentationPlayer({ storySlides, aspectRatio }) {
   const player = usePresentationPlayer(storySlides);
   const { currentSlide, slideLocalTime, playing, currentTime, totalDuration, currentSlideIndex, audioError, audioReady } = player;
 
@@ -50,8 +50,11 @@ export default function PresentationPlayer({ storySlides }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Presentation Canvas — 16:9 aspect ratio */}
-      <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+      {/* Presentation Canvas — dynamic aspect ratio */}
+      <div
+        className="relative w-full bg-black rounded-xl overflow-hidden border border-white/10 shadow-2xl"
+        style={{ aspectRatio: aspectRatio || '16 / 9', containerType: 'size' }}
+      >
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-berna-navy to-black" />
 
