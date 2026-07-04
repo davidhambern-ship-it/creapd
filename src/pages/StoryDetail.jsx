@@ -87,6 +87,12 @@ export default function StoryDetail() {
     logActivity('update', { entity_type: 'Article', entity_id: id, entity_name: article.title, details: newSaved ? 'Story saved to library' : 'Story removed from library' });
   };
 
+  const approveStory = async () => {
+    await base44.entities.Article.update(id, { status: 'approved' });
+    setArticle(prev => ({ ...prev, status: 'approved' }));
+    logActivity('approve', { entity_type: 'Article', entity_id: id, entity_name: article.title, details: 'Story approved for manager' });
+  };
+
   const tags = article?.tags ? article.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
   if (loading) {
@@ -358,6 +364,16 @@ export default function StoryDetail() {
           <Bookmark className={`w-3 h-3 mr-1 ${article.is_saved ? 'fill-blue-400 text-blue-400' : ''}`} />
           {article.is_saved ? 'Remove from Library' : 'Save to Library'}
         </Button>
+        {article.status !== 'approved' && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-berna-emerald/30 text-berna-emerald hover:bg-berna-emerald/10 text-xs"
+            onClick={approveStory}
+          >
+            <CheckCircle className="w-3 h-3 mr-1" />Approve
+          </Button>
+        )}
         <Button
           size="sm"
           className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs"
