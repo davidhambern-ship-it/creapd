@@ -374,14 +374,7 @@ export default function StoryDetail() {
             <CheckCircle className="w-3 h-3 mr-1" />Approve
           </Button>
         )}
-        <Button
-          size="sm"
-          className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs"
-          disabled={!pkg || !['generated', 'edited', 'approved'].includes(pkg.status)}
-          onClick={() => navigate('/workspace')}
-        >
-          <Layers className="w-3 h-3 mr-1" />Send to Manager
-        </Button>
+
       </div>
     </div>
   );
