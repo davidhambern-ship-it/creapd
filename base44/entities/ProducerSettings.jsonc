@@ -107,6 +107,21 @@
     "preferred_translation_language": {
       "type": "string",
       "default": "en"
+    },
+    "auto_fetch_stories": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically fetch stories from RSS feeds on schedule"
+    },
+    "auto_sift_content": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically classify articles as video or text after ingestion"
+    },
+    "auto_transcribe_videos": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically transcribe and summarize video articles"
     }
   },
   "required": [

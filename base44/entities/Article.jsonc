@@ -203,6 +203,36 @@
       "type": "string",
       "format": "date-time",
       "description": "When the article entered the archive (used for 7-day auto-delete countdown on rejected articles)"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "video",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Whether the article is primarily video or text content (set by Content Sift Engine)"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "Extracted direct video/audio URL for transcription"
+    },
+    "transcript": {
+      "type": "string",
+      "description": "Full transcript of video/audio content (if available)"
+    },
+    "transcription_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "transcribed",
+        "failed",
+        "not_applicable"
+      ],
+      "default": "pending",
+      "description": "Status of video transcription processing"
     }
   },
   "required": [

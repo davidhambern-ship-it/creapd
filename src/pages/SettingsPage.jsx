@@ -341,6 +341,36 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Automation Control */}
+      <div className="glass-panel p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-white neon-underline">Automation Control</h2>
+        <p className="text-[10px] text-muted-foreground">Toggle automated pipeline stages on or off. When off, each stage can still be triggered manually from the Story Queue.</p>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white">Auto Fetch Stories</p>
+            <p className="text-[10px] text-muted-foreground">Automatically pull stories from RSS feeds on schedule</p>
+          </div>
+          <Switch checked={settings.auto_fetch_stories ?? true} onCheckedChange={v => update('auto_fetch_stories', v)} />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white">Auto Sift Content</p>
+            <p className="text-[10px] text-muted-foreground">Automatically classify articles as video or text after ingestion</p>
+          </div>
+          <Switch checked={settings.auto_sift_content ?? true} onCheckedChange={v => update('auto_sift_content', v)} />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-white">Auto Transcribe Videos</p>
+            <p className="text-[10px] text-muted-foreground">Automatically transcribe and summarize video articles</p>
+          </div>
+          <Switch checked={settings.auto_transcribe_videos ?? true} onCheckedChange={v => update('auto_transcribe_videos', v)} />
+        </div>
+      </div>
+
       {/* AI Services */}
       <AISettingsPanel settings={settings} onUpdate={update} />
 

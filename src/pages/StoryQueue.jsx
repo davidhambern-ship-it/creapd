@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StoryCard from '@/components/stories/StoryCard';
 import ChangeDirectionModal from '@/components/weekly/ChangeDirectionModal';
+import ContentIntelligenceControls from '@/components/shared/ContentIntelligenceControls';
 import { logActivity } from '@/lib/activityUtils';
 import CreapdLoading from '@/components/shared/CreapdLoading';
 
@@ -442,6 +443,8 @@ export default function StoryQueue() {
           <p className="text-sm text-muted-foreground">No stories match your filters</p>
         </div>
       )}
+
+      <ContentIntelligenceControls articles={articles} onRefresh={loadArticles} />
 
       <ChangeDirectionModal open={directionOpen} currentFocus="" onClose={() => setDirectionOpen(false)} />
     </div>

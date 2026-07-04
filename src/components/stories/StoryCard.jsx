@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ContentTypeBadge from '@/components/shared/ContentTypeBadge';
 
 const PACKAGE_STATUS_STYLES = {
   not_generated: { label: 'No Package', color: 'text-muted-foreground/50', dot: 'bg-muted-foreground/30' },
@@ -75,6 +76,8 @@ export default function StoryCard({
                 Notes
               </span>
             )}
+            {/* Content Type Badge */}
+            <ContentTypeBadge contentType={article.content_type} transcriptionStatus={article.transcription_status} />
             {/* Generated Package Status */}
             <span className={`inline-flex items-center gap-1 text-[10px] ${pkgStyle.color}`} title="Production package status">
               <span className={`w-1.5 h-1.5 rounded-full ${pkgStyle.dot}`} />

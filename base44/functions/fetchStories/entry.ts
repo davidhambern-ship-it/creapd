@@ -68,8 +68,17 @@ Deno.serve(async (req) => {
     try { await base44.auth.me(); } catch (e) {} // Auth optional — works for scheduled calls
 
     const body = await req.json().catch(() => ({}));
+    const manual = body.manual || false;
     const layerFilter = body.source_layer;
     const domainFilter = body.content_domain;
+
+    // Check automation setting (skip if automated and setting is off)
+    if (!manual) {
+      const settings = await base44.asServiceRole.entities.ProducerSettings.filter({}, '-created_date', 1);
+      if (settings.length > 0 && settings[0].auto_fetch_stories === false) {
+        return Response.json({ skipped: true, reason: 'Auto-fetch is disabled in settings' });
+      }
+    }
 
     let sources = await base44.asServiceRole.entities.Source.filter({ enabled: true });
     if (layerFilter) sources = sources.filter(s => s.source_layer === layerFilter);
@@ -108,6 +117,8 @@ Deno.serve(async (req) => {
             category: src.category || 'general',
             status: 'pending',
             credibility_score: src.trust_rating || 3,
+            content_type: 'unknown',
+            transcription_status: 'pending',
           });
           urlSet.add(item.link);
           if (tl) titles.push(tl);
