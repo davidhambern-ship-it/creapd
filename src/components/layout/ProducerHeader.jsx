@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Link, useLocation } from 'react-router-dom';
 import NotificationDropdown from '@/components/shared/NotificationDropdown';
 import GlobalSearch from '@/components/shared/GlobalSearch';
+import CreapdLogo from '@/components/brand/CreapdLogo';
 import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
 
 export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
@@ -68,12 +69,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
             <span className="text-xs font-medium">Menu</span>
           </button>
           <Link to="/" className="flex items-center">
-            <img
-              src="https://media.base44.com/images/public/6a4126962e5804304cc84b12/3a30f6e3d_Producer.png"
-              alt="CREAPD — Create. Produce. Deliver."
-              className="h-8 lg:h-10 w-auto"
-              style={{ mixBlendMode: 'screen' }}
-            />
+            <CreapdLogo height="h-8 lg:h-10" />
           </Link>
         </div>
 
