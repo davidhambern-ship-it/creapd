@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
         story_count: storySlideIds.length
       }),
       qa_scores: JSON.stringify(qaScores),
-      confidence_score: Math.round(avgScore),
+      confidence_score: confidenceScore,
       qa_result: qaResult,
       total_runtime_ms: cumulativeStartMs,
       status: 'generated',
@@ -432,7 +432,7 @@ Deno.serve(async (req) => {
         status: 'generated',
         story_count: storySlideIds.length,
         total_runtime_ms: cumulativeStartMs,
-        confidence_score: Math.round(avgScore),
+        confidence_score: confidenceScore,
         qa_result: qaResult,
         story_slide_ids: storySlideIds,
         validation_results: validationResults
