@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { ASSET_TYPE_LABELS } from '@/lib/talkConstants';
-import { Loader2, Mic2, Sparkles, AlertCircle, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Loader2, Mic2, Sparkles, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, Volume2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function TalkAssets() {
@@ -97,6 +97,12 @@ export default function TalkAssets() {
                       <p className="text-sm text-muted-foreground whitespace-pre-line">
                         {isExpanded || !isLong ? content : content.substring(0, 200) + '...'}
                       </p>
+                      {asset.audio_url && (
+                        <div className="mt-2 !flex items-center gap-2 p-2 rounded-lg bg-primary/10">
+                          <Volume2 className="w-4 h-4 text-primary shrink-0" />
+                          <audio controls src={asset.audio_url} className="h-8 flex-1 min-w-0" />
+                        </div>
+                      )}
                     </div>
                   );
                 })}

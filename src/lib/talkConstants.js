@@ -39,6 +39,10 @@ export const AI_AUTOMATION_OPTIONS = [
   { key: 'Generate Discussion Questions', label: 'Generate Discussion Questions' },
   { key: 'Generate Host Intros', label: 'Generate Host Intros' },
   { key: 'Generate Host Outros', label: 'Generate Host Outros' },
+  { key: 'Generate Host Script', label: 'Generate Host Script' },
+  { key: 'Generate Co-Host Script', label: 'Generate Co-Host Script' },
+  { key: 'Generate Host Audio', label: 'Generate Host Audio' },
+  { key: 'Generate Co-Host Audio', label: 'Generate Co-Host Audio' },
   { key: 'Generate Guest Intros', label: 'Generate Guest Intros' },
   { key: 'Generate Audience Prompts', label: 'Generate Audience Prompts' },
   { key: 'Generate Social Captions', label: 'Generate Social Captions' },
@@ -57,6 +61,10 @@ export const DEFAULT_AI_AUTOMATION = [
   'Generate Talking Points',
   'Generate Discussion Questions',
   'Generate Host Intros',
+  'Generate Host Script',
+  'Generate Co-Host Script',
+  'Generate Host Audio',
+  'Generate Co-Host Audio',
   'Generate Guest Intros',
   'Generate Social Captions',
   'Generate Thumbnail Prompt',
@@ -96,7 +104,11 @@ export const ASSET_TYPE_LABELS = {
   thumbnail_prompt: 'Thumbnail Prompt',
   presentation_prompt: 'Presentation Prompt',
   ai_image: 'AI Image',
-  production_notes: 'Production Notes'
+  production_notes: 'Production Notes',
+  host_script: 'Host Script',
+  cohost_script: 'Co-Host Script',
+  host_audio: 'Host Audio',
+  cohost_audio: 'Co-Host Audio'
 };
 
 export const SEGMENT_TYPE_LABELS = {

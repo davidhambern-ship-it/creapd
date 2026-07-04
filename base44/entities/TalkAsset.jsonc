@@ -20,7 +20,11 @@
         "thumbnail_prompt",
         "presentation_prompt",
         "ai_image",
-        "production_notes"
+        "production_notes",
+        "host_script",
+        "cohost_script",
+        "host_audio",
+        "cohost_audio"
       ],
       "description": "Type of AI-generated asset"
     },
@@ -29,6 +33,10 @@
     },
     "content": {
       "type": "string"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "Generated voiceover audio URL (for host_audio / cohost_audio assets)"
     },
     "associated_topic": {
       "type": "string",

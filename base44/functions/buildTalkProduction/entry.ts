@@ -165,6 +165,8 @@ TASKS:
 2. AI ASSETS: Generate the following based on selected automation:
 - host_intro: An engaging show opening monologue for the host (matching show tone)
 - host_outro: A closing monologue wrapping up the show
+- host_script: A FULL broadcast-ready script for the HOST covering the entire show — opening, topic transitions, guest introductions, questions, and closing. This is the complete spoken script the host will read. Keep under 4000 characters.
+- cohost_script: A FULL broadcast-ready script for the CO-HOST covering their segments — reactions,补充ary commentary, questions, banter, and transitions. This is the complete spoken script the co-host will read. If no co-host is configured, generate a supporting commentary script anyway. Keep under 4000 characters.
 - guest_intro: An introduction script for the guest(s) (if applicable, otherwise introduce the main topic)
 - discussion_questions: 5-7 thought-provoking discussion questions for the panel/audience (separated by ---)
 - audience_prompts: 3-4 prompts to encourage audience engagement (separated by ---)
@@ -174,7 +176,7 @@ TASKS:
 - presentation_prompt: A detailed prompt for generating a presentation slide deck for this talk show (CREAPD produces presentations, not videos)
 - production_notes: Internal production notes for the team
 
-Return a JSON object with exactly these keys: rundown (array), host_intro (string), host_outro (string), guest_intro (string), discussion_questions (string), audience_prompts (string), social_captions (array), hashtags (string), thumbnail_prompt (string), presentation_prompt (string), production_notes (string).`;
+Return a JSON object with exactly these keys: rundown (array), host_intro (string), host_outro (string), host_script (string), cohost_script (string), guest_intro (string), discussion_questions (string), audience_prompts (string), social_captions (array), hashtags (string), thumbnail_prompt (string), presentation_prompt (string), production_notes (string).`;
 
     const schema2 = {
       type: 'object',
@@ -196,6 +198,8 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
         },
         host_intro: { type: 'string' },
         host_outro: { type: 'string' },
+        host_script: { type: 'string' },
+        cohost_script: { type: 'string' },
         guest_intro: { type: 'string' },
         discussion_questions: { type: 'string' },
         audience_prompts: { type: 'string' },
@@ -272,12 +276,75 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
     if (aiAutomation.includes('Generate Production Notes') && llm2.production_notes) {
       assets.push({ configuration_id, asset_type: 'production_notes', title: 'Production Notes', content: llm2.production_notes, status: 'ready' });
     }
+    // Host Script — the full spoken script for the host
+    if (aiAutomation.includes('Generate Host Script') && llm2.host_script) {
+      assets.push({ configuration_id, asset_type: 'host_script', title: 'Host Script', content: llm2.host_script, status: 'ready' });
+    }
+    // Co-Host Script — the full spoken script for the co-host
+    if (aiAutomation.includes('Generate Co-Host Script') && llm2.cohost_script) {
+      assets.push({ configuration_id, asset_type: 'cohost_script', title: 'Co-Host Script', content: llm2.cohost_script, status: 'ready' });
+    }
 
     if (assets.length > 0) {
       await base44.entities.TalkAsset.bulkCreate(assets);
     }
 
-    // Update config status to ready
+    // ===== VOICEOVER GENERATION =====
+    // CRITICAL: Voiceover audios are generated from the EXACT script text produced above.
+    // The host_audio is generated from the host_script, and cohost_audio from the cohost_script.
+
+    const voiceoverAssets = [];
+
+    if (aiAutomation.includes('Generate Host Audio') && llm2.host_script) {
+      try {
+        const hostScriptText = llm2.host_script.substring(0, 5000); // GenerateSpeech max 5000 chars
+        const speechResult = await base44.integrations.Core.GenerateSpeech({
+          text: hostScriptText,
+          voice: 'storm', // formal, authoritative — suits a talk show host
+          language_code: 'en'
+        });
+        if (speechResult && speechResult.url) {
+          voiceoverAssets.push({
+            configuration_id,
+            asset_type: 'host_audio',
+            title: 'Host Audio',
+            content: hostScriptText, // store the exact script used so it's auditable
+            audio_url: speechResult.url,
+            status: 'ready'
+          });
+        }
+      } catch (e) {
+        console.error('Host voiceover generation failed:', e.message);
+      }
+    }
+
+    if (aiAutomation.includes('Generate Co-Host Audio') && llm2.cohost_script) {
+      try {
+        const cohostScriptText = llm2.cohost_script.substring(0, 5000); // GenerateSpeech max 5000 chars
+        const speechResult = await base44.integrations.Core.GenerateSpeech({
+          text: cohostScriptText,
+          voice: 'honey', // warm, soft — complementary to the host
+          language_code: 'en'
+        });
+        if (speechResult && speechResult.url) {
+          voiceoverAssets.push({
+            configuration_id,
+            asset_type: 'cohost_audio',
+            title: 'Co-Host Audio',
+            content: cohostScriptText, // store the exact script used so it's auditable
+            audio_url: speechResult.url,
+            status: 'ready'
+          });
+        }
+      } catch (e) {
+        console.error('Co-Host voiceover generation failed:', e.message);
+      }
+    }
+
+    if (voiceoverAssets.length > 0) {
+      await base44.entities.TalkAsset.bulkCreate(voiceoverAssets);
+    }
+
     await base44.entities.TalkProductionConfiguration.update(configuration_id, { status: 'ready' });
 
     return Response.json({
@@ -286,7 +353,8 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
       research_count: researchData.length,
       topic_count: topicData.length,
       rundown_count: rundownData.length,
-      asset_count: assets.length
+      asset_count: assets.length,
+      voiceover_count: voiceoverAssets.length
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
