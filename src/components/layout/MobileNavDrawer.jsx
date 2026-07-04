@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { X, ChevronRight, LayoutGrid } from 'lucide-react';
-import { PRODUCTION_MODES } from '@/lib/producerNav';
+import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
 import AdminSidebarSection from './AdminSidebarSection';
 
 export default function MobileNavDrawer({ open, onClose, navItems, iconMap, variant }) {
@@ -61,8 +61,8 @@ export default function MobileNavDrawer({ open, onClose, navItems, iconMap, vari
           <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2">Production Mode</p>
           <div className="grid grid-cols-3 gap-2">
             {PRODUCTION_MODES.map(mode => {
-              const isActive = location.pathname.startsWith(mode.path) ||
-                (mode.path === '/' && !location.pathname.startsWith('/music') && !location.pathname.startsWith('/spiritual') && !location.pathname.startsWith('/talk') && !location.pathname.startsWith('/cooking') && !location.pathname.startsWith('/sports') && !location.pathname.startsWith('/cosmo'));
+              const activeMode = getActiveProductionMode(location.pathname);
+              const isActive = activeMode === mode.key;
               return (
                 <Link
                   key={mode.key}
