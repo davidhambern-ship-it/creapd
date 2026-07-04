@@ -1,0 +1,122 @@
+{
+  "name": "SportsProductionConfiguration",
+  "type": "object",
+  "properties": {
+    "production_name": {
+      "type": "string"
+    },
+    "host_name": {
+      "type": "string"
+    },
+    "co_host_name": {
+      "type": "string"
+    },
+    "show_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "show_start_time": {
+      "type": "string"
+    },
+    "live_or_recorded": {
+      "type": "string",
+      "enum": [
+        "live",
+        "recorded"
+      ],
+      "default": "live"
+    },
+    "station_name": {
+      "type": "string"
+    },
+    "show_description": {
+      "type": "string"
+    },
+    "show_format": {
+      "type": "string",
+      "enum": [
+        "Game Preview",
+        "Game Recap",
+        "Scoreboard Show",
+        "Athlete Interview",
+        "Sports Commentary",
+        "Fantasy Sports Advice",
+        "Betting Odds Show",
+        "Highlight Show",
+        "Post-Game Analysis",
+        "Pre-Game Show",
+        "Trade Deadline Special",
+        "Draft Coverage",
+        "Offseason Update",
+        "Sports News Roundup",
+        "Local Sports Focus",
+        "Custom Format"
+      ],
+      "default": "Game Preview"
+    },
+    "total_show_runtime": {
+      "type": "number",
+      "description": "Total show runtime in minutes",
+      "default": 30
+    },
+    "sports_segment_runtime": {
+      "type": "number",
+      "description": "Sports/discussion runtime in minutes",
+      "default": 22
+    },
+    "commercial_sponsor_runtime": {
+      "type": "number",
+      "description": "Commercial/sponsor runtime in minutes",
+      "default": 4
+    },
+    "intro_runtime": {
+      "type": "number",
+      "description": "Intro runtime in minutes",
+      "default": 2
+    },
+    "outro_runtime": {
+      "type": "number",
+      "description": "Outro runtime in minutes",
+      "default": 2
+    },
+    "sports": {
+      "type": "string",
+      "description": "JSON array of selected sports"
+    },
+    "research_sources": {
+      "type": "string",
+      "description": "JSON array of enabled research sources"
+    },
+    "show_tone": {
+      "type": "string",
+      "default": "Energetic & Analytical"
+    },
+    "guest_details": {
+      "type": "string",
+      "description": "Free-text guest athlete/coach information"
+    },
+    "ai_automation": {
+      "type": "string",
+      "description": "JSON array of selected AI automation options"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "configuring",
+        "building",
+        "ready",
+        "refreshing",
+        "failed"
+      ],
+      "default": "configuring"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "production_name",
+    "show_date"
+  ]
+}

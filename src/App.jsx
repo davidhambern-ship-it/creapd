@@ -68,9 +68,18 @@ import CookingIngredients from '@/pages/CookingIngredients';
 import CookingRundown from '@/pages/CookingRundown';
 import CookingAssets from '@/pages/CookingAssets';
 import CookingExport from '@/pages/CookingExport';
+import SportsConfigure from '@/pages/SportsConfigure';
+import SportsDashboard from '@/pages/SportsDashboard';
+import SportsResearch from '@/pages/SportsResearch';
+import SportsGames from '@/pages/SportsGames';
+import SportsAthletes from '@/pages/SportsAthletes';
+import SportsRundown from '@/pages/SportsRundown';
+import SportsAssets from '@/pages/SportsAssets';
+import SportsExport from '@/pages/SportsExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
+import SportsLayout from '@/components/layout/SportsLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
@@ -194,6 +203,18 @@ const AuthenticatedApp = () => {
           <Route path="/cooking/rundown" element={<CookingRundown />} />
           <Route path="/cooking/assets" element={<CookingAssets />} />
           <Route path="/cooking/export" element={<CookingExport />} />
+        </Route>
+
+        {/* Sports Production */}
+        <Route element={<SportsLayout />}>
+          <Route path="/sports/configure" element={<SportsConfigure />} />
+          <Route path="/sports/dashboard" element={<SportsDashboard />} />
+          <Route path="/sports/research" element={<SportsResearch />} />
+          <Route path="/sports/games" element={<SportsGames />} />
+          <Route path="/sports/athletes" element={<SportsAthletes />} />
+          <Route path="/sports/rundown" element={<SportsRundown />} />
+          <Route path="/sports/assets" element={<SportsAssets />} />
+          <Route path="/sports/export" element={<SportsExport />} />
         </Route>
 
         {/* Spiritual Production */}

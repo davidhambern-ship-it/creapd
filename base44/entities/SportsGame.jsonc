@@ -1,0 +1,60 @@
+{
+  "name": "SportsGame",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SportsProductionConfiguration"
+    },
+    "game_name": {
+      "type": "string"
+    },
+    "generated_summary": {
+      "type": "string",
+      "description": "Summary of the game and context"
+    },
+    "key_matchups": {
+      "type": "string",
+      "description": "Key player vs player or team vs team matchups"
+    },
+    "talking_points": {
+      "type": "string",
+      "description": "Key talking points for discussion"
+    },
+    "stats_and_figures": {
+      "type": "string",
+      "description": "Important stats and figures"
+    },
+    "sources": {
+      "type": "string",
+      "description": "Sources consulted for this game"
+    },
+    "suggested_placement": {
+      "type": "string",
+      "description": "Where in the show this game fits best"
+    },
+    "game_status": {
+      "type": "string",
+      "enum": [
+        "upcoming",
+        "in_progress",
+        "completed"
+      ],
+      "default": "upcoming"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "ready",
+        "approved",
+        "removed"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "game_name"
+  ]
+}

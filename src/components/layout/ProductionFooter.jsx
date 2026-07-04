@@ -5,7 +5,7 @@ import {
   Music, ListMusic, Disc3, Headphones,
   Church, BookOpen, GraduationCap, PenTool,
   Mic2, Lightbulb, Users, ClipboardList,
-  ChefHat, Carrot,
+  ChefHat, Carrot, Trophy,
   Zap
 } from 'lucide-react';
 

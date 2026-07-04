@@ -1,0 +1,42 @@
+{
+  "name": "SportsAthlete",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SportsProductionConfiguration"
+    },
+    "athlete_name": {
+      "type": "string"
+    },
+    "title_role": {
+      "type": "string",
+      "description": "Athlete role (e.g. Quarterback, Head Coach, Analyst)"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Athlete biography"
+    },
+    "talking_points": {
+      "type": "string",
+      "description": "Suggested talking points for this athlete"
+    },
+    "photo_prompt": {
+      "type": "string",
+      "description": "AI image prompt for athlete portrait"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "cancelled"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "athlete_name"
+  ]
+}

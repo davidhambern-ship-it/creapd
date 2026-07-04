@@ -62,7 +62,7 @@ export default function MobileNavDrawer({ open, onClose, navItems, iconMap, vari
           <div className="grid grid-cols-3 gap-2">
             {PRODUCTION_MODES.map(mode => {
               const isActive = location.pathname.startsWith(mode.path) ||
-                (mode.path === '/' && !location.pathname.startsWith('/music') && !location.pathname.startsWith('/spiritual') && !location.pathname.startsWith('/talk') && !location.pathname.startsWith('/cooking'));
+                (mode.path === '/' && !location.pathname.startsWith('/music') && !location.pathname.startsWith('/spiritual') && !location.pathname.startsWith('/talk') && !location.pathname.startsWith('/cooking') && !location.pathname.startsWith('/sports'));
               return (
                 <Link
                   key={mode.key}

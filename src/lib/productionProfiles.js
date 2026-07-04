@@ -105,17 +105,23 @@ export const PRODUCTION_PROFILES = [
     shortLabel: 'Sports',
     description: 'Game previews, recaps, scoreboard updates, athlete interviews, and sports commentary shows.',
     icon: Trophy,
-    available: false,
-    path: null,
+    available: true,
+    path: '/sports/dashboard',
     gradient: 'from-orange-500/20 to-red-500/10',
     accent: 'text-orange-400',
     accentBg: 'bg-orange-500/10',
     accentBorder: 'border-orange-500/20',
     spotlightFeature: 'Game Desk',
-    spotlightDescription: 'Build sports shows with previews, recaps, scores, and commentary.',
-    workflow: [],
-    outputs: '',
-    examples: []
+    spotlightDescription: 'Build sports shows with game previews, recaps, scoreboard updates, athlete interviews, host scripts, voiceovers, and presentation-ready sports content.',
+    workflow: [
+      'Select sports and define your show format',
+      'Generate games, matchups, research, and athlete profiles with AI',
+      'Generate host scripts, co-host scripts, and voiceover audios',
+      'Build a timed show rundown with game previews and analysis segments',
+      'Export or share your finished production'
+    ],
+    outputs: 'Game previews, key matchups, stats & figures, host scripts, voiceovers, show rundowns, presentation prompts',
+    examples: ['Game Preview', 'Post-Game Analysis', 'Scoreboard Show']
   },
   {
     key: 'cooking',

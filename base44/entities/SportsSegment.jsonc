@@ -1,0 +1,63 @@
+{
+  "name": "SportsSegment",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the SportsProductionConfiguration"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "segment_type": {
+      "type": "string",
+      "enum": [
+        "intro",
+        "host_monologue",
+        "game_preview",
+        "game_recap",
+        "scoreboard_update",
+        "athlete_interview",
+        "analysis",
+        "debate",
+        "audience_qa",
+        "sponsor_break",
+        "station_id",
+        "transition",
+        "outro"
+      ],
+      "default": "game_preview"
+    },
+    "title": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Start time HH:MM"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "End time HH:MM"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "approved"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "segment_type"
+  ]
+}
