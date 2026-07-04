@@ -306,6 +306,22 @@ Deno.serve(async (req) => {
         decision_summary: `Generated ${sceneGraph.scenes.length} scenes for Story Slide ${i + 1}`
       });
 
+      // Evaluate deterministic QA for this slide
+      const slideQA = evaluateDeterministicQA(sceneGraph, vp, totalDurationMs);
+
+      // Update slide with QA results in metadata
+      await base44.asServiceRole.entities.StorySlide.update(slide.id, {
+        slide_metadata: JSON.stringify({
+          headline: pkg.article_id || `Story ${i + 1}`,
+          story_summary: pkg.story_summary || '',
+          duration_ms: totalDurationMs,
+          scene_count: sceneGraph.scenes.length,
+          element_count: sceneGraph.scenes.reduce((acc, s) => acc + s.layers.reduce((la, l) => la + l.elements.length, 0), 0),
+          voice_package_reference: vp.id,
+          qa_scores: slideQA
+        })
+      });
+
       // Add to master timeline
       masterTimelineEvents.push({
         event_type: 'slide_start',
@@ -327,20 +343,59 @@ Deno.serve(async (req) => {
     };
 
     // ==========================================================
-    // STEP 6: QUALITY ASSURANCE (Basic)
+    // STEP 6: QUALITY ASSURANCE (Real Evaluation)
     // ==========================================================
-    const qaScores = {
-      story_integrity: 100,
-      timeline: storyPackages.length === storySlideIds.length ? 100 : 50,
-      communication: 85,
-      readability: 90,
-      motion: 85,
-      consistency: 85,
-      technical: 100
+
+    // Collect per-slide QA scores from slide metadata
+    const slideQAScores = [];
+    for (const slideId of storySlideIds) {
+      const slide = await base44.asServiceRole.entities.StorySlide.get(slideId);
+      const meta = (() => { try { return JSON.parse(slide.slide_metadata || '{}'); } catch { return {}; } })();
+      if (meta.qa_scores) slideQAScores.push(meta.qa_scores);
+    }
+
+    // Aggregate deterministic QA scores across all slides
+    const avg = (key) => slideQAScores.length > 0
+      ? Math.round(slideQAScores.reduce((a, s) => a + (s[key] || 0), 0) / slideQAScores.length)
+      : 0;
+
+    const deterministicQA = {
+      story_integrity: avg('story_integrity'),
+      timeline_synchronization: avg('timeline_synchronization'),
+      readability: avg('readability'),
+      technical_integrity: avg('technical_integrity')
     };
 
-    const avgScore = Object.values(qaScores).reduce((a, b) => a + b, 0) / Object.values(qaScores).length;
-    const qaResult = avgScore >= 95 ? 'pass' : avgScore >= 90 ? 'pass' : avgScore >= 80 ? 'warning' : 'fail';
+    // AI-based QA evaluation
+    let aiQA = { communication: 80, motion: 80, consistency: 80 };
+    try {
+      aiQA = await evaluateAIQA(base44, title, production_profile, storySlideIds);
+    } catch (e) {
+      // Fall back to defaults if AI QA fails
+    }
+
+    const qaScores = {
+      story_integrity: deterministicQA.story_integrity,
+      timeline_synchronization: deterministicQA.timeline_synchronization,
+      communication: aiQA.communication,
+      readability: deterministicQA.readability,
+      motion: aiQA.motion,
+      technical_integrity: deterministicQA.technical_integrity,
+      consistency: aiQA.consistency
+    };
+
+    // Production Confidence Score formula
+    const confidenceScore = Math.round(
+      qaScores.story_integrity * 0.20 +
+      qaScores.timeline_synchronization * 0.20 +
+      qaScores.communication * 0.20 +
+      qaScores.readability * 0.15 +
+      qaScores.motion * 0.10 +
+      qaScores.technical_integrity * 0.10 +
+      qaScores.consistency * 0.05
+    );
+
+    const qaResult = confidenceScore >= 90 ? 'pass' : confidenceScore >= 80 ? 'warning' : 'fail';
 
     // Update Stories Presentation
     const updatedPresentation = await base44.asServiceRole.entities.StoriesPresentation.update(presentation.id, {
@@ -468,4 +523,126 @@ Return a JSON object with:
 - scenes: array of scene objects (each with scene_id, scene_order, scene_type, scene_purpose, scene_start_time, scene_end_time, camera_behavior, camera_target, motion_intensity, layers with elements)
 - decision_rationale: explanation of your directing decisions
 - confidence_score: 0-100 confidence that this slide communicates the story effectively`;
+}
+
+// ==========================================================
+// QA EVALUATION HELPERS
+// ==========================================================
+
+function evaluateDeterministicQA(sceneGraph, voicePackage, totalDurationMs) {
+  const scenes = sceneGraph.scenes || [];
+
+  // Story integrity: each scene should have content
+  let storyIntegrity = 100;
+  for (const scene of scenes) {
+    const hasContent = (scene.layers || []).some(l => (l.elements || []).some(e => e.content));
+    if (!hasContent) storyIntegrity -= 20;
+  }
+  if (scenes.length === 0) storyIntegrity = 0;
+  storyIntegrity = Math.max(0, storyIntegrity);
+
+  // Timeline synchronization: scene times within voice duration
+  let timelineSync = 100;
+  for (const scene of scenes) {
+    if ((scene.scene_end_time || 0) > totalDurationMs + 1000) timelineSync -= 15;
+    if ((scene.scene_start_time || 0) < 0) timelineSync -= 10;
+  }
+
+  // Dead time detection: gaps > 3 seconds between scenes
+  let lastEnd = 0;
+  let deadTimeSeconds = 0;
+  for (const scene of scenes) {
+    const start = scene.scene_start_time || 0;
+    if (start > lastEnd + 3000) {
+      deadTimeSeconds += (start - lastEnd - 3000) / 1000;
+    }
+    lastEnd = Math.max(lastEnd, scene.scene_end_time || 0);
+  }
+  if (deadTimeSeconds > 5) timelineSync -= 15;
+  if (deadTimeSeconds > 10) timelineSync -= 15;
+  timelineSync = Math.max(0, timelineSync);
+
+  // Readability: text length checks
+  let readability = 100;
+  for (const scene of scenes) {
+    for (const layer of (scene.layers || [])) {
+      for (const elem of (layer.elements || [])) {
+        if (elem.content && elem.content.length > 200) readability -= 5;
+        if (elem.element_type === 'headline' && elem.content && elem.content.length > 80) readability -= 5;
+        if (elem.element_type === 'body_text' && elem.content && elem.content.length > 300) readability -= 5;
+      }
+    }
+  }
+  readability = Math.max(0, readability);
+
+  // Technical integrity: missing assets, valid structure
+  let technicalIntegrity = 100;
+  if (scenes.length === 0) technicalIntegrity = 0;
+  for (const scene of scenes) {
+    if (!scene.layers) technicalIntegrity -= 20;
+    for (const layer of (scene.layers || [])) {
+      for (const elem of (layer.elements || [])) {
+        if (elem.element_type === 'image' && !elem.asset_reference) technicalIntegrity -= 10;
+      }
+    }
+  }
+  technicalIntegrity = Math.max(0, technicalIntegrity);
+
+  return {
+    story_integrity: storyIntegrity,
+    timeline_synchronization: timelineSync,
+    readability,
+    technical_integrity: technicalIntegrity,
+    dead_time_seconds: Math.round(deadTimeSeconds)
+  };
+}
+
+async function evaluateAIQA(base44, title, productionProfile, storySlideIds) {
+  const slidesData = [];
+  for (let i = 0; i < storySlideIds.length; i++) {
+    const slide = await base44.asServiceRole.entities.StorySlide.get(storySlideIds[i]);
+    const sg = (() => { try { return JSON.parse(slide.scene_graph || '{}'); } catch { return {}; } })();
+    const meta = (() => { try { return JSON.parse(slide.slide_metadata || '{}'); } catch { return {}; } })();
+    slidesData.push({
+      headline: meta.headline,
+      scene_count: sg.scenes?.length || 0,
+      scene_types: (sg.scenes || []).map(s => s.scene_type),
+      camera_behaviors: (sg.scenes || []).map(s => s.camera_state?.behavior),
+      motion_intensities: (sg.scenes || []).map(s => s.motion_state?.intensity),
+      element_types: (sg.scenes || []).flatMap(s =>
+        (s.layers || []).flatMap(l => (l.elements || []).map(e => e.element_type))
+      )
+    });
+  }
+
+  const prompt = `You are a QA evaluator for CREAPD Stories Presentations. Evaluate the following presentation data and score each category 0-100.
+
+Presentation Title: ${title}
+Production Profile: ${productionProfile}
+Slide Count: ${storySlideIds.length}
+
+Slides Data:
+${JSON.stringify(slidesData, null, 2)}
+
+Score these categories (0-100):
+- communication: How clearly does the presentation communicate the stories? Consider scene types, element types, and content structure.
+- motion: Are camera behaviors and motion intensities appropriate? All static is boring (lower score); too much high-intensity motion is distracting (lower score).
+- consistency: Is the presentation visually consistent across slides? Similar scene structures and element types indicate good consistency.
+
+Return only the JSON object.`;
+
+  const response = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: {
+      type: "object",
+      properties: {
+        communication: { type: "number" },
+        motion: { type: "number" },
+        consistency: { type: "number" }
+      }
+    },
+    model: 'gpt_5_mini'
+  });
+
+  return typeof response === 'string' ? JSON.parse(response) : response;
 }

@@ -37,13 +37,14 @@
     },
     "source_production_id": {
       "type": "string",
-      "description": "ID of the original production entity (ProductionPackage, SpiritualProductionConfiguration, etc.)"
+      "description": "ID of the original production entity (ProductionPackage, SpiritualProductionConfiguration, StoriesPresentation, etc.)"
     },
     "source_type": {
       "type": "string",
       "enum": [
         "production_package",
-        "spiritual_configuration"
+        "spiritual_configuration",
+        "stories_presentation"
       ],
       "default": "production_package",
       "description": "Type of the source production entity"

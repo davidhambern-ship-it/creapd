@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import PresentationPlayer from '@/components/presentation/PresentationPlayer';
 import {
   ArrowLeft, CheckCircle, XCircle, RefreshCw, Clock, FileStack,
-  TrendingUp, AlertTriangle, Share2, Download
+  TrendingUp, AlertTriangle, Share2, Download, Loader2, Check
 } from 'lucide-react';
 
 function formatTime(ms) {
@@ -36,6 +36,10 @@ export default function PresentationReview() {
   const [storySlides, setStorySlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+  const [exportJob, setExportJob] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareResult, setShareResult] = useState(null);
 
   useEffect(() => {
     loadPresentation();
@@ -95,6 +99,36 @@ export default function PresentationReview() {
       await loadPresentation();
     } catch (error) {
       console.error('Reject failed:', error);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const response = await base44.functions.invoke('createExportJob', { presentation_id: id });
+      const result = response.data || response;
+      if (result.export_job) {
+        setExportJob(result.export_job);
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const response = await base44.functions.invoke('sharePresentation', { presentation_id: id });
+      const result = response.data || response;
+      if (result.showcase) {
+        setShareResult(result.showcase);
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -246,12 +280,61 @@ export default function PresentationReview() {
                 This presentation has been approved and is ready for export.
               </p>
               <div className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full">
-                  <Download className="w-4 h-4" /> Export MP4
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <Share2 className="w-4 h-4" /> Share with CREAPD
-                </Button>
+                {exportJob ? (
+                  <div className="text-center py-2">
+                    {exportJob.status === 'queued' && (
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Export job queued — renderer pending implementation
+                      </p>
+                    )}
+                    {exportJob.status === 'rendering' && (
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Rendering... {exportJob.progress}%
+                      </p>
+                    )}
+                    {exportJob.status === 'complete' && (
+                      <p className="text-xs text-emerald-500 flex items-center justify-center gap-1">
+                        <Check className="w-3 h-3" /> Export complete
+                      </p>
+                    )}
+                    {exportJob.status === 'failed' && (
+                      <p className="text-xs text-red-500">Export failed</p>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleExport}
+                    disabled={exporting}
+                  >
+                    {exporting ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Creating job...</>
+                    ) : (
+                      <><Download className="w-4 h-4" /> Export MP4</>
+                    )}
+                  </Button>
+                )}
+                {shareResult ? (
+                  <div className="text-center py-2">
+                    <p className="text-xs text-emerald-500 flex items-center justify-center gap-1">
+                      <Check className="w-3 h-3" /> Shared to CREAPD Showcase
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleShare}
+                    disabled={sharing}
+                  >
+                    {sharing ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Sharing...</>
+                    ) : (
+                      <><Share2 className="w-4 h-4" /> Share with CREAPD</>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           )}

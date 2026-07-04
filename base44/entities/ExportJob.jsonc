@@ -1,0 +1,56 @@
+{
+  "name": "ExportJob",
+  "type": "object",
+  "properties": {
+    "presentation_id": {
+      "type": "string",
+      "description": "ID of the StoriesPresentation to export"
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "mp4"
+      ],
+      "default": "mp4"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "rendering",
+        "complete",
+        "failed"
+      ],
+      "default": "queued"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "User ID of the Producer who requested export"
+    },
+    "progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Render progress 0-100"
+    },
+    "output_url": {
+      "type": "string",
+      "description": "URL of the rendered video file (set on completion)"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error message if export failed"
+    },
+    "export_metadata": {
+      "type": "string",
+      "description": "JSON: resolution, format, bitrate, renderer info"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "presentation_id",
+    "job_type"
+  ]
+}

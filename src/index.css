@@ -165,3 +165,45 @@
 .animate-dissolve-in {
   animation: dissolve-in 0.7s ease-out;
 }
+
+/* Exit / motion animations */
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.animate-fade-out {
+  animation: fade-out 0.5s ease-out;
+}
+
+@keyframes slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100px); }
+}
+.animate-slide-out {
+  animation: slide-out 0.5s ease-out;
+}
+
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-gentle-float {
+  animation: gentle-float 3s ease-in-out infinite;
+}
+
+/* Slide transitions */
+@keyframes slide-left-transition {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-left {
+  animation: slide-left-transition 0.5s ease-out;
+}
+
+@keyframes dissolve-transition {
+  from { opacity: 0; filter: blur(10px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.animate-dissolve-transition {
+  animation: dissolve-transition 0.7s ease-out;
+}
