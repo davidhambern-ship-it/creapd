@@ -1,0 +1,43 @@
+{
+  "name": "CookingIngredient",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the CookingProductionConfiguration"
+    },
+    "ingredient_name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "description": "e.g. Produce, Protein, Grain, Spice, Dairy"
+    },
+    "description": {
+      "type": "string"
+    },
+    "sourcing_notes": {
+      "type": "string",
+      "description": "Where to find, seasonality"
+    },
+    "substitution_notes": {
+      "type": "string"
+    },
+    "nutritional_notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "confirmed",
+        "removed"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "ingredient_name"
+  ]
+}

@@ -60,8 +60,17 @@ import TalkGuests from '@/pages/TalkGuests';
 import TalkRundown from '@/pages/TalkRundown';
 import TalkAssets from '@/pages/TalkAssets';
 import TalkExport from '@/pages/TalkExport';
+import CookingConfigure from '@/pages/CookingConfigure';
+import CookingDashboard from '@/pages/CookingDashboard';
+import CookingResearch from '@/pages/CookingResearch';
+import CookingRecipes from '@/pages/CookingRecipes';
+import CookingIngredients from '@/pages/CookingIngredients';
+import CookingRundown from '@/pages/CookingRundown';
+import CookingAssets from '@/pages/CookingAssets';
+import CookingExport from '@/pages/CookingExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import TalkLayout from '@/components/layout/TalkLayout';
+import CookingLayout from '@/components/layout/CookingLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
@@ -173,6 +182,18 @@ const AuthenticatedApp = () => {
           <Route path="/talk/rundown" element={<TalkRundown />} />
           <Route path="/talk/assets" element={<TalkAssets />} />
           <Route path="/talk/export" element={<TalkExport />} />
+        </Route>
+
+        {/* Cooking Production */}
+        <Route element={<CookingLayout />}>
+          <Route path="/cooking/configure" element={<CookingConfigure />} />
+          <Route path="/cooking/dashboard" element={<CookingDashboard />} />
+          <Route path="/cooking/research" element={<CookingResearch />} />
+          <Route path="/cooking/recipes" element={<CookingRecipes />} />
+          <Route path="/cooking/ingredients" element={<CookingIngredients />} />
+          <Route path="/cooking/rundown" element={<CookingRundown />} />
+          <Route path="/cooking/assets" element={<CookingAssets />} />
+          <Route path="/cooking/export" element={<CookingExport />} />
         </Route>
 
         {/* Spiritual Production */}

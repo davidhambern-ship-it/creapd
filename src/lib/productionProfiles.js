@@ -123,17 +123,23 @@ export const PRODUCTION_PROFILES = [
     shortLabel: 'Cooking',
     description: 'Recipe shows, cooking tutorials, ingredient spotlights, and culinary entertainment programs.',
     icon: ChefHat,
-    available: false,
-    path: null,
+    available: true,
+    path: '/cooking/dashboard',
     gradient: 'from-green-500/20 to-emerald-500/10',
     accent: 'text-green-400',
     accentBg: 'bg-green-500/10',
     accentBorder: 'border-green-500/20',
     spotlightFeature: 'Recipe Studio',
-    spotlightDescription: 'Build cooking shows with recipes, techniques, and step-by-step tutorials.',
-    workflow: [],
-    outputs: '',
-    examples: []
+    spotlightDescription: 'Build cooking shows with recipes, ingredient spotlights, technique demos, host scripts, voiceovers, and presentation-ready culinary content.',
+    workflow: [
+      'Select cuisines and define your show format',
+      'Generate recipes, research, and ingredient spotlights with AI',
+      'Generate host scripts, co-host scripts, and voiceover audios',
+      'Build a timed show rundown with cooking segments',
+      'Export or share your finished production'
+    ],
+    outputs: 'Recipes, cooking instructions, ingredient guides, host scripts, voiceovers, show rundowns, presentation prompts',
+    examples: ['Step-by-Step Tutorial', 'Cuisine Exploration', 'Ingredient Spotlight']
   },
 ];
 

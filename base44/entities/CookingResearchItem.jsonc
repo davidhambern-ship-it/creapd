@@ -1,0 +1,39 @@
+{
+  "name": "CookingResearchItem",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the CookingProductionConfiguration"
+    },
+    "title": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "relevance": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "title"
+  ]
+}

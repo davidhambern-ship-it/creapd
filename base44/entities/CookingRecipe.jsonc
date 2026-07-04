@@ -1,0 +1,68 @@
+{
+  "name": "CookingRecipe",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the CookingProductionConfiguration"
+    },
+    "recipe_name": {
+      "type": "string"
+    },
+    "generated_summary": {
+      "type": "string",
+      "description": "Summary of the dish and its origin"
+    },
+    "cooking_instructions": {
+      "type": "string",
+      "description": "Step-by-step cooking instructions"
+    },
+    "ingredients_list": {
+      "type": "string",
+      "description": "Key ingredients with quantities"
+    },
+    "cooking_techniques": {
+      "type": "string",
+      "description": "Techniques used in this recipe"
+    },
+    "sources": {
+      "type": "string",
+      "description": "Sources consulted for this recipe"
+    },
+    "suggested_placement": {
+      "type": "string",
+      "description": "Where in the show this recipe fits best"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "intermediate",
+        "advanced"
+      ],
+      "default": "easy"
+    },
+    "prep_time_minutes": {
+      "type": "number",
+      "default": 0
+    },
+    "cook_time_minutes": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "ready",
+        "approved",
+        "removed"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "recipe_name"
+  ]
+}
