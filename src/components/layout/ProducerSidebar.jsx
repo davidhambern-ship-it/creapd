@@ -7,10 +7,10 @@ import MobileBottomNav from './MobileBottomNav';
 
 const mobileItems = [
   PRODUCER_NAV_SECTIONS[0].items[0], // Dashboard
-  PRODUCER_NAV_SECTIONS[1].items[1], // Today's Brief
+  PRODUCER_NAV_SECTIONS[1].items[1], // Daily Brief
   PRODUCER_NAV_SECTIONS[2].items[0], // Story Queue
+  PRODUCER_NAV_SECTIONS[2].items[1], // Story Manager
   PRODUCER_NAV_SECTIONS[3].items[0], // Production
-  PRODUCER_NAV_SECTIONS[4].items[0], // Export Center
 ];
 
 export default function ProducerSidebar({ collapsed, onToggle }) {
