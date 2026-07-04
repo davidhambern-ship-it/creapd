@@ -89,7 +89,7 @@ export default function ProductionFooter({ variant = 'news' }) {
   const ActionIcon = config.action.icon;
 
   return (
-    <footer className="flex h-8 glass-panel-navy border-t border-white/[0.06] items-center px-4 gap-6 text-[10px] font-mono text-muted-foreground">
+    <footer className="hidden lg:flex h-8 glass-panel-navy border-t border-white/[0.06] items-center px-4 gap-6 text-[10px] font-mono text-muted-foreground">
       {config.stats.map((stat, i) => (
         <div key={i} className="flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
           <stat.icon className={`w-3 h-3 ${stat.color || ''}`} />
