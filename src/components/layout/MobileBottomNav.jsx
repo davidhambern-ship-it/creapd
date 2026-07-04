@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight, LayoutGrid } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 export default function MobileBottomNav({ items }) {
   const location = useLocation();
@@ -22,10 +22,7 @@ export default function MobileBottomNav({ items }) {
           </Link>
         );
       })}
-      <Link to="/production-types" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/production-types' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
-        <LayoutGrid className="w-4 h-4" />
-        <span className="text-[9px]">Switch</span>
-      </Link>
+
       <Link to="/settings" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/settings' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
         <ChevronRight className="w-4 h-4" />
         <span className="text-[9px]">More</span>
