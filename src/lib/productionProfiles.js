@@ -58,7 +58,7 @@ export const PRODUCTION_PROFILES = [
     description: 'Talk shows, interview programs, panel discussions, and conversation-driven content.',
     icon: Mic2,
     available: true,
-    path: null,
+    path: '/talk/dashboard',
     gradient: 'from-pink-500/20 to-rose-500/10',
     accent: 'text-pink-400',
     accentBg: 'bg-pink-500/10',

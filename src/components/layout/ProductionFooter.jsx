@@ -4,6 +4,7 @@ import {
   Activity, Clock, Database, CheckCircle, Radio, Wifi,
   Music, ListMusic, Disc3, Headphones,
   Church, BookOpen, GraduationCap, PenTool,
+  Mic2, Lightbulb, Users, ClipboardList,
   Zap
 } from 'lucide-react';
 
@@ -43,6 +44,18 @@ const VARIANTS = {
       { icon: CheckCircle, label: 'Approved', value: '5', color: 'text-berna-emerald' },
     ],
     action: { icon: Zap, label: 'Build Message', path: '/spiritual/message' },
+  },
+  talk: {
+    label: 'Talk Production',
+    icon: Mic2,
+    stats: [
+      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
+      { icon: Lightbulb, label: 'Topics', value: '5 ready' },
+      { icon: Users, label: 'Guests', value: '2 confirmed' },
+      { icon: ClipboardList, label: 'Rundown', value: 'Ready', color: 'text-berna-emerald' },
+      { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
+    ],
+    action: { icon: Zap, label: 'Open Rundown', path: '/talk/rundown' },
   },
 };
 

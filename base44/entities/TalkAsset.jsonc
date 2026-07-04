@@ -1,0 +1,50 @@
+{
+  "name": "TalkAsset",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the TalkProductionConfiguration"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "host_intro",
+        "host_outro",
+        "guest_intro",
+        "talking_points",
+        "discussion_questions",
+        "audience_prompts",
+        "social_caption",
+        "hashtag",
+        "thumbnail_prompt",
+        "presentation_prompt",
+        "ai_image",
+        "production_notes"
+      ],
+      "description": "Type of AI-generated asset"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "associated_topic": {
+      "type": "string",
+      "description": "Optional link to a talk topic"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "approved"
+      ],
+      "default": "ready"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "asset_type"
+  ]
+}

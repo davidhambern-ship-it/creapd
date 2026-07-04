@@ -1,0 +1,121 @@
+{
+  "name": "TalkProductionConfiguration",
+  "type": "object",
+  "properties": {
+    "production_name": {
+      "type": "string"
+    },
+    "host_name": {
+      "type": "string"
+    },
+    "co_host_name": {
+      "type": "string"
+    },
+    "show_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "show_start_time": {
+      "type": "string"
+    },
+    "live_or_recorded": {
+      "type": "string",
+      "enum": [
+        "live",
+        "recorded"
+      ],
+      "default": "live"
+    },
+    "station_name": {
+      "type": "string"
+    },
+    "show_description": {
+      "type": "string"
+    },
+    "show_format": {
+      "type": "string",
+      "enum": [
+        "Interview Show",
+        "Panel Discussion",
+        "Solo Commentary",
+        "Debate Format",
+        "Call-In Show",
+        "Roundtable",
+        "Late Night Talk",
+        "News Discussion",
+        "Lifestyle Show",
+        "Educational Talk",
+        "Celebrity Interview",
+        "Expert Q&A",
+        "Storytelling Format",
+        "Audience Participation",
+        "Custom Format"
+      ],
+      "default": "Interview Show"
+    },
+    "total_show_runtime": {
+      "type": "number",
+      "description": "Total show runtime in minutes",
+      "default": 60
+    },
+    "talk_segment_runtime": {
+      "type": "number",
+      "description": "Talk/discussion runtime in minutes",
+      "default": 45
+    },
+    "commercial_sponsor_runtime": {
+      "type": "number",
+      "description": "Commercial/sponsor runtime in minutes",
+      "default": 8
+    },
+    "intro_runtime": {
+      "type": "number",
+      "description": "Intro runtime in minutes",
+      "default": 2
+    },
+    "outro_runtime": {
+      "type": "number",
+      "description": "Outro runtime in minutes",
+      "default": 2
+    },
+    "topics": {
+      "type": "string",
+      "description": "JSON array of selected talk topics"
+    },
+    "research_sources": {
+      "type": "string",
+      "description": "JSON array of enabled research sources"
+    },
+    "show_tone": {
+      "type": "string",
+      "default": "Conversational"
+    },
+    "guest_details": {
+      "type": "string",
+      "description": "Free-text guest information"
+    },
+    "ai_automation": {
+      "type": "string",
+      "description": "JSON array of selected AI automation options"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "configuring",
+        "building",
+        "ready",
+        "refreshing",
+        "failed"
+      ],
+      "default": "configuring"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "production_name",
+    "show_date"
+  ]
+}

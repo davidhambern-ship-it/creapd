@@ -3,7 +3,7 @@ import {
   Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
   ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church
+  ShieldCheck, Newspaper, Church, Mic2
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
@@ -73,6 +73,7 @@ export const PRODUCER_NAV_SECTIONS = [
 
 export const PRODUCTION_MODES = [
   { key: 'news', label: 'News', icon: Newspaper, path: '/' },
+  { key: 'talk', label: 'Talk', icon: Mic2, path: '/talk/dashboard' },
   { key: 'radio', label: 'Radio', icon: Radio, path: '/music/dashboard' },
   { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
 ];
@@ -84,5 +85,6 @@ export const PRODUCER_NAV_ITEMS = PRODUCER_NAV_SECTIONS.flatMap(section =>
 export function getActiveProductionMode(pathname) {
   if (pathname.startsWith('/music')) return 'radio';
   if (pathname.startsWith('/spiritual')) return 'spiritual';
+  if (pathname.startsWith('/talk')) return 'talk';
   return 'news';
 }

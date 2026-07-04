@@ -52,7 +52,16 @@ import MusicTopics from '@/pages/MusicTopics';
 import MusicRundown from '@/pages/MusicRundown';
 import MusicAssets from '@/pages/MusicAssets';
 import MusicExport from '@/pages/MusicExport';
+import TalkConfigure from '@/pages/TalkConfigure';
+import TalkDashboard from '@/pages/TalkDashboard';
+import TalkResearch from '@/pages/TalkResearch';
+import TalkTopics from '@/pages/TalkTopics';
+import TalkGuests from '@/pages/TalkGuests';
+import TalkRundown from '@/pages/TalkRundown';
+import TalkAssets from '@/pages/TalkAssets';
+import TalkExport from '@/pages/TalkExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
+import TalkLayout from '@/components/layout/TalkLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
@@ -152,6 +161,18 @@ const AuthenticatedApp = () => {
           <Route path="/music/assets" element={<MusicAssets />} />
           <Route path="/music/export" element={<MusicExport />} />
           <Route path="/settings/default-production" element={<DefaultProductionSettings />} />
+        </Route>
+
+        {/* Talk Production */}
+        <Route element={<TalkLayout />}>
+          <Route path="/talk/configure" element={<TalkConfigure />} />
+          <Route path="/talk/dashboard" element={<TalkDashboard />} />
+          <Route path="/talk/research" element={<TalkResearch />} />
+          <Route path="/talk/topics" element={<TalkTopics />} />
+          <Route path="/talk/guests" element={<TalkGuests />} />
+          <Route path="/talk/rundown" element={<TalkRundown />} />
+          <Route path="/talk/assets" element={<TalkAssets />} />
+          <Route path="/talk/export" element={<TalkExport />} />
         </Route>
 
         {/* Spiritual Production */}
