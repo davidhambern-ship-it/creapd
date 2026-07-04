@@ -271,8 +271,8 @@ export default function StoryDetail() {
                 <span className="text-white/80">{a.label}</span>
               </div>
             ))}
-            <Link to="/production" className="inline-flex items-center gap-1 text-xs text-berna-purple hover:underline mt-2">
-              View in Production <ChevronRight className="w-3 h-3" />
+            <Link to="/workspace" className="inline-flex items-center gap-1 text-xs text-berna-purple hover:underline mt-2">
+              View in Story Manager <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
         ) : (

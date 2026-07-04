@@ -52,7 +52,7 @@ export default function StoryCard({
             className={`mt-1 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
               isSelected ? 'bg-berna-emerald border-berna-emerald' : 'border-white/20 hover:border-white/40'
             }`}
-            title={isSelected ? 'Deselect from production' : 'Select for production'}
+            title={isSelected ? 'Deselect from manager' : 'Select for manager'}
           >
             {isSelected && <CheckCircle className="w-3 h-3 text-white" />}
           </button>
