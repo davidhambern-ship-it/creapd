@@ -352,6 +352,33 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
       await base44.entities.CookingAsset.bulkCreate(voiceoverAssets);
     }
 
+    // ===== APD PACKAGE ADAPTER =====
+    let apdPackageId = null;
+    try {
+      const hostAudio = voiceoverAssets.find(v => v.asset_type === 'host_audio');
+      const adapterResponse = await base44.functions.invoke('createAPDReadyPackage', {
+        production_profile: 'cooking',
+        source_entity_type: 'CookingProductionConfiguration',
+        source_entity_id: configuration_id,
+        configuration_id,
+        title: config.production_name || 'Cooking Show',
+        headline: config.production_name || 'Cooking Show',
+        teleprompter_script: llm2.host_script || '',
+        story_summary: recipeData.map(r => `${r.recipe_name}: ${r.generated_summary}`).join('\n\n'),
+        talking_points: recipeData.map(r => r.cooking_techniques).join('\n---\n'),
+        social_media_caption: llm2.social_captions ? llm2.social_captions.join('\n\n') : '',
+        thumbnail_prompt: llm2.thumbnail_prompt || '',
+        image_generation_prompt: llm2.presentation_prompt || llm2.thumbnail_prompt || '',
+        producer_notes: llm2.production_notes || '',
+        voice_audio_url: hostAudio ? hostAudio.audio_url : '',
+        cooking_notes: recipeData.map(r => r.cooking_instructions).join('\n---\n'),
+        ingredient_list: recipeData.map(r => r.ingredients_list).join('\n---\n')
+      });
+      apdPackageId = (adapterResponse?.data || adapterResponse)?.package_id || null;
+    } catch (e) {
+      console.error('APD adapter failed:', e.message);
+    }
+
     await base44.entities.CookingProductionConfiguration.update(configuration_id, { status: 'ready' });
 
     return Response.json({
@@ -361,7 +388,8 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
       recipe_count: recipeData.length,
       rundown_count: rundownData.length,
       asset_count: assets.length,
-      voiceover_count: voiceoverAssets.length
+      voiceover_count: voiceoverAssets.length,
+      apd_package_id: apdPackageId
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

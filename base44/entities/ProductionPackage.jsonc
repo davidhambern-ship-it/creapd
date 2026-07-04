@@ -3,11 +3,37 @@
   "type": "object",
   "properties": {
     "article_id": {
-      "type": "string"
+      "type": "string",
+      "description": "ID of the source Article (News profile only \u2014 empty for other profiles)"
+    },
+    "production_profile": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking",
+        "cosmo"
+      ],
+      "description": "Which Production Profile created this package"
+    },
+    "source_entity_type": {
+      "type": "string",
+      "description": "Entity type of the originating configuration (e.g. TalkProductionConfiguration)"
+    },
+    "source_entity_id": {
+      "type": "string",
+      "description": "ID of the originating configuration entity"
+    },
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the profile-specific Production Configuration this package was built from"
     },
     "teleprompter_script": {
       "type": "string",
-      "description": "News domain: broadcast-ready teleprompter script"
+      "description": "Broadcast-ready teleprompter script / host script"
     },
     "show_script": {
       "type": "string",
@@ -36,14 +62,14 @@
     },
     "broll_suggestions": {
       "type": "string",
-      "description": "News domain: B-roll footage suggestions"
+      "description": "B-roll footage suggestions"
     },
     "social_caption": {
       "type": "string"
     },
     "fact_check_notes": {
       "type": "string",
-      "description": "News domain: factual verification notes"
+      "description": "Factual verification notes"
     },
     "artist_facts": {
       "type": "string",
@@ -185,7 +211,5 @@
       "format": "date-time"
     }
   },
-  "required": [
-    "article_id"
-  ]
+  "required": []
 }

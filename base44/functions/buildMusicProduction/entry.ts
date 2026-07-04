@@ -338,6 +338,31 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
       await base44.entities.MusicAsset.bulkCreate(assets);
     }
 
+    // ===== APD PACKAGE ADAPTER =====
+    let apdPackageId = null;
+    try {
+      const adapterResponse = await base44.functions.invoke('createAPDReadyPackage', {
+        production_profile: 'music',
+        source_entity_type: 'MusicProductionConfiguration',
+        source_entity_id: configuration_id,
+        configuration_id,
+        title: config.production_name || 'Music Show',
+        headline: config.production_name || 'Music Show',
+        teleprompter_script: llm2.host_banter || '',
+        story_summary: topicData.map(t => `${t.topic_name}: ${t.generated_summary}`).join('\n\n'),
+        talking_points: topicData.map(t => t.talking_points).join('\n---\n'),
+        social_media_caption: llm2.social_captions ? llm2.social_captions.join('\n\n') : '',
+        thumbnail_prompt: llm2.thumbnail_prompt || '',
+        image_generation_prompt: llm2.thumbnail_prompt || '',
+        producer_notes: llm2.production_notes || '',
+        artist_facts: llm2.artist_facts ? llm2.artist_facts.map(f => `${f.artist}: ${f.fact}`).join('\n') : '',
+        playlist_segment: playlistData.map(p => `${p.song_title} by ${p.artist}`).join('\n')
+      });
+      apdPackageId = (adapterResponse?.data || adapterResponse)?.package_id || null;
+    } catch (e) {
+      console.error('APD adapter failed:', e.message);
+    }
+
     // Update config status to ready
     await base44.entities.MusicProductionConfiguration.update(configuration_id, { status: 'ready' });
 
@@ -348,7 +373,8 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
       research_count: researchData.length,
       topic_count: topicData.length,
       rundown_count: rundownData.length,
-      asset_count: assets.length
+      asset_count: assets.length,
+      apd_package_id: apdPackageId
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

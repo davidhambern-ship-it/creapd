@@ -466,6 +466,33 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       await base44.entities.SpiritualPackageItem.bulkCreate(packageItems);
     }
 
+    // ===== APD PACKAGE ADAPTER =====
+    let apdPackageId = null;
+    try {
+      const spiritualScript = messageData.map(m => m.content).join('\n\n');
+      const scriptureRefs = (llm2.scripture_slides || []).map(s => `${s.reference} (${s.translation || config.default_translation || 'Default'})`).join('\n');
+      const adapterResponse = await base44.functions.invoke('createAPDReadyPackage', {
+        production_profile: 'spiritual',
+        source_entity_type: 'SpiritualProductionConfiguration',
+        source_entity_id: configuration_id,
+        configuration_id,
+        title: config.production_name || 'Spiritual Production',
+        headline: config.production_name || 'Spiritual Production',
+        teleprompter_script: spiritualScript,
+        story_summary: topicData.map(t => `${t.topic_name}: ${t.generated_summary}`).join('\n\n'),
+        talking_points: topicData.map(t => t.talking_points).join('\n---\n'),
+        social_media_caption: llm2.social_captions ? llm2.social_captions.join('\n\n') : '',
+        thumbnail_prompt: llm2.thumbnail_prompt || '',
+        image_generation_prompt: llm2.thumbnail_prompt || '',
+        producer_notes: llm2.production_notes || '',
+        scripture_references: scriptureRefs,
+        reflection_notes: llm2.discussion_guide || ''
+      });
+      apdPackageId = (adapterResponse?.data || adapterResponse)?.package_id || null;
+    } catch (e) {
+      console.error('APD adapter failed:', e.message);
+    }
+
     // Core production is complete — mark as ready so the frontend stops polling
     await base44.entities.SpiritualProductionConfiguration.update(configuration_id, { status: 'ready' });
 
@@ -480,7 +507,8 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
       topic_count: topicData.length,
       message_section_count: messageData.length,
       asset_count: assets.length,
-      package_item_count: packageItems.length
+      package_item_count: packageItems.length,
+      apd_package_id: apdPackageId
     });
   } catch (error) {
     try {

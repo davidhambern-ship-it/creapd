@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
         scene_graph: JSON.stringify(sceneGraph),
         slide_timeline: JSON.stringify(slideTimeline),
         slide_metadata: JSON.stringify({
-          headline: pkg.article_id || `Story ${i + 1}`,
+          headline: pkg.headline_suggestions || pkg.article_id || `Story ${i + 1}`,
           story_summary: pkg.story_summary || '',
           duration_ms: totalDurationMs,
           scene_count: sceneGraph.scenes.length,
@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
         story_slide_id: slide.id,
         decision_type: 'presentation_strategy',
         decision_inputs: JSON.stringify({
-          headline: pkg.article_id,
+          headline: pkg.headline_suggestions || pkg.article_id || '',
           story_summary: (pkg.story_summary || '').substring(0, 500),
           tone: pkg.tone,
           voice_duration_ms: totalDurationMs,
@@ -312,7 +312,7 @@ Deno.serve(async (req) => {
       // Update slide with QA results in metadata
       await base44.asServiceRole.entities.StorySlide.update(slide.id, {
         slide_metadata: JSON.stringify({
-          headline: pkg.article_id || `Story ${i + 1}`,
+          headline: pkg.headline_suggestions || pkg.article_id || `Story ${i + 1}`,
           story_summary: pkg.story_summary || '',
           duration_ms: totalDurationMs,
           scene_count: sceneGraph.scenes.length,
@@ -448,7 +448,7 @@ Deno.serve(async (req) => {
 // SCENE GRAPH PROMPT BUILDER
 // ==========================================================
 function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, slideIndex, totalSlides) {
-  const headline = pkg.article_id || 'Untitled Story';
+  const headline = pkg.headline_suggestions || pkg.article_id || 'Untitled Story';
   const script = vp.teleprompter_script || pkg.teleprompter_script || '';
   const storySummary = pkg.story_summary || '';
   const talkingPoints = pkg.talking_points || '';

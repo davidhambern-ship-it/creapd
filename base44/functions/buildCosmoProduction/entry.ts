@@ -337,6 +337,31 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
       await base44.entities.CosmoAsset.bulkCreate(voiceoverAssets);
     }
 
+    // ===== APD PACKAGE ADAPTER =====
+    let apdPackageId = null;
+    try {
+      const hostAudio = voiceoverAssets.find(v => v.asset_type === 'host_audio');
+      const adapterResponse = await base44.functions.invoke('createAPDReadyPackage', {
+        production_profile: 'cosmo',
+        source_entity_type: 'CosmoProductionConfiguration',
+        source_entity_id: configuration_id,
+        configuration_id,
+        title: config.production_name || 'Beauty & Wellness Show',
+        headline: config.production_name || 'Beauty & Wellness Show',
+        teleprompter_script: llm2.host_script || '',
+        story_summary: topicData.map(t => `${t.topic_name}: ${t.generated_summary}`).join('\n\n'),
+        talking_points: topicData.map(t => t.talking_points).join('\n---\n'),
+        social_media_caption: llm2.social_captions ? llm2.social_captions.join('\n\n') : '',
+        thumbnail_prompt: llm2.thumbnail_prompt || '',
+        image_generation_prompt: llm2.presentation_prompt || llm2.thumbnail_prompt || '',
+        producer_notes: llm2.production_notes || '',
+        voice_audio_url: hostAudio ? hostAudio.audio_url : ''
+      });
+      apdPackageId = (adapterResponse?.data || adapterResponse)?.package_id || null;
+    } catch (e) {
+      console.error('APD adapter failed:', e.message);
+    }
+
     await base44.entities.CosmoProductionConfiguration.update(configuration_id, { status: 'ready' });
 
     return Response.json({
@@ -346,7 +371,8 @@ Return a JSON object with exactly these keys: rundown (array), host_intro (strin
       topic_count: topicData.length,
       rundown_count: rundownData.length,
       asset_count: assets.length,
-      voiceover_count: voiceoverAssets.length
+      voiceover_count: voiceoverAssets.length,
+      apd_package_id: apdPackageId
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
