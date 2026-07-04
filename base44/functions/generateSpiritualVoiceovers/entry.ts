@@ -165,6 +165,54 @@ Deno.serve(async (req) => {
       }
     } catch {}
 
+    // ===== BACKFILL APD VOICE PACKAGE =====
+    // The APD adapter (createAPDReadyPackage) was called during buildSpiritualProduction
+    // before voiceovers existed. Update the APD VoicePackage now with the generated audio.
+    try {
+      const apdPackages = await base44.asServiceRole.entities.ProductionPackage.filter({
+        source_entity_type: 'SpiritualProductionConfiguration',
+        source_entity_id: configuration_id
+      });
+      for (const apdPkg of apdPackages) {
+        if (!apdPkg.voice_package_id) continue;
+        const apdVp = await base44.asServiceRole.entities.VoicePackage.get(apdPkg.voice_package_id);
+        if (!apdVp) continue;
+
+        // Use the first voiced section's audio as the primary narration
+        const firstVoicedSection = voicedSections.find(s => s.voice_url);
+        const combinedScript = voicedSections
+          .filter(s => s.content)
+          .map(s => s.content)
+          .join('\n\n');
+
+        const updateData = {};
+        if (firstVoicedSection?.voice_url) {
+          updateData.voice_audio_url = firstVoicedSection.voice_url;
+        }
+        if (combinedScript) {
+          updateData.teleprompter_script = combinedScript;
+          updateData.transcript = combinedScript;
+        }
+        // Recalculate total duration from all sections
+        const totalSec = voicedSections.reduce((sum, s) => sum + (s.voice_duration_seconds || 0), 0);
+        if (totalSec > 0) {
+          updateData.total_duration_seconds = totalSec;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await base44.asServiceRole.entities.VoicePackage.update(apdVp.id, updateData);
+          // Also update the ProductionPackage's generated_audio_url
+          if (firstVoicedSection?.voice_url) {
+            await base44.asServiceRole.entities.ProductionPackage.update(apdPkg.id, {
+              generated_audio_url: firstVoicedSection.voice_url
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('APD VP backfill failed:', e.message);
+    }
+
     return Response.json({
       success: true,
       configuration_id,

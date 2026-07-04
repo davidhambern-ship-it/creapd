@@ -36,6 +36,33 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.ProductionPackage.delete(oldPkg.id);
     }
 
+    // If no voice_audio_url provided, try to find existing audio from the source profile's assets
+    let resolvedAudioUrl = voice_audio_url || '';
+    if (!resolvedAudioUrl && configuration_id && source_entity_type) {
+      const assetEntityMap = {
+        'TalkProductionConfiguration': 'TalkAsset',
+        'SportsProductionConfiguration': 'SportsAsset',
+        'CookingProductionConfiguration': 'CookingAsset',
+        'CosmoProductionConfiguration': 'CosmoAsset',
+        'MusicProductionConfiguration': 'MusicAsset',
+        'SpiritualProductionConfiguration': 'SpiritualAsset'
+      };
+      const assetEntity = assetEntityMap[source_entity_type];
+      if (assetEntity) {
+        try {
+          const audioAssets = await base44.asServiceRole.entities[assetEntity].filter({
+            configuration_id,
+            asset_type: 'host_audio'
+          });
+          if (audioAssets.length > 0 && audioAssets[0].audio_url) {
+            resolvedAudioUrl = audioAssets[0].audio_url;
+          }
+        } catch (e) {
+          // Asset lookup failed — continue without audio
+        }
+      }
+    }
+
     const scriptText = teleprompter_script || transcript || '';
 
     // Generate basic sentence_timeline if not provided
@@ -67,7 +94,7 @@ Deno.serve(async (req) => {
     const vp = await base44.asServiceRole.entities.VoicePackage.create({
       source_type: 'production_package',
       source_id: 'pending',
-      voice_audio_url: voice_audio_url || '',
+      voice_audio_url: resolvedAudioUrl,
       teleprompter_script: scriptText,
       transcript: transcript || scriptText,
       timestamped_transcript: timestamped_transcript || '',
@@ -112,7 +139,7 @@ Deno.serve(async (req) => {
       producer_notes: producer_notes || '',
       estimated_runtime: `${Math.max(1, Math.ceil(estimatedDuration / 60))} Minute${Math.ceil(estimatedDuration / 60) !== 1 ? 's' : ''}`,
       status: status || 'approved',
-      generated_audio_url: voice_audio_url || '',
+      generated_audio_url: resolvedAudioUrl,
       voice_package_id: vp.id,
       generation_provider: production_profile + '_adapter',
       generated_at: new Date().toISOString(),
