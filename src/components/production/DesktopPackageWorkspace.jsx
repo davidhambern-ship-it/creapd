@@ -21,7 +21,7 @@ const ALL_ASSET_DEFS = {
   story_summary: { label: 'Story Summary', icon: AlignLeft },
   talking_points: { label: 'Talking Points', icon: MessageSquare },
   lower_third_text: { label: 'Lower Third Text', icon: Type },
-  headline_suggestions: { label: 'Headline Suggestions', icon: Heading },
+  headline_suggestions: { label: 'Title Suggestions', icon: Heading },
   image_prompt: { label: 'Image Generation Prompt', icon: Image },
   thumbnail_prompt: { label: 'Thumbnail Prompt', icon: ImageIcon },
   visual_suggestions: { label: 'Visual Suggestions', icon: Eye },
