@@ -91,7 +91,7 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           animate={{ opacity: 1, filter: 'blur(0px)' }}
           transition={{ duration: 1, delay: 0.6 }}
           className="text-base lg:text-lg text-muted-foreground mb-8 tracking-[0.2em] uppercase subheader-reveal"
-          style={{ textShadow: '0 0 8px hsl(270 80% 60% / 0.3)' }}
+          style={{ textShadow: '0 0 4px rgba(255,255,255,0.6), 0 0 12px rgba(255,255,255,0.3), 0 0 24px rgba(255,255,255,0.15)' }}
         >
           The AI Production Company
         </motion.p>
