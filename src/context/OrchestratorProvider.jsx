@@ -106,6 +106,10 @@ export function OrchestratorProvider({ children }) {
   const stepIndexRef = useRef(state.currentStepIndex);
   stepIndexRef.current = state.currentStepIndex;
 
+  // Tour coordination: the navigate step waits for the tour to finish
+  // before proceeding. SystemNarrationOverlay calls signalTourComplete().
+  const tourResolveRef = useRef(null);
+
   // Sync activeAtoms whenever the registry changes
   useEffect(() => {
     const unsub = registry.subscribe(() => {
@@ -151,15 +155,37 @@ export function OrchestratorProvider({ children }) {
     const targetLabel = step.target || step.payload?.function_name || '(no target)';
     dispatch({ type: 'LOG', msg: `Step ${index}: ${step.action} → ${targetLabel}` });
 
-    // ── Navigate: change the route ──
+    // ── Navigate: change the route, then wait for tour to play ──
     if (step.action === 'navigate' && step.target) {
       navigateRef.current(step.target);
-      const waitMs = step.payload?.wait_ms ?? 1500;
-      await new Promise(resolve => setTimeout(resolve, waitMs));
+
+      // Check if a tour script exists for this route.
+      // If yes, wait for the tour to complete (SystemNarrationOverlay
+      // will call signalTourComplete). If no, wait a fixed time.
+      const hasTour = step.payload?.has_tour ?? true;
+      const fallbackMs = step.payload?.wait_ms ?? 2000;
+
+      if (hasTour) {
+        // Wait for the tour to signal completion (via signalTourComplete).
+        // If no tour plays (already seen, or no tour for this route),
+        // fall back after 30s so the script doesn't stall.
+        await Promise.race([
+          new Promise(resolve => {
+            tourResolveRef.current = resolve;
+          }),
+          new Promise(resolve => setTimeout(resolve, 30000)),
+        ]);
+        tourResolveRef.current = null;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, fallbackMs));
+      }
       return true;
     }
 
-    // ── Narrate: show narration overlay + optional TTS ──
+    // ── Narrate: delegate to the tour system's visual overlay ──
+    // (Legacy support — the tour system handles narration per-route now.
+    // This step type is kept for scripts that need inline narration
+    // outside of the per-route tour system.)
     if (step.action === 'narrate' && step.payload) {
       dispatch({ type: 'SET_NARRATION', narration: step.payload });
       if (step.payload.auto_advance) {
@@ -343,6 +369,15 @@ export function OrchestratorProvider({ children }) {
     }
   }, []);
 
+  // Called by SystemNarrationOverlay when a tour finishes (completes or skipped).
+  // This unblocks the navigate step so the engine can proceed.
+  const signalTourComplete = useCallback(() => {
+    if (tourResolveRef.current) {
+      tourResolveRef.current();
+      tourResolveRef.current = null;
+    }
+  }, []);
+
   const value = {
     state,
     loadScript,
@@ -356,6 +391,7 @@ export function OrchestratorProvider({ children }) {
     approve,
     reject,
     dismissNarration,
+    signalTourComplete,
   };
 
   return (

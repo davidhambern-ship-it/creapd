@@ -13,6 +13,7 @@ import { useTourScript } from '@/hooks/useTourScript';
 import { logTourEngagement } from '@/lib/tourEngagement';
 import { FONT_CLASSES } from '@/lib/tourIcons';
 import NarrationVisual from './NarrationVisual';
+import { useOrchestrator } from '@/context/OrchestratorProvider';
 
 /**
  * SystemNarrationOverlay — AUTOPILOT guided tour.
@@ -27,6 +28,7 @@ import NarrationVisual from './NarrationVisual';
  */
 export default function SystemNarrationOverlay() {
   const { mode, isLoadingPrefs } = useCREAPMode();
+  const { signalTourComplete } = useOrchestrator();
   const location = useLocation();
   const pathname = location.pathname;
 
@@ -118,6 +120,8 @@ export default function SystemNarrationOverlay() {
       setTimeout(() => {
         setActive(false);
         setFadingOut(false);
+        // Signal CREAPr Engine that the tour is done — unblocks the navigate step
+        signalTourComplete();
       }, 600);
       return;
     }
@@ -217,6 +221,8 @@ export default function SystemNarrationOverlay() {
     setTimeout(() => {
       setActive(false);
       setFadingOut(false);
+      // Signal CREAPr Engine that the tour is done (even if skipped)
+      signalTourComplete();
     }, 400);
   };
 
