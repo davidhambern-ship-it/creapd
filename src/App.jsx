@@ -11,6 +11,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
 import OrchestratorDevTools from '@/components/creapr/OrchestratorDevTools';
+import CreaprDemo from '@/pages/CreaprDemo';
 
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -274,6 +275,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/source-management-center" element={<SourceManagementCenter />} />
         <Route path="/admin/handler-registry" element={<HandlerRegistry />} />
         <Route path="/admin/tour-control-center" element={<TourControlCenter />} />
+        <Route path="/creapr-demo" element={<CreaprDemo />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
