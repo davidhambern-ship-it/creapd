@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Star, Pencil, Trash2, Tv, Clock, Search, Zap } from 'lucide-react';
+import { Plus, Star, Pencil, Trash2, Tv, Clock, Search, Zap, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ShowProfileEditor from '@/components/profiles/ShowProfileEditor';
+import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import SortDropdown from '@/components/shared/SortDropdown';
 
 export default function ShowProfiles() {
@@ -12,6 +13,7 @@ export default function ShowProfiles() {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [brandFilter, setBrandFilter] = useState('all');
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('showSort') || 'newest');
@@ -78,9 +80,14 @@ export default function ShowProfiles() {
           <h1 className="text-xl font-bold text-white">Show Profiles</h1>
           <p className="text-xs text-muted-foreground mt-1">Reusable production configurations — tone, style, runtime, and AI preferences</p>
         </div>
-        <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={() => { setEditing(null); setEditorOpen(true); }}>
-          <Plus className="w-3 h-3 mr-1" />Create Show
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="border-berna-emerald/30 text-berna-emerald hover:bg-berna-emerald/10 text-xs h-8" onClick={() => setSetupOpen(true)}>
+            <Sparkles className="w-3 h-3 mr-1" />Build with CREAPD
+          </Button>
+          <Button size="sm" className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-8" onClick={() => { setEditing(null); setEditorOpen(true); }}>
+            <Plus className="w-3 h-3 mr-1" />Create Show
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -164,6 +171,7 @@ export default function ShowProfiles() {
       )}
 
       <ShowProfileEditor open={editorOpen} profile={editing} brands={brands} onClose={() => setEditorOpen(false)} onSave={handleSave} />
+      <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={load} />
     </div>
   );
 }

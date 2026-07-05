@@ -5,6 +5,7 @@ import ProducerSidebar from './ProducerSidebar';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import CreapdLauncher from '@/components/creap/CreapdLauncher';
+import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 
@@ -33,6 +34,7 @@ export default function ProducerLayout() {
         variant="producer"
       />
       <CreapdLauncher />
+      <IdlePersonalityToast />
     </div>
   );
 }

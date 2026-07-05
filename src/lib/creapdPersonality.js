@@ -214,6 +214,16 @@ export const DEAD_SPACE = {
     "Almost there. Quality takes a minute.",
     "Behind the scenes. You'll have it shortly.",
   ],
+
+  // ── Setup idle — during conversational show profile setup ──
+  setup_idle: [
+    "Got a show in mind? I'm listening.",
+    "What are we building? News, cooking, talk — you name it.",
+    "You bring the vision, I'll handle the paperwork.",
+    "No rush. But the sooner you tell me, the sooner we're live.",
+    "I've got defaults for days. Just give me a name and a direction.",
+    "Think of me as your co-producer. What's the concept?",
+  ],
 };
 
 // ─── DEAD SPACE TIMING THRESHOLDS ──────────────────────────────────

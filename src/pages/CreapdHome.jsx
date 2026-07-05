@@ -9,6 +9,7 @@ import ProductionDetailsModal from '@/components/home/ProductionDetailsModal';
 import ShowcaseSection from '@/components/home/ShowcaseSection';
 import QuickLaunch from '@/components/home/QuickLaunch';
 import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
+import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -124,6 +125,7 @@ export default function CreapdHome() {
 
       {/* Production Details Modal */}
       <ProductionDetailsModal profile={detailsProfile} onClose={() => setDetailsProfile(null)} />
+      <IdlePersonalityToast />
     </div>
   );
 }
