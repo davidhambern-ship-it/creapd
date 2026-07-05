@@ -5,8 +5,8 @@ import {
   FileText, RefreshCw, Layers, Archive, Radio, Settings,
   Play, Clock, CheckCircle, AlertCircle, TrendingUp, Star,
   Zap, ArrowRight, ChevronRight, Compass, CalendarDays,
-  Sparkles, Copy, BarChart3, RotateCw, Palette, Tv, Download, Heart
-} from 'lucide-react';
+  Sparkles, Copy, BarChart3, RotateCw, Palette, Tv, Download, Heart } from
+'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/shared/StatusBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
@@ -26,14 +26,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.Briefing.filter({}, '-created_date', 1),
-      base44.entities.Article.filter({}, '-created_date', 20),
-      base44.entities.AutomationLog.filter({}, '-created_date', 1),
-      base44.entities.BrandProfile.filter({ is_favorite: true }, '-created_date', 5),
-      base44.entities.ShowProfile.filter({ is_favorite: true }, '-created_date', 5),
-      base44.entities.ExportLog.list('-created_date', 5),
-      base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 5),
-    ]).then(([briefs, arts, logs, brands, shows, exports, pkgs]) => {
+    base44.entities.Briefing.filter({}, '-created_date', 1),
+    base44.entities.Article.filter({}, '-created_date', 20),
+    base44.entities.AutomationLog.filter({}, '-created_date', 1),
+    base44.entities.BrandProfile.filter({ is_favorite: true }, '-created_date', 5),
+    base44.entities.ShowProfile.filter({ is_favorite: true }, '-created_date', 5),
+    base44.entities.ExportLog.list('-created_date', 5),
+    base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 5)]
+    ).then(([briefs, arts, logs, brands, shows, exports, pkgs]) => {
       setBriefing(briefs[0] || null);
       setArticles(arts);
       setLastLog(logs[0] || null);
@@ -46,18 +46,18 @@ export default function Dashboard() {
 
   const today = new Date();
   const isSaturday = today.getDay() === 6;
-  const approvedCount = articles.filter(a => a.status === 'approved' || a.status === 'bernas_pick' || a.status === 'used').length;
-  const pendingCount = articles.filter(a => a.status === 'pending').length;
-  const rejectedCount = articles.filter(a => a.status === 'rejected').length;
-  const topStories = articles.filter(a => (a.opportunity_score || 0) >= 4).slice(0, 3);
-  const bernasPick = articles.find(a => a.status === 'bernas_pick');
+  const approvedCount = articles.filter((a) => a.status === 'approved' || a.status === 'bernas_pick' || a.status === 'used').length;
+  const pendingCount = articles.filter((a) => a.status === 'pending').length;
+  const rejectedCount = articles.filter((a) => a.status === 'rejected').length;
+  const topStories = articles.filter((a) => (a.opportunity_score || 0) >= 4).slice(0, 3);
+  const bernasPick = articles.find((a) => a.status === 'bernas_pick');
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-8 h-8 border-2 border-berna-purple/30 border-t-berna-purple rounded-full animate-spin" />
-      </div>
-    );
+      </div>);
+
   }
 
   if (isSaturday) {
@@ -71,7 +71,7 @@ export default function Dashboard() {
               <CalendarDays className="w-5 h-5 text-berna-orange" />
               <p className="text-[10px] text-berna-orange uppercase tracking-[0.2em] font-semibold">Saturday Planning Day</p>
             </div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">CREAP Your Week!</h1>
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3 [font-family:'Rubik_Mono_One',_system-ui]">CREAP Your Week!</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
               Map out every day of the week in one view — assign daily themes, select focus topics and categories,
               schedule your morning briefings, choose which stories to prioritize, copy a previous week's plan as a starting point,
@@ -115,7 +115,7 @@ export default function Dashboard() {
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
                 <span className="text-xs text-muted-foreground">Briefs Generated</span>
-                <span className="text-xs font-mono text-berna-emerald">{articles.filter(a => a.status === 'used').length}</span>
+                <span className="text-xs font-mono text-berna-emerald">{articles.filter((a) => a.status === 'used').length}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
                 <span className="text-xs text-muted-foreground">Stories Approved</span>
@@ -149,23 +149,23 @@ export default function Dashboard() {
           </div>
           <div className="glass-panel p-5 space-y-3">
             <h2 className="text-sm font-semibold text-white neon-underline">Berna's Pick</h2>
-            {bernasPick ? (
-              <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
+            {bernasPick ?
+            <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
                   <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Top Story</span>
                 </div>
                 <p className="text-xs text-white font-medium leading-snug">{bernasPick.title}</p>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">No pick selected yet.</p>
-            )}
+              </div> :
+
+            <p className="text-xs text-muted-foreground">No pick selected yet.</p>
+            }
           </div>
         </div>
 
         <ChangeDirectionModal open={directionOpen} currentFocus={briefing?.theme} onClose={() => setDirectionOpen(false)} />
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -182,8 +182,8 @@ export default function Dashboard() {
             Good Morning, <span className="text-transparent bg-clip-text bg-gradient-to-r from-berna-purple to-berna-orange">Berna</span>.
           </h1>
           <div className="flex flex-wrap items-center gap-3 mt-4">
-            {briefing && (
-              <>
+            {briefing &&
+            <>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Theme</span>
                   <span className="text-xs text-white font-medium">{briefing.theme || 'American Innovation'}</span>
@@ -193,7 +193,7 @@ export default function Dashboard() {
                   <span className="text-xs text-white font-medium">{briefing.estimated_read_time || '12 min'}</span>
                 </div>
               </>
-            )}
+            }
             <StatusBadge status={briefing?.status || 'pending'} />
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
@@ -279,29 +279,29 @@ export default function Dashboard() {
         <div className="glass-panel p-5 space-y-4">
           <h2 className="text-sm font-semibold text-white neon-underline">Executive Snapshot</h2>
           
-          {bernasPick && (
-            <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
+          {bernasPick &&
+          <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
               <div className="flex items-center gap-1.5 mb-1">
                 <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
                 <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Berna's Pick</span>
               </div>
               <p className="text-xs text-white font-medium leading-snug">{bernasPick.title}</p>
             </div>
-          )}
+          }
 
-          {topStories.length > 0 && (
-            <div>
+          {topStories.length > 0 &&
+          <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Top Stories</p>
               <div className="space-y-2">
-                {topStories.map((story, i) => (
-                  <div key={story.id} className="flex items-start gap-2">
+                {topStories.map((story, i) =>
+              <div key={story.id} className="flex items-start gap-2">
                     <span className="text-[10px] font-mono text-berna-purple mt-0.5">{String(i + 1).padStart(2, '0')}</span>
                     <p className="text-xs text-white/80 leading-snug">{story.title}</p>
                   </div>
-                ))}
+              )}
               </div>
             </div>
-          )}
+          }
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="text-center p-2 rounded-lg bg-white/[0.02]">
@@ -328,23 +328,23 @@ export default function Dashboard() {
           <h2 className="text-sm font-semibold text-white neon-underline">Quick Actions</h2>
           <div className="space-y-2">
             {[
-              { icon: CalendarDays, label: 'Weekly Planner', path: '/planner', color: 'text-berna-purple' },
-              { icon: FileText, label: 'Generate Brief', path: '/brief', color: 'text-berna-purple' },
-              { icon: RefreshCw, label: 'Refresh Sources', path: '/sources', color: 'text-berna-emerald' },
-              { icon: Layers, label: 'Review Story Queue', path: '/queue', color: 'text-berna-orange' },
-              { icon: Archive, label: 'Open Archive', path: '/archive', color: 'text-blue-400' },
-              { icon: Settings, label: 'Automation Settings', path: '/automation', color: 'text-muted-foreground' },
-            ].map(action => (
-              <Link
-                key={action.label}
-                to={action.path}
-                className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-white/[0.08] transition-all group"
-              >
+            { icon: CalendarDays, label: 'Weekly Planner', path: '/planner', color: 'text-berna-purple' },
+            { icon: FileText, label: 'Generate Brief', path: '/brief', color: 'text-berna-purple' },
+            { icon: RefreshCw, label: 'Refresh Sources', path: '/sources', color: 'text-berna-emerald' },
+            { icon: Layers, label: 'Review Story Queue', path: '/queue', color: 'text-berna-orange' },
+            { icon: Archive, label: 'Open Archive', path: '/archive', color: 'text-blue-400' },
+            { icon: Settings, label: 'Automation Settings', path: '/automation', color: 'text-muted-foreground' }].
+            map((action) =>
+            <Link
+              key={action.label}
+              to={action.path}
+              className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-white/[0.08] transition-all group">
+              
                 <action.icon className={`w-4 h-4 ${action.color}`} />
                 <span className="text-sm text-white/80 group-hover:text-white">{action.label}</span>
                 <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -357,21 +357,21 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-white neon-underline">Recent Productions</h2>
             <Link to="/production" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
           </div>
-          {recentPackages.length > 0 ? (
-            <div className="space-y-3">
-              {recentPackages.slice(0, 3).map(pkg => {
-                const stageMap = { not_generated: 'briefing', generating: 'package_generated', generated: 'package_generated', edited: 'editing_complete', approved: 'ready_for_export' };
-                return (
-                  <Link key={pkg.id} to="/production" className="block p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all">
+          {recentPackages.length > 0 ?
+          <div className="space-y-3">
+              {recentPackages.slice(0, 3).map((pkg) => {
+              const stageMap = { not_generated: 'briefing', generating: 'package_generated', generated: 'package_generated', edited: 'editing_complete', approved: 'ready_for_export' };
+              return (
+                <Link key={pkg.id} to="/production" className="block p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all">
                     <p className="text-xs text-white font-medium line-clamp-1 mb-2">{pkg.story_summary || pkg.teleprompter_script?.slice(0, 60) || 'Untitled Package'}</p>
                     <ProductionStatusIndicator currentStage={stageMap[pkg.status] || 'briefing'} showLabels={false} compactLabel />
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No productions yet. Generate packages from the Production page.</p>
-          )}
+                  </Link>);
+
+            })}
+            </div> :
+
+          <p className="text-xs text-muted-foreground">No productions yet. Generate packages from the Production page.</p>
+          }
         </div>
 
         {/* Favorite Profiles */}
@@ -380,33 +380,33 @@ export default function Dashboard() {
           <div className="space-y-3">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1"><Palette className="w-3 h-3 text-berna-purple" />Brand Profiles</p>
-              {favBrands.length > 0 ? (
-                <div className="space-y-1.5">
-                  {favBrands.map(brand => (
-                    <Link key={brand.id} to="/brands" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
+              {favBrands.length > 0 ?
+              <div className="space-y-1.5">
+                  {favBrands.map((brand) =>
+                <Link key={brand.id} to="/brands" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
                       <Heart className="w-3 h-3 text-berna-orange fill-berna-orange flex-shrink-0" />
                       <span className="text-xs text-white/80 group-hover:text-white truncate">{brand.brand_name}</span>
                     </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[10px] text-muted-foreground">No favorites yet. Star profiles from the Brand Profiles page.</p>
-              )}
+                )}
+                </div> :
+
+              <p className="text-[10px] text-muted-foreground">No favorites yet. Star profiles from the Brand Profiles page.</p>
+              }
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1"><Tv className="w-3 h-3 text-berna-emerald" />Show Profiles</p>
-              {favShows.length > 0 ? (
-                <div className="space-y-1.5">
-                  {favShows.map(show => (
-                    <Link key={show.id} to="/shows" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
+              {favShows.length > 0 ?
+              <div className="space-y-1.5">
+                  {favShows.map((show) =>
+                <Link key={show.id} to="/shows" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
                       <Heart className="w-3 h-3 text-berna-orange fill-berna-orange flex-shrink-0" />
                       <span className="text-xs text-white/80 group-hover:text-white truncate">{show.show_name}</span>
                     </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[10px] text-muted-foreground">No favorites yet. Star profiles from the Show Profiles page.</p>
-              )}
+                )}
+                </div> :
+
+              <p className="text-[10px] text-muted-foreground">No favorites yet. Star profiles from the Show Profiles page.</p>
+              }
             </div>
           </div>
         </div>
@@ -417,10 +417,10 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-white neon-underline">Recent Exports</h2>
             <Link to="/export" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
           </div>
-          {recentExports.length > 0 ? (
-            <div className="space-y-2">
-              {recentExports.map(exp => (
-                <div key={exp.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          {recentExports.length > 0 ?
+          <div className="space-y-2">
+              {recentExports.map((exp) =>
+            <div key={exp.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
                   <Download className={`w-3 h-3 flex-shrink-0 ${exp.status === 'success' ? 'text-berna-emerald' : 'text-red-400'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-white truncate">{exp.file_name || `${exp.format} export`}</p>
@@ -430,11 +430,11 @@ export default function Dashboard() {
                     {exp.status}
                   </span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No exports yet. Export packages from the Export Center.</p>
-          )}
+            )}
+            </div> :
+
+          <p className="text-xs text-muted-foreground">No exports yet. Export packages from the Export Center.</p>
+          }
         </div>
       </div>
 
@@ -447,24 +447,24 @@ export default function Dashboard() {
           </div>
           <div className="overflow-hidden flex-1">
             <div className="flex gap-8 animate-ticker whitespace-nowrap">
-              {(articles.length > 0 ? articles : [{ title: 'Awaiting fresh stories...' }]).map((a, i) => (
-                <span key={i} className="text-xs text-muted-foreground">
+              {(articles.length > 0 ? articles : [{ title: 'Awaiting fresh stories...' }]).map((a, i) =>
+              <span key={i} className="text-xs text-muted-foreground">
                   {a.category && <span className="text-berna-purple mr-1">•</span>}
                   {a.title}
                 </span>
-              ))}
-              {(articles.length > 0 ? articles : [{ title: 'Awaiting fresh stories...' }]).map((a, i) => (
-                <span key={`dup-${i}`} className="text-xs text-muted-foreground">
+              )}
+              {(articles.length > 0 ? articles : [{ title: 'Awaiting fresh stories...' }]).map((a, i) =>
+              <span key={`dup-${i}`} className="text-xs text-muted-foreground">
                   {a.category && <span className="text-berna-purple mr-1">•</span>}
                   {a.title}
                 </span>
-              ))}
+              )}
             </div>
           </div>
         </div>
       </div>
 
       <ChangeDirectionModal open={directionOpen} currentFocus={briefing?.theme} onClose={() => setDirectionOpen(false)} />
-    </div>
-  );
+    </div>);
+
 }
