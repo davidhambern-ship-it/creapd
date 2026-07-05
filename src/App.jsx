@@ -148,8 +148,9 @@ const AuthenticatedApp = () => {
         <Route element={<CREAPModeLayout />}>
         <Route path="/home" element={<CreapdHome />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/" element={<DashboardRouter />} />
-          <Route path="/dashboard" element={<DashboardRouter />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/news/dashboard" replace />} />
+          <Route path="/news/dashboard" element={<DashboardRouter />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/brief" element={<TodaysBrief />} />
           <Route path="/queue" element={<StoryQueue />} />
