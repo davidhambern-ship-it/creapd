@@ -1,13 +1,17 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { ExternalLink, Loader2, FileText, AlertCircle, BookOpen, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
+import Hls from "hls.js";
 
 /**
- * Renders an embedded video player for YouTube or direct media URLs.
+ * Renders an embedded video player for YouTube, HLS (.m3u8), or direct media URLs.
  */
 function VideoEmbed({ videoUrl }) {
+  const videoRef = useRef(null);
+  const [playbackError, setPlaybackError] = useState(false);
+
   // YouTube
   const ytMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
@@ -24,7 +28,7 @@ function VideoEmbed({ videoUrl }) {
     );
   }
 
-  // Direct media file
+  // Audio file
   const isAudio = videoUrl.match(/\.(mp3|wav|ogg|oga|m4a|mpeg|mpga|flac)(\?|$)/i);
   if (isAudio) {
     return (
@@ -36,11 +40,70 @@ function VideoEmbed({ videoUrl }) {
     );
   }
 
+  // HLS stream or direct video — use Hls.js for .m3u8, native <video> for mp4/webm
+  const isHls = videoUrl.match(/\.m3u8(\?|$)/i);
+
+  return (
+    <HlsVideo
+      videoUrl={videoUrl}
+      isHls={isHls}
+      videoRef={videoRef}
+      playbackError={playbackError}
+      setPlaybackError={setPlaybackError}
+    />
+  );
+}
+
+/**
+ * Video player that uses hls.js for .m3u8 streams and native playback for direct files.
+ */
+function HlsVideo({ videoUrl, isHls, videoRef, playbackError, setPlaybackError }) {
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    let hls = null;
+
+    if (isHls && Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) setPlaybackError(true);
+      });
+    } else if (isHls && video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Safari supports HLS natively
+      video.src = videoUrl;
+    } else if (!isHls) {
+      video.src = videoUrl;
+    }
+
+    return () => {
+      if (hls) hls.destroy();
+    };
+  }, [videoUrl, isHls, setPlaybackError]);
+
+  if (playbackError) {
+    return (
+      <div className="w-full aspect-video rounded-lg overflow-hidden bg-black mb-4 flex flex-col items-center justify-center gap-3 p-4 text-center">
+        <AlertCircle className="w-6 h-6 text-yellow-400" />
+        <p className="text-xs text-white/60">This video stream couldn't be played natively.</p>
+        <a href={videoUrl} target="_blank" rel="noopener noreferrer">
+          <Button size="sm" variant="ghost" className="text-berna-purple text-xs h-7">
+            <ExternalLink className="w-3 h-3 mr-1" /> Open Direct Stream
+          </Button>
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black mb-4">
-      <video controls className="absolute inset-0 w-full h-full">
-        <source src={videoUrl} />
-      </video>
+      <video
+        ref={videoRef}
+        controls
+        className="absolute inset-0 w-full h-full"
+      />
     </div>
   );
 }
