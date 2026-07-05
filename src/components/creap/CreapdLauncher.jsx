@@ -15,9 +15,6 @@ export default function CreapdLauncher() {
         }`}
         aria-label="Open CREAPD"
       >
-        {!open && (
-          <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping-slow" />
-        )}
         <div className="flex items-center gap-2 px-4 py-3 relative">
           <Sparkles className="w-5 h-5" />
           <span className="text-sm font-heading font-semibold hidden sm:inline">CREAPD</span>
