@@ -52,7 +52,15 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
-          className="text-3xl lg:text-5xl font-heading font-bold mb-3 animated-gradient-text"
+          className="text-3xl lg:text-5xl mb-3 tracking-wide"
+          style={{
+            fontFamily: "'Ethnocentric', sans-serif",
+            background: 'linear-gradient(180deg, #FFFFFF 0%, #E6E6E6 35%, #B8B8B8 55%, #6E6E6E 70%, #C0C0C0 100%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: 'transparent',
+          }}
         >
           Welcome to CREAPD
         </motion.h1>
