@@ -4,11 +4,11 @@ import { Lightbulb, Clapperboard, Package, Volume2, Presentation, Share2 } from 
 
 const PIPELINE_STEPS = [
   { icon: Lightbulb, label: 'Idea', color: 'text-berna-orange', bg: 'bg-berna-orange/10', border: 'border-berna-orange/50', glow: 'shadow-[0_0_20px_hsl(25_95%_55%/0.3)]', description: 'Start with a concept — a story, topic, or message you want to produce.' },
-  { icon: Clapperboard, label: 'Production Profile', color: 'text-berna-purple', bg: 'bg-berna-purple/10', border: 'border-berna-purple/50', glow: 'shadow-[0_0_20px_hsl(270_80%_60%/0.3)]', description: 'Pick a vertical — News, Talk, Cooking, Sports, Music, Cosmo, or Spiritual — that shapes how CREAPD builds your show.' },
-  { icon: Package, label: 'Story / Message Package', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', border: 'border-berna-emerald/50', glow: 'shadow-[0_0_20px_hsl(152_60%_45%/0.3)]', description: 'CREAPD sifts sources, selects the best stories, and assembles a structured production package with scripts and assets.' },
-  { icon: Volume2, label: 'Voice + Media', color: 'text-berna-orange', bg: 'bg-berna-orange/10', border: 'border-berna-orange/50', glow: 'shadow-[0_0_20px_hsl(25_95%_55%/0.3)]', description: 'Generate AI voiceovers, thumbnails, and media assets for your package.' },
-  { icon: Presentation, label: 'Presentation', color: 'text-berna-purple', bg: 'bg-berna-purple/10', border: 'border-berna-purple/50', glow: 'shadow-[0_0_20px_hsl(270_80%_60%/0.3)]', description: 'Combine everything into a timed, scene-by-scene presentation ready to direct.' },
-  { icon: Share2, label: 'Export / Share', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', border: 'border-berna-emerald/50', glow: 'shadow-[0_0_20px_hsl(152_60%_45%/0.3)]', description: 'Export your finished production or share it directly to your platform.' },
+  { icon: Clapperboard, label: 'Production Profile', color: 'text-berna-purple', bg: 'bg-berna-purple/10', border: 'border-berna-purple/50', glow: 'shadow-[0_0_20px_hsl(270_80%_60%/0.3)]', description: 'Pick a vertical — News, Talk, Cooking, Sports, Music, Cosmo, or Spiritual.' },
+  { icon: Package, label: 'Story / Message Package', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', border: 'border-berna-emerald/50', glow: 'shadow-[0_0_20px_hsl(152_60%_45%/0.3)]', description: 'CREAPD sifts sources and assembles a structured production package.' },
+  { icon: Volume2, label: 'Voice + Media', color: 'text-berna-orange', bg: 'bg-berna-orange/10', border: 'border-berna-orange/50', glow: 'shadow-[0_0_20px_hsl(25_95%_55%/0.3)]', description: 'Generate AI voiceovers, thumbnails, and media assets.' },
+  { icon: Presentation, label: 'Presentation', color: 'text-berna-purple', bg: 'bg-berna-purple/10', border: 'border-berna-purple/50', glow: 'shadow-[0_0_20px_hsl(270_80%_60%/0.3)]', description: 'Combine everything into a timed, scene-by-scene presentation.' },
+  { icon: Share2, label: 'Export / Share', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', border: 'border-berna-emerald/50', glow: 'shadow-[0_0_20px_hsl(152_60%_45%/0.3)]', description: 'Export your finished production or share it to your platform.' },
 ];
 
 const cardVariants = {
@@ -60,7 +60,7 @@ function FlipCard({ step, idx }) {
         onHoverEnd={() => setFlipped(false)}
         onClick={() => setFlipped(!flipped)}
         className="relative w-full cursor-pointer"
-        style={{ transformStyle: 'preserve-3d', minHeight: '90px' }}
+        style={{ transformStyle: 'preserve-3d', minHeight: '120px' }}
       >
         {/* Front face */}
         <div
@@ -84,7 +84,7 @@ function FlipCard({ step, idx }) {
             transform: 'rotateY(180deg)',
           }}
         >
-          <p className={`text-[11px] lg:text-[11px] leading-relaxed text-center ${step.color}`}>
+          <p className={`text-[10px] leading-tight text-center overflow-hidden ${step.color}`}>
             {step.description}
           </p>
         </div>
