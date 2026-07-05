@@ -45,14 +45,14 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           transition={{ duration: 0.6 }}
           className="flex justify-center mb-6"
         >
-          <CreapdLogo height="h-28 lg:h-40" />
+          <CreapdLogo height="h-40 lg:h-56" />
         </motion.div>
 
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
-          className="text-3xl lg:text-5xl mb-3 tracking-wide animated-gradient-text"
+          className="text-6xl lg:text-8xl mb-4 tracking-wide animated-gradient-text"
           style={{ fontFamily: "'CreapdCustom', sans-serif" }}
         >
           Welcome to CREAPD
@@ -62,7 +62,7 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="text-lg lg:text-2xl font-heading font-semibold mb-2 flex flex-wrap justify-center gap-x-3 gap-y-1"
+          className="text-2xl lg:text-4xl font-heading font-semibold mb-2 flex flex-wrap justify-center gap-x-3 gap-y-1"
           style={{ fontFamily: "'Robotica', sans-serif" }}
         >
           <span className="text-berna-orange">Create.</span>
@@ -75,7 +75,7 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.45 }}
-          className="text-sm lg:text-base text-muted-foreground mb-8 tracking-[0.2em] uppercase"
+          className="text-base lg:text-lg text-muted-foreground mb-8 tracking-[0.2em] uppercase"
         >
           The AI Production Company
         </motion.p>
