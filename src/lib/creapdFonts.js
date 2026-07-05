@@ -29,6 +29,13 @@ export const CREAPD_FONTS = {
     uploaded: '2026-07-05',
     previous_url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/1dda4d144_CreapdTagline2.ttf',
   },
+  digitalCard: {
+    name: 'CreapdDigitalCard',
+    family: "'CreapdDigitalCard', sans-serif",
+    url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/47a5e6c15_DigitalCard.ttf',
+    description: 'Digital Cards Demo font — saved to registry, not yet assigned to any element',
+    uploaded: '2026-07-05',
+  },
 };
 
 /**
@@ -48,6 +55,14 @@ export const CREAPD_FONT_FACE_CSS = `
 @font-face {
   font-family: 'CreapdTagline';
   src: url('${CREAPD_FONTS.tagline.url}') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'CreapdDigitalCard';
+  src: url('${CREAPD_FONTS.digitalCard.url}') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
