@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
-import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Loader2, Wrench } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, XCircle, Loader2, Wrench, Sparkles } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pending: { icon: Loader2, color: 'text-muted-foreground', spin: true, label: 'Queued' },
@@ -115,7 +116,7 @@ export default function CreapdMessage({ message }) {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-lg rounded-br-sm bg-primary text-primary-foreground px-3 py-1.5">
+        <div className="max-w-[85%] rounded-lg rounded-br-sm bg-gradient-to-br from-primary to-primary/80 text-primary-foreground px-3 py-1.5">
           <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         </div>
       </div>
@@ -123,10 +124,13 @@ export default function CreapdMessage({ message }) {
   }
 
   return (
-    <div className="flex justify-start">
-      <div className="max-w-[90%] w-full">
+    <div className="flex justify-start gap-2">
+      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0 mt-0.5">
+        <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+      </div>
+      <div className="max-w-[80%] w-full">
         {message.content && (
-          <div className="rounded-lg rounded-bl-sm bg-secondary text-secondary-foreground px-3 py-2">
+          <div className="rounded-lg rounded-bl-sm bg-secondary/60 border border-white/[0.04] text-secondary-foreground px-3 py-2">
             <ReactMarkdown className="text-sm prose prose-sm prose-invert max-w-none [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
               {message.content}
             </ReactMarkdown>

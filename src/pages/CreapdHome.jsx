@@ -12,6 +12,8 @@ import QuickLaunch from '@/components/home/QuickLaunch';
 import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
 import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import ShowSetupChat from '@/components/creap/ShowSetupChat';
+import CursorGlow from '@/components/creap/CursorGlow';
+import CreapdGuideOverlay from '@/components/creap/CreapdGuideOverlay';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -19,6 +21,7 @@ export default function CreapdHome() {
   const [detailsProfile, setDetailsProfile] = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const { toast } = useToast();
 
   const handleGetStarted = (profile) => {
@@ -71,8 +74,10 @@ export default function CreapdHome() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pt-12 lg:pt-0">
         <ModeStatusBanner />
-        <HeroSection onStart={scrollToProfiles} onExplore={scrollToProfiles} />
-        <PipelineExplainer />
+        <HeroSection onStart={scrollToProfiles} onExplore={scrollToProfiles} onTour={() => setGuideOpen(true)} />
+        <div id="pipeline">
+          <PipelineExplainer />
+        </div>
 
         {/* Production Profile Cards */}
         <section id="profiles" className="px-4 lg:px-6 py-8 max-w-6xl mx-auto">
@@ -116,7 +121,9 @@ export default function CreapdHome() {
         </section>
 
         {/* Quick Launch */}
-        <QuickLaunch onScrollToShowcase={scrollToShowcase} />
+        <div id="quicklaunch">
+          <QuickLaunch onScrollToShowcase={scrollToShowcase} />
+        </div>
 
         {/* Showcase */}
         <div id="showcase">
@@ -135,6 +142,7 @@ export default function CreapdHome() {
       <ProductionDetailsModal profile={detailsProfile} onClose={() => setDetailsProfile(null)} />
       <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={() => { window.location.href = '/news/shows'; }} />
       <IdlePersonalityToast />
+      <CreapdGuideOverlay open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

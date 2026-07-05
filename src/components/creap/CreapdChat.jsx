@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { X, Send, Sparkles, Loader2, Zap, Users, Moon } from 'lucide-react';
@@ -6,6 +7,8 @@ import { base44 } from '@/api/base44Client';
 import { useCREAPMode } from '@/context/CREAPModeContext';
 import { CREAP_MODES } from '@/lib/creapdPersonality';
 import CreapdMessage from './CreapdMessage';
+import ChatTypingIndicator from './ChatTypingIndicator';
+import QuickReplyChips from './QuickReplyChips';
 
 const AGENT_NAME = 'creapd';
 
@@ -43,6 +46,12 @@ export default function CreapdChat({ open, onClose }) {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [loadingConv, setLoadingConv] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll to bottom on new messages or processing state change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isSending]);
 
   const badge = MODE_BADGE[mode] || MODE_BADGE[CREAP_MODES.HYBRID];
   const emptyState = MODE_EMPTY_STATE[mode] || MODE_EMPTY_STATE[CREAP_MODES.HYBRID];
@@ -85,9 +94,9 @@ export default function CreapdChat({ open, onClose }) {
     return () => unsub();
   }, [open]);
 
-  const handleSend = async () => {
-    if (!input.trim() || !conversation || isSending) return;
-    const text = input.trim();
+  const handleSend = async (overrideText) => {
+    const text = (overrideText || input).trim();
+    if (!text || !conversation || isSending) return;
     setInput('');
     setIsSending(true);
     try {
@@ -113,9 +122,20 @@ export default function CreapdChat({ open, onClose }) {
         {/* Header */}
         <SheetHeader className="px-4 py-3 border-b border-sidebar-border flex-row items-center justify-between space-y-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-purple">
+            <motion.div
+              className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center glow-purple relative overflow-hidden"
+              animate={isSending ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+              transition={{ duration: 1, repeat: isSending ? Infinity : 0 }}
+            >
               <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
+              {isSending && (
+                <motion.div
+                  className="absolute inset-0 bg-white/20"
+                  animate={{ opacity: [0, 0.4, 0] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                />
+              )}
+            </motion.div>
             <div>
               <SheetTitle className="text-sm font-heading font-semibold">CREAPD</SheetTitle>
               <div className="flex items-center gap-1.5">
@@ -147,16 +167,35 @@ export default function CreapdChat({ open, onClose }) {
             </div>
           ) : (
             messages.map((msg, idx) => (
-              <CreapdMessage key={idx} message={msg} />
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <CreapdMessage message={msg} />
+              </motion.div>
             ))
           )}
           {isSending && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground pl-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-              <span>CREAPD's working…</span>
+            <div className="flex items-center gap-2 pl-1">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+                <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+              </div>
+              <div className="rounded-lg rounded-bl-sm bg-secondary px-3 py-2.5">
+                <ChatTypingIndicator />
+              </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
+
+        {/* Quick replies */}
+        {!isSending && conversation && messages.length === 0 && (
+          <div className="px-3 pt-2">
+            <QuickReplyChips onSelect={handleSend} />
+          </div>
+        )}
 
         {/* Input */}
         <div className="border-t border-sidebar-border p-3">

@@ -1,11 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Compass } from 'lucide-react';
+import { Sparkles, ArrowRight, Compass, MapPin } from 'lucide-react';
 import CreapdLogo from '@/components/brand/CreapdLogo';
+import CursorGlow from '@/components/creap/CursorGlow';
 
-export default function HeroSection({ onStart, onExplore }) {
+export default function HeroSection({ onStart, onExplore, onTour }) {
   return (
     <section className="relative min-h-[70vh] lg:min-h-[80vh] flex items-center justify-center overflow-hidden px-4">
+      <CursorGlow />
       {/* Ambient gradient blobs */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-berna-purple/15 blur-[120px]"
@@ -50,7 +52,7 @@ export default function HeroSection({ onStart, onExplore }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
-          className="text-3xl lg:text-5xl font-heading font-bold text-white mb-3"
+          className="text-3xl lg:text-5xl font-heading font-bold mb-3 animated-gradient-text"
         >
           Welcome to CREAPD
         </motion.h1>
@@ -90,13 +92,24 @@ export default function HeroSection({ onStart, onExplore }) {
             Start Creating
             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </button>
-          <button
-            onClick={onExplore}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white font-heading font-semibold text-sm transition-all"
-          >
-            <Compass className="w-4 h-4 text-berna-emerald" />
-            Explore Production Profiles
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={onExplore}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white font-heading font-semibold text-sm transition-all"
+            >
+              <Compass className="w-4 h-4 text-berna-emerald" />
+              Explore Production Profiles
+            </button>
+            {onTour && (
+              <button
+                onClick={onTour}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-berna-purple/20 bg-berna-purple/5 hover:bg-berna-purple/10 text-berna-purple font-heading font-semibold text-sm transition-all"
+              >
+                <MapPin className="w-4 h-4" />
+                Take the Tour
+              </button>
+            )}
+          </div>
         </motion.div>
       </div>
     </section>
