@@ -104,7 +104,11 @@ export default function CreaprTourOverlay() {
   const handleSceneCompleteRef = useRef(handleSceneComplete);
   handleSceneCompleteRef.current = handleSceneComplete;
 
-  // Play audio + reveal words — only fires when audio URL or scene index changes
+  // Play audio + reveal words — fires ONLY when a new audio URL is ready.
+  // NOT dependent on tourSceneIndex — when the scene changes, the TTS effect
+  // sets audioUrl=null first (triggering cleanup here), then to the new URL.
+  // If tourSceneIndex were a dep, this effect would replay the OLD audio URL
+  // for the NEW scene before the TTS effect has cleared it.
   useEffect(() => {
     if (!tourActive || isLoadingAudio || !audioUrl) return;
 
@@ -181,7 +185,7 @@ export default function CreaprTourOverlay() {
       audio.load();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tourActive, isLoadingAudio, audioUrl, tourSceneIndex]);
+  }, [tourActive, isLoadingAudio, audioUrl]);
 
   const handleSkip = () => {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
