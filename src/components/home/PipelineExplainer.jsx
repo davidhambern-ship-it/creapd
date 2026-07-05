@@ -111,12 +111,30 @@ export default function PipelineExplainer() {
           className="text-xl lg:text-2xl font-heading font-bold text-white inline-block"
           style={{ textShadow: '0 0 8px hsl(270 80% 60% / 0.6), 0 0 20px hsl(270 80% 60% / 0.3)' }}
         >
-          <span className="text-xl lg:text-3xl align-middle" style={{ fontFamily: "'HollywoodDrive', sans-serif", letterSpacing: '0.05em', color: 'hsl(0 0% 70%)', textShadow: '0 0 8px hsl(270 80% 60% / 0.4)' }}>What Is</span>{' '}
-          <span
-            className="text-6xl lg:text-9xl align-middle creapd-metallic"
+          <motion.span
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="inline-block text-xl lg:text-3xl align-middle"
+            style={{ fontFamily: "'HollywoodDrive', sans-serif", letterSpacing: '0.05em', color: 'hsl(0 0% 70%)', textShadow: '0 0 8px hsl(270 80% 60% / 0.4)' }}
+          >What Is</motion.span>{' '}
+          <motion.span
+            initial={{ opacity: 0, scale: 0.6, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.25, type: 'spring', stiffness: 120, damping: 14 }}
+            className="inline-block text-6xl lg:text-9xl align-middle creapd-metallic creapd-metallic-shimmer"
             style={{ fontFamily: "'01 Digitall', sans-serif", letterSpacing: '0.02em' }}
-          >CREAPD</span>{' '}
-          <span className="text-xl lg:text-3xl align-middle" style={{ fontFamily: "'HollywoodDrive', sans-serif", letterSpacing: '0.05em', color: 'hsl(0 0% 70%)', textShadow: '0 0 8px hsl(25 95% 55% / 0.4)' }}>?</span>
+          >CREAPD</motion.span>{' '}
+          <motion.span
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="inline-block text-xl lg:text-3xl align-middle"
+            style={{ fontFamily: "'HollywoodDrive', sans-serif", letterSpacing: '0.05em', color: 'hsl(0 0% 70%)', textShadow: '0 0 8px hsl(25 95% 55% / 0.4)' }}
+          >?</motion.span>
         </motion.h2>
         <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto leading-relaxed">
           CREAPD helps creators turn ideas into complete productions. Choose a Production Profile,

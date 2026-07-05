@@ -462,6 +462,16 @@
       rgba(255,255,255,0.06) 1px,
       rgba(255,255,255,0.06) 2px
     ),
+    /* shimmer sweep overlay (animated) */
+    linear-gradient(
+      110deg,
+      transparent 0%,
+      transparent 35%,
+      rgba(255,255,255,0.55) 45%,
+      rgba(255,255,255,0.15) 50%,
+      transparent 60%,
+      transparent 100%
+    ),
     /* orange→purple base gradient */
     linear-gradient(
       180deg,
@@ -472,11 +482,22 @@
       #6A0DAD 75%,
       #4B0082 100%
     );
+  background-size: 100% 100%, 250% 100%, 100% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
   filter: drop-shadow(0 1px 0 rgba(255,255,255,0.15)) drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.creapd-metallic-shimmer {
+  animation: creapd-metal-sweep 4s ease-in-out infinite;
+}
+
+@keyframes creapd-metal-sweep {
+  0% { background-position: 0% 0%, -120% 0%, 0% 0%; }
+  50% { background-position: 0% 0%, 120% 0%, 0% 0%; }
+  100% { background-position: 0% 0%, 250% 0%, 0% 0%; }
 }
 
 /* Holographic shimmer sweep */
