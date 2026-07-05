@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import CreapdLoading from '@/components/shared/CreapdLoading';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { OrchestratorProvider } from '@/context/OrchestratorProvider';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
@@ -285,7 +286,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <AuthenticatedApp />
+          <OrchestratorProvider>
+            <AuthenticatedApp />
+          </OrchestratorProvider>
         </Router>
         <Toaster />
       </QueryClientProvider>
