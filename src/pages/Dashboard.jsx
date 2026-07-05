@@ -71,9 +71,7 @@ export default function Dashboard() {
               <CalendarDays className="w-5 h-5 text-berna-orange" />
               <p className="text-[10px] text-berna-orange uppercase tracking-[0.2em] font-semibold">Saturday Planning Day</p>
             </div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
-              Plan Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-berna-orange to-berna-purple">Week</span>.
-            </h1>
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">CREAP Your Week!</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
               Plan next week's briefings, set daily themes, choose focus topics, and adjust automation before the week begins.
             </p>
