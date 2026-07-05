@@ -1,0 +1,69 @@
+{
+  "name": "TourScene",
+  "type": "object",
+  "properties": {
+    "tour_script_id": {
+      "type": "string",
+      "description": "ID of the parent TourScript"
+    },
+    "scene_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Order index within the tour script"
+    },
+    "scene_id": {
+      "type": "string",
+      "description": "Short identifier for the scene (e.g. 'intro', 'action')"
+    },
+    "text": {
+      "type": "string",
+      "description": "Text displayed on screen during this scene"
+    },
+    "speech_text": {
+      "type": "string",
+      "description": "Text spoken by TTS (falls back to 'text' if empty)"
+    },
+    "visual_type": {
+      "type": "string",
+      "enum": [
+        "page-icon",
+        "persona",
+        "pipeline",
+        "tagline",
+        "profiles",
+        "arrow-down",
+        "reveal"
+      ],
+      "default": "reveal",
+      "description": "Which visual animation plays during this scene"
+    },
+    "icon_name": {
+      "type": "string",
+      "description": "Lucide icon name for page-icon visual (e.g. 'Newspaper')"
+    },
+    "icon_color": {
+      "type": "string",
+      "default": "text-berna-purple",
+      "description": "Tailwind color class for the icon"
+    },
+    "font_style": {
+      "type": "string",
+      "enum": [
+        "heading",
+        "body",
+        "display",
+        "mono"
+      ],
+      "default": "heading",
+      "description": "Font family applied to the scene text"
+    },
+    "voice_override": {
+      "type": "string",
+      "description": "Per-scene voice override (river, honey, sunny, storm, spark). Empty = use script default."
+    }
+  },
+  "required": [
+    "tour_script_id",
+    "text"
+  ]
+}

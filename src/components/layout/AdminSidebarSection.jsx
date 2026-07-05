@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Database, Globe, Cpu, BookOpen, ShieldCheck, Server } from 'lucide-react';
+import { Database, Globe, Cpu, BookOpen, ShieldCheck, Server, Clapperboard } from 'lucide-react';
 
 const ADMIN_ITEMS = [
   { icon: Globe, label: 'Scripture Registry', path: '/admin/world-scripture-registry' },
@@ -9,6 +9,7 @@ const ADMIN_ITEMS = [
   { icon: Database, label: 'Source Management', path: '/admin/source-management-center' },
   { icon: Server, label: 'Handler Registry', path: '/admin/handler-registry' },
   { icon: BookOpen, label: 'Foundation Seeder', path: '/admin/foundation-seeder' },
+  { icon: Clapperboard, label: 'Tour Control Center', path: '/admin/tour-control-center' },
 ];
 
 /**

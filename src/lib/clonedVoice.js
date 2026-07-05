@@ -34,6 +34,6 @@ export function hasClonedVoice() {
  * Generate narration speech using the cloned voice if available,
  * otherwise fall back to the built-in TTS with 'storm' voice.
  */
-export async function generateNarrationSpeech(text) {
-  return await base44.integrations.Core.GenerateSpeech({ text, voice: 'storm' });
+export async function generateNarrationSpeech(text, voice) {
+  return await base44.integrations.Core.GenerateSpeech({ text, voice: voice || 'storm' });
 }

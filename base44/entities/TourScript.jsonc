@@ -1,0 +1,31 @@
+{
+  "name": "TourScript",
+  "type": "object",
+  "properties": {
+    "route_path": {
+      "type": "string",
+      "description": "Route this tour plays on (e.g. '/home', '/queue')"
+    },
+    "script_name": {
+      "type": "string",
+      "description": "Display name for this tour script"
+    },
+    "description": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "When false, the tour will not play on this route"
+    },
+    "default_voice": {
+      "type": "string",
+      "default": "storm",
+      "description": "Default TTS voice for all scenes in this script (river, honey, sunny, storm, spark)"
+    }
+  },
+  "required": [
+    "route_path",
+    "script_name"
+  ]
+}

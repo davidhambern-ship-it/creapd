@@ -9,6 +9,8 @@ import {
   getNarration, hasNarrationPlayed, markNarrationPlayed,
 } from '@/lib/systemNarration';
 import { generateNarrationSpeech } from '@/lib/clonedVoice';
+import { useTourScript } from '@/hooks/useTourScript';
+import { FONT_CLASSES } from '@/lib/tourIcons';
 import NarrationVisual from './NarrationVisual';
 
 /**
@@ -38,9 +40,10 @@ export default function SystemNarrationOverlay() {
   const wordTimerRef = useRef(null);
   const sceneTimerRef = useRef(null);
 
-  const narration = getNarration(pathname);
+  const { narration, isLoading: isLoadingTour } = useTourScript(pathname);
   const shouldNarrate =
     !isLoadingPrefs &&
+    !isLoadingTour &&
     mode === CREAP_MODES.AUTOPILOT &&
     narration &&
     !hasNarrationPlayed(pathname);
@@ -68,7 +71,8 @@ export default function SystemNarrationOverlay() {
 
     (async () => {
       try {
-        const result = await generateNarrationSpeech(scene.speech || scene.text);
+        const sceneVoice = scene.voice_override || narration?.default_voice || 'storm';
+        const result = await generateNarrationSpeech(scene.speech || scene.text, sceneVoice);
         if (!cancelled) {
           setAudioUrl(result.url);
           setIsLoadingAudio(false);
@@ -258,7 +262,7 @@ export default function SystemNarrationOverlay() {
                 >
                   <NarrationVisual scene={scene} />
 
-                  <p className="text-base lg:text-xl font-heading font-medium text-white leading-relaxed min-h-[3em] flex flex-wrap justify-center gap-x-1.5 gap-y-1">
+                  <p className={`text-base lg:text-xl ${FONT_CLASSES[scene?.font_style] || 'font-heading'} font-medium text-white leading-relaxed min-h-[3em] flex flex-wrap justify-center gap-x-1.5 gap-y-1`}>
                     {words.map((word, i) => (
                       <span
                         key={i}
