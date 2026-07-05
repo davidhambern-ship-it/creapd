@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import CreapdLogo from '@/components/brand/CreapdLogo';
 import { CREAP_MODES } from '@/lib/creapdPersonality';
+import { generateNarrationSpeech } from '@/lib/clonedVoice';
 
 const MODE_OPTIONS = [
   {
@@ -284,10 +285,7 @@ export default function CreapdIntroSequence() {
       await Promise.all(
         script.map(async (scene) => {
           try {
-            const result = await base44.integrations.Core.GenerateSpeech({
-              text: scene.speech || scene.text,
-              voice: 'storm',
-            });
+            const result = await generateNarrationSpeech(scene.speech || scene.text);
             if (!cancelled) clips[scene.id] = result.url;
           } catch (err) {
             console.error(`TTS failed for ${scene.id}:`, err);

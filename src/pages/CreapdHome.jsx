@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, Sparkles } from 'lucide-react';
+import { Menu, Sparkles, Mic } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import VoiceCloneModal from '@/components/creap/VoiceCloneModal';
 import CreapdSidebar from '@/components/home/CreapdSidebar';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
@@ -19,6 +20,7 @@ export default function CreapdHome() {
   const [detailsProfile, setDetailsProfile] = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [voiceCloneOpen, setVoiceCloneOpen] = useState(false);
   const { toast } = useToast();
 
   const handleGetStarted = (profile) => {
@@ -80,6 +82,9 @@ export default function CreapdHome() {
             <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Profiles</h2>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground hidden sm:inline">{ACTIVE_PROFILES.length} active</span>
+              <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => setVoiceCloneOpen(true)}>
+                <Mic className="w-3 h-3 mr-1" />Clone Voice
+              </Button>
               <Button size="sm" className="bg-gradient-to-r from-berna-emerald to-berna-purple hover:opacity-90 text-white text-xs h-8" onClick={() => setSetupOpen(true)}>
                 <Sparkles className="w-3 h-3 mr-1" />Build with CREAPD
               </Button>
@@ -134,6 +139,7 @@ export default function CreapdHome() {
       {/* Production Details Modal */}
       <ProductionDetailsModal profile={detailsProfile} onClose={() => setDetailsProfile(null)} />
       <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={() => { window.location.href = '/shows'; }} />
+      <VoiceCloneModal open={voiceCloneOpen} onClose={() => setVoiceCloneOpen(false)} />
       <IdlePersonalityToast />
     </div>
   );

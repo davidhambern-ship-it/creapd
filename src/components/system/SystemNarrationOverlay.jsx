@@ -7,6 +7,7 @@ import { CREAP_MODES } from '@/lib/creapdPersonality';
 import {
   getNarration, hasNarrationPlayed, markNarrationPlayed,
 } from '@/lib/systemNarration';
+import { generateNarrationSpeech } from '@/lib/clonedVoice';
 import NarrationVisual from './NarrationVisual';
 
 /**
@@ -65,10 +66,7 @@ export default function SystemNarrationOverlay() {
 
     (async () => {
       try {
-        const result = await base44.integrations.Core.GenerateSpeech({
-          text: scene.speech || scene.text,
-          voice: 'storm',
-        });
+        const result = await generateNarrationSpeech(scene.speech || scene.text);
         if (!cancelled) {
           setAudioUrl(result.url);
           setIsLoadingAudio(false);
