@@ -291,10 +291,10 @@ function App() {
           <ScrollToTop />
           <OrchestratorProvider>
             <AuthenticatedApp />
+            <OrchestratorDevTools />
           </OrchestratorProvider>
         </Router>
         <Toaster />
-        <OrchestratorDevTools />
       </QueryClientProvider>
     </AuthProvider>
   )
