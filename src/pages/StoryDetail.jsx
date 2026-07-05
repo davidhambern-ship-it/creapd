@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import {
   ArrowLeft, ExternalLink, Clock, MapPin, Tag, StickyNote,
   Package, FileText, CheckCircle, AlertTriangle, Plus, Trash2,
-  Bookmark, Layers, ChevronRight, BookOpen, ShieldCheck
+  Bookmark, Layers, ChevronRight, BookOpen, ShieldCheck, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +93,21 @@ export default function StoryDetail() {
     await base44.entities.Article.update(id, { status: 'approved' });
     setArticle(prev => ({ ...prev, status: 'approved' }));
     logActivity('approve', { entity_type: 'Article', entity_id: id, entity_name: article.title, details: 'Story approved for manager' });
+  };
+
+  const rejectStory = async () => {
+    await base44.entities.Article.update(id, {
+      status: 'rejected',
+      rejection_reason: 'Manually rejected',
+      archived_date: new Date().toISOString(),
+    });
+    logActivity('reject', { entity_type: 'Article', entity_id: id, entity_name: article.title, details: 'Story rejected from detail view' });
+    try {
+      await base44.functions.invoke('fetchStories', {});
+    } catch (e) {
+      console.error('Auto-fetch replacement story failed:', e);
+    }
+    navigate('/queue');
   };
 
   const tags = article?.tags ? article.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -363,7 +378,7 @@ export default function StoryDetail() {
           <Bookmark className={`w-3 h-3 mr-1 ${article.is_saved ? 'fill-blue-400 text-blue-400' : ''}`} />
           {article.is_saved ? 'Remove from Library' : 'Save to Library'}
         </Button>
-        {article.status !== 'approved' && (
+        {article.status !== 'approved' && article.status !== 'rejected' && (
           <Button
             size="sm"
             variant="outline"
@@ -371,6 +386,16 @@ export default function StoryDetail() {
             onClick={approveStory}
           >
             <CheckCircle className="w-3 h-3 mr-1" />Approve
+          </Button>
+        )}
+        {article.status !== 'rejected' && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-red-500/20 text-red-400 hover:bg-red-500/10 text-xs"
+            onClick={rejectStory}
+          >
+            <XCircle className="w-3 h-3 mr-1" />Reject
           </Button>
         )}
 
