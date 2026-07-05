@@ -277,6 +277,23 @@
     "processing_history": {
       "type": "string",
       "description": "JSON array of {event, timestamp, details} tracking the article lifecycle"
+    },
+    "show_profile_id": {
+      "type": "string",
+      "description": "ID of the Show Profile used to evaluate this article"
+    },
+    "show_fit_score": {
+      "type": "number",
+      "description": "How well this article fits the active Show Profile (0-10)"
+    },
+    "matched_show_topics": {
+      "type": "string",
+      "description": "JSON array of Show Profile topics that matched this article"
+    },
+    "rejected_by_show_profile": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if the article was rejected because it did not match the active Show Profile"
     }
   },
   "required": [

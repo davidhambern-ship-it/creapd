@@ -103,6 +103,96 @@
     "is_favorite": {
       "type": "boolean",
       "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this Show Profile is used by the backend for story filtering and scoring"
+    },
+    "preferred_topics": {
+      "type": "string",
+      "description": "JSON array of topics this show wants to cover"
+    },
+    "excluded_topics": {
+      "type": "string",
+      "description": "JSON array of topics this show does NOT want"
+    },
+    "region_local_focus": {
+      "type": "string",
+      "description": "Geographic region or local focus area (e.g. 'Midwest', 'Texas', 'Local NYC')"
+    },
+    "segment_structure": {
+      "type": "string",
+      "description": "Preferred segment structure (e.g. 'Lead Story, Quick Hits, Feature, Closing')"
+    },
+    "political_cultural_balance": {
+      "type": "string",
+      "enum": [
+        "balanced",
+        "lean_left",
+        "lean_right",
+        "neutral",
+        "custom"
+      ],
+      "default": "balanced"
+    },
+    "preferred_sources": {
+      "type": "string",
+      "description": "JSON array of preferred source names"
+    },
+    "blocked_sources": {
+      "type": "string",
+      "description": "JSON array of blocked source names"
+    },
+    "story_priority_rules": {
+      "type": "string",
+      "description": "Free-text rules for prioritizing stories for this show"
+    },
+    "minimum_story_score": {
+      "type": "number",
+      "default": 5,
+      "description": "Minimum show_fit_score (0-10) for an article to pass Show Profile filtering"
+    },
+    "content_types_allowed": {
+      "type": "string",
+      "description": "JSON array of allowed content types: text, video, audio, social",
+      "default": "[\"text\",\"video\"]"
+    },
+    "allowed_categories": {
+      "type": "string",
+      "description": "JSON array of allowed article categories"
+    },
+    "rejected_categories": {
+      "type": "string",
+      "description": "JSON array of rejected article categories"
+    },
+    "freshness_window_hours": {
+      "type": "number",
+      "default": 48,
+      "description": "Maximum age in hours for stories to be considered fresh for this show"
+    },
+    "controversy_tolerance": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "entertainment_level": {
+      "type": "number",
+      "default": 5,
+      "description": "0-10 scale of how entertainment-focused the show is"
+    },
+    "educational_level": {
+      "type": "number",
+      "default": 5,
+      "description": "0-10 scale of how educational the show is"
+    },
+    "focus_areas": {
+      "type": "string",
+      "description": "JSON array of focus areas: faith, family, business, community, etc."
     }
   },
   "required": [

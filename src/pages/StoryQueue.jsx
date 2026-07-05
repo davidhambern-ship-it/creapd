@@ -74,6 +74,8 @@ export default function StoryQueue() {
   });
   const navigate = useNavigate();
   const [sending, setSending] = useState(false);
+  const [showProfiles, setShowProfiles] = useState([]);
+  const [showProfileFilter, setShowProfileFilter] = useState('all');
 
   useEffect(() => {
     localStorage.setItem('storyQueueSort', sortBy);
@@ -88,12 +90,14 @@ export default function StoryQueue() {
   const loadArticles = async () => {
     setLoading(true);
     try {
-      const [arts, pkgs, notes] = await Promise.all([
+      const [arts, pkgs, notes, shows] = await Promise.all([
         base44.entities.Article.filter({}, '-created_date', 50),
         base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 200),
         base44.entities.ProducerNote.list('-created_date', 200),
+        base44.entities.ShowProfile.list('-created_date', 100),
       ]);
       setArticles(arts);
+      setShowProfiles(shows);
       const pkgMap = {};
       pkgs.forEach(p => { if (p.article_id) pkgMap[p.article_id] = p; });
       setPackages(pkgMap);
@@ -235,10 +239,13 @@ export default function StoryQueue() {
       if (selectionFilter === 'selected' && !selectedIds.includes(a.id)) return false;
       if (selectionFilter === 'unselected' && selectedIds.includes(a.id)) return false;
       if (selectionFilter === 'saved' && !a.is_saved && a.status !== 'saved_for_later') return false;
+      if (showProfileFilter === 'none' && a.show_profile_id) return false;
+      if (showProfileFilter === 'rejected' && !a.rejected_by_show_profile) return false;
+      if (showProfileFilter !== 'all' && showProfileFilter !== 'none' && showProfileFilter !== 'rejected' && a.show_profile_id !== showProfileFilter) return false;
       return true;
     });
     return sortArticles(result, sortBy, selectedIds);
-  }, [articles, tab, searchTerm, categoryFilter, statusFilter, sourceFilter, dateFilter, selectionFilter, sortBy, selectedIds]);
+  }, [articles, tab, searchTerm, categoryFilter, statusFilter, sourceFilter, dateFilter, selectionFilter, sortBy, selectedIds, showProfileFilter]);
 
   // Group duplicate stories (duplicate_score > 3, same category or similar title)
   const groupedFiltered = useMemo(() => {
@@ -393,6 +400,17 @@ export default function StoryQueue() {
           <Copy className="w-3 h-3 inline mr-1" />
           Group Duplicates
         </button>
+        <Select value={showProfileFilter} onValueChange={setShowProfileFilter}>
+          <SelectTrigger className="w-44 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9">
+            <SelectValue placeholder="Show Profile" />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-white/10 max-h-60">
+            <SelectItem value="all">All Show Profiles</SelectItem>
+            <SelectItem value="none">No Profile Assigned</SelectItem>
+            <SelectItem value="rejected">Rejected by Profile</SelectItem>
+            {showProfiles.map(s => <SelectItem key={s.id} value={s.id}>{s.show_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-40 bg-white/[0.03] border-white/[0.08] text-white text-xs h-9">
             <ArrowUpDown className="w-3 h-3 mr-1" />

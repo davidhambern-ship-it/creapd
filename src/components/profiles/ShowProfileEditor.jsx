@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Sparkles } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { base44 } from '@/api/base44Client';
 
 const TONES = ['professional', 'conversational', 'energetic', 'serious', 'investigative', 'educational', 'inspirational', 'neutral', 'urgent', 'humorous'];
@@ -159,6 +160,68 @@ export default function ShowProfileEditor({ open, profile, brands, onClose, onSa
           <div><Label className="text-xs text-muted-foreground">Opening Script</Label><Textarea value={form.opening_script || ''} onChange={e => set('opening_script', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
           <div><Label className="text-xs text-muted-foreground">Closing Script</Label><Textarea value={form.closing_script || ''} onChange={e => set('closing_script', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
           <div><Label className="text-xs text-muted-foreground">Producer Notes</Label><Textarea value={form.producer_notes || ''} onChange={e => set('producer_notes', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-16" /></div>
+
+          {/* Content Strategy — Show Profile */}
+          <div className="glass-panel p-3 space-y-3 border-berna-purple/20">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs text-white font-semibold">Content Strategy — Show Profile</Label>
+            </div>
+            <p className="text-[10px] text-muted-foreground">These settings control how CREAPD filters and scores stories for THIS show. Backend story filtering uses these preferences.</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-[10px] text-muted-foreground">Preferred Topics (comma-separated)</Label><Input value={form.preferred_topics || ''} onChange={e => set('preferred_topics', e.target.value)} placeholder="AI, manufacturing, local jobs" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div><Label className="text-[10px] text-muted-foreground">Excluded Topics (comma-separated)</Label><Input value={form.excluded_topics || ''} onChange={e => set('excluded_topics', e.target.value)} placeholder="celebrity gossip, outrage" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-[10px] text-muted-foreground">Region / Local Focus</Label><Input value={form.region_local_focus || ''} onChange={e => set('region_local_focus', e.target.value)} placeholder="Midwest, Texas, NYC" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div>
+                <Label className="text-[10px] text-muted-foreground">Political/Cultural Balance</Label>
+                <Select value={form.political_cultural_balance || 'balanced'} onValueChange={v => set('political_cultural_balance', v)}>
+                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-card border-white/10">{['balanced', 'lean_left', 'lean_right', 'neutral', 'custom'].map(b => <SelectItem key={b} value={b} className="text-xs capitalize">{b.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-[10px] text-muted-foreground">Preferred Sources (comma-separated)</Label><Input value={form.preferred_sources || ''} onChange={e => set('preferred_sources', e.target.value)} placeholder="Reuters, AP" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div><Label className="text-[10px] text-muted-foreground">Blocked Sources (comma-separated)</Label><Input value={form.blocked_sources || ''} onChange={e => set('blocked_sources', e.target.value)} placeholder="Blog spam, aggregator" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-[10px] text-muted-foreground">Allowed Categories (comma-separated)</Label><Input value={form.allowed_categories || ''} onChange={e => set('allowed_categories', e.target.value)} placeholder="business, ai, manufacturing" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div><Label className="text-[10px] text-muted-foreground">Rejected Categories (comma-separated)</Label><Input value={form.rejected_categories || ''} onChange={e => set('rejected_categories', e.target.value)} placeholder="opinion, celebrity" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            </div>
+
+            <div><Label className="text-[10px] text-muted-foreground">Content Types Allowed (comma-separated)</Label><Input value={form.content_types_allowed || ''} onChange={e => set('content_types_allowed', e.target.value)} placeholder="text, video, audio, social" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            <div><Label className="text-[10px] text-muted-foreground">Focus Areas (comma-separated)</Label><Input value={form.focus_areas || ''} onChange={e => set('focus_areas', e.target.value)} placeholder="faith, family, business, community" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            <div><Label className="text-[10px] text-muted-foreground">Segment Structure</Label><Input value={form.segment_structure || ''} onChange={e => set('segment_structure', e.target.value)} placeholder="Lead Story, Quick Hits, Feature, Closing" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            <div><Label className="text-[10px] text-muted-foreground">Story Priority Rules</Label><Textarea value={form.story_priority_rules || ''} onChange={e => set('story_priority_rules', e.target.value)} placeholder="e.g. Local business stories first, then national AI wins" className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 min-h-12" /></div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div><Label className="text-[10px] text-muted-foreground">Min Story Score (0-10)</Label><Input type="number" min={0} max={10} value={form.minimum_story_score ?? 5} onChange={e => set('minimum_story_score', parseInt(e.target.value) || 5)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div><Label className="text-[10px] text-muted-foreground">Freshness Window (hrs)</Label><Input type="number" min={1} value={form.freshness_window_hours ?? 48} onChange={e => set('freshness_window_hours', parseInt(e.target.value) || 48)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div><Label className="text-[10px] text-muted-foreground">Entertainment (0-10)</Label><Input type="number" min={0} max={10} value={form.entertainment_level ?? 5} onChange={e => set('entertainment_level', parseInt(e.target.value) || 5)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+              <div><Label className="text-[10px] text-muted-foreground">Educational (0-10)</Label><Input type="number" min={0} max={10} value={form.educational_level ?? 5} onChange={e => set('educational_level', parseInt(e.target.value) || 5)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>
+            </div>
+
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Controversy Tolerance</Label>
+              <Select value={form.controversy_tolerance || 'medium'} onValueChange={v => set('controversy_tolerance', v)}>
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1 w-40"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-card border-white/10">{['low', 'medium', 'high'].map(c => <SelectItem key={c} value={c} className="text-xs capitalize">{c}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                <Label className="text-xs text-white">Active Show Profile</Label>
+                <p className="text-[10px] text-muted-foreground">When enabled, backend uses this profile for story filtering and scoring</p>
+              </div>
+              <Switch checked={form.is_active || false} onCheckedChange={v => set('is_active', v)} />
+            </div>
+          </div>
 
           <div className="glass-panel p-3 space-y-3">
             <div>

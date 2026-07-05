@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Save, Check, RotateCcw, AlertTriangle, UserCircle, Building2 } from 'lucide-react';
+import { Save, Check, RotateCcw, AlertTriangle, UserCircle, Building2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -177,6 +177,25 @@ export default function SettingsPage() {
           {saving ? <Check className="w-3 h-3 mr-1" /> : <Save className="w-3 h-3 mr-1" />}
           {saving ? 'Saved' : 'Save Changes'}
         </Button>
+      </div>
+
+      {/* Profile Architecture Clarification */}
+      <div className="glass-panel p-4 space-y-2 border-berna-purple/20">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-berna-purple" />
+          <h2 className="text-sm font-semibold text-white">CREAPD Profile Architecture</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+          <div className="p-3 rounded-lg bg-berna-purple/[0.06] border border-berna-purple/15">
+            <p className="text-xs font-semibold text-berna-purple">Production Profile</p>
+            <p className="text-[10px] text-muted-foreground mt-1">The CREAPD system-level identity. Controls voice, producer standards, scoring philosophy, summary format, safety rules, and how stories are processed. Managed by CREAPD — not per-show.</p>
+          </div>
+          <div className="p-3 rounded-lg bg-berna-orange/[0.06] border border-berna-orange/15">
+            <p className="text-xs font-semibold text-berna-orange">Show Profile</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Your user-configured content strategy for a specific show. Controls preferred topics, excluded topics, tone, region, sources, categories, controversy tolerance, and story priority. Backend story filtering uses the active Show Profile.</p>
+            <a href="/shows" className="text-[10px] text-berna-orange hover:underline mt-1 inline-block">Configure Show Profiles →</a>
+          </div>
+        </div>
       </div>
 
       {/* Workspace Summary */}

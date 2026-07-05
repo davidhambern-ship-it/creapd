@@ -7,6 +7,40 @@ function addHistory(historyStr, event, details) {
   return JSON.stringify(history);
 }
 
+function safeParse(str, fallback) {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch (e) { return fallback; }
+}
+
+async function loadActiveShowProfile(base44) {
+  try {
+    const profiles = await base44.asServiceRole.entities.ShowProfile.filter({ is_active: true }, '-created_date', 1);
+    if (profiles.length > 0) return profiles[0];
+  } catch (e) {}
+  return null;
+}
+
+function buildShowContext(profile) {
+  if (!profile) return '';
+  const preferredTopics = safeParse(profile.preferred_topics, []);
+  const excludedTopics = safeParse(profile.excluded_topics, []);
+  const focusAreas = safeParse(profile.focus_areas, []);
+
+  return `\n\nSHOW PROFILE CONTEXT:
+- Show: ${profile.show_name || 'Unnamed'}
+- Audience: ${profile.audience || 'General Public'}
+- Tone: ${profile.default_tone || 'professional'}
+- Region Focus: ${profile.region_local_focus || 'National'}
+- Preferred Topics: ${preferredTopics.length > 0 ? preferredTopics.join(', ') : 'Any'}
+- Excluded Topics: ${excludedTopics.length > 0 ? excludedTopics.join(', ') : 'None'}
+- Controversy Tolerance: ${profile.controversy_tolerance || 'medium'}
+- Entertainment Level: ${profile.entertainment_level ?? 5}/10
+- Educational Level: ${profile.educational_level ?? 5}/10
+- Focus Areas: ${focusAreas.length > 0 ? focusAreas.join(', ') : 'General'}
+
+Summarize this video in a way that is relevant to THIS SHOW's audience and tone.`;
+}
+
 function extractVideoUrls(html, articleUrl) {
   const results = [];
 
@@ -134,7 +168,7 @@ async function transcribeDirectMedia(base44, mediaUrl) {
   }
 }
 
-async function processSingleArticle(base44, article) {
+async function processSingleArticle(base44, article, showProfile) {
   let transcript = null;
   let videoUrl = null;
 
@@ -174,14 +208,16 @@ async function processSingleArticle(base44, article) {
     }
   }
 
-  // Generate summary using LLM
+  // Generate summary using LLM — now with Show Profile context
   const hasTranscript = !!transcript;
+  const showContext = buildShowContext(showProfile);
+
   const llmInput = hasTranscript
     ? `Based on this video transcript, provide a concise news summary:\n\nTitle: ${article.title}\nSource: ${article.source_name || 'Unknown'}\nTranscript: ${transcript.substring(0, 4000)}`
     : `This article was classified as video content but no transcript could be extracted. Based on the title and description, provide a concise news summary of what this video likely covers:\n\nTitle: ${article.title}\nDescription: ${article.summary || 'N/A'}\nSource: ${article.source_name || 'Unknown'}`;
 
   const llmRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
-    prompt: `You are CREAPD's Content Intelligence AI. ${llmInput}\n\nProvide a 2-3 paragraph summary of the key information. If a transcript is available, focus on the main facts and newsworthy points discussed. If no transcript is available, summarize based on the title and description, noting that this is a video article.`,
+    prompt: `You are CREAPD's Content Intelligence AI. ${llmInput}\n\nProvide a 2-3 paragraph summary of the key information. If a transcript is available, focus on the main facts and newsworthy points discussed. If no transcript is available, summarize based on the title and description, noting that this is a video article.${showContext}`,
   });
   const summary = typeof llmRes === 'string' ? llmRes : (llmRes?.response || JSON.stringify(llmRes));
 
@@ -195,8 +231,12 @@ async function processSingleArticle(base44, article) {
       : 'No transcript extracted — AI summary generated from metadata only'
   );
 
-  // Update article
-  await base44.asServiceRole.entities.Article.update(article.id, {
+  if (showProfile) {
+    history = addHistory(history, 'show_profile_applied', `Summarized using Show Profile: ${showProfile.show_name}`);
+  }
+
+  // Update article — include show_profile_id if available
+  const update = {
     transcript: transcript || null,
     video_url: videoUrl,
     transcription_status: transcriptionStatus,
@@ -205,7 +245,13 @@ async function processSingleArticle(base44, article) {
       ? transcript.substring(0, 500)
       : (summary || article.summary || '').substring(0, 500),
     processing_history: history,
-  });
+  };
+
+  if (showProfile && !article.show_profile_id) {
+    update.show_profile_id = showProfile.id;
+  }
+
+  await base44.asServiceRole.entities.Article.update(article.id, update);
 
   return { hasTranscript, videoUrl, summary, transcriptionStatus };
 }
@@ -226,6 +272,9 @@ Deno.serve(async (req) => {
         return Response.json({ skipped: true, reason: 'Auto-transcribe is disabled in settings' });
       }
     }
+
+    // Load the active Show Profile — key change
+    const showProfile = await loadActiveShowProfile(base44);
 
     // Get article(s) to process
     let articlesToProcess = [];
@@ -256,7 +305,7 @@ Deno.serve(async (req) => {
           processing_history: procHistory,
         });
 
-        const result = await processSingleArticle(base44, { ...article, processing_history: procHistory });
+        const result = await processSingleArticle(base44, { ...article, processing_history: procHistory }, showProfile);
 
         if (result.hasTranscript) transcribed++;
         else summarized++;
@@ -295,6 +344,7 @@ Deno.serve(async (req) => {
       processed,
       transcribed,
       summarized,
+      show_profile: showProfile ? showProfile.show_name : null,
       results,
       errors: errors.length > 0 ? errors.join('; ') : null,
     });
