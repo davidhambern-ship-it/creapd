@@ -60,8 +60,8 @@ export default function CircuitBackground() {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-xl">
-      {/* Base dark background */}
-      <div className="absolute inset-0 bg-[#0d0d10]" />
+      {/* Base dark background — semi-transparent so page shows through */}
+      <div className="absolute inset-0 bg-[#0d0d10]/40" />
 
       {/* Faint static circuit traces */}
       <svg
@@ -150,11 +150,11 @@ export default function CircuitBackground() {
         ))}
       </svg>
 
-      {/* Subtle vignette */}
+      {/* Subtle vignette — transparent so light streaks stay bright */}
       <div
         className="absolute inset-0"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 30%, rgba(13,13,16,0.6) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 30%, rgba(13,13,16,0.2) 100%)',
         }}
       />
     </div>
