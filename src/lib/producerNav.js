@@ -15,12 +15,6 @@ export const PRODUCER_NAV_SECTIONS = [
     ]
   },
   {
-    label: 'Planning',
-    items: [
-      { icon: CalendarDays, label: 'Weekly Planner', path: '/planner' },
-    ]
-  },
-  {
     label: 'Content',
     items: [
       { icon: Layers, label: 'Story Queue', path: '/queue' },
