@@ -36,6 +36,13 @@ export const CREAPD_FONTS = {
     description: 'Tagline font — "Create. Automate. Produce. Direct."',
     uploaded: '2026-07-05',
   },
+  robotica: {
+    name: 'Robotica',
+    family: "'Robotica', sans-serif",
+    url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/a70a3b8b3_Robotica.ttf',
+    description: 'Robotica by Courtney Novits — imported from Google Drive',
+    uploaded: '2026-07-05',
+  },
 };
 
 /**
@@ -63,6 +70,14 @@ export const CREAPD_FONT_FACE_CSS = `
 @font-face {
   font-family: 'CreapdDigitalCard';
   src: url('${CREAPD_FONTS.digitalCard.url}') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Robotica';
+  src: url('${CREAPD_FONTS.robotica.url}') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
