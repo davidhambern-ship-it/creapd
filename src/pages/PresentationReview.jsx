@@ -144,7 +144,7 @@ export default function PresentationReview() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-muted-foreground">Presentation not found</p>
-        <Link to="/news/presentations"><Button variant="outline">Back to Presentations</Button></Link>
+        <Link to="/presentations"><Button variant="outline">Back to Presentations</Button></Link>
       </div>
     );
   }
@@ -160,7 +160,7 @@ export default function PresentationReview() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/news/presentations')}>
+          <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/presentations')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>

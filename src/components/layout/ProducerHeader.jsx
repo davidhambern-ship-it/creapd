@@ -109,7 +109,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
             <span className="text-[10px] text-berna-emerald font-medium">Echo Online</span>
           </div>
           <NotificationDropdown />
-          <Link to="/news/userprofile">
+          <Link to="/profile">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-8 w-8">
               <User className="w-4 h-4" />
             </Button>

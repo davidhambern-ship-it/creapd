@@ -188,7 +188,7 @@ export default function ArchivePage() {
           {currentData.map(prod => (
             <Link
               key={prod.id}
-              to={`/news/storymanager?production=${prod.id}`}
+              to={`/workspace?production=${prod.id}`}
               className="glass-panel p-4 hover:border-white/[0.12] transition-all group flex items-start justify-between gap-4"
             >
               <div className="flex-1 min-w-0">

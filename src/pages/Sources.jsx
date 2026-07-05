@@ -146,7 +146,7 @@ export default function Sources() {
           <p className="text-xs text-muted-foreground mt-1">12-layer aggregation engine — manage where Producer pulls stories from</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/news/manualimport')} className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
+          <Button variant="outline" size="sm" onClick={() => navigate('/import')} className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
             <FileInput className="w-3 h-3 mr-1" />Import URL
           </Button>
           <Button size="sm" onClick={handleFetch} disabled={fetching} className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs">

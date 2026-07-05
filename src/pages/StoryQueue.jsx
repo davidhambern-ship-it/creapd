@@ -186,7 +186,7 @@ export default function StoryQueue() {
         entity_name: `${readyIds.length} story${readyIds.length > 1 ? 'ies' : ''}`,
         details: `Sent ${readyIds.length} story${readyIds.length > 1 ? 'ies' : ''} to Story Manager`,
       });
-      navigate('/news/storymanager');
+      navigate('/workspace');
     } catch (e) {
       console.error('Failed to send stories to manager:', e);
     } finally {
@@ -288,7 +288,7 @@ export default function StoryQueue() {
             <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />Refresh
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/news/storyintelligencereview" className="border-berna-purple/20 text-berna-purple text-xs hover:bg-berna-purple/10 inline-flex items-center justify-center gap-2 h-8 rounded-md px-3">
+            <Link to="/review" className="border-berna-purple/20 text-berna-purple text-xs hover:bg-berna-purple/10 inline-flex items-center justify-center gap-2 h-8 rounded-md px-3">
               <Sparkles className="w-3 h-3" />Intelligence Review
             </Link>
           </Button>
@@ -471,7 +471,7 @@ export default function StoryQueue() {
               <div className="ml-8 px-3 py-1.5 rounded-lg bg-yellow-400/[0.04] border border-yellow-400/10 flex items-center gap-2">
                 <Copy className="w-3 h-3 text-yellow-400" />
                 <span className="text-[10px] text-yellow-400">{duplicates.length} additional source{duplicates.length > 1 ? 's' : ''} reporting same story</span>
-                <Link to={`/news/storydetail/${primary.id}`} className="text-[10px] text-berna-purple hover:underline ml-auto">
+                <Link to={`/story/${primary.id}`} className="text-[10px] text-berna-purple hover:underline ml-auto">
                   View all sources →
                 </Link>
               </div>

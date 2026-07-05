@@ -11,7 +11,6 @@ import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
-import ProfileIntroOverlay from '@/components/creap/cinematic/ProfileIntroOverlay';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard' },
@@ -56,7 +55,6 @@ export default function MusicLayout() {
       </div>
 
       <ProductionFooter variant="music" />
-      <ProfileIntroOverlay profileKey="music" />
       <MobileBottomNav items={MOBILE_NAV_ITEMS} />
 
       <MobileNavDrawer

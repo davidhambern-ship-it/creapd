@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
-import { Zap, Users, Moon, ArrowRight, SkipForward, Loader2 } from 'lucide-react';
+import {
+  Sparkles, Zap, Users, Moon, Power, Bot, Workflow,
+  ArrowRight, Newspaper, Package, Presentation, Download, SkipForward, Loader2
+} from 'lucide-react';
 import CreapdLogo from '@/components/brand/CreapdLogo';
 import { CREAP_MODES } from '@/lib/creapdPersonality';
-import { useCREAPMode } from '@/context/CREAPModeContext';
-import { generateNarrationSpeech } from '@/lib/clonedVoice';
-import { resetNarration } from '@/lib/systemNarration';
-import {
-  BlackLogoReveal, LogoExpand, AvatarIntro,
-  StoryQueueDemo, SpotlightFocus, AutomationFlow, FadeTransition,
-} from '@/components/creap/cinematic/CinematicVisuals';
 
 const MODE_OPTIONS = [
   {
@@ -43,72 +38,212 @@ const MODE_OPTIONS = [
   },
 ];
 
-const VISUAL_MAP = {
-  'black-logo': BlackLogoReveal,
-  'logo-expand': LogoExpand,
-  avatar: AvatarIntro,
-  'story-queue-demo': StoryQueueDemo,
-  spotlight: SpotlightFocus,
-  'automation-flow': AutomationFlow,
-  transition: FadeTransition,
-};
-
-function buildCinematicScript(userName) {
+function buildScript(mode, userName) {
   const name = userName || 'there';
+  const modeOption = MODE_OPTIONS.find(m => m.key === mode) || MODE_OPTIONS[0];
+
+  const modeSegment = {
+    [CREAP_MODES.AUTOPILOT]: `You chose AUTOPILOT. That means I'm driving. I'll sift stories, pick the best ones, build production packages, and hand you the results. You just review and approve.`,
+    [CREAP_MODES.HYBRID]: `You chose HYBRID. We're co-pilots. You lead, I follow. When you're stuck, I'll offer to take over. When you're moving, I'll keep up.`,
+    [CREAP_MODES.FREE]: `You chose FREE. I'm on standby. I'll only speak when you call. No commentary, no nudges. Just answers when you need them.`,
+  };
+
   return [
     {
-      id: 'hey',
-      text: `Hey, ${name}...`,
-      speech: `Hey, ${name}...`,
-      visual: 'black-logo',
+      id: 'boot',
+      text: 'System online.',
+      icon: Power,
+      visual: 'boot',
     },
     {
       id: 'welcome',
-      text: 'Welcome to CREAPD.',
-      speech: 'Welcome to Creeped.',
-      visual: 'logo-expand',
+      text: `Welcome to CREAPD, ${name}. The AI Production Company.`,
+      icon: Sparkles,
+      visual: 'logo',
     },
     {
       id: 'intro',
-      text: "I'm CREAP. Your AI co-producer. I don't sleep, I don't take breaks, and I never miss a deadline.",
-      speech: "I'm Creep. Your AI co-producer. I don't sleep, I don't take breaks, and I never miss a deadline.",
-      visual: 'avatar',
+      text: "I'm CREAPD. Your co-producer. Twenty years in the business, now running through silicon. I don't sleep, I don't take breaks, and I never miss a deadline.",
+      icon: Bot,
+      visual: 'persona',
     },
     {
-      id: 'organize',
-      text: 'I sift through hundreds of stories and bring you only the ones worth your time.',
-      speech: 'I sift through hundreds of stories and bring you only the ones worth your time.',
-      visual: 'story-queue-demo',
+      id: 'how',
+      text: "Here's how we work. You bring the vision. I handle everything else — I sift stories, build production packages, direct scenes, and deliver finished shows.",
+      icon: Workflow,
+      visual: 'pipeline',
     },
     {
-      id: 'no-buttons',
-      text: "I don't make you click a hundred buttons. One spotlight. One decision at a time.",
-      speech: "I don't make you click a hundred buttons. One spotlight. One decision at a time.",
-      visual: 'spotlight',
+      id: 'mode',
+      text: modeSegment[mode] || modeSegment[CREAP_MODES.AUTOPILOT],
+      icon: modeOption.icon,
+      visual: 'mode',
+      modeGradient: modeOption.gradient,
+      modeLabel: modeOption.label,
     },
     {
-      id: 'automation',
-      text: 'Automation is King. One click, and the rest happens automatically.',
-      speech: 'Automation is King. One click, and the rest happens automatically.',
-      visual: 'automation-flow',
-    },
-    {
-      id: 'ready',
-      text: 'Ready?',
-      speech: 'Ready?',
-      visual: 'transition',
-    },
-    {
-      id: 'lets-creap',
-      text: "Let's CREAP.",
-      speech: "Let's Creep.",
+      id: 'go',
+      text: "Let's get to work. Taking you to the studio.",
+      icon: ArrowRight,
       visual: 'transition',
     },
   ];
 }
 
+function SceneVisual({ scene }) {
+  switch (scene.visual) {
+    case 'boot':
+      return (
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="w-24 h-24 rounded-full bg-berna-orange/20 border-2 border-berna-orange/40 flex items-center justify-center"
+        >
+          <Power className="w-10 h-10 text-berna-orange pulse-glow" />
+        </motion.div>
+      );
+    case 'logo':
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -30 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <CreapdLogo height="h-16" />
+          <motion.div
+            className="flex gap-1.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <span className="text-berna-orange font-heading font-bold text-sm">Create.</span>
+            <span className="text-berna-purple font-heading font-bold text-sm">Automate.</span>
+            <span className="text-berna-emerald font-heading font-bold text-sm">Produce.</span>
+            <span className="text-white font-heading font-bold text-sm">Direct.</span>
+          </motion.div>
+        </motion.div>
+      );
+    case 'persona':
+      return (
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.5, opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative"
+        >
+          <motion.div
+            className="absolute inset-0 rounded-full bg-berna-purple/20 blur-2xl"
+            animate={{ scale: [1, 1.3, 1] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+          <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-berna-purple to-purple-800 flex items-center justify-center glow-purple">
+            <Bot className="w-12 h-12 text-white" />
+          </div>
+          {/* Orbiting dots */}
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 rounded-full bg-berna-orange"
+              style={{ top: '50%', left: '50%' }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 4 + i, repeat: Infinity, ease: 'linear' }}
+            >
+              <div
+                className="absolute w-2 h-2 rounded-full bg-berna-orange"
+                style={{ transform: `translateX(${48 + i * 8}px)` }}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      );
+    case 'pipeline':
+      return (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex items-center gap-2 sm:gap-3"
+        >
+          {[
+            { icon: Newspaper, label: 'Sift', color: 'text-berna-orange' },
+            { icon: Package, label: 'Build', color: 'text-berna-purple' },
+            { icon: Presentation, label: 'Direct', color: 'text-berna-emerald' },
+            { icon: Download, label: 'Deliver', color: 'text-white' },
+          ].map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <React.Fragment key={step.label}>
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: i * 0.3, duration: 0.3 }}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                    <Icon className={`w-5 h-5 ${step.color}`} />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground font-mono uppercase">{step.label}</span>
+                </motion.div>
+                {i < 3 && (
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: 16 }}
+                    transition={{ delay: i * 0.3 + 0.2 }}
+                    className="h-px bg-gradient-to-r from-white/20 to-transparent"
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </motion.div>
+      );
+    case 'mode':
+      return (
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center gap-3"
+        >
+          <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${scene.modeGradient} flex items-center justify-center`}>
+            {React.createElement(scene.icon, { className: 'w-10 h-10 text-white' })}
+          </div>
+          <motion.span
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-xs font-mono uppercase tracking-[0.3em] text-muted-foreground"
+          >
+            {scene.modeLabel} Mode Active
+          </motion.span>
+        </motion.div>
+      );
+    case 'transition':
+      return (
+        <motion.div
+          initial={{ x: -30, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 30, opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-20 h-20 rounded-full bg-gradient-to-br from-berna-purple to-berna-orange flex items-center justify-center glow-purple"
+        >
+          <ArrowRight className="w-10 h-10 text-white" />
+        </motion.div>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function CreapdIntroSequence() {
-  const [phase, setPhase] = useState('mode_selection');
+  const [phase, setPhase] = useState('mode_selection'); // 'mode_selection' | 'intro' | 'navigating'
   const [selectedMode, setSelectedMode] = useState(null);
   const [currentScene, setCurrentScene] = useState(0);
   const [revealedWords, setRevealedWords] = useState(0);
@@ -121,21 +256,19 @@ export default function CreapdIntroSequence() {
   const wordTimerRef = useRef(null);
   const sceneTimerRef = useRef(null);
 
-  const navigate = useNavigate();
-  const { setMode } = useCREAPMode();
-
+  // Load user name
   useEffect(() => {
     (async () => {
       try {
         const user = await base44.auth.me();
         setUserName(user?.full_name || user?.email?.split('@')[0] || '');
       } catch {
-        // fallback used
+        // fine — script uses fallback
       }
     })();
   }, []);
 
-  const script = buildCinematicScript(userName);
+  const script = buildScript(selectedMode, userName);
 
   // Generate all TTS clips when intro phase starts
   useEffect(() => {
@@ -149,13 +282,17 @@ export default function CreapdIntroSequence() {
       await Promise.all(
         script.map(async (scene) => {
           try {
-            const result = await generateNarrationSpeech(scene.speech || scene.text);
+            const result = await base44.integrations.Core.GenerateSpeech({
+              text: scene.text,
+              voice: 'storm',
+            });
             if (!cancelled) clips[scene.id] = result.url;
           } catch (err) {
             console.error(`TTS failed for ${scene.id}:`, err);
           }
         })
       );
+
       if (!cancelled) {
         setAudioUrls(clips);
         setAudioReady(true);
@@ -164,7 +301,7 @@ export default function CreapdIntroSequence() {
     })();
 
     return () => { cancelled = true; };
-  }, [phase]);
+  }, [phase, selectedMode]);
 
   const handleSceneComplete = useCallback(() => {
     if (wordTimerRef.current) {
@@ -173,16 +310,15 @@ export default function CreapdIntroSequence() {
     }
 
     if (currentScene >= script.length - 1) {
+      // Intro finished — navigate to home
       setPhase('navigating');
-      // Reset narration tracking so the home page guided tour plays fresh
-      // after the intro sequence — the narration IS the continuation.
-      resetNarration();
       setTimeout(() => {
-        navigate('/home');
+        window.location.href = '/home';
       }, 800);
       return;
     }
 
+    // Small gap between scenes
     sceneTimerRef.current = setTimeout(() => {
       setCurrentScene(prev => prev + 1);
       setRevealedWords(0);
@@ -200,13 +336,15 @@ export default function CreapdIntroSequence() {
     const words = scene.text.split(' ');
 
     if (audioUrl && audioRef.current) {
+      // Play TTS audio and sync word reveal to duration
       const audio = audioRef.current;
       audio.src = audioUrl;
       audio.onloadedmetadata = () => {
-        const duration = audio.duration * 1000;
+        const duration = audio.duration * 1000; // ms
         const perWord = duration / words.length;
 
         audio.play().catch(() => {
+          // Autoplay blocked — fall back to timed reveal
           startTimedReveal(words, duration);
         });
 
@@ -230,6 +368,7 @@ export default function CreapdIntroSequence() {
         startTimedReveal(words, 4000);
       };
     } else {
+      // No audio — timed reveal fallback
       startTimedReveal(words, 4000);
     }
 
@@ -263,13 +402,19 @@ export default function CreapdIntroSequence() {
 
   const handleSelectMode = async (modeKey) => {
     setSelectedMode(modeKey);
-    await setMode(modeKey);
-    // AUTOPILOT goes straight to Home — the engine takes over from there
-    if (modeKey === CREAP_MODES.AUTOPILOT) {
-      resetNarration();
-      navigate('/home');
-      return;
+
+    // Persist mode to ProducerPreferences
+    try {
+      const existing = await base44.entities.ProducerPreferences.filter({}, '-created_date', 1);
+      if (existing && existing.length > 0) {
+        await base44.entities.ProducerPreferences.update(existing[0].id, { creap_mode: modeKey });
+      } else {
+        await base44.entities.ProducerPreferences.create({ creap_mode: modeKey });
+      }
+    } catch (err) {
+      // Non-blocking — intro continues
     }
+
     setPhase('intro');
     setCurrentScene(0);
     setRevealedWords(0);
@@ -279,14 +424,14 @@ export default function CreapdIntroSequence() {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
     if (audioRef.current) audioRef.current.pause();
-    resetNarration();
-    navigate('/home');
+    window.location.href = '/home';
   };
 
   // ─── Mode Selection Phase ───
   if (phase === 'mode_selection') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6 overflow-hidden relative">
+        {/* Ambient blobs */}
         <motion.div
           className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-berna-purple/10 blur-[120px]"
           animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
@@ -341,10 +486,9 @@ export default function CreapdIntroSequence() {
     );
   }
 
-  // ─── Cinematic Intro Phase ───
+  // ─── Intro Sequence Phase ───
   const scene = script[currentScene];
   const words = scene?.text.split(' ') || [];
-  const Visual = scene ? VISUAL_MAP[scene.visual] : null;
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col items-center justify-center overflow-hidden">
@@ -360,16 +504,16 @@ export default function CreapdIntroSequence() {
         transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      {/* Skip & Take Control button */}
+      {/* Skip button */}
       <button
         onClick={handleSkip}
         className="absolute top-5 right-5 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-muted-foreground hover:text-white hover:bg-white/[0.08] transition-all"
       >
         <SkipForward className="w-3.5 h-3.5" />
-        Skip & Take Control
+        Skip Intro
       </button>
 
-      {/* Progress dots */}
+      {/* Progress indicator */}
       <div className="absolute top-5 left-5 z-20 flex items-center gap-1.5">
         {script.map((_, i) => (
           <div
@@ -381,6 +525,7 @@ export default function CreapdIntroSequence() {
         ))}
       </div>
 
+      {/* Hidden audio element */}
       <audio ref={audioRef} />
 
       {/* Main content */}
@@ -400,10 +545,10 @@ export default function CreapdIntroSequence() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Scene visual */}
-              {Visual && <Visual />}
+              {/* Visual pop-up */}
+              <SceneVisual scene={scene} />
 
-              {/* Animated text — words appear as CREAP speaks */}
+              {/* Animated text — words appear as CREAPD speaks */}
               <p className="text-lg lg:text-xl font-heading font-medium text-white leading-relaxed min-h-[3em] flex flex-wrap justify-center gap-x-1.5 gap-y-1">
                 {words.map((word, i) => (
                   <span
@@ -411,7 +556,9 @@ export default function CreapdIntroSequence() {
                     className={`transition-all duration-200 ${
                       i < revealedWords ? 'opacity-100' : 'opacity-0'
                     }`}
-                    style={{ filter: i < revealedWords ? 'blur(0px)' : 'blur(4px)' }}
+                    style={{
+                      filter: i < revealedWords ? 'blur(0px)' : 'blur(4px)',
+                    }}
                   >
                     {word}
                   </span>
@@ -422,7 +569,7 @@ export default function CreapdIntroSequence() {
         )}
       </div>
 
-      {/* Branding at bottom */}
+      {/* CREAPD branding at bottom */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
         <p className="text-[10px] text-muted-foreground/50 font-mono uppercase tracking-[0.3em]">
           {phase === 'navigating' ? 'Entering Studio…' : 'CREAPD · AI Production System'}

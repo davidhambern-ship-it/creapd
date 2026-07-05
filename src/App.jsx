@@ -5,13 +5,10 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import CreapdLoading from '@/components/shared/CreapdLoading';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import { OrchestratorProvider } from '@/context/OrchestratorProvider';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
-import OrchestratorDevTools from '@/components/creapr/OrchestratorDevTools';
-import CreaprDemo from '@/pages/CreaprDemo';
 
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -119,7 +116,6 @@ import ContentAcquisitionEngine from '@/pages/admin/ContentAcquisitionEngine';
 import FoundationSeeder from '@/pages/admin/FoundationSeeder';
 import SourceManagementCenter from '@/pages/admin/SourceManagementCenter';
 import HandlerRegistry from '@/pages/admin/HandlerRegistry';
-import TourControlCenter from '@/pages/admin/TourControlCenter';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -151,35 +147,36 @@ const AuthenticatedApp = () => {
         <Route element={<CREAPModeLayout />}>
         <Route path="/home" element={<CreapdHome />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/news/dashboard" element={<DashboardRouter />} />
-          <Route path="/news/weeklyplanner" element={<WeeklyPlanner />} />
-          <Route path="/news/todaysbrief" element={<TodaysBrief />} />
-          <Route path="/news/storyqueue" element={<StoryQueue />} />
-          <Route path="/news/storyintelligencereview" element={<StoryIntelligenceReview />} />
-          <Route path="/news/storydetail/:id" element={<StoryDetail />} />
-          <Route path="/news/storylibrary" element={<StoryLibrary />} />
-          <Route path="/news/storymanager" element={<StoryManager />} />
-          <Route path="/news/productionpackages" element={<ProductionPackages />} />
-          <Route path="/news/brandprofiles" element={<BrandProfiles />} />
-          <Route path="/news/showprofiles" element={<ShowProfiles />} />
-          <Route path="/news/imagelibrary" element={<ImageLibrary />} />
-          <Route path="/news/exportcenter" element={<ExportCenter />} />
-          <Route path="/news/researchdesk" element={<ResearchDesk />} />
-          <Route path="/news/sources" element={<Sources />} />
-          <Route path="/news/manualimport" element={<ManualImport />} />
-          <Route path="/news/archivepage" element={<ArchivePage />} />
-          <Route path="/news/automationcenter" element={<AutomationCenter />} />
-          <Route path="/news/userprofile" element={<UserProfile />} />
-          <Route path="/news/organizations" element={<Organizations />} />
-          <Route path="/news/activitycenter" element={<ActivityCenter />} />
-          <Route path="/news/templatelibrary" element={<TemplateLibrary />} />
-          <Route path="/news/productiontemplates" element={<ProductionTemplates />} />
-          <Route path="/news/prompttemplates" element={<PromptTemplates />} />
-          <Route path="/news/securitycenter" element={<SecurityCenter />} />
-          <Route path="/news/acceptancechecklist" element={<AcceptanceChecklist />} />
-          <Route path="/news/settingspage" element={<SettingsPage />} />
-          <Route path="/news/presentations" element={<Presentations />} />
-          <Route path="/news/presentations/:id" element={<PresentationReview />} />
+          <Route path="/" element={<DashboardRouter />} />
+          <Route path="/dashboard" element={<DashboardRouter />} />
+          <Route path="/planner" element={<WeeklyPlanner />} />
+          <Route path="/brief" element={<TodaysBrief />} />
+          <Route path="/queue" element={<StoryQueue />} />
+          <Route path="/review" element={<StoryIntelligenceReview />} />
+          <Route path="/story/:id" element={<StoryDetail />} />
+          <Route path="/library" element={<StoryLibrary />} />
+          <Route path="/workspace" element={<StoryManager />} />
+          <Route path="/production" element={<ProductionPackages />} />
+          <Route path="/brands" element={<BrandProfiles />} />
+          <Route path="/shows" element={<ShowProfiles />} />
+          <Route path="/images" element={<ImageLibrary />} />
+          <Route path="/export" element={<ExportCenter />} />
+          <Route path="/research" element={<ResearchDesk />} />
+          <Route path="/sources" element={<Sources />} />
+          <Route path="/import" element={<ManualImport />} />
+          <Route path="/archive" element={<ArchivePage />} />
+          <Route path="/automation" element={<AutomationCenter />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/organizations" element={<Organizations />} />
+          <Route path="/activity" element={<ActivityCenter />} />
+          <Route path="/templates" element={<TemplateLibrary />} />
+          <Route path="/graphics-templates" element={<ProductionTemplates />} />
+          <Route path="/prompt-templates" element={<PromptTemplates />} />
+          <Route path="/security" element={<SecurityCenter />} />
+          <Route path="/checklist" element={<AcceptanceChecklist />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/presentations" element={<Presentations />} />
+          <Route path="/presentations/:id" element={<PresentationReview />} />
         </Route>
 
         {/* Onboarding & Production Type Selection */}
@@ -196,7 +193,7 @@ const AuthenticatedApp = () => {
           <Route path="/music/rundown" element={<MusicRundown />} />
           <Route path="/music/assets" element={<MusicAssets />} />
           <Route path="/music/export" element={<MusicExport />} />
-          <Route path="/news/settingspage/default-production" element={<DefaultProductionSettings />} />
+          <Route path="/settings/default-production" element={<DefaultProductionSettings />} />
         </Route>
 
         {/* Talk Production */}
@@ -274,8 +271,6 @@ const AuthenticatedApp = () => {
         <Route path="/admin/foundation-seeder" element={<FoundationSeeder />} />
         <Route path="/admin/source-management-center" element={<SourceManagementCenter />} />
         <Route path="/admin/handler-registry" element={<HandlerRegistry />} />
-        <Route path="/admin/tour-control-center" element={<TourControlCenter />} />
-        <Route path="/creapr-demo" element={<CreaprDemo />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
@@ -289,10 +284,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <OrchestratorProvider>
-            <AuthenticatedApp />
-            <OrchestratorDevTools />
-          </OrchestratorProvider>
+          <AuthenticatedApp />
         </Router>
         <Toaster />
       </QueryClientProvider>

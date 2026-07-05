@@ -93,7 +93,7 @@ export default function RundownItem({
                 )}
               </div>
 
-              <Link to={`/news/storydetail/${story.id}`}>
+              <Link to={`/story/${story.id}`}>
                 <h4 className="text-sm font-semibold text-white leading-snug hover:text-berna-purple transition-colors">{story.title}</h4>
               </Link>
 

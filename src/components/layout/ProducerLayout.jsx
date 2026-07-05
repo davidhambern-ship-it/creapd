@@ -7,7 +7,6 @@ import MobileNavDrawer from './MobileNavDrawer';
 import CreapdLauncher from '@/components/creap/CreapdLauncher';
 import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
-import ProfileIntroOverlay from '@/components/creap/cinematic/ProfileIntroOverlay';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 
 export default function ProducerLayout() {
@@ -34,7 +33,6 @@ export default function ProducerLayout() {
         navItems={PRODUCER_NAV_ITEMS}
         variant="producer"
       />
-      <ProfileIntroOverlay profileKey="news" />
       <CreapdLauncher />
       <IdlePersonalityToast />
     </div>

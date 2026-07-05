@@ -1,41 +1,11 @@
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
-const LEGACY_REDIRECTS = {
-    '/': '/home',
-    '/planner': '/news/weeklyplanner',
-    '/brief': '/news/todaysbrief',
-    '/queue': '/news/storyqueue',
-    '/review': '/news/storyintelligencereview',
-    '/library': '/news/storylibrary',
-    '/workspace': '/news/storymanager',
-    '/production': '/news/productionpackages',
-    '/brands': '/news/brandprofiles',
-    '/shows': '/news/showprofiles',
-    '/images': '/news/imagelibrary',
-    '/export': '/news/exportcenter',
-    '/research': '/news/researchdesk',
-    '/sources': '/news/sources',
-    '/import': '/news/manualimport',
-    '/archive': '/news/archivepage',
-    '/automation': '/news/automationcenter',
-    '/profile': '/news/userprofile',
-    '/organizations': '/news/organizations',
-    '/activity': '/news/activitycenter',
-    '/templates': '/news/templatelibrary',
-    '/graphics-templates': '/news/productiontemplates',
-    '/prompt-templates': '/news/prompttemplates',
-    '/security': '/news/securitycenter',
-    '/checklist': '/news/acceptancechecklist',
-    '/settings': '/news/settingspage',
-    '/presentations': '/news/presentations',
-};
 
 export default function PageNotFound({}) {
     const location = useLocation();
-    
-    const redirect = LEGACY_REDIRECTS[location.pathname];
+    const pageName = location.pathname.substring(1);
 
     const { data: authData, isFetched } = useQuery({
         queryKey: ['user'],
@@ -48,12 +18,6 @@ export default function PageNotFound({}) {
             }
         }
     });
-
-    if (redirect) {
-        return <Navigate to={redirect} replace />;
-    }
-    
-    const pageName = location.pathname.substring(1);
     
     return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">

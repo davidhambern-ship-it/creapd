@@ -4,15 +4,15 @@ import { Search, FileText, Package, Palette, Tv, LayoutTemplate, Download, Brief
 import { Link } from 'react-router-dom';
 
 const SEARCH_SOURCES = [
-  { entity: 'Article', label: 'Stories', icon: FileText, path: '/news/storyqueue', titleField: 'title', subField: 'source_name' },
-  { entity: 'Briefing', label: 'Briefings', icon: FileText, path: '/news/todaysbrief', titleField: 'title', subField: 'date' },
-  { entity: 'ProductionPackage', label: 'Packages', icon: Package, path: '/news/productionpackages', titleField: 'story_summary', subField: 'tone' },
-  { entity: 'BrandProfile', label: 'Brands', icon: Palette, path: '/news/brandprofiles', titleField: 'brand_name', subField: 'organization_name' },
-  { entity: 'ShowProfile', label: 'Shows', icon: Tv, path: '/news/showprofiles', titleField: 'show_name', subField: 'host_names' },
-  { entity: 'BriefingTemplate', label: 'Templates', icon: LayoutTemplate, path: '/news/templatelibrary', titleField: 'name', subField: 'template_key' },
-  { entity: 'ExportProfile', label: 'Exports', icon: Download, path: '/news/exportcenter', titleField: 'name', subField: 'format' },
-  { entity: 'ImageAsset', label: 'Media', icon: ImageIcon, path: '/news/imagelibrary', titleField: 'title', subField: 'tags' },
-  { entity: 'Organization', label: 'Organizations', icon: Briefcase, path: '/news/organizations', titleField: 'name', subField: 'industry' },
+  { entity: 'Article', label: 'Stories', icon: FileText, path: '/queue', titleField: 'title', subField: 'source_name' },
+  { entity: 'Briefing', label: 'Briefings', icon: FileText, path: '/brief', titleField: 'title', subField: 'date' },
+  { entity: 'ProductionPackage', label: 'Packages', icon: Package, path: '/production', titleField: 'story_summary', subField: 'tone' },
+  { entity: 'BrandProfile', label: 'Brands', icon: Palette, path: '/brands', titleField: 'brand_name', subField: 'organization_name' },
+  { entity: 'ShowProfile', label: 'Shows', icon: Tv, path: '/shows', titleField: 'show_name', subField: 'host_names' },
+  { entity: 'BriefingTemplate', label: 'Templates', icon: LayoutTemplate, path: '/templates', titleField: 'name', subField: 'template_key' },
+  { entity: 'ExportProfile', label: 'Exports', icon: Download, path: '/export', titleField: 'name', subField: 'format' },
+  { entity: 'ImageAsset', label: 'Media', icon: ImageIcon, path: '/images', titleField: 'title', subField: 'tags' },
+  { entity: 'Organization', label: 'Organizations', icon: Briefcase, path: '/organizations', titleField: 'name', subField: 'industry' },
 ];
 
 export default function GlobalSearch() {

@@ -12,7 +12,6 @@ import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
-import ProfileIntroOverlay from '@/components/creap/cinematic/ProfileIntroOverlay';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/spiritual/dashboard' },
@@ -58,7 +57,6 @@ export default function SpiritualLayout() {
       </div>
 
       <ProductionFooter variant="spiritual" />
-      <ProfileIntroOverlay profileKey="spiritual" />
       <MobileBottomNav items={MOBILE_NAV_ITEMS} />
 
       <MobileNavDrawer

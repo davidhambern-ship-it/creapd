@@ -93,7 +93,7 @@ export default function StoryCard({
           </div>
 
           {/* Headline */}
-          <Link to={`/news/storydetail/${article.id}`}>
+          <Link to={`/story/${article.id}`}>
             <h3 className="text-sm font-semibold text-white leading-snug mb-2 hover:text-berna-purple transition-colors">{article.title}</h3>
           </Link>
 
@@ -207,7 +207,7 @@ export default function StoryCard({
           <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-red-400 text-xs h-7" onClick={() => onDelete(article.id)}>
             <Trash2 className="w-3 h-3 mr-1" />Delete
           </Button>
-          <Link to={`/news/storydetail/${article.id}`}>
+          <Link to={`/story/${article.id}`}>
             <Button size="sm" variant="ghost" className="text-berna-purple hover:bg-berna-purple/10 text-xs h-7">
               <FileText className="w-3 h-3 mr-1" />Details
             </Button>
