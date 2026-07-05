@@ -4,6 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * Fetches the full article body text from the source URL and stores it natively.
  * Uses LLM-based extraction to isolate the actual article content from
  * navigation, sidebars, video playlists, and other non-article page elements.
+ * Also extracts video URLs (YouTube embeds, direct media) for video articles.
  * Caches the extracted text on the Article entity for instant subsequent reads.
  */
 Deno.serve(async (req) => {
@@ -23,6 +24,7 @@ Deno.serve(async (req) => {
     if (article.body_content && !force_refresh) {
       return Response.json({
         body_content: article.body_content,
+        video_url: article.video_url || null,
         cached: true,
         fetched_at: article.body_fetched_at,
       });
@@ -46,16 +48,21 @@ Deno.serve(async (req) => {
 
     const html = await res.text();
     const rawText = stripHtml(html).substring(0, 15000);
+    const videoUrl = extractVideoUrl(html, article.url);
 
     if (rawText.length < 200) {
+      // Save video_url even if text extraction fails
+      if (videoUrl) {
+        await base44.entities.Article.update(article_id, { video_url: videoUrl });
+      }
       return Response.json({
         error: 'Page has too little text content to extract',
+        video_url: videoUrl,
         fallback_url: article.url,
       }, { status: 422 });
     }
 
-    // Use LLM to extract ONLY the actual article body — ignore video playlists,
-    // sidebars, navigation, related content, ads, and other non-article elements
+    // Use LLM to extract ONLY the actual article body
     const llmRes = await base44.integrations.Core.InvokeLLM({
       prompt: `You are CREAPD's Article Extraction Engine. Extract the FULL article body text from this web page.
 
@@ -85,25 +92,36 @@ ${rawText}`,
     });
 
     const bodyContent = (llmRes?.body_content || '').trim();
+    const isVideoPage = llmRes?.is_video_page || false;
 
-    if (!bodyContent || bodyContent.length < 100 || llmRes?.is_video_page) {
+    // Save video_url regardless of body content status
+    if (videoUrl) {
+      await base44.entities.Article.update(article_id, { video_url: videoUrl });
+    }
+
+    if (!bodyContent || bodyContent.length < 100 || isVideoPage) {
       return Response.json({
-        error: llmRes?.is_video_page
+        error: isVideoPage
           ? 'This is a video page with no written article to display'
           : 'Could not extract readable article content from this page',
-        is_video_page: llmRes?.is_video_page || false,
+        is_video_page: isVideoPage,
+        video_url: videoUrl,
         fallback_url: article.url,
       }, { status: 422 });
     }
 
-    // Save to article
-    await base44.entities.Article.update(article_id, {
+    // Save body content + video_url
+    const updateFields = {
       body_content: bodyContent,
       body_fetched_at: new Date().toISOString(),
-    });
+    };
+    if (videoUrl) updateFields.video_url = videoUrl;
+
+    await base44.entities.Article.update(article_id, updateFields);
 
     return Response.json({
       body_content: bodyContent,
+      video_url: videoUrl,
       cached: false,
       fetched_at: new Date().toISOString(),
     });
@@ -126,4 +144,39 @@ function stripHtml(html) {
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function extractVideoUrl(html, articleUrl) {
+  // YouTube embeds
+  const ytPatterns = [
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/i,
+    /youtube-nocookie\.com\/embed\/([a-zA-Z0-9_-]{11})/i,
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/i,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/i,
+  ];
+  for (const pattern of ytPatterns) {
+    const m = html.match(pattern);
+    if (m) return `https://www.youtube.com/watch?v=${m[1]}`;
+  }
+
+  // Direct media files in <source>, <video>, <audio> tags
+  const mediaTagRe = /<(?:source|video|audio)[^>]+src=["']([^"']+)["']/gi;
+  let mt;
+  while ((mt = mediaTagRe.exec(html)) !== null) {
+    let url = mt[1];
+    if (url.match(/\.(mp4|webm|mp3|wav|ogg|oga|m4a|mpeg|mpga|flac)(\?|$)/i)) {
+      if (url.startsWith('//')) url = 'https:' + url;
+      else if (url.startsWith('/')) {
+        try { url = new URL(url, articleUrl).href; } catch (e) { continue; }
+      }
+      return url;
+    }
+  }
+
+  // Bare media URLs in JSON or data attributes
+  const bareMediaRe = /["'](https?:\/\/[^"']+\.(?:mp4|webm|mp3|wav|ogg|oga|m4a|mpeg|mpga|flac)[^"']*)["']/i;
+  const bm = html.match(bareMediaRe);
+  if (bm) return bm[1];
+
+  return null;
 }
