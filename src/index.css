@@ -363,12 +363,14 @@
 }
 .glitch-text::before {
   color: hsl(270 80% 65%);
+  -webkit-text-fill-color: hsl(270 80% 65%);
   animation: glitch-clip 4s infinite linear alternate-reverse;
   transform: translate(-2px, 0);
   opacity: 0.6;
 }
 .glitch-text::after {
   color: hsl(25 95% 60%);
+  -webkit-text-fill-color: hsl(25 95% 60%);
   animation: glitch-clip 3s infinite linear alternate-reverse;
   animation-delay: 0.2s;
   transform: translate(2px, 0);
