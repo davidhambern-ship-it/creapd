@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { text, voice_id } = await req.json();
+    const { text, voice_id, stability, similarity_boost } = await req.json();
     if (!text || !voice_id) {
       return Response.json({ error: 'text and voice_id are required' }, { status: 400 });
     }
@@ -26,7 +26,10 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           text,
           model_id: 'eleven_multilingual_v2',
-          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          voice_settings: {
+            stability: typeof stability === 'number' ? stability : 0.5,
+            similarity_boost: typeof similarity_boost === 'number' ? similarity_boost : 0.75,
+          },
         }),
       }
     );

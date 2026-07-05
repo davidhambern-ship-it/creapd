@@ -72,8 +72,13 @@ export default function SystemNarrationOverlay() {
 
     (async () => {
       try {
+        const elevenlabsId = scene.elevenlabs_voice_id || narration?.default_elevenlabs_voice_id || '';
         const sceneVoice = scene.voice_override || narration?.default_voice || 'storm';
-        const result = await generateNarrationSpeech(scene.speech || scene.text, sceneVoice);
+        const result = await generateNarrationSpeech(scene.speech || scene.text, sceneVoice, {
+          elevenlabs_voice_id: elevenlabsId,
+          voice_stability: scene.voice_stability,
+          voice_similarity: scene.voice_similarity,
+        });
         if (!cancelled) {
           setAudioUrl(result.url);
           setIsLoadingAudio(false);

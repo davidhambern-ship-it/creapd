@@ -6,7 +6,7 @@ import { generateNarrationSpeech } from '@/lib/clonedVoice';
 import { resolveTourIcon, FONT_CLASSES } from '@/lib/tourIcons';
 import NarrationVisual from '@/components/system/NarrationVisual';
 
-export default function TourPreview({ open, onOpenChange, scenes, defaultVoice = 'storm', startIndex = 0 }) {
+export default function TourPreview({ open, onOpenChange, scenes, defaultVoice = 'storm', defaultElevenLabsVoiceId = '', startIndex = 0 }) {
   const [currentScene, setCurrentScene] = useState(startIndex);
   const [revealedWords, setRevealedWords] = useState(0);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -54,8 +54,13 @@ export default function TourPreview({ open, onOpenChange, scenes, defaultVoice =
 
     (async () => {
       try {
+        const elevenlabsId = scene.elevenlabs_voice_id || defaultElevenLabsVoiceId || '';
         const voice = scene.voice_override || defaultVoice || 'storm';
-        const result = await generateNarrationSpeech(scene.speech_text || scene.text, voice);
+        const result = await generateNarrationSpeech(scene.speech_text || scene.text, voice, {
+          elevenlabs_voice_id: elevenlabsId,
+          voice_stability: scene.voice_stability,
+          voice_similarity: scene.voice_similarity,
+        });
         if (!cancelled) {
           setAudioUrl(result.url);
           setIsLoadingAudio(false);

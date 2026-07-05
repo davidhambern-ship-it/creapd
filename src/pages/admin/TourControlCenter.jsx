@@ -92,8 +92,23 @@ export default function TourControlCenter() {
           visual_type: s.visual || 'reveal',
           icon_name: findIconName(s.icon),
           icon_color: s.color || 'text-berna-purple',
-          font_style: 'heading',
+          font_style: s.font_style || 'heading',
           voice_override: '',
+          elevenlabs_voice_id: '',
+          speech_speed: 1,
+          voice_stability: 0.5,
+          voice_similarity: 0.75,
+          pause_after_ms: 500,
+          text_color: 'text-white',
+          text_size: 'lg',
+          text_alignment: 'center',
+          background_type: 'default',
+          element_layout: 'centered',
+          transition_in: 'fade',
+          transition_out: 'fade',
+          animation_speed: 'normal',
+          generated_image_url: '',
+          image_prompt: '',
         }));
         if (sceneEntities.length > 0) {
           await base44.entities.TourScene.bulkCreate(sceneEntities);
@@ -134,6 +149,21 @@ export default function TourControlCenter() {
       icon_color: 'text-berna-purple',
       font_style: 'heading',
       voice_override: '',
+      elevenlabs_voice_id: '',
+      speech_speed: 1,
+      voice_stability: 0.5,
+      voice_similarity: 0.75,
+      pause_after_ms: 500,
+      text_color: 'text-white',
+      text_size: 'lg',
+      text_alignment: 'center',
+      background_type: 'default',
+      element_layout: 'centered',
+      transition_in: 'fade',
+      transition_out: 'fade',
+      animation_speed: 'normal',
+      generated_image_url: '',
+      image_prompt: '',
     }]);
   };
 
@@ -152,13 +182,14 @@ export default function TourControlCenter() {
     try {
       // Update script meta
       if (draftScript) {
-        await base44.entities.TourScript.update(selectedId, {
-          script_name: draftScript.script_name,
-          route_path: draftScript.route_path,
-          default_voice: draftScript.default_voice,
-          is_active: draftScript.is_active,
-          description: draftScript.description,
-        });
+      await base44.entities.TourScript.update(selectedId, {
+        script_name: draftScript.script_name,
+        route_path: draftScript.route_path,
+        default_voice: draftScript.default_voice,
+        default_elevenlabs_voice_id: draftScript.default_elevenlabs_voice_id || '',
+        is_active: draftScript.is_active,
+        description: draftScript.description,
+      });
       }
       // Save scenes
       for (const scene of scenes) {
@@ -173,6 +204,21 @@ export default function TourControlCenter() {
           icon_color: scene.icon_color,
           font_style: scene.font_style,
           voice_override: scene.voice_override,
+          elevenlabs_voice_id: scene.elevenlabs_voice_id || '',
+          speech_speed: scene.speech_speed ?? 1,
+          voice_stability: scene.voice_stability ?? 0.5,
+          voice_similarity: scene.voice_similarity ?? 0.75,
+          pause_after_ms: scene.pause_after_ms ?? 500,
+          text_color: scene.text_color || 'text-white',
+          text_size: scene.text_size || 'lg',
+          text_alignment: scene.text_alignment || 'center',
+          background_type: scene.background_type || 'default',
+          element_layout: scene.element_layout || 'centered',
+          transition_in: scene.transition_in || 'fade',
+          transition_out: scene.transition_out || 'fade',
+          animation_speed: scene.animation_speed || 'normal',
+          generated_image_url: scene.generated_image_url || '',
+          image_prompt: scene.image_prompt || '',
         };
         if (scene._isNew || !scene.id) {
           await base44.entities.TourScene.create(payload);
@@ -440,6 +486,7 @@ export default function TourControlCenter() {
           onOpenChange={setPreviewOpen}
           scenes={scenes}
           defaultVoice={draftScript?.default_voice || 'storm'}
+          defaultElevenLabsVoiceId={draftScript?.default_elevenlabs_voice_id || ''}
           startIndex={previewStart}
         />
       )}

@@ -42,6 +42,7 @@ export function useTourScript(pathname) {
       const built = {
         name: script.script_name,
         default_voice: script.default_voice || 'storm',
+        default_elevenlabs_voice_id: script.default_elevenlabs_voice_id || '',
         _source: 'database',
         _scriptId: script.id,
         scenes: scenes.map(s => ({
@@ -55,6 +56,21 @@ export function useTourScript(pathname) {
           color: s.icon_color || 'text-berna-purple',
           font_style: s.font_style || 'heading',
           voice_override: s.voice_override || null,
+          elevenlabs_voice_id: s.elevenlabs_voice_id || '',
+          speech_speed: s.speech_speed ?? 1,
+          voice_stability: s.voice_stability ?? 0.5,
+          voice_similarity: s.voice_similarity ?? 0.75,
+          pause_after_ms: s.pause_after_ms ?? 500,
+          text_color: s.text_color || 'text-white',
+          text_size: s.text_size || 'lg',
+          text_alignment: s.text_alignment || 'center',
+          background_type: s.background_type || 'default',
+          element_layout: s.element_layout || 'centered',
+          transition_in: s.transition_in || 'fade',
+          transition_out: s.transition_out || 'fade',
+          animation_speed: s.animation_speed || 'normal',
+          generated_image_url: s.generated_image_url || '',
+          image_prompt: s.image_prompt || '',
         })),
       };
 
