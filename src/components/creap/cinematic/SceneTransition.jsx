@@ -53,8 +53,6 @@ export default function SceneTransition() {
     // Only transition on actual route changes (not initial load)
     if (prevPathRef.current === pathname) return;
 
-    // Don't transition between sub-routes of the same section
-    // (e.g. /music/dashboard → /music/research should still transition)
     const prevPath = prevPathRef.current;
     prevPathRef.current = pathname;
 
@@ -64,6 +62,11 @@ export default function SceneTransition() {
       return;
     }
 
+    // If the destination page has a full narration, the narration IS the
+    // transition — don't show a separate transition overlay that would
+    // compete with it.
+    if (hasFullNarration) return;
+
     // Pick transition text
     const text = GENERIC_LINES[Math.floor(Math.random() * GENERIC_LINES.length)];
     setTransitionText(text);
@@ -72,28 +75,25 @@ export default function SceneTransition() {
     setTransitioning(true);
     setAudioUrl(null);
 
-    // Generate brief TTS (only if no full narration will play — avoids double audio)
-    if (!hasFullNarration) {
-      let cancelled = false;
-      (async () => {
-        try {
-          const result = await generateNarrationSpeech(text);
-          if (!cancelled && transitioning) {
-            setAudioUrl(result.url);
-          }
-        } catch {
-          // silent fallback
+    // Generate brief TTS
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await generateNarrationSpeech(text);
+        if (!cancelled) {
+          setAudioUrl(result.url);
         }
-      })();
-      return () => { cancelled = true; };
-    }
+      } catch {
+        // silent fallback
+      }
+    })();
 
-    // Auto-end transition after duration
+    // Auto-end transition after duration (fallback in case TTS is slow)
     const timer = setTimeout(() => {
       setTransitioning(false);
     }, TRANSITION_DURATION);
 
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [pathname, mode, isLoadingPrefs, hasFullNarration]);
 
   // Play audio when available

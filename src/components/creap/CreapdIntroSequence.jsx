@@ -7,6 +7,7 @@ import CreapdLogo from '@/components/brand/CreapdLogo';
 import { CREAP_MODES } from '@/lib/creapdPersonality';
 import { useCREAPMode } from '@/context/CREAPModeContext';
 import { generateNarrationSpeech } from '@/lib/clonedVoice';
+import { resetNarration } from '@/lib/systemNarration';
 import {
   BlackLogoReveal, LogoExpand, AvatarIntro,
   StoryQueueDemo, SpotlightFocus, AutomationFlow, FadeTransition,
@@ -173,6 +174,9 @@ export default function CreapdIntroSequence() {
 
     if (currentScene >= script.length - 1) {
       setPhase('navigating');
+      // Reset narration tracking so the home page guided tour plays fresh
+      // after the intro sequence — the narration IS the continuation.
+      resetNarration();
       setTimeout(() => {
         navigate('/home');
       }, 800);
@@ -269,6 +273,7 @@ export default function CreapdIntroSequence() {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
     if (audioRef.current) audioRef.current.pause();
+    resetNarration();
     navigate('/home');
   };
 
