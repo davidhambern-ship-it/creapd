@@ -26,12 +26,12 @@ function deriveProfileFromPath(pathname) {
  * 4 = Package Review, 5 = Presentation, 6 = Export
  */
 function deriveStepFromPath(pathname) {
-  if (pathname.includes('/queue') || pathname.includes('/review')) return 1;
-  if (pathname.includes('/workspace') || pathname.includes('/library')) return 2;
-  if (pathname.includes('/production')) return 3;
-  if (pathname.includes('/presentations')) return 5;
-  if (pathname.includes('/export')) return 6;
-  if (pathname.includes('/brief') || pathname === '/' || pathname.includes('/dashboard')) return 1;
+  if (pathname.includes('/news/queue') || pathname.includes('/news/review')) return 1;
+  if (pathname.includes('/news/workspace') || pathname.includes('/news/library')) return 2;
+  if (pathname.includes('/news/production')) return 3;
+  if (pathname.includes('/news/presentations')) return 5;
+  if (pathname.includes('/news/export')) return 6;
+  if (pathname.includes('/news/brief') || pathname === '/' || pathname.includes('/news/dashboard')) return 1;
   return 1;
 }
 

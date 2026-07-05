@@ -19,7 +19,7 @@ export default function PresentationStage({ pkg, handleGeneratePresentation, gen
         {generatingPresentation ? 'Generating...' : 'Generate Presentation'}
       </Button>
 
-      <Link to="/production" className="block">
+      <Link to="/news/production" className="block">
         <div className="glass-panel p-3 flex items-center justify-between hover:border-white/[0.12] transition-colors">
           <span className="text-xs text-muted-foreground">Go to Production page</span>
           <ArrowRight className="w-3.5 h-3.5 text-berna-purple" />

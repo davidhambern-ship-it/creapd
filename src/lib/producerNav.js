@@ -10,66 +10,66 @@ export const PRODUCER_NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { icon: FileText, label: "Today's Brief", path: '/brief' },
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: FileText, label: "Today's Brief", path: '/news/brief' },
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/news/dashboard' },
     ]
   },
   {
     label: 'Content',
     items: [
-      { icon: Layers, label: 'Story Queue', path: '/queue' },
-      { icon: Bookmark, label: 'Story Package Library', path: '/library' },
-      { icon: ClipboardList, label: 'Story Manager', path: '/workspace' },
+      { icon: Layers, label: 'Story Queue', path: '/news/queue' },
+      { icon: Bookmark, label: 'Story Package Library', path: '/news/library' },
+      { icon: ClipboardList, label: 'Story Manager', path: '/news/workspace' },
     ]
   },
   {
     label: 'Production',
     items: [
-      { icon: Package, label: 'Production', path: '/production' },
-      { icon: Palette, label: 'Brand Profiles', path: '/brands' },
-      { icon: Tv, label: 'Show Profiles', path: '/shows' },
-      { icon: ImageIcon, label: 'Image/Video Library', path: '/images' },
+      { icon: Package, label: 'Production', path: '/news/production' },
+      { icon: Palette, label: 'Brand Profiles', path: '/news/brands' },
+      { icon: Tv, label: 'Show Profiles', path: '/news/shows' },
+      { icon: ImageIcon, label: 'Image/Video Library', path: '/news/images' },
     ]
   },
   {
     label: 'Output',
     items: [
-      { icon: Film, label: 'Presentations', path: '/presentations' },
-      { icon: Download, label: 'Export Center', path: '/export' },
+      { icon: Film, label: 'Presentations', path: '/news/presentations' },
+      { icon: Download, label: 'Export Center', path: '/news/export' },
     ]
   },
   {
     label: 'Research & Sources',
     items: [
-      { icon: Search, label: 'Research Desk', path: '/research' },
-      { icon: Radio, label: 'Sources', path: '/sources' },
-      { icon: FileInput, label: 'Import URL', path: '/import' },
+      { icon: Search, label: 'Research Desk', path: '/news/research' },
+      { icon: Radio, label: 'Sources', path: '/news/sources' },
+      { icon: FileInput, label: 'Import URL', path: '/news/import' },
     ]
   },
   {
     label: 'Templates',
     items: [
-      { icon: LayoutTemplate, label: 'Templates', path: '/templates' },
-      { icon: ImageIcon, label: 'Graphics Templates', path: '/graphics-templates' },
-      { icon: MessageSquareCode, label: 'Prompt Templates', path: '/prompt-templates' },
+      { icon: LayoutTemplate, label: 'Templates', path: '/news/templates' },
+      { icon: ImageIcon, label: 'Graphics Templates', path: '/news/graphics-templates' },
+      { icon: MessageSquareCode, label: 'Prompt Templates', path: '/news/prompt-templates' },
     ]
   },
   {
     label: 'System',
     items: [
-      { icon: Archive, label: 'Archive', path: '/archive' },
-      { icon: ShieldCheck, label: 'Security & Privacy', path: '/security' },
-      { icon: Activity, label: 'Automation', path: '/automation' },
-      { icon: Building2, label: 'Organizations', path: '/organizations' },
-      { icon: Bell, label: 'Activity Center', path: '/activity' },
-      { icon: UserCircle, label: 'My Profile', path: '/profile' },
-      { icon: Settings, label: 'Settings', path: '/settings' },
+      { icon: Archive, label: 'Archive', path: '/news/archive' },
+      { icon: ShieldCheck, label: 'Security & Privacy', path: '/news/security' },
+      { icon: Activity, label: 'Automation', path: '/news/automation' },
+      { icon: Building2, label: 'Organizations', path: '/news/organizations' },
+      { icon: Bell, label: 'Activity Center', path: '/news/activity' },
+      { icon: UserCircle, label: 'My Profile', path: '/news/profile' },
+      { icon: Settings, label: 'Settings', path: '/news/settings' },
     ]
   },
 ];
 
 export const PRODUCTION_MODES = [
-  { key: 'news', label: 'News', icon: Newspaper, path: '/' },
+  { key: 'news', label: 'News', icon: Newspaper, path: '/news/dashboard' },
   { key: 'talk', label: 'Talk', icon: Mic2, path: '/talk/dashboard' },
   { key: 'cooking', label: 'Cooking', icon: ChefHat, path: '/cooking/dashboard' },
   { key: 'sports', label: 'Sports', icon: Trophy, path: '/sports/dashboard' },
@@ -89,5 +89,6 @@ export function getActiveProductionMode(pathname) {
   if (pathname.startsWith('/cooking')) return 'cooking';
   if (pathname.startsWith('/sports')) return 'sports';
   if (pathname.startsWith('/cosmo')) return 'cosmo';
+  if (pathname.startsWith('/news')) return 'news';
   return 'news';
 }

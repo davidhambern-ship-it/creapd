@@ -10,7 +10,7 @@ export const PRODUCTION_PROFILES = [
     description: 'Daily news briefings, breaking news, story queues, teleprompter scripts, and broadcast production packages.',
     icon: Newspaper,
     available: true,
-    path: '/dashboard',
+    path: '/news/dashboard',
     gradient: 'from-blue-500/20 to-cyan-500/10',
     accent: 'text-blue-400',
     accentBg: 'bg-blue-500/10',

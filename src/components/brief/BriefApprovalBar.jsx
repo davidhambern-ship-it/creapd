@@ -50,14 +50,14 @@ export default function BriefApprovalBar({ totalStories, approvedStories, totalS
               <span className="inline-flex items-center gap-1 text-xs text-berna-emerald font-medium">
                 <CheckCircle className="w-3 h-3" />Ready for Production
               </span>
-              <Link to="/production">
+              <Link to="/news/production">
                 <Button size="sm" className="bg-berna-emerald hover:bg-berna-emerald/90 text-white text-xs h-8">
                   <Layers className="w-3 h-3 mr-1" />Begin Production
                 </Button>
               </Link>
             </div>
           ) : (
-            <Link to="/production">
+            <Link to="/news/production">
               <Button size="sm" variant="outline" className="border-white/10 text-white text-xs h-8 hover:bg-white/[0.04]">
                 <Layers className="w-3 h-3 mr-1" />Go to Production
               </Button>

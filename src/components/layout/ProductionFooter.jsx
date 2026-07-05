@@ -20,7 +20,7 @@ const VARIANTS = {
       { icon: Database, label: 'Pulled', value: '47' },
       { icon: CheckCircle, label: 'Approved', value: '18', color: 'text-berna-emerald' },
     ],
-    action: { icon: Zap, label: 'Generate Brief', path: '/brief' },
+    action: { icon: Zap, label: 'Generate Brief', path: '/news/brief' },
   },
   music: {
     label: 'Music Production',

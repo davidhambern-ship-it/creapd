@@ -27,7 +27,7 @@ export default function BriefStoryCard({ article, isBernasPick, onApprove, onRej
               <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Berna's Pick</span>
             </div>
           )}
-          <Link to={`/story/${article.id}`}>
+          <Link to={`/news/story/${article.id}`}>
             <h4 className="text-sm font-semibold text-white leading-snug hover:text-berna-purple transition-colors">{article.title}</h4>
           </Link>
           <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -96,7 +96,7 @@ export default function BriefStoryCard({ article, isBernasPick, onApprove, onRej
           </Button>
         )}
         {isApproved && (
-          <Link to="/production">
+          <Link to="/news/production">
             <Button size="sm" variant="ghost" className="text-berna-purple hover:bg-berna-purple/10 text-xs h-7">
               <Package className="w-3 h-3 mr-1" />To Production
             </Button>
@@ -105,7 +105,7 @@ export default function BriefStoryCard({ article, isBernasPick, onApprove, onRej
         <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-berna-purple hover:underline ml-auto">
           {expanded ? 'Show less' : 'Show details'}
         </button>
-        <Link to={`/story/${article.id}`} className="text-[10px] text-berna-emerald hover:underline">
+        <Link to={`/news/story/${article.id}`} className="text-[10px] text-berna-emerald hover:underline">
           Full story →
         </Link>
       </div>

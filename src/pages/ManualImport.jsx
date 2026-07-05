@@ -106,7 +106,7 @@ export default function ManualImport() {
             </div>
           )}
           <div className="flex gap-2 pt-2">
-            <Button size="sm" onClick={() => navigate('/queue')} className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs">
+            <Button size="sm" onClick={() => navigate('/news/queue')} className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs">
               View in Story Queue <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setResult(null); setUrl(''); }} className="border-white/10 text-white text-xs">

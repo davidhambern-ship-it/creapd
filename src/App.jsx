@@ -145,38 +145,38 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<CREAPModeLayout />}>
-        <Route path="/home" element={<CreapdHome />} />
+        <Route path="/" element={<CreapdHome />} />
+        <Route path="/home" element={<Navigate to="/" replace />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/" element={<DashboardRouter />} />
-          <Route path="/dashboard" element={<DashboardRouter />} />
-          <Route path="/planner" element={<WeeklyPlanner />} />
-          <Route path="/brief" element={<TodaysBrief />} />
-          <Route path="/queue" element={<StoryQueue />} />
-          <Route path="/review" element={<StoryIntelligenceReview />} />
-          <Route path="/story/:id" element={<StoryDetail />} />
-          <Route path="/library" element={<StoryLibrary />} />
-          <Route path="/workspace" element={<StoryManager />} />
-          <Route path="/production" element={<ProductionPackages />} />
-          <Route path="/brands" element={<BrandProfiles />} />
-          <Route path="/shows" element={<ShowProfiles />} />
-          <Route path="/images" element={<ImageLibrary />} />
-          <Route path="/export" element={<ExportCenter />} />
-          <Route path="/research" element={<ResearchDesk />} />
-          <Route path="/sources" element={<Sources />} />
-          <Route path="/import" element={<ManualImport />} />
-          <Route path="/archive" element={<ArchivePage />} />
-          <Route path="/automation" element={<AutomationCenter />} />
-          <Route path="/profile" element={<UserProfile />} />
-          <Route path="/organizations" element={<Organizations />} />
-          <Route path="/activity" element={<ActivityCenter />} />
-          <Route path="/templates" element={<TemplateLibrary />} />
-          <Route path="/graphics-templates" element={<ProductionTemplates />} />
-          <Route path="/prompt-templates" element={<PromptTemplates />} />
-          <Route path="/security" element={<SecurityCenter />} />
-          <Route path="/checklist" element={<AcceptanceChecklist />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/presentations" element={<Presentations />} />
-          <Route path="/presentations/:id" element={<PresentationReview />} />
+          <Route path="/news/dashboard" element={<DashboardRouter />} />
+          <Route path="/news/planner" element={<WeeklyPlanner />} />
+          <Route path="/news/brief" element={<TodaysBrief />} />
+          <Route path="/news/queue" element={<StoryQueue />} />
+          <Route path="/news/review" element={<StoryIntelligenceReview />} />
+          <Route path="/news/story/:id" element={<StoryDetail />} />
+          <Route path="/news/library" element={<StoryLibrary />} />
+          <Route path="/news/workspace" element={<StoryManager />} />
+          <Route path="/news/production" element={<ProductionPackages />} />
+          <Route path="/news/brands" element={<BrandProfiles />} />
+          <Route path="/news/shows" element={<ShowProfiles />} />
+          <Route path="/news/images" element={<ImageLibrary />} />
+          <Route path="/news/export" element={<ExportCenter />} />
+          <Route path="/news/research" element={<ResearchDesk />} />
+          <Route path="/news/sources" element={<Sources />} />
+          <Route path="/news/import" element={<ManualImport />} />
+          <Route path="/news/archive" element={<ArchivePage />} />
+          <Route path="/news/automation" element={<AutomationCenter />} />
+          <Route path="/news/profile" element={<UserProfile />} />
+          <Route path="/news/organizations" element={<Organizations />} />
+          <Route path="/news/activity" element={<ActivityCenter />} />
+          <Route path="/news/templates" element={<TemplateLibrary />} />
+          <Route path="/news/graphics-templates" element={<ProductionTemplates />} />
+          <Route path="/news/prompt-templates" element={<PromptTemplates />} />
+          <Route path="/news/security" element={<SecurityCenter />} />
+          <Route path="/news/checklist" element={<AcceptanceChecklist />} />
+          <Route path="/news/settings" element={<SettingsPage />} />
+          <Route path="/news/presentations" element={<Presentations />} />
+          <Route path="/news/presentations/:id" element={<PresentationReview />} />
         </Route>
 
         {/* Onboarding & Production Type Selection */}

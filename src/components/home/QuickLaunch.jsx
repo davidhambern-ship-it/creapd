@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { Clock, Newspaper, Church, Layers, Eye, ArrowRight } from 'lucide-react';
 
 const QUICK_ACTIONS = [
-  { icon: Clock, label: 'Continue Last Production', path: '/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
-  { icon: Newspaper, label: 'Start News Production', path: '/dashboard', color: 'text-blue-400', bg: 'bg-blue-500/10' },
+  { icon: Clock, label: 'Continue Last Production', path: '/news/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
+  { icon: Newspaper, label: 'Start News Production', path: '/news/dashboard', color: 'text-blue-400', bg: 'bg-blue-500/10' },
   { icon: Church, label: 'Open Message Builder', path: '/spiritual/message', color: 'text-amber-400', bg: 'bg-amber-500/10' },
   { icon: Eye, label: 'View Shared Productions', path: null, color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', action: 'scrollToShowcase' },
-  { icon: Layers, label: 'Open Story Manager', path: '/workspace', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
+  { icon: Layers, label: 'Open Story Manager', path: '/news/workspace', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
 ];
 
 export default function QuickLaunch({ onScrollToShowcase }) {

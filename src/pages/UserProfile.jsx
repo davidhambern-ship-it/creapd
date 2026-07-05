@@ -150,7 +150,7 @@ export default function UserProfile() {
       {user.role === 'admin' && (
         <div className="glass-panel p-5 space-y-3">
           <h3 className="text-sm font-semibold text-white neon-underline">Admin Tools</h3>
-          <Link to="/checklist">
+          <Link to="/news/checklist">
             <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
               <ClipboardCheck className="w-4 h-4 text-berna-purple" />
               Requirements & Acceptance Checklist
