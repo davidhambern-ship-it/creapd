@@ -2,29 +2,31 @@ import React, { createContext, useContext, useReducer, useRef, useCallback, useE
 import { useNavigate } from 'react-router-dom';
 import { registry } from '@/lib/creapr/Registry';
 import { base44 } from '@/api/base44Client';
+import { getNarration as getHardcodedNarration } from '@/lib/systemNarration';
+import { resolveTourIcon } from '@/lib/tourIcons';
 
 /**
- * OrchestratorProvider — the global CREAPr Engine shell.
+ * OrchestratorProvider — CREAPr Engine.
  *
- * In AUTOPILOT mode, this engine drives the entire app: it navigates routes,
- * narrates what's happening, invokes backend functions, pauses for user
- * approval at key gates, and issues commands to registered UI atoms.
+ * CREAPr IS the Tour Guide of CREAPD. This engine loads TourScript /
+ * TourScene entities from the database and plays them with full visuals,
+ * TTS, and word-by-word text reveal — the same cinematic experience
+ * the tour system always provided, now driven directly by the engine.
  *
- * State Schema:
- *   - status: 'idle' | 'running' | 'paused' | 'completed' | 'faulted' | 'awaiting_input'
- *   - activeScriptId, currentStepIndex, contextVars, activeAtoms, fault, log
- *   - narration: { text, speech, auto_advance, duration } | null
- *   - pendingApproval: { prompt, approve_label, reject_label, step_index } | null
+ * The Tour Control Center (admin page) is the visual control panel for
+ * CREAPr because it edits the TourScript/TourScene entities that this
+ * engine plays.
  *
- * Step types supported:
- *   - set_context:     { action: 'set_context', payload: { key: value } }
- *   - run_logic:       { action: 'run_logic', script: 'moduleName' }
- *   - navigate:        { action: 'navigate', target: '/route/path', payload: { wait_ms } }
- *   - narrate:         { action: 'narrate', payload: { text, speech, auto_advance, duration } }
+ * Step types:
+ *   - navigate:        { action: 'navigate', target: '/route/path' }
+ *   - play_tour:       { action: 'play_tour', payload: { route_path: '/news/storyqueue' } }
+ *                       (if route_path omitted, plays tour for current route)
  *   - await_approval:  { action: 'await_approval', payload: { prompt, approve_label, reject_label } }
  *   - invoke_function: { action: 'invoke_function', payload: { function_name, params, result_key } }
  *   - wait:            { action: 'wait', payload: { duration } }
- *   - atom command:    { action: 'highlight'|'dim'|'reset'|..., target: 'atomId', command: 'highlight' }
+ *   - set_context:     { action: 'set_context', payload: { key: value } }
+ *   - run_logic:       { action: 'run_logic', script: 'moduleName' }
+ *   - atom command:    { target: 'atomId', command: 'highlight' }
  */
 
 const initialState = {
@@ -32,12 +34,14 @@ const initialState = {
   activeScriptId: null,
   currentStepIndex: 0,
   contextVars: {},
-  executionBuffer: [],
   activeAtoms: [],
   fault: null,
   log: [],
-  narration: null,
   pendingApproval: null,
+  // Tour state — CREAPr plays tours directly
+  tour: null,           // { scenes, default_voice, default_elevenlabs_voice_id, name, _scriptId }
+  tourSceneIndex: 0,
+  tourActive: false,
 };
 
 const OrchestratorContext = createContext(null);
@@ -69,10 +73,12 @@ function orchestratorReducer(state, action) {
       return { ...state, activeAtoms: action.ids };
     case 'LOG':
       return { ...state, log: [...state.log, { ts: Date.now(), msg: action.msg }] };
-    case 'SET_NARRATION':
-      return { ...state, narration: action.narration };
-    case 'CLEAR_NARRATION':
-      return { ...state, narration: null };
+    case 'START_TOUR':
+      return { ...state, tour: action.tour, tourSceneIndex: 0, tourActive: true };
+    case 'SET_TOUR_SCENE':
+      return { ...state, tourSceneIndex: action.index };
+    case 'END_TOUR':
+      return { ...state, tour: null, tourSceneIndex: 0, tourActive: false };
     case 'AWAIT_INPUT':
       return { ...state, status: 'awaiting_input', pendingApproval: action.approval };
     case 'CLEAR_APPROVAL':
@@ -84,15 +90,77 @@ function orchestratorReducer(state, action) {
   }
 }
 
+// ── Tour loader: fetch TourScript + TourScenes from DB, fall back to hardcoded ──
+async function loadTourForRoute(routePath) {
+  try {
+    const scripts = await base44.entities.TourScript.filter({
+      route_path: routePath,
+      is_active: true,
+    });
+
+    if (scripts && scripts.length > 0) {
+      const script = scripts[0];
+      let scenes = await base44.entities.TourScene.filter({
+        tour_script_id: script.id,
+      });
+      scenes.sort((a, b) => (a.scene_order || 0) - (b.scene_order || 0));
+
+      return {
+        name: script.script_name,
+        default_voice: script.default_voice || 'storm',
+        default_elevenlabs_voice_id: script.default_elevenlabs_voice_id || '',
+        _source: 'database',
+        _scriptId: script.id,
+        scenes: scenes.map(s => ({
+          id: s.scene_id || String(s.id),
+          text: s.text,
+          speech: s.speech_text || s.text,
+          visual: s.visual_type || 'reveal',
+          icon: resolveTourIcon(s.icon_name),
+          icon_name: s.icon_name || '',
+          color: s.icon_color || 'text-berna-purple',
+          font_style: s.font_style || 'heading',
+          voice_override: s.voice_override || null,
+          elevenlabs_voice_id: s.elevenlabs_voice_id || '',
+          speech_speed: s.speech_speed ?? 1,
+          voice_stability: s.voice_stability ?? 0.5,
+          voice_similarity: s.voice_similarity ?? 0.75,
+          pause_after_ms: s.pause_after_ms ?? 500,
+          text_color: s.text_color || 'text-white',
+          text_size: s.text_size || 'lg',
+          text_alignment: s.text_alignment || 'center',
+          background_type: s.background_type || 'default',
+          generated_image_url: s.generated_image_url || '',
+        })),
+      };
+    }
+  } catch (err) {
+    console.error('Tour load error, falling back to hardcoded:', err);
+  }
+
+  // Fall back to hardcoded narration
+  const hardcoded = getHardcodedNarration(routePath);
+  if (hardcoded) {
+    return {
+      ...hardcoded,
+      default_voice: hardcoded.default_voice || 'storm',
+      default_elevenlabs_voice_id: hardcoded.default_elevenlabs_voice_id || '',
+      _source: 'hardcoded',
+    };
+  }
+
+  return null;
+}
+
 // ── Provider ────────────────────────────────────────────────────────
 export function OrchestratorProvider({ children }) {
   const [state, dispatch] = useReducer(orchestratorReducer, initialState);
   const scriptRef = useRef(null);
   const navigateRef = useRef(null);
   const approvalResolveRef = useRef(null);
-  const narrationResolveRef = useRef(null);
+  const tourResolveRef = useRef(null);
+  const locationRef = useRef(window.location.pathname);
 
-  // useNavigate — safe because OrchestratorProvider is rendered inside <Router>
   const navigate = useNavigate();
   navigateRef.current = navigate;
 
@@ -105,10 +173,6 @@ export function OrchestratorProvider({ children }) {
 
   const stepIndexRef = useRef(state.currentStepIndex);
   stepIndexRef.current = state.currentStepIndex;
-
-  // Tour coordination: the navigate step waits for the tour to finish
-  // before proceeding. SystemNarrationOverlay calls signalTourComplete().
-  const tourResolveRef = useRef(null);
 
   // Sync activeAtoms whenever the registry changes
   useEffect(() => {
@@ -152,52 +216,38 @@ export function OrchestratorProvider({ children }) {
       return true;
     }
 
-    const targetLabel = step.target || step.payload?.function_name || '(no target)';
+    const targetLabel = step.target || step.payload?.route_path || step.payload?.function_name || '(no target)';
     dispatch({ type: 'LOG', msg: `Step ${index}: ${step.action} → ${targetLabel}` });
 
-    // ── Navigate: change the route, then wait for tour to play ──
+    // ── Navigate: change the route ──
     if (step.action === 'navigate' && step.target) {
       navigateRef.current(step.target);
-
-      // Check if a tour script exists for this route.
-      // If yes, wait for the tour to complete (SystemNarrationOverlay
-      // will call signalTourComplete). If no, wait a fixed time.
-      const hasTour = step.payload?.has_tour ?? true;
-      const fallbackMs = step.payload?.wait_ms ?? 2000;
-
-      if (hasTour) {
-        // Wait for the tour to signal completion (via signalTourComplete).
-        // If no tour plays (already seen, or no tour for this route),
-        // fall back after 30s so the script doesn't stall.
-        await Promise.race([
-          new Promise(resolve => {
-            tourResolveRef.current = resolve;
-          }),
-          new Promise(resolve => setTimeout(resolve, 30000)),
-        ]);
-        tourResolveRef.current = null;
-      } else {
-        await new Promise(resolve => setTimeout(resolve, fallbackMs));
-      }
+      locationRef.current = step.target;
+      // Brief wait for the page to mount
+      const waitMs = step.payload?.wait_ms ?? 800;
+      await new Promise(resolve => setTimeout(resolve, waitMs));
       return true;
     }
 
-    // ── Narrate: delegate to the tour system's visual overlay ──
-    // (Legacy support — the tour system handles narration per-route now.
-    // This step type is kept for scripts that need inline narration
-    // outside of the per-route tour system.)
-    if (step.action === 'narrate' && step.payload) {
-      dispatch({ type: 'SET_NARRATION', narration: step.payload });
-      if (step.payload.auto_advance) {
-        const duration = step.payload.duration || 4000;
-        await new Promise(resolve => setTimeout(resolve, duration));
-        dispatch({ type: 'CLEAR_NARRATION' });
-      } else {
-        await new Promise(resolve => {
-          narrationResolveRef.current = resolve;
-        });
-        dispatch({ type: 'CLEAR_NARRATION' });
+    // ── Play Tour: load + play the tour for a route ──
+    if (step.action === 'play_tour') {
+      const routePath = step.payload?.route_path || locationRef.current;
+      const tour = await loadTourForRoute(routePath);
+
+      if (!tour || !tour.scenes || tour.scenes.length === 0) {
+        dispatch({ type: 'LOG', msg: `No tour found for ${routePath} — skipping.` });
+        return true;
       }
+
+      dispatch({ type: 'START_TOUR', tour });
+      dispatch({ type: 'LOG', msg: `Playing tour: ${tour.name} (${tour.scenes.length} scenes)` });
+
+      // Wait for the tour to complete (overlay calls completeTour/skipTour)
+      await new Promise(resolve => {
+        tourResolveRef.current = resolve;
+      });
+
+      dispatch({ type: 'END_TOUR' });
       return true;
     }
 
@@ -245,11 +295,7 @@ export function OrchestratorProvider({ children }) {
     if (step.action === 'run_logic' && step.script) {
       const logicModule = script.logicModules?.[step.script];
       if (logicModule) {
-        const result = await logicModule({
-          get: getVar,
-          set: setVar,
-          registry,
-        });
+        const result = await logicModule({ get: getVar, set: setVar, registry });
         if (result?.vars) {
           dispatch({ type: 'SET_VARS', vars: result.vars });
           contextVarsRef.current = { ...contextVarsRef.current, ...result.vars };
@@ -342,7 +388,7 @@ export function OrchestratorProvider({ children }) {
     statusRef.current = 'idle';
   }, []);
 
-  // ── Approval & Narration controls ──
+  // ── Approval controls ──
   const approve = useCallback(() => {
     contextVarsRef.current = { ...contextVarsRef.current, last_approval: 'approved' };
     dispatch({ type: 'SET_VAR', key: 'last_approval', value: 'approved' });
@@ -361,17 +407,21 @@ export function OrchestratorProvider({ children }) {
     }
   }, []);
 
-  const dismissNarration = useCallback(() => {
-    dispatch({ type: 'CLEAR_NARRATION' });
-    if (narrationResolveRef.current) {
-      narrationResolveRef.current();
-      narrationResolveRef.current = null;
+  // ── Tour controls (called by CreaprTourOverlay) ──
+  const advanceTourScene = useCallback(() => {
+    dispatch({ type: 'SET_TOUR_SCENE', index: state.tourSceneIndex + 1 });
+  }, [state.tourSceneIndex]);
+
+  const completeTour = useCallback(() => {
+    dispatch({ type: 'END_TOUR' });
+    if (tourResolveRef.current) {
+      tourResolveRef.current();
+      tourResolveRef.current = null;
     }
   }, []);
 
-  // Called by SystemNarrationOverlay when a tour finishes (completes or skipped).
-  // This unblocks the navigate step so the engine can proceed.
-  const signalTourComplete = useCallback(() => {
+  const skipTour = useCallback(() => {
+    dispatch({ type: 'END_TOUR' });
     if (tourResolveRef.current) {
       tourResolveRef.current();
       tourResolveRef.current = null;
@@ -390,8 +440,9 @@ export function OrchestratorProvider({ children }) {
     registry,
     approve,
     reject,
-    dismissNarration,
-    signalTourComplete,
+    advanceTourScene,
+    completeTour,
+    skipTour,
   };
 
   return (

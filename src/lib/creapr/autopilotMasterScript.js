@@ -1,35 +1,36 @@
 /**
  * AUTOPILOT Master Script — Guided Production Cycle
  *
- * CREAPr IS the tour guide. The tour system (TourScript / TourScene
- * entities + SystemNarrationOverlay) handles all narration, visuals,
- * and TTS. This script only orchestrates navigation and approval gates.
+ * CREAPr IS the tour system. The engine loads TourScript/TourScene
+ * entities and plays them directly with full visuals + TTS.
+ * The Tour Control Center edits the tours that CREAPr plays.
  *
  * Flow:
- *   Home → (tour plays) → Story Queue → (tour plays) → approval gate
- *   → Production Packages → (tour plays) → approval gate
- *   → Presentations → (tour plays) → approval gate
- *   → Export → (tour plays) → done
- *
- * Each navigate step waits for the tour to complete before proceeding.
+ *   Navigate → Play Tour → Approval Gate → repeat
  */
 export const autopilotMasterScript = {
   id: 'autopilot-master',
   name: 'AUTOPILOT Production Cycle',
-  description: 'Guides the producer through the full production pipeline. Tour system handles narration; this script handles navigation and approval gates.',
+  description: 'Guides the producer through the full production pipeline. CREAPr plays tours and pauses for approval at key gates.',
   steps: [
-    // ── Home (tour plays automatically on arrival) ──
+    // ── Home ──
     {
       action: 'navigate',
       target: '/home',
-      payload: { wait_ms: 3000 },
+    },
+    {
+      action: 'play_tour',
+      payload: { route_path: '/home' },
     },
 
     // ── Story Queue ──
     {
       action: 'navigate',
       target: '/news/storyqueue',
-      payload: { wait_ms: 3000 },
+    },
+    {
+      action: 'play_tour',
+      payload: { route_path: '/news/storyqueue' },
     },
     {
       action: 'await_approval',
@@ -44,7 +45,10 @@ export const autopilotMasterScript = {
     {
       action: 'navigate',
       target: '/news/productionpackages',
-      payload: { wait_ms: 3000 },
+    },
+    {
+      action: 'play_tour',
+      payload: { route_path: '/news/productionpackages' },
     },
     {
       action: 'await_approval',
@@ -59,7 +63,10 @@ export const autopilotMasterScript = {
     {
       action: 'navigate',
       target: '/news/presentations',
-      payload: { wait_ms: 3000 },
+    },
+    {
+      action: 'play_tour',
+      payload: { route_path: '/news/presentations' },
     },
     {
       action: 'await_approval',
@@ -74,7 +81,10 @@ export const autopilotMasterScript = {
     {
       action: 'navigate',
       target: '/news/exportcenter',
-      payload: { wait_ms: 3000 },
+    },
+    {
+      action: 'play_tour',
+      payload: { route_path: '/news/exportcenter' },
     },
   ],
 };

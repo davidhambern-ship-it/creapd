@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { CREAPModeProvider } from '@/context/CREAPModeContext';
-import SystemNarrationOverlay from '@/components/system/SystemNarrationOverlay';
+import CreaprTourOverlay from '@/components/creap/CreaprTourOverlay';
 import SceneTransition from '@/components/creap/cinematic/SceneTransition';
 
 /**
@@ -22,7 +22,7 @@ export default function CREAPModeLayout() {
     <CREAPModeProvider>
       <Outlet />
       <SceneTransition />
-      <SystemNarrationOverlay />
+      <CreaprTourOverlay />
     </CREAPModeProvider>
   );
 }
