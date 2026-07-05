@@ -73,7 +73,9 @@ export default function Dashboard() {
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">CREAP Your Week!</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
-              Plan next week's briefings, set daily themes, choose focus topics, and adjust automation before the week begins.
+              Map out every day of the week in one view — assign daily themes, select focus topics and categories,
+              schedule your morning briefings, choose which stories to prioritize, copy a previous week's plan as a starting point,
+              and fine-tune your automation settings before Monday arrives.
             </p>
             <div className="flex flex-wrap gap-2 mt-6">
               <Link to="/planner">
