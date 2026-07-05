@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { Menu, Sparkles } from 'lucide-react';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import CreapdSidebar from '@/components/home/CreapdSidebar';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
 import ProfileCard from '@/components/home/ProfileCard';
@@ -18,7 +16,6 @@ import { useToast } from '@/components/ui/use-toast';
 
 export default function CreapdHome() {
   const [detailsProfile, setDetailsProfile] = useState(null);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const { toast } = useToast();
@@ -44,34 +41,8 @@ export default function CreapdHome() {
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 flex-shrink-0 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-r border-white/[0.06]">
-        <CreapdSidebar onGetStarted={handleGetStarted} onShowDetails={setDetailsProfile} />
-      </aside>
-
-      {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-12 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-b border-white/[0.06] flex items-center px-3">
-        <button
-          onClick={() => setMobileNavOpen(true)}
-          className="p-2 text-muted-foreground hover:text-white"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <span className="text-sm font-heading font-bold text-white ml-2">CREAPD</span>
-      </div>
-
-      {/* Mobile nav sheet */}
-      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="w-72 p-0 bg-gradient-to-b from-[hsl(220,20%,8%)] to-[hsl(220,20%,6%)] border-white/[0.06]">
-          <CreapdSidebar
-            onGetStarted={(p) => { setMobileNavOpen(false); handleGetStarted(p); }}
-            onShowDetails={(p) => { setMobileNavOpen(false); setDetailsProfile(p); }}
-          />
-        </SheetContent>
-      </Sheet>
-
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto pt-12 lg:pt-0">
+      <main className="flex-1 overflow-y-auto">
         <HeroSection onStart={scrollToProfiles} onExplore={scrollToProfiles} onTour={() => setGuideOpen(true)} />
         <div id="pipeline">
           <PipelineExplainer />
