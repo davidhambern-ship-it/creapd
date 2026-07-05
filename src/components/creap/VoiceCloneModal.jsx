@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Loader2, CheckCircle2, Trash2, AlertCircle } from 'lucide-react';
+import { Mic, Square, Loader2, CheckCircle2, Trash2, AlertCircle, Volume2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { getClonedVoiceId, setClonedVoiceId, clearClonedVoice, hasClonedVoice } from '@/lib/clonedVoice';
+import { getClonedVoiceId, setClonedVoiceId, clearClonedVoice, hasClonedVoice, generateNarrationSpeech } from '@/lib/clonedVoice';
 
 const RECORDING_TIME_LIMIT = 120; // seconds
 
@@ -14,6 +14,8 @@ export default function VoiceCloneModal({ open, onClose }) {
   const [audioUrl, setAudioUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [hasVoice, setHasVoice] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -139,6 +141,21 @@ export default function VoiceCloneModal({ open, onClose }) {
     setPhase('idle');
   };
 
+  const handlePreviewVoice = async () => {
+    setPreviewing(true);
+    setErrorMsg('');
+    try {
+      const result = await generateNarrationSpeech('Welcome to CREAPD. This is your cloned voice in action.');
+      setPreviewUrl(result.url);
+    } catch (err) {
+      const detail = err?.response?.data?.error || err?.message || 'Could not generate preview.';
+      setErrorMsg(detail);
+      setPhase('error');
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const formatTime = (s) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -160,14 +177,23 @@ export default function VoiceCloneModal({ open, onClose }) {
 
         <div className="space-y-4 py-2">
           {hasVoice && phase !== 'done' && (
-            <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-berna-emerald/10 border border-berna-emerald/20">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-berna-emerald" />
-                <span className="text-xs text-berna-emerald font-medium">Custom voice is active</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-berna-emerald/10 border border-berna-emerald/20">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-berna-emerald" />
+                  <span className="text-xs text-berna-emerald font-medium">Custom voice is active</span>
+                </div>
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={handleRemoveVoice}>
+                  <Trash2 className="w-3 h-3 mr-1" /> Remove
+                </Button>
               </div>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={handleRemoveVoice}>
-                <Trash2 className="w-3 h-3 mr-1" /> Remove
+              <Button variant="outline" size="sm" className="w-full" onClick={handlePreviewVoice} disabled={previewing}>
+                {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Volume2 className="w-3 h-3 mr-1" />}
+                {previewing ? 'Generating preview…' : 'Preview Cloned Voice'}
               </Button>
+              {previewUrl && (
+                <audio src={previewUrl} controls autoPlay className="w-full" />
+              )}
             </div>
           )}
 
