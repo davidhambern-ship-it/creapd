@@ -138,7 +138,7 @@ export default function FloatingObjects() {
   return (
     <div
       ref={mountRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
+      className="fixed inset-0 w-full h-full pointer-events-none z-0"
       aria-hidden="true"
     />
   );

@@ -10,6 +10,7 @@ import QuickLaunch from '@/components/home/QuickLaunch';
 import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import CursorGlow from '@/components/creap/CursorGlow';
+import FloatingObjects from '@/components/home/FloatingObjects';
 import CreapdGuideOverlay from '@/components/creap/CreapdGuideOverlay';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
@@ -41,8 +42,9 @@ export default function CreapdHome() {
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">
+      <FloatingObjects />
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto relative z-10">
         <HeroSection onStart={scrollToProfiles} onExplore={scrollToProfiles} onTour={() => setGuideOpen(true)} />
         <div id="pipeline">
           <PipelineExplainer />

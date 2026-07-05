@@ -3,13 +3,11 @@ import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, Compass, MapPin } from 'lucide-react';
 import CreapdLogo from '@/components/brand/CreapdLogo';
 import CursorGlow from '@/components/creap/CursorGlow';
-import FloatingObjects from '@/components/home/FloatingObjects';
 
 export default function HeroSection({ onStart, onExplore, onTour }) {
   return (
     <section className="relative min-h-[70vh] lg:min-h-[80vh] flex items-center justify-center overflow-hidden px-4">
       <CursorGlow />
-      <FloatingObjects />
       {/* Ambient gradient blobs */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-berna-purple/15 blur-[120px]"
