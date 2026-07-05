@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Lightbulb, Clapperboard, Package, Volume2, Presentation, Share2 } from 'lucide-react';
 import {
   Tooltip,
@@ -8,21 +9,66 @@ import {
 } from '@/components/ui/tooltip';
 
 const PIPELINE_STEPS = [
-  { icon: Lightbulb, label: 'Idea', color: 'text-berna-orange', bg: 'bg-berna-orange/10', description: 'Start with a concept — a story, topic, or message you want to produce.' },
-  { icon: Clapperboard, label: 'Production Profile', color: 'text-berna-purple', bg: 'bg-berna-purple/10', description: 'Pick a vertical — News, Talk, Cooking, Sports, Music, Cosmo, or Spiritual — that shapes how CREAPD builds your show.' },
-  { icon: Package, label: 'Story / Message Package', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', description: 'CREAPD sifts sources, selects the best stories, and assembles a structured production package with scripts and assets.' },
-  { icon: Volume2, label: 'Voice + Media', color: 'text-blue-400', bg: 'bg-blue-500/10', description: 'Generate AI voiceovers, thumbnails, and media assets for your package.' },
-  { icon: Presentation, label: 'Presentation', color: 'text-pink-400', bg: 'bg-pink-500/10', description: 'Combine everything into a timed, scene-by-scene presentation ready to direct.' },
-  { icon: Share2, label: 'Export / Share', color: 'text-amber-400', bg: 'bg-amber-500/10', description: 'Export your finished production or share it directly to your platform.' },
+  { icon: Lightbulb, label: 'Idea', color: 'text-berna-orange', bg: 'bg-berna-orange/10', border: 'border-berna-orange/50', glow: 'shadow-[0_0_20px_hsl(25_95%_55%/0.3)]', description: 'Start with a concept — a story, topic, or message you want to produce.' },
+  { icon: Clapperboard, label: 'Production Profile', color: 'text-berna-purple', bg: 'bg-berna-purple/10', border: 'border-berna-purple/50', glow: 'shadow-[0_0_20px_hsl(270_80%_60%/0.3)]', description: 'Pick a vertical — News, Talk, Cooking, Sports, Music, Cosmo, or Spiritual — that shapes how CREAPD builds your show.' },
+  { icon: Package, label: 'Story / Message Package', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', border: 'border-berna-emerald/50', glow: 'shadow-[0_0_20px_hsl(152_60%_45%/0.3)]', description: 'CREAPD sifts sources, selects the best stories, and assembles a structured production package with scripts and assets.' },
+  { icon: Volume2, label: 'Voice + Media', color: 'text-berna-orange', bg: 'bg-berna-orange/10', border: 'border-berna-orange/50', glow: 'shadow-[0_0_20px_hsl(25_95%_55%/0.3)]', description: 'Generate AI voiceovers, thumbnails, and media assets for your package.' },
+  { icon: Presentation, label: 'Presentation', color: 'text-berna-purple', bg: 'bg-berna-purple/10', border: 'border-berna-purple/50', glow: 'shadow-[0_0_20px_hsl(270_80%_60%/0.3)]', description: 'Combine everything into a timed, scene-by-scene presentation ready to direct.' },
+  { icon: Share2, label: 'Export / Share', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', border: 'border-berna-emerald/50', glow: 'shadow-[0_0_20px_hsl(152_60%_45%/0.3)]', description: 'Export your finished production or share it directly to your platform.' },
 ];
+
+const cardVariants = {
+  hidden: { opacity: 0, rotateY: -90, scale: 0.3 },
+  visible: (i) => ({
+    opacity: 1,
+    rotateY: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.15,
+      type: 'spring',
+      stiffness: 120,
+      damping: 12,
+    },
+  }),
+};
+
+const arrowVariants = {
+  hidden: { opacity: 0, scaleX: 0 },
+  visible: (i) => ({
+    opacity: 1,
+    scaleX: 1,
+    transition: {
+      delay: i * 0.15 + 0.3,
+      duration: 0.4,
+      ease: 'easeOut',
+    },
+  }),
+};
 
 export default function PipelineExplainer() {
   return (
-    <section className="px-4 lg:px-6 py-8 lg:py-12 max-w-5xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-xl lg:text-2xl font-heading font-bold text-white neon-underline inline-block">
+    <section
+      className="relative px-4 lg:px-6 py-8 lg:py-12 max-w-5xl mx-auto overflow-hidden rounded-xl"
+      style={{
+        backgroundImage: 'url(https://media.base44.com/images/public/6a4126962e5804304cc84b12/3559dbb78_generated_image.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-background/70 rounded-xl pointer-events-none" />
+
+      <div className="relative text-center mb-8">
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-xl lg:text-2xl font-heading font-bold text-white inline-block"
+          style={{ textShadow: '0 0 8px hsl(270 80% 60% / 0.6), 0 0 20px hsl(270 80% 60% / 0.3)' }}
+        >
           What Is CREAPD?
-        </h2>
+        </motion.h2>
         <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto leading-relaxed">
           CREAPD helps creators turn ideas into complete productions. Choose a Production Profile,
           generate a structured package, create voice, media, and presentation assets, direct the
@@ -32,33 +78,70 @@ export default function PipelineExplainer() {
 
       {/* Pipeline — horizontal on desktop, vertical on mobile */}
       <TooltipProvider delayDuration={150}>
-        <div className="flex flex-col lg:flex-row items-stretch justify-center gap-2 lg:gap-1">
+        <div
+          className="flex flex-col lg:flex-row items-stretch justify-center gap-2 lg:gap-1"
+          style={{ perspective: '1000px' }}
+        >
           {PIPELINE_STEPS.map((step, idx) => {
             const Icon = step.icon;
             const isLast = idx === PIPELINE_STEPS.length - 1;
             return (
               <React.Fragment key={step.label}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-3 lg:flex-col lg:text-center glass-panel px-4 py-3 lg:px-3 lg:py-4 flex-1 lg:max-w-[180px] cursor-help">
-                      <div className={`w-10 h-10 rounded-lg ${step.bg} flex items-center justify-center flex-shrink-0`}>
-                        <Icon className={`w-5 h-5 ${step.color}`} />
+                <motion.div
+                  custom={idx}
+                  variants={cardVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  whileHover={{ scale: 1.08, rotateY: 5 }}
+                  className="origin-center"
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={`group flex items-center gap-3 lg:flex-col lg:text-center glass-panel border ${step.border} ${step.glow} px-4 py-3 lg:px-3 lg:py-4 flex-1 lg:max-w-[180px] cursor-help transition-shadow duration-300 hover:shadow-[0_0_30px_hsl(270_80%_60%/0.4)]`}
+                      >
+                        <div className={`w-10 h-10 rounded-lg ${step.bg} flex items-center justify-center flex-shrink-0`}>
+                          <motion.span
+                            whileHover={{ rotate: 360 }}
+                            transition={{ duration: 0.5, ease: 'easeInOut' }}
+                            className="inline-flex"
+                          >
+                            <Icon className={`w-5 h-5 ${step.color}`} />
+                          </motion.span>
+                        </div>
+                        <span className="text-xs lg:text-[11px] font-heading font-semibold text-white/90 leading-tight">
+                          {step.label}
+                        </span>
                       </div>
-                      <span className="text-xs lg:text-[11px] font-heading font-semibold text-white/90 leading-tight">
-                        {step.label}
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[240px] text-center">
-                    <p className="text-xs leading-relaxed">{step.description}</p>
-                  </TooltipContent>
-                </Tooltip>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                      <p className="text-xs leading-relaxed">{step.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </motion.div>
                 {!isLast && (
-                  <div className="flex items-center justify-center lg:px-0.5">
-                    <svg className="w-4 h-4 text-muted-foreground/40 rotate-90 lg:rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <motion.div
+                    custom={idx}
+                    variants={arrowVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="flex items-center justify-center lg:px-0.5 origin-left"
+                  >
+                    <motion.svg
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: idx * 0.2 }}
+                      className="w-4 h-4 text-berna-emerald rotate-90 lg:rotate-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      style={{ filter: 'drop-shadow(0 0 4px hsl(152 60% 45% / 0.6))' }}
+                    >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </div>
+                    </motion.svg>
+                  </motion.div>
                 )}
               </React.Fragment>
             );
