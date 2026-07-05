@@ -68,6 +68,14 @@
   }
 }
 
+@font-face {
+  font-family: 'CreapdTagline';
+  src: url('https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/ecb20b7b6_CreapdTagline.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Glass panel effect */
 .glass-panel {
   @apply bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-xl;
