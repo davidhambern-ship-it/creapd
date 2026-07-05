@@ -216,6 +216,28 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Weekly Planner Card */}
+      <Link to="/planner" className="block group">
+        <div className="glass-panel glow-purple p-5 lg:p-6 relative overflow-hidden transition-all hover:border-berna-purple/30">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-berna-purple/10 to-transparent rounded-full -mr-16 -mt-16" />
+          <div className="relative flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-berna-purple/20 to-berna-purple/5 border border-berna-purple/20 flex items-center justify-center">
+              <CalendarDays className="w-6 h-6 text-berna-purple" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-base font-semibold text-white mb-1">Plan Your Week</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Set daily themes, choose focus topics, and schedule briefings ahead of time. Map out your entire week's content strategy in one place.
+              </p>
+              <div className="flex items-center gap-1 mt-3 text-xs text-berna-purple font-medium">
+                Open Weekly Planner
+                <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Automation Status */}
         <div className="glass-panel p-5 space-y-4">
