@@ -33,7 +33,9 @@ export default function NativeArticleReader({ article, sourceLabel }) {
         setBodyContent(res.data.body_content);
         setHasFetched(true);
       } else if (res.data?.error) {
-        setError(res.data.error);
+        setError(res.data.is_video_page
+          ? 'This source is a video page with no written article body. You can still watch the original video.'
+          : res.data.error);
       }
     } catch (err) {
       setError(err.response?.data?.error || err.message || "Failed to load article");
