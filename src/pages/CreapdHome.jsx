@@ -8,6 +8,7 @@ import ProfileCard from '@/components/home/ProfileCard';
 import ProductionDetailsModal from '@/components/home/ProductionDetailsModal';
 import ShowcaseSection from '@/components/home/ShowcaseSection';
 import QuickLaunch from '@/components/home/QuickLaunch';
+import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -65,6 +66,7 @@ export default function CreapdHome() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pt-12 lg:pt-0">
+        <ModeStatusBanner />
         <HeroSection onStart={scrollToProfiles} onExplore={scrollToProfiles} />
         <PipelineExplainer />
 
