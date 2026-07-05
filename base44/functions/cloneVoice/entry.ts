@@ -15,14 +15,23 @@ Deno.serve(async (req) => {
     // Fetch the uploaded audio file
     const audioResponse = await fetch(audio_url);
     if (!audioResponse.ok) {
-      return Response.json({ error: 'Failed to fetch audio file' }, { status: 500 });
+      return Response.json({ error: `Failed to fetch audio file (status ${audioResponse.status})` }, { status: 500 });
     }
-    const audioBlob = await audioResponse.blob();
+    const audioArrayBuffer = await audioResponse.arrayBuffer();
+
+    // Determine content type — default to audio/mpeg for compatibility
+    const contentType = audioResponse.headers.get('content-type') || 'audio/webm';
+    const ext = contentType.includes('webm') ? 'webm' : contentType.includes('mp4') ? 'm4a' : 'audio';
+    const fileName = `recording.${ext}`;
+
+    // Create a proper blob with explicit content type
+    const audioBlob = new Blob([audioArrayBuffer], { type: contentType });
 
     // Create form data for ElevenLabs instant voice cloning
     const formData = new FormData();
     formData.append('name', `CREAPD Voice - ${user.full_name || user.email}`);
-    formData.append('files', audioBlob, 'recording.webm');
+    formData.append('description', 'Cloned voice for CREAPD narration');
+    formData.append('files', audioBlob, fileName);
 
     const cloneResponse = await fetch('https://api.elevenlabs.io/v1/voices/add', {
       method: 'POST',
@@ -32,11 +41,11 @@ Deno.serve(async (req) => {
 
     if (!cloneResponse.ok) {
       const errText = await cloneResponse.text();
-      return Response.json({ error: `ElevenLabs cloning failed: ${errText}` }, { status: 500 });
+      return Response.json({ error: `ElevenLabs cloning failed (${cloneResponse.status}): ${errText}` }, { status: cloneResponse.status });
     }
 
     const cloneData = await cloneResponse.json();
-    return Response.json({ voice_id: cloneData.voice_id, name: cloneData?.requires_verification ? null : (cloneData?.name || 'Cloned Voice') });
+    return Response.json({ voice_id: cloneData.voice_id, name: cloneData?.name || 'Cloned Voice' });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

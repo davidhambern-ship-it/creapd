@@ -49,7 +49,13 @@ export default function VoiceCloneModal({ open, onClose }) {
       streamRef.current = stream;
       chunksRef.current = [];
 
-      const recorder = new MediaRecorder(stream);
+      // Prefer mp4 (m4a) — ElevenLabs supports it natively; fall back to webm
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : MediaRecorder.isTypeSupported('audio/mpeg')
+          ? 'audio/mpeg'
+          : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
@@ -57,7 +63,7 @@ export default function VoiceCloneModal({ open, onClose }) {
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         setPhase('recorded');
@@ -103,7 +109,8 @@ export default function VoiceCloneModal({ open, onClose }) {
 
     try {
       // Upload the recording
-      const file = new File([audioBlob], 'voice-sample.webm', { type: 'audio/webm' });
+      const fileExt = audioBlob.type.includes('mp4') ? 'm4a' : audioBlob.type.includes('mpeg') ? 'mp3' : 'webm';
+      const file = new File([audioBlob], `voice-sample.${fileExt}`, { type: audioBlob.type });
       const uploadResult = await base44.integrations.Core.UploadFile({ file });
 
       // Clone the voice via backend function
@@ -120,7 +127,8 @@ export default function VoiceCloneModal({ open, onClose }) {
         setPhase('error');
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Something went wrong during voice cloning.');
+      const detail = err?.response?.data?.error || err?.message || 'Something went wrong during voice cloning.';
+      setErrorMsg(detail);
       setPhase('error');
     }
   };
