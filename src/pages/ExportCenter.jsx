@@ -60,7 +60,7 @@ export default function ExportCenter() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.ProductionPackage.list('-created_date', 100),
+      base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 100),
       base44.entities.Article.list('-created_date', 100),
       base44.entities.ExportProfile.list('-created_date', 50),
       base44.entities.BrandProfile.list('-created_date', 50),

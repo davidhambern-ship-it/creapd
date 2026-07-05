@@ -34,7 +34,7 @@ export default function Presentations() {
 
   const loadPresentations = async () => {
     try {
-      const list = await base44.entities.StoriesPresentation.list('-created_date', 50);
+      const list = await base44.entities.StoriesPresentation.filter({ production_profile: 'news' }, '-created_date', 50);
       setPresentations(list);
     } catch (error) {
       console.error('Failed to load presentations:', error);
@@ -46,7 +46,7 @@ export default function Presentations() {
   const loadAvailablePackages = async () => {
     setLoadingPackages(true);
     try {
-      const packages = await base44.entities.ProductionPackage.filter({ status: 'approved' }, '-created_date', 50);
+      const packages = await base44.entities.ProductionPackage.filter({ status: 'approved', production_profile: 'news' }, '-created_date', 50);
       setAvailablePackages(packages);
     } catch (error) {
       console.error('Failed to load packages:', error);
@@ -182,23 +182,7 @@ export default function Presentations() {
               />
             </div>
 
-            {/* Production Profile */}
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Production Profile</label>
-              <select
-                value={selectedProfile}
-                onChange={(e) => setSelectedProfile(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              >
-                <option value="news">News</option>
-                <option value="spiritual">Spiritual</option>
-                <option value="talk">Talk</option>
-                <option value="music">Music</option>
-                <option value="sports">Sports</option>
-                <option value="cooking">Cooking</option>
-                <option value="cosmo">Cosmo</option>
-              </select>
-            </div>
+
 
             {/* Story Package Selection */}
             <div>

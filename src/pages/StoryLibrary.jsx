@@ -26,7 +26,7 @@ export default function StoryLibrary() {
     try {
       const [saved, pkgs] = await Promise.all([
         base44.entities.Article.filter({ is_saved: true }, '-created_date', 100),
-        base44.entities.ProductionPackage.filter({ status: 'generated' }, '-created_date', 100),
+        base44.entities.ProductionPackage.filter({ status: 'generated', production_profile: 'news' }, '-created_date', 100),
       ]);
       const packageArticleIds = [...new Set(pkgs.map(p => p.article_id).filter(Boolean))];
       const packageArticles = (await Promise.all(

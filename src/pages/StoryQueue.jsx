@@ -90,7 +90,7 @@ export default function StoryQueue() {
     try {
       const [arts, pkgs, notes] = await Promise.all([
         base44.entities.Article.filter({}, '-created_date', 50),
-        base44.entities.ProductionPackage.list('-created_date', 200),
+        base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 200),
         base44.entities.ProducerNote.list('-created_date', 200),
       ]);
       setArticles(arts);

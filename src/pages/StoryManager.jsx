@@ -96,7 +96,7 @@ export default function StoryManager() {
       base44.entities.ShowProfile.list(),
       base44.entities.Article.filter({ status: 'approved' }, '-opportunity_score', 50),
       base44.entities.Article.filter({ status: 'bernas_pick' }, '-created_date', 10),
-      base44.entities.ProductionPackage.list('-created_date', 200)]
+      base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 200)]
       );
       setBrands(brandList);
       setShows(showList);

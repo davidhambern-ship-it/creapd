@@ -32,7 +32,7 @@ export default function Dashboard() {
       base44.entities.BrandProfile.filter({ is_favorite: true }, '-created_date', 5),
       base44.entities.ShowProfile.filter({ is_favorite: true }, '-created_date', 5),
       base44.entities.ExportLog.list('-created_date', 5),
-      base44.entities.ProductionPackage.list('-created_date', 5),
+      base44.entities.ProductionPackage.filter({ production_profile: 'news' }, '-created_date', 5),
     ]).then(([briefs, arts, logs, brands, shows, exports, pkgs]) => {
       setBriefing(briefs[0] || null);
       setArticles(arts);

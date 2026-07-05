@@ -23,7 +23,7 @@ export default function ProductionPackages() {
 
   const loadData = async () => {
     try {
-      const pkgs = await base44.entities.ProductionPackage.filter({ status: 'approved' }, '-created_date', 100);
+      const pkgs = await base44.entities.ProductionPackage.filter({ status: 'approved', production_profile: 'news' }, '-created_date', 100);
       const articleIds = [...new Set(pkgs.map(p => p.article_id).filter(Boolean))];
       const map = {};
       if (articleIds.length > 0) {
