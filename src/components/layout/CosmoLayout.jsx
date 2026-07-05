@@ -11,6 +11,7 @@ import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
+import ProfileIntroOverlay from '@/components/creap/cinematic/ProfileIntroOverlay';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/cosmo/dashboard' },
@@ -54,6 +55,7 @@ export default function CosmoLayout() {
       </div>
 
       <ProductionFooter variant="cosmo" />
+      <ProfileIntroOverlay profileKey="cosmo" />
       <MobileBottomNav items={MOBILE_NAV_ITEMS} />
 
       <MobileNavDrawer
