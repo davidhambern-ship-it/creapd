@@ -15,7 +15,17 @@ function safeParse(str, fallback) {
 async function loadActiveShowProfile(base44) {
   try {
     const profiles = await base44.asServiceRole.entities.ShowProfile.filter({ is_active: true }, '-created_date', 1);
-    if (profiles.length > 0) return profiles[0];
+    if (profiles.length > 0) {
+      const profile = profiles[0];
+      // Load the active Production Module if one is set
+      if (profile.active_module_id) {
+        try {
+          const mod = await base44.asServiceRole.entities.ProductionModule.get(profile.active_module_id);
+          if (mod) profile._active_module = mod;
+        } catch (e) {}
+      }
+      return profile;
+    }
   } catch (e) {}
   return null;
 }
@@ -25,6 +35,18 @@ function buildShowContext(profile) {
   const preferredTopics = safeParse(profile.preferred_topics, []);
   const excludedTopics = safeParse(profile.excluded_topics, []);
   const focusAreas = safeParse(profile.focus_areas, []);
+
+  const mod = profile._active_module;
+  let moduleContext = '';
+  if (mod) {
+    const domainTopics = safeParse(mod.domain_topics, []);
+    moduleContext = `\n- Active Module: ${mod.module_name || 'Unnamed'} (${mod.module_type || 'news'})
+- Module Domain Topics: ${domainTopics.length > 0 ? domainTopics.join(', ') : 'Default for domain'}
+- Module Scripting Instructions: ${mod.scripting_instructions || 'Use domain defaults'}
+- Module Content Filtering Rules: ${mod.content_filtering_rules || 'Use domain defaults'}
+
+This show is currently producing ${mod.module_type || 'news'} content. Tailor the summary for this domain.`;
+  }
 
   return `\n\nSHOW PROFILE CONTEXT:
 - Show: ${profile.show_name || 'Unnamed'}
@@ -36,7 +58,7 @@ function buildShowContext(profile) {
 - Controversy Tolerance: ${profile.controversy_tolerance || 'medium'}
 - Entertainment Level: ${profile.entertainment_level ?? 5}/10
 - Educational Level: ${profile.educational_level ?? 5}/10
-- Focus Areas: ${focusAreas.length > 0 ? focusAreas.join(', ') : 'General'}
+- Focus Areas: ${focusAreas.length > 0 ? focusAreas.join(', ') : 'General'}${moduleContext}
 
 Summarize this video in a way that is relevant to THIS SHOW's audience and tone.`;
 }

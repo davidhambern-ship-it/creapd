@@ -15,7 +15,17 @@ function safeParse(str, fallback) {
 async function loadActiveShowProfile(base44) {
   try {
     const profiles = await base44.asServiceRole.entities.ShowProfile.filter({ is_active: true }, '-created_date', 1);
-    if (profiles.length > 0) return profiles[0];
+    if (profiles.length > 0) {
+      const profile = profiles[0];
+      // Load the active Production Module if one is set
+      if (profile.active_module_id) {
+        try {
+          const mod = await base44.asServiceRole.entities.ProductionModule.get(profile.active_module_id);
+          if (mod) profile._active_module = mod;
+        } catch (e) {}
+      }
+      return profile;
+    }
   } catch (e) {}
   return null;
 }
@@ -32,10 +42,36 @@ function buildShowContext(profile) {
   const rejectedCategories = safeParse(profile.rejected_categories, []);
   const focusAreas = safeParse(profile.focus_areas, []);
 
+  const mod = profile._active_module;
+  let moduleContext = '';
+  if (mod) {
+    const domainTopics = safeParse(mod.domain_topics, []);
+    const domainCategories = safeParse(mod.domain_categories, []);
+    const assetTypes = safeParse(mod.asset_types, []);
+    const segmentTypes = safeParse(mod.segment_types, []);
+    const domainContentTypes = safeParse(mod.domain_content_types, []);
+
+    moduleContext = `
+
+ACTIVE PRODUCTION MODULE:
+- Module Name: ${mod.module_name || 'Unnamed'}
+- Module Type: ${mod.module_type || 'news'}
+- Domain Topics: ${domainTopics.length > 0 ? domainTopics.join(', ') : 'Default for domain'}
+- Domain Categories: ${domainCategories.length > 0 ? domainCategories.join(', ') : 'All relevant'}
+- Domain Content Types: ${domainContentTypes.length > 0 ? domainContentTypes.join(', ') : 'text, video'}
+- Asset Types Generated: ${assetTypes.length > 0 ? assetTypes.join(', ') : 'Default assets'}
+- Segment Types: ${segmentTypes.length > 0 ? segmentTypes.join(', ') : 'Default segments'}
+- Scripting Instructions: ${mod.scripting_instructions || 'Use domain defaults'}
+- Content Filtering Rules: ${mod.content_filtering_rules || 'Use domain defaults'}
+- Research Instructions: ${mod.research_instructions || 'Use domain defaults'}
+
+IMPORTANT: This show is currently producing ${mod.module_type || 'news'} content. Evaluate articles for fit with this domain's topics, categories, and filtering rules IN ADDITION to the show-level preferences above. Articles that match the active module's domain topics should score higher in show_fit_score.`;
+  }
+
   return `ACTIVE SHOW PROFILE:
 - Show Name: ${profile.show_name || 'Unnamed Show'}
 - Target Audience: ${profile.audience || 'General Public'}
-- Content Domain: ${profile.content_domain || 'news'}
+- Content Domain: ${mod?.module_type || profile.content_domain || 'news'}
 - Tone: ${profile.default_tone || 'professional'}
 - Region/Local Focus: ${profile.region_local_focus || 'National'}
 - Preferred Topics: ${preferredTopics.length > 0 ? preferredTopics.join(', ') : 'Any relevant topic'}
@@ -52,7 +88,7 @@ function buildShowContext(profile) {
 - Focus Areas: ${focusAreas.length > 0 ? focusAreas.join(', ') : 'General'}
 - Minimum Story Score: ${profile.minimum_story_score ?? 5}/10
 - Freshness Window: ${profile.freshness_window_hours ?? 48} hours
-- Story Priority Rules: ${profile.story_priority_rules || 'Default priority'}`;
+- Story Priority Rules: ${profile.story_priority_rules || 'Default priority'}${moduleContext}`;
 }
 
 Deno.serve(async (req) => {
@@ -275,6 +311,8 @@ Return a JSON object with exactly these keys for each article: id, content_type,
       needs_review_count: needsReviewCount,
       rejected_by_show_profile_count: rejectedByProfileCount,
       show_profile: showProfile ? showProfile.show_name : null,
+      active_module: showProfile?._active_module ? showProfile._active_module.module_name : null,
+      active_module_type: showProfile?._active_module ? showProfile._active_module.module_type : null,
       errors: errors.length > 0 ? errors.join('; ') : null,
     });
   } catch (error) {

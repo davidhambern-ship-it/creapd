@@ -7,8 +7,12 @@
     },
     "content_domain": {
       "type": "string",
-      "description": "The production domain key (e.g. 'news', 'radio_music', 'cooking', 'spiritual'). Determines how the AI fetches, rates, and generates content for this show.",
+      "description": "Legacy field \u2014 now derived from the active Production Module. Kept for backwards compatibility.",
       "default": "news"
+    },
+    "active_module_id": {
+      "type": "string",
+      "description": "ID of the currently active Production Module \u2014 determines the active production domain for this show"
     },
     "brand_profile_id": {
       "type": "string"
@@ -111,7 +115,7 @@
     },
     "preferred_topics": {
       "type": "string",
-      "description": "JSON array of topics this show wants to cover"
+      "description": "JSON array of topics this show wants to cover (applies across all modules)"
     },
     "excluded_topics": {
       "type": "string",

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Sparkles } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { base44 } from '@/api/base44Client';
+import ModuleManager from '@/components/profiles/ModuleManager';
 
 const TONES = ['professional', 'conversational', 'energetic', 'serious', 'investigative', 'educational', 'inspirational', 'neutral', 'urgent', 'humorous'];
 const STYLES = ['broadcast_news', 'podcast', 'livestream', 'interview', 'documentary', 'educational_presentation', 'corporate_communication', 'storytelling'];
@@ -70,23 +71,18 @@ export default function ShowProfileEditor({ open, profile, brands, onClose, onSa
           <DialogTitle className="text-white">{profile ? 'Edit Show Profile' : 'Create Show Profile'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          {/* Content Domain Selector */}
-          <div className="glass-panel p-3 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-berna-purple" />
-              <Label className="text-xs text-white font-semibold">Production Type</Label>
+          {/* Production Modules — Show-as-Container Architecture */}
+          {profile?.id ? (
+            <ModuleManager showProfile={{ ...form, id: profile.id }} onModuleChanged={() => { /* parent can refresh if needed */ }} />
+          ) : (
+            <div className="glass-panel p-3 space-y-2 border-berna-emerald/20">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-berna-emerald" />
+                <Label className="text-xs text-white font-semibold">Production Modules</Label>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Save this show first, then add production modules (Cooking, Cosmo, News, etc.) and switch between them anytime — without reconfiguring your brand.</p>
             </div>
-            <p className="text-[10px] text-muted-foreground">Determines how Producer fetches stories, rates content, and generates assets for this show</p>
-            <Select value={form.content_domain || 'news'} onValueChange={v => set('content_domain', v)}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-white text-xs"><SelectValue placeholder="Select production type" /></SelectTrigger>
-              <SelectContent className="bg-card border-white/10">
-                {contentDomains.map(d => <SelectItem key={d.domain_key} value={d.domain_key} className="text-xs">{d.display_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {selectedDomain && selectedDomain.description && (
-              <p className="text-[10px] text-muted-foreground italic">{selectedDomain.description}</p>
-            )}
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div><Label className="text-xs text-muted-foreground">Show Name *</Label><Input value={form.show_name || ''} onChange={e => set('show_name', e.target.value)} className="bg-white/[0.03] border-white/[0.08] text-white text-xs mt-1" /></div>

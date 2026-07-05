@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Star, Pencil, Trash2, Tv, Clock, Search } from 'lucide-react';
+import { Plus, Star, Pencil, Trash2, Tv, Clock, Search, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -128,8 +128,11 @@ export default function ShowProfiles() {
               {show.host_names && <p className="text-[10px] text-muted-foreground mb-2">Host: {show.host_names}</p>}
 
               <div className="flex flex-wrap gap-1.5 mb-3">
+                {show.content_domain && show.content_domain !== 'news' && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-berna-emerald/10 text-berna-emerald flex items-center gap-0.5 capitalize"><Zap className="w-2.5 h-2.5" />{show.content_domain}</span>
+                )}
                 {show.default_tone && <span className="text-[9px] px-2 py-0.5 rounded-full bg-berna-purple/10 text-berna-purple capitalize">{show.default_tone.replace(/_/g, ' ')}</span>}
-                {show.reading_style && <span className="text-[9px] px-2 py-0.5 rounded-full bg-berna-emerald/10 text-berna-emerald capitalize">{show.reading_style.replace(/_/g, ' ')}</span>}
+                {show.reading_style && <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground capitalize">{show.reading_style.replace(/_/g, ' ')}</span>}
                 {show.target_runtime && <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{show.target_runtime}</span>}
               </div>
 

@@ -1,0 +1,84 @@
+{
+  "name": "ProductionModule",
+  "type": "object",
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "description": "Display name for this production module (e.g. 'Cooking Segment', 'Cosmo Hour')"
+    },
+    "module_type": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking",
+        "cosmo"
+      ],
+      "description": "The production domain this module enables",
+      "default": "news"
+    },
+    "show_profile_id": {
+      "type": "string",
+      "description": "ID of the parent Show Profile this module belongs to"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this module is the currently active production driver for its Show Profile"
+    },
+    "domain_topics": {
+      "type": "string",
+      "description": "JSON array of domain-specific topics this module covers (e.g. ['skincare','wellness'] for cosmo, ['recipes','grilling'] for cooking)"
+    },
+    "domain_categories": {
+      "type": "string",
+      "description": "JSON array of article categories relevant to this domain"
+    },
+    "domain_content_types": {
+      "type": "string",
+      "description": "JSON array of content types this module accepts: text, video, audio, social",
+      "default": "[\"text\",\"video\"]"
+    },
+    "asset_types": {
+      "type": "string",
+      "description": "JSON array of asset types this module generates (e.g. teleprompter_script, ingredient_list, routine_walkthrough)"
+    },
+    "segment_types": {
+      "type": "string",
+      "description": "JSON array of segment types for this domain (e.g. recipe_walkthrough, technique_demo for cooking)"
+    },
+    "scripting_instructions": {
+      "type": "string",
+      "description": "Domain-specific LLM instructions for how to write scripts for this module"
+    },
+    "research_instructions": {
+      "type": "string",
+      "description": "Domain-specific LLM instructions for how to research stories for this module"
+    },
+    "content_filtering_rules": {
+      "type": "string",
+      "description": "Domain-specific rules for filtering/sifting stories (e.g. 'Prioritize recipes with video tutorials' or 'Focus on trending wellness products')"
+    },
+    "custom_prompt_template": {
+      "type": "string",
+      "description": "Custom prompt template override for this module"
+    },
+    "module_preferences": {
+      "type": "string",
+      "description": "JSON object of domain-specific preferences (e.g. cuisine types, beauty categories, sports focus)"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this is the default module created when a new show is set up"
+    }
+  },
+  "required": [
+    "module_name",
+    "module_type",
+    "show_profile_id"
+  ]
+}
