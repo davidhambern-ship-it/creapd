@@ -11,7 +11,7 @@ export const PRODUCER_NAV_SECTIONS = [
     label: null,
     items: [
       { icon: FileText, label: "Today's Brief", path: '/brief' },
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/news/dashboard' },
     ]
   },
   {
@@ -69,7 +69,7 @@ export const PRODUCER_NAV_SECTIONS = [
 ];
 
 export const PRODUCTION_MODES = [
-  { key: 'news', label: 'News', icon: Newspaper, path: '/' },
+  { key: 'news', label: 'News', icon: Newspaper, path: '/news/dashboard' },
   { key: 'talk', label: 'Talk', icon: Mic2, path: '/talk/dashboard' },
   { key: 'cooking', label: 'Cooking', icon: ChefHat, path: '/cooking/dashboard' },
   { key: 'sports', label: 'Sports', icon: Trophy, path: '/sports/dashboard' },
