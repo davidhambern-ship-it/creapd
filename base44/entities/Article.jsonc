@@ -27,6 +27,15 @@
     "full_text_excerpt": {
       "type": "string"
     },
+    "body_content": {
+      "type": "string",
+      "description": "Full article text extracted from the source URL \u2014 enables native reading within CREAPD"
+    },
+    "body_fetched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the full body content was last fetched from the source URL"
+    },
     "category": {
       "type": "string",
       "enum": [

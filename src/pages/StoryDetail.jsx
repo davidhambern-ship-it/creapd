@@ -15,6 +15,7 @@ import CreapdLoading from '@/components/shared/CreapdLoading';
 import StatusBadge from '@/components/shared/StatusBadge';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import ProductionStatusIndicator from '@/components/shared/ProductionStatusIndicator';
+import NativeArticleReader from '@/components/shared/NativeArticleReader';
 import { logActivity } from '@/lib/activityUtils';
 
 const NOTE_TYPES = [
@@ -153,12 +154,7 @@ export default function StoryDetail() {
             </span>
           )}
         </div>
-        {article.url && (
-          <a href={article.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-berna-purple hover:underline mt-3">
-            <ExternalLink className="w-3 h-3" />
-            Open Original Source
-          </a>
-        )}
+
       </div>
 
       {/* Tags */}
@@ -181,10 +177,16 @@ export default function StoryDetail() {
       {/* Complete Summary */}
       {article.summary && (
         <div className="glass-panel p-5">
-          <h3 className="text-xs font-semibold text-white uppercase tracking-wider mb-2">Complete Summary</h3>
+          <h3 className="text-xs font-semibold text-white uppercase tracking-wider mb-2">Summary</h3>
           <p className="text-sm text-white/80 leading-relaxed">{article.summary}</p>
         </div>
       )}
+
+      {/* Native Full Article Reader */}
+      <NativeArticleReader
+        article={article}
+        sourceLabel={article.source_name || article.publication}
+      />
 
       {/* Why It Matters */}
       {(article.why_it_matters || article.full_text_excerpt) && (
