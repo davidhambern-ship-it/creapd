@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { motion } from 'framer-motion';
 import {
   Clapperboard, Plus, Play, RefreshCw, ChevronLeft, Save, Loader2, Trash2,
+  Volume2, X, Mic, Sparkles, Wand2, Image as ImageIconLucide,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { clearTourScriptCache } from '@/hooks/useTourScript';
 import TourSceneList from '@/components/tour/TourSceneList';
 import TourPreview from '@/components/tour/TourPreview';
 import TourEngagementPanel from '@/components/tour/TourEngagementPanel';
+import ElevenLabsVoicePicker from '@/components/tour/ElevenLabsVoicePicker';
 
 export default function TourControlCenter() {
   const [scripts, setScripts] = useState([]);
@@ -26,6 +28,9 @@ export default function TourControlCenter() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewStart, setPreviewStart] = useState(0);
   const [draftScript, setDraftScript] = useState(null);
+  const [elVoicePickerOpen, setElVoicePickerOpen] = useState(false);
+  const [aiBatchScript, setAiBatchScript] = useState(false);
+  const [aiBatchImage, setAiBatchImage] = useState(false);
 
   const loadScripts = useCallback(async () => {
     setIsLoading(true);
@@ -318,6 +323,76 @@ export default function TourControlCenter() {
                     </Button>
                   </div>
                 </div>
+
+                {/* ElevenLabs default voice */}
+                <div>
+                  <Label className="text-xs text-muted-foreground">Default ElevenLabs Voice</Label>
+                  {draftScript?.default_elevenlabs_voice_id ? (
+                    <div className="flex items-center gap-2 p-2 rounded-lg border border-berna-purple/20 bg-berna-purple/[0.06]">
+                      <Volume2 className="w-3.5 h-3.5 text-berna-purple shrink-0" />
+                      <span className="text-xs text-white flex-1 truncate font-mono">{draftScript.default_elevenlabs_voice_id}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6"
+                        onClick={() => setDraftScript(prev => ({ ...prev, default_elevenlabs_voice_id: '' }))}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => setElVoicePickerOpen(true)}>
+                      <Mic className="w-3.5 h-3.5 mr-1" /> Browse ElevenLabs Voices
+                    </Button>
+                  )}
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">
+                    {draftScript?.default_elevenlabs_voice_id ? 'Overrides built-in voice for all scenes' : 'Optional — falls back to built-in voice above'}
+                  </p>
+                </div>
+              </div>
+
+              {/* AI Batch Generation */}
+              <div className="glass-panel p-4 mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-4 h-4 text-berna-purple" />
+                  <h3 className="text-sm font-heading font-semibold text-white">AI Batch Tools</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm"
+                    onClick={async () => {
+                      setAiBatchScript(true);
+                      for (const [idx, scene] of scenes.entries()) {
+                        try {
+                          const res = await base44.integrations.Core.InvokeLLM({
+                            prompt: `Rewrite this tour narration scene to be more compelling and concise (1-2 sentences). Keep it conversational. Context: route ${draftScript?.route_path}, scene ${scene.scene_id}.\n\nOriginal: ${scene.text}\n\nReturn JSON with display_text and speech_text (use "Creeped" for CREAPD in speech).`,
+                            response_json_schema: { type: 'object', properties: { display_text: { type: 'string' }, speech_text: { type: 'string' } } },
+                          });
+                          if (res.display_text) handleSceneChange(idx, 'text', res.display_text);
+                          if (res.speech_text) handleSceneChange(idx, 'speech_text', res.speech_text);
+                        } catch (e) { console.error('Batch script error:', e); }
+                      }
+                      setAiBatchScript(false);
+                    }}
+                    disabled={aiBatchScript || scenes.length === 0}>
+                    {aiBatchScript ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Wand2 className="w-3.5 h-3.5 mr-1" />}
+                    Enhance All Scripts
+                  </Button>
+                  <Button variant="outline" size="sm"
+                    onClick={async () => {
+                      setAiBatchImage(true);
+                      for (const [idx, scene] of scenes.entries()) {
+                        const imgPrompt = scene.image_prompt || scene.text;
+                        if (!imgPrompt) continue;
+                        try {
+                          const res = await base44.integrations.Core.GenerateImage({
+                            prompt: `Cinematic, modern, abstract illustration. Context: "${imgPrompt}". Dark background, purple/orange neon accents, glassmorphism, futuristic UI aesthetic.`,
+                          });
+                          if (res.url) handleSceneChange(idx, 'generated_image_url', res.url);
+                        } catch (e) { console.error('Batch image error:', e); }
+                      }
+                      setAiBatchImage(false);
+                    }}
+                    disabled={aiBatchImage || scenes.length === 0}>
+                    {aiBatchImage ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <ImageIconLucide className="w-3.5 h-3.5 mr-1" />}
+                    Generate All Images
+                  </Button>
+                </div>
               </div>
 
               {/* Scene list + actions */}
@@ -368,6 +443,13 @@ export default function TourControlCenter() {
           startIndex={previewStart}
         />
       )}
+
+      {/* ElevenLabs Voice Picker (for script default) */}
+      <ElevenLabsVoicePicker
+        open={elVoicePickerOpen}
+        onClose={() => setElVoicePickerOpen(false)}
+        onSelect={(voice) => setDraftScript(prev => ({ ...prev, default_elevenlabs_voice_id: voice.voice_id }))}
+      />
     </div>
   );
 }

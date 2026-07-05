@@ -50,25 +50,6 @@ export default function TourSceneCard({ scene, index, onChange, onDelete, onPrev
             className="overflow-hidden"
           >
             <div className="p-3 pt-0 border-t border-white/[0.06]">
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Scene ID</label>
-                  <input
-                    value={scene.scene_id || ''}
-                    onChange={e => onChange('scene_id', e.target.value)}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-md px-2 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Order</label>
-                  <input
-                    type="number"
-                    value={scene.scene_order ?? index}
-                    onChange={e => onChange('scene_order', Number(e.target.value))}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-md px-2 py-1.5 text-sm"
-                  />
-                </div>
-              </div>
               <TourSceneForm scene={scene} onChange={onChange} />
             </div>
           </motion.div>

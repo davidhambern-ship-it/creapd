@@ -59,7 +59,127 @@
     },
     "voice_override": {
       "type": "string",
-      "description": "Per-scene voice override (river, honey, sunny, storm, spark). Empty = use script default."
+      "description": "Per-scene built-in voice override (river, honey, sunny, storm, spark). Empty = use script default."
+    },
+    "text_color": {
+      "type": "string",
+      "default": "text-white",
+      "description": "Tailwind color class for the display text"
+    },
+    "text_size": {
+      "type": "string",
+      "enum": [
+        "sm",
+        "base",
+        "lg",
+        "xl",
+        "2xl"
+      ],
+      "default": "lg",
+      "description": "Size of the display text"
+    },
+    "text_alignment": {
+      "type": "string",
+      "enum": [
+        "center",
+        "left",
+        "right"
+      ],
+      "default": "center",
+      "description": "Alignment of the display text"
+    },
+    "background_type": {
+      "type": "string",
+      "enum": [
+        "default",
+        "gradient-purple",
+        "gradient-orange",
+        "gradient-emerald",
+        "gradient-navy",
+        "solid-dark",
+        "image"
+      ],
+      "default": "default",
+      "description": "Background style for the scene"
+    },
+    "element_layout": {
+      "type": "string",
+      "enum": [
+        "centered",
+        "split-left",
+        "split-right",
+        "fullscreen"
+      ],
+      "default": "centered",
+      "description": "Layout of visual elements and text"
+    },
+    "transition_in": {
+      "type": "string",
+      "enum": [
+        "fade",
+        "slide-left",
+        "slide-up",
+        "zoom",
+        "dissolve",
+        "none"
+      ],
+      "default": "fade",
+      "description": "Entrance animation for the scene"
+    },
+    "transition_out": {
+      "type": "string",
+      "enum": [
+        "fade",
+        "slide-right",
+        "slide-down",
+        "zoom",
+        "dissolve",
+        "none"
+      ],
+      "default": "fade",
+      "description": "Exit animation for the scene"
+    },
+    "animation_speed": {
+      "type": "string",
+      "enum": [
+        "slow",
+        "normal",
+        "fast"
+      ],
+      "default": "normal",
+      "description": "Speed multiplier for scene animations"
+    },
+    "speech_speed": {
+      "type": "number",
+      "default": 1.0,
+      "description": "TTS playback speed multiplier (0.5-2.0)"
+    },
+    "voice_stability": {
+      "type": "number",
+      "default": 0.5,
+      "description": "ElevenLabs voice stability (0-1). Higher = more consistent."
+    },
+    "voice_similarity": {
+      "type": "number",
+      "default": 0.75,
+      "description": "ElevenLabs voice similarity boost (0-1)"
+    },
+    "pause_after_ms": {
+      "type": "number",
+      "default": 500,
+      "description": "Pause after scene completes, in milliseconds"
+    },
+    "elevenlabs_voice_id": {
+      "type": "string",
+      "description": "ElevenLabs voice ID. When set, overrides voice_override and script default voice."
+    },
+    "generated_image_url": {
+      "type": "string",
+      "description": "AI-generated image URL displayed during this scene"
+    },
+    "image_prompt": {
+      "type": "string",
+      "description": "Prompt used to generate the scene image via AI"
     }
   },
   "required": [
