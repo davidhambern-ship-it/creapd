@@ -111,7 +111,7 @@ export default function PipelineExplainer() {
           className="text-xl lg:text-2xl font-heading font-bold text-white inline-block"
           style={{ textShadow: '0 0 8px hsl(270 80% 60% / 0.6), 0 0 20px hsl(270 80% 60% / 0.3)' }}
         >
-          <span className="text-3xl lg:text-5xl" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.12em' }}>What Is</span> <span className="text-2xl lg:text-3xl" style={{ fontFamily: "'01 Digitall', sans-serif", letterSpacing: '0.05em' }}>CREAPD</span>?
+          <span className="text-3xl lg:text-5xl" style={{ fontFamily: "'HollywoodDrive', sans-serif", letterSpacing: '0.05em' }}>What Is</span> <span className="text-2xl lg:text-3xl" style={{ fontFamily: "'01 Digitall', sans-serif", letterSpacing: '0.05em' }}>CREAPD</span>?
         </motion.h2>
         <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto leading-relaxed">
           CREAPD helps creators turn ideas into complete productions. Choose a Production Profile,
