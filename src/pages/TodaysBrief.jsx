@@ -191,7 +191,7 @@ export default function TodaysBrief() {
     await base44.entities.Briefing.update(briefing.id, { approved_sections: JSON.stringify(allApproved) });
 
     // Navigate to production
-    window.location.href = '/production';
+    window.location.href = '/news/productionpackages';
   };
 
   // Copy full brief

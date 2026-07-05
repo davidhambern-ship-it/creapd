@@ -78,28 +78,28 @@ export default function Dashboard() {
               and fine-tune your automation settings before Monday arrives.
             </p>
             <div className="flex flex-wrap gap-2 mt-6">
-              <Link to="/planner">
+              <Link to="/news/weeklyplanner">
                 <Button className="bg-gradient-to-r from-berna-orange to-berna-orange/80 hover:from-berna-orange/90 text-white glow-orange">
                   <Sparkles className="w-4 h-4 mr-2" />
                   Plan Next Week
                 </Button>
               </Link>
-              <Link to="/planner">
+              <Link to="/news/weeklyplanner">
                 <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
                   <Copy className="w-4 h-4 mr-2" />Copy Last Week
                 </Button>
               </Link>
-              <Link to="/planner">
+              <Link to="/news/weeklyplanner">
                 <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
                   <Sparkles className="w-4 h-4 mr-2" />Generate Suggested Week
                 </Button>
               </Link>
-              <Link to="/archive">
+              <Link to="/news/archivepage">
                 <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
                   <BarChart3 className="w-4 h-4 mr-2" />Review Source Performance
                 </Button>
               </Link>
-              <Link to="/archive">
+              <Link to="/news/archivepage">
                 <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
                   <RotateCw className="w-4 h-4 mr-2" />Review Archive Repeats
                 </Button>
@@ -130,17 +130,17 @@ export default function Dashboard() {
           <div className="glass-panel p-5 space-y-3">
             <h2 className="text-sm font-semibold text-white neon-underline">Quick Actions</h2>
             <div className="space-y-2">
-              <Link to="/planner" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
+              <Link to="/news/weeklyplanner" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
                 <CalendarDays className="w-4 h-4 text-berna-purple" />
                 <span className="text-sm text-white/80 group-hover:text-white">Open Weekly Planner</span>
                 <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
               </Link>
-              <Link to="/sources" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
+              <Link to="/news/sources" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
                 <Radio className="w-4 h-4 text-berna-emerald" />
                 <span className="text-sm text-white/80 group-hover:text-white">Manage Sources</span>
                 <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
               </Link>
-              <Link to="/archive" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
+              <Link to="/news/archivepage" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
                 <Archive className="w-4 h-4 text-blue-400" />
                 <span className="text-sm text-white/80 group-hover:text-white">Review Archive</span>
                 <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
@@ -197,14 +197,14 @@ export default function Dashboard() {
             <StatusBadge status={briefing?.status || 'pending'} />
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Link to="/brief">
+            <Link to="/news/todaysbrief">
               <Button className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 hover:to-berna-purple/70 text-white glow-purple">
                 <FileText className="w-4 h-4 mr-2" />
                 Open Today's Brief
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
-            <Link to="/planner">
+            <Link to="/news/weeklyplanner">
               <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
                 <CalendarDays className="w-4 h-4 mr-2" />Weekly Planner
               </Button>
@@ -217,7 +217,7 @@ export default function Dashboard() {
       </div>
 
       {/* Weekly Planner Card */}
-      <Link to="/planner" className="block group">
+      <Link to="/news/weeklyplanner" className="block group">
         <div className="glass-panel glow-purple p-5 lg:p-6 relative overflow-hidden transition-all hover:border-berna-purple/30">
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-berna-purple/10 to-transparent rounded-full -mr-16 -mt-16" />
           <div className="relative flex items-start gap-4">
@@ -243,7 +243,7 @@ export default function Dashboard() {
         <div className="glass-panel p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white neon-underline">Automation Status</h2>
-            <Link to="/automation" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
+            <Link to="/news/automationcenter" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
@@ -267,7 +267,7 @@ export default function Dashboard() {
               <span className="text-xs text-berna-emerald flex items-center gap-1"><CheckCircle className="w-3 h-3" />Saved</span>
             </div>
           </div>
-          <Link to="/automation">
+          <Link to="/news/automationcenter">
             <Button variant="outline" size="sm" className="w-full border-white/10 text-white hover:bg-white/[0.04] text-xs">
               <Play className="w-3 h-3 mr-1" />
               Run Now
@@ -328,12 +328,12 @@ export default function Dashboard() {
           <h2 className="text-sm font-semibold text-white neon-underline">Quick Actions</h2>
           <div className="space-y-2">
             {[
-            { icon: CalendarDays, label: 'Weekly Planner', path: '/planner', color: 'text-berna-purple' },
-            { icon: FileText, label: 'Generate Brief', path: '/brief', color: 'text-berna-purple' },
-            { icon: RefreshCw, label: 'Refresh Sources', path: '/sources', color: 'text-berna-emerald' },
-            { icon: Layers, label: 'Review Story Queue', path: '/queue', color: 'text-berna-orange' },
-            { icon: Archive, label: 'Open Archive', path: '/archive', color: 'text-blue-400' },
-            { icon: Settings, label: 'Automation Settings', path: '/automation', color: 'text-muted-foreground' }].
+            { icon: CalendarDays, label: 'Weekly Planner', path: '/news/weeklyplanner', color: 'text-berna-purple' },
+            { icon: FileText, label: 'Generate Brief', path: '/news/todaysbrief', color: 'text-berna-purple' },
+            { icon: RefreshCw, label: 'Refresh Sources', path: '/news/sources', color: 'text-berna-emerald' },
+            { icon: Layers, label: 'Review Story Queue', path: '/news/storyqueue', color: 'text-berna-orange' },
+            { icon: Archive, label: 'Open Archive', path: '/news/archivepage', color: 'text-blue-400' },
+            { icon: Settings, label: 'Automation Settings', path: '/news/automationcenter', color: 'text-muted-foreground' }].
             map((action) =>
             <Link
               key={action.label}
@@ -355,14 +355,14 @@ export default function Dashboard() {
         <div className="glass-panel p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white neon-underline">Recent Productions</h2>
-            <Link to="/production" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
+            <Link to="/news/productionpackages" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
           </div>
           {recentPackages.length > 0 ?
           <div className="space-y-3">
               {recentPackages.slice(0, 3).map((pkg) => {
               const stageMap = { not_generated: 'briefing', generating: 'package_generated', generated: 'package_generated', edited: 'editing_complete', approved: 'ready_for_export' };
               return (
-                <Link key={pkg.id} to="/production" className="block p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all">
+                <Link key={pkg.id} to="/news/productionpackages" className="block p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all">
                     <p className="text-xs text-white font-medium line-clamp-1 mb-2">{pkg.story_summary || pkg.teleprompter_script?.slice(0, 60) || 'Untitled Package'}</p>
                     <ProductionStatusIndicator currentStage={stageMap[pkg.status] || 'briefing'} showLabels={false} compactLabel />
                   </Link>);
@@ -383,7 +383,7 @@ export default function Dashboard() {
               {favBrands.length > 0 ?
               <div className="space-y-1.5">
                   {favBrands.map((brand) =>
-                <Link key={brand.id} to="/brands" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
+                <Link key={brand.id} to="/news/brandprofiles" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
                       <Heart className="w-3 h-3 text-berna-orange fill-berna-orange flex-shrink-0" />
                       <span className="text-xs text-white/80 group-hover:text-white truncate">{brand.brand_name}</span>
                     </Link>
@@ -398,7 +398,7 @@ export default function Dashboard() {
               {favShows.length > 0 ?
               <div className="space-y-1.5">
                   {favShows.map((show) =>
-                <Link key={show.id} to="/shows" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
+                <Link key={show.id} to="/news/showprofiles" className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors group">
                       <Heart className="w-3 h-3 text-berna-orange fill-berna-orange flex-shrink-0" />
                       <span className="text-xs text-white/80 group-hover:text-white truncate">{show.show_name}</span>
                     </Link>
@@ -415,7 +415,7 @@ export default function Dashboard() {
         <div className="glass-panel p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white neon-underline">Recent Exports</h2>
-            <Link to="/export" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
+            <Link to="/news/exportcenter" className="text-[10px] text-berna-purple hover:text-berna-purple/80">View All</Link>
           </div>
           {recentExports.length > 0 ?
           <div className="space-y-2">

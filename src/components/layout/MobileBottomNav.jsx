@@ -23,7 +23,7 @@ export default function MobileBottomNav({ items }) {
         );
       })}
 
-      <Link to="/settings" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/settings' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
+      <Link to="/news/settingspage" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/news/settingspage' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
         <ChevronRight className="w-4 h-4" />
         <span className="text-[9px]">More</span>
       </Link>

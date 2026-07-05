@@ -129,7 +129,7 @@ export default function StoryLibrary() {
             {articles.length === 0 ? 'No stories yet. Save stories from the Story Queue or generate packages to build your library.' : 'No stories match your filters.'}
           </p>
           {articles.length === 0 && (
-            <Link to="/queue" className="inline-block mt-4">
+            <Link to="/news/storyqueue" className="inline-block mt-4">
               <Button variant="outline" size="sm" className="border-white/10 text-white text-xs">Go to Story Queue</Button>
             </Link>
           )}
@@ -142,7 +142,7 @@ export default function StoryLibrary() {
               <div key={a.id} className="glass-panel p-4 hover:border-white/[0.12] transition-colors">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <Link to={`/story/${a.id}`}>
+                    <Link to={`/news/storydetail/${a.id}`}>
                       <h3 className="text-sm font-semibold text-white leading-snug hover:text-berna-purple transition-colors">{a.title}</h3>
                     </Link>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -167,7 +167,7 @@ export default function StoryLibrary() {
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     )}
-                    <Link to="/workspace" className="text-berna-emerald hover:text-berna-emerald/80 p-1" title="Send to Manager">
+                    <Link to="/news/storymanager" className="text-berna-emerald hover:text-berna-emerald/80 p-1" title="Send to Manager">
                       <Layers className="w-3.5 h-3.5" />
                     </Link>
                     <button onClick={() => handleArchive(a.id)} className="text-muted-foreground hover:text-yellow-400 p-1" title="Archive">

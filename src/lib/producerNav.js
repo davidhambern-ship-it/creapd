@@ -10,60 +10,60 @@ export const PRODUCER_NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { icon: FileText, label: "Today's Brief", path: '/brief' },
+      { icon: FileText, label: "Today's Brief", path: '/news/todaysbrief' },
       { icon: LayoutDashboard, label: 'Dashboard', path: '/news/dashboard' },
     ]
   },
   {
     label: 'Content',
     items: [
-      { icon: Layers, label: 'Story Queue', path: '/queue' },
-      { icon: Bookmark, label: 'Story Package Library', path: '/library' },
-      { icon: ClipboardList, label: 'Story Manager', path: '/workspace' },
+      { icon: Layers, label: 'Story Queue', path: '/news/storyqueue' },
+      { icon: Bookmark, label: 'Story Package Library', path: '/news/storylibrary' },
+      { icon: ClipboardList, label: 'Story Manager', path: '/news/storymanager' },
     ]
   },
   {
     label: 'Production',
     items: [
-      { icon: Package, label: 'Production', path: '/production' },
-      { icon: Palette, label: 'Brand Profiles', path: '/brands' },
-      { icon: Tv, label: 'Show Profiles', path: '/shows' },
-      { icon: ImageIcon, label: 'Image/Video Library', path: '/images' },
+      { icon: Package, label: 'Production', path: '/news/productionpackages' },
+      { icon: Palette, label: 'Brand Profiles', path: '/news/brandprofiles' },
+      { icon: Tv, label: 'Show Profiles', path: '/news/showprofiles' },
+      { icon: ImageIcon, label: 'Image/Video Library', path: '/news/imagelibrary' },
     ]
   },
   {
     label: 'Output',
     items: [
-      { icon: Film, label: 'Presentations', path: '/presentations' },
-      { icon: Download, label: 'Export Center', path: '/export' },
+      { icon: Film, label: 'Presentations', path: '/news/presentations' },
+      { icon: Download, label: 'Export Center', path: '/news/exportcenter' },
     ]
   },
   {
     label: 'Research & Sources',
     items: [
-      { icon: Search, label: 'Research Desk', path: '/research' },
-      { icon: Radio, label: 'Sources', path: '/sources' },
-      { icon: FileInput, label: 'Import URL', path: '/import' },
+      { icon: Search, label: 'Research Desk', path: '/news/researchdesk' },
+      { icon: Radio, label: 'Sources', path: '/news/sources' },
+      { icon: FileInput, label: 'Import URL', path: '/news/manualimport' },
     ]
   },
   {
     label: 'Templates',
     items: [
-      { icon: LayoutTemplate, label: 'Templates', path: '/templates' },
-      { icon: ImageIcon, label: 'Graphics Templates', path: '/graphics-templates' },
-      { icon: MessageSquareCode, label: 'Prompt Templates', path: '/prompt-templates' },
+      { icon: LayoutTemplate, label: 'Templates', path: '/news/templatelibrary' },
+      { icon: ImageIcon, label: 'Graphics Templates', path: '/news/productiontemplates' },
+      { icon: MessageSquareCode, label: 'Prompt Templates', path: '/news/prompttemplates' },
     ]
   },
   {
     label: 'System',
     items: [
-      { icon: Archive, label: 'Archive', path: '/archive' },
-      { icon: ShieldCheck, label: 'Security & Privacy', path: '/security' },
-      { icon: Activity, label: 'Automation', path: '/automation' },
-      { icon: Building2, label: 'Organizations', path: '/organizations' },
-      { icon: Bell, label: 'Activity Center', path: '/activity' },
-      { icon: UserCircle, label: 'My Profile', path: '/profile' },
-      { icon: Settings, label: 'Settings', path: '/settings' },
+      { icon: Archive, label: 'Archive', path: '/news/archivepage' },
+      { icon: ShieldCheck, label: 'Security & Privacy', path: '/news/securitycenter' },
+      { icon: Activity, label: 'Automation', path: '/news/automationcenter' },
+      { icon: Building2, label: 'Organizations', path: '/news/organizations' },
+      { icon: Bell, label: 'Activity Center', path: '/news/activitycenter' },
+      { icon: UserCircle, label: 'My Profile', path: '/news/userprofile' },
+      { icon: Settings, label: 'Settings', path: '/news/settingspage' },
     ]
   },
 ];

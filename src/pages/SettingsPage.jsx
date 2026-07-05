@@ -193,7 +193,7 @@ export default function SettingsPage() {
           <div className="p-3 rounded-lg bg-berna-orange/[0.06] border border-berna-orange/15">
             <p className="text-xs font-semibold text-berna-orange">Show Profile</p>
             <p className="text-[10px] text-muted-foreground mt-1">Your user-configured content strategy for a specific show. Controls preferred topics, excluded topics, tone, region, sources, categories, controversy tolerance, and story priority. Backend story filtering uses the active Show Profile.</p>
-            <a href="/shows" className="text-[10px] text-berna-orange hover:underline mt-1 inline-block">Configure Show Profiles →</a>
+            <a href="/news/showprofiles" className="text-[10px] text-berna-orange hover:underline mt-1 inline-block">Configure Show Profiles →</a>
           </div>
         </div>
       </div>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
           {currentUser.role && (
             <span className="text-[10px] text-berna-orange bg-berna-orange/10 px-2 py-1 rounded-md capitalize">{currentUser.role}</span>
           )}
-          <a href="/organizations" className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-white transition-colors">
+          <a href="/news/organizations" className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-white transition-colors">
             <Building2 className="w-3.5 h-3.5" />
             Organization
           </a>

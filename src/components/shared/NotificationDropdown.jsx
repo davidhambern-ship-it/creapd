@@ -112,7 +112,7 @@ export default function NotificationDropdown() {
             )}
           </div>
           <div className="px-4 py-2 border-t border-white/[0.06]">
-            <Link to="/activity" onClick={() => setOpen(false)} className="text-[10px] text-berna-purple hover:underline block text-center">
+            <Link to="/news/activitycenter" onClick={() => setOpen(false)} className="text-[10px] text-berna-purple hover:underline block text-center">
               View all in Activity Center →
             </Link>
           </div>

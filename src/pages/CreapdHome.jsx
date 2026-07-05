@@ -97,7 +97,7 @@ export default function CreapdHome() {
 
       {/* Production Details Modal */}
       <ProductionDetailsModal profile={detailsProfile} onClose={() => setDetailsProfile(null)} />
-      <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={() => { window.location.href = '/shows'; }} />
+      <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={() => { window.location.href = '/news/showprofiles'; }} />
       <IdlePersonalityToast />
     </div>
   );

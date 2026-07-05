@@ -115,7 +115,7 @@ export const NARRATION_ROUTES = {
     'Approve stories to move them into production, or let me handle it in AUTOPILOT. Your call.'
   ),
 
-  '/planner': pageNarration(
+  '/news/weeklyplanner': pageNarration(
     'Weekly Planner', Calendar, 'text-berna-purple',
     'This is the Weekly Planner. Map out your production schedule day by day.',
     'This is the Weekly Planner. Map out your production schedule day by day.',
@@ -125,7 +125,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/brief': pageNarration(
+  '/news/todaysbrief': pageNarration(
     "Today's Brief", FileText, 'text-berna-orange',
     "This is Today's Brief. Your top stories, ready to go.",
     "This is Today's Brief. Your top stories, ready to go.",
@@ -135,7 +135,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/queue': {
+  '/news/storyqueue': {
     name: 'Story Queue',
     scenes: [
       {
@@ -159,7 +159,7 @@ export const NARRATION_ROUTES = {
     ],
   },
 
-  '/review': pageNarration(
+  '/news/storyintelligencereview': pageNarration(
     'Story Intelligence', FileSearch, 'text-berna-emerald',
     'This is Story Intelligence Review. CREAPD scores every story on opportunity, credibility, and fit.',
     'This is Story Intelligence Review. Creeped scores every story on opportunity, credibility, and fit.',
@@ -169,7 +169,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/library': pageNarration(
+  '/news/storylibrary': pageNarration(
     'Story Library', Library, 'text-berna-purple',
     'This is the Story Library. Every saved and approved story lives here.',
     'This is the Story Library. Every saved and approved story lives here.',
@@ -179,7 +179,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/workspace': pageNarration(
+  '/news/storymanager': pageNarration(
     'Story Workspace', Layers, 'text-berna-orange',
     'This is the Story Workspace. Build and manage your show rundowns here.',
     'This is the Story Workspace. Build and manage your show rundowns here.',
@@ -189,7 +189,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/production': pageNarration(
+  '/news/productionpackages': pageNarration(
     'Production Packages', Package, 'text-berna-purple',
     'This is the Production Packages page. Each package is a complete, broadcast-ready production.',
     'This is the Production Packages page. Each package is a complete, broadcast-ready production.',
@@ -199,7 +199,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/presentations': pageNarration(
+  '/news/presentations': pageNarration(
     'Presentations', Presentation, 'text-berna-emerald',
     'This is the Presentations page. CREAPD directs your stories into visual, narrated presentations.',
     'This is the Presentations page. Creeped directs your stories into visual, narrated presentations.',
@@ -212,7 +212,7 @@ export const NARRATION_ROUTES = {
   // ═══════════════════════════════════════════════
   // MANAGEMENT PAGES
   // ═══════════════════════════════════════════════
-  '/brands': pageNarration(
+  '/news/brandprofiles': pageNarration(
     'Brand Profiles', Palette, 'text-berna-orange',
     'This is Brand Profiles. Define your show identity — colors, logos, tone, and visual style.',
     'This is Brand Profiles. Define your show identity — colors, logos, tone, and visual style.',
@@ -222,7 +222,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/shows': pageNarration(
+  '/news/showprofiles': pageNarration(
     'Show Profiles', Clapperboard, 'text-berna-purple',
     'This is Show Profiles. Each show profile defines the tone, audience, topics, and rules for a specific show.',
     'This is Show Profiles. Each show profile defines the tone, audience, topics, and rules for a specific show.',
@@ -232,7 +232,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/images': pageNarration(
+  '/news/imagelibrary': pageNarration(
     'Image Library', ImageIcon, 'text-berna-emerald',
     'This is the Image Library. Every generated image is stored here for reuse.',
     'This is the Image Library. Every generated image is stored here for reuse.',
@@ -242,7 +242,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/export': pageNarration(
+  '/news/exportcenter': pageNarration(
     'Export Center', Download, 'text-berna-orange',
     'This is the Export Center. Turn your finished productions into downloadable files.',
     'This is the Export Center. Turn your finished productions into downloadable files.',
@@ -252,7 +252,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/research': pageNarration(
+  '/news/researchdesk': pageNarration(
     'Research Desk', FlaskConical, 'text-berna-emerald',
     'This is the Research Desk. Dig deeper into any topic with CREAPD research tools.',
     'This is the Research Desk. Dig deeper into any topic with Creeped research tools.',
@@ -262,7 +262,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/sources': pageNarration(
+  '/news/sources': pageNarration(
     'Sources', Database, 'text-berna-purple',
     'This is the Sources page. Manage the RSS feeds and content sources that feed your story pipeline.',
     'This is the Sources page. Manage the RSS feeds and content sources that feed your story pipeline.',
@@ -272,7 +272,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/import': pageNarration(
+  '/news/manualimport': pageNarration(
     'Manual Import', Upload, 'text-berna-orange',
     'This is Manual Import. Bring in a story by URL when you find something worth covering.',
     'This is Manual Import. Bring in a story by URL when you find something worth covering.',
@@ -282,7 +282,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/archive': pageNarration(
+  '/news/archivepage': pageNarration(
     'Archive', Archive, 'text-muted-foreground',
     'This is the Archive. Rejected and used stories are stored here.',
     'This is the Archive. Rejected and used stories are stored here.',
@@ -292,7 +292,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/automation': pageNarration(
+  '/news/automationcenter': pageNarration(
     'Automation Center', Wrench, 'text-berna-purple',
     'This is the Automation Center. Set up scheduled tasks and automated workflows.',
     'This is the Automation Center. Set up scheduled tasks and automated workflows.',
@@ -302,7 +302,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/profile': pageNarration(
+  '/news/userprofile': pageNarration(
     'User Profile', User, 'text-berna-orange',
     'This is your User Profile. Manage your account and preferences.',
     'This is your User Profile. Manage your account and preferences.',
@@ -312,7 +312,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/settings': pageNarration(
+  '/news/settingspage': pageNarration(
     'Settings', Settings, 'text-berna-purple',
     'This is Settings. Configure your producer defaults, AI models, and system preferences.',
     'This is Settings. Configure your producer defaults, AI models, and system preferences.',
@@ -322,7 +322,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/security': pageNarration(
+  '/news/securitycenter': pageNarration(
     'Security Center', Shield, 'text-berna-emerald',
     'This is the Security Center. Review your data privacy, connected services, and compliance status.',
     'This is the Security Center. Review your data privacy, connected services, and compliance status.',
@@ -332,7 +332,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/checklist': pageNarration(
+  '/news/acceptancechecklist': pageNarration(
     'Acceptance Checklist', FileCheck, 'text-berna-orange',
     'This is the Acceptance Checklist. Track your setup progress and ensure everything is configured.',
     'This is the Acceptance Checklist. Track your setup progress and ensure everything is configured.',
@@ -342,7 +342,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/organizations': pageNarration(
+  '/news/organizations': pageNarration(
     'Organizations', Users2, 'text-berna-purple',
     'This is Organizations. Manage your teams and organizational settings.',
     'This is Organizations. Manage your teams and organizational settings.',
@@ -352,7 +352,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/activity': pageNarration(
+  '/news/activitycenter': pageNarration(
     'Activity Center', Bell, 'text-berna-orange',
     'This is the Activity Center. Track all actions and events across your CREAPD studio.',
     'This is the Activity Center. Track all actions and events across your Creeped studio.',
@@ -362,7 +362,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/templates': pageNarration(
+  '/news/templatelibrary': pageNarration(
     'Template Library', BookMarked, 'text-berna-emerald',
     'This is the Template Library. Pre-built templates for scripts, briefings, and productions.',
     'This is the Template Library. Pre-built templates for scripts, briefings, and productions.',
@@ -372,7 +372,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/graphics-templates': pageNarration(
+  '/news/productiontemplates': pageNarration(
     'Production Templates', LayoutDashboard, 'text-berna-purple',
     'This is Production Templates. Visual templates for your shows and segments.',
     'This is Production Templates. Visual templates for your shows and segments.',
@@ -382,7 +382,7 @@ export const NARRATION_ROUTES = {
     null
   ),
 
-  '/prompt-templates': pageNarration(
+  '/news/prompttemplates': pageNarration(
     'Prompt Templates', PenTool, 'text-berna-orange',
     'This is Prompt Templates. Customize how CREAPD generates your scripts and assets.',
     'This is Prompt Templates. Customize how Creeped generates your scripts and assets.',
@@ -684,8 +684,8 @@ export const NARRATION_ROUTES = {
 
 // Routes that use prefix matching (e.g. /story/:id matches /story/ prefix)
 const DYNAMIC_ROUTE_PREFIXES = [
-  '/story/',
-  '/presentations/',
+  '/news/storydetail/',
+  '/news/presentations/',
   '/spiritual/research/',
   '/spiritual/library/reader/',
   '/spiritual/library/word/',

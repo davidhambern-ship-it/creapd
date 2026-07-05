@@ -139,7 +139,7 @@ export default function Presentations() {
           {filtered.map((pres) => (
             <Link
               key={pres.id}
-              to={`/presentations/${pres.id}`}
+              to={`/news/presentations/${pres.id}`}
               className="group bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
             >
               <div className="aspect-video bg-gradient-to-br from-berna-navy to-black rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">

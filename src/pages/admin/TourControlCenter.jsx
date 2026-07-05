@@ -264,7 +264,7 @@ export default function TourControlCenter() {
       <div className="border-b border-white/[0.06] bg-white/[0.02]">
         <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/settings" className="text-muted-foreground hover:text-white">
+            <Link to="/news/settingspage" className="text-muted-foreground hover:text-white">
               <ChevronLeft className="w-5 h-5" />
             </Link>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-berna-purple to-berna-orange flex items-center justify-center glow-purple">
