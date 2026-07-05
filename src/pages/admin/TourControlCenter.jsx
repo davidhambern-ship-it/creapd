@@ -14,6 +14,7 @@ import { findIconName, VOICE_OPTIONS } from '@/lib/tourIcons';
 import { clearTourScriptCache } from '@/hooks/useTourScript';
 import TourSceneList from '@/components/tour/TourSceneList';
 import TourPreview from '@/components/tour/TourPreview';
+import TourEngagementPanel from '@/components/tour/TourEngagementPanel';
 
 export default function TourControlCenter() {
   const [scripts, setScripts] = useState([]);
@@ -344,6 +345,14 @@ export default function TourControlCenter() {
                 onAdd={handleSceneAdd}
                 onPreview={handlePreview}
               />
+
+              <div className="mt-6">
+                <TourEngagementPanel
+                  scriptId={selectedId}
+                  routePath={draftScript?.route_path}
+                  scenes={scenes}
+                />
+              </div>
             </div>
           )}
         </div>

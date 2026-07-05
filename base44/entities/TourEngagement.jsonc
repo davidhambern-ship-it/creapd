@@ -1,0 +1,43 @@
+{
+  "name": "TourEngagement",
+  "type": "object",
+  "properties": {
+    "tour_script_id": {
+      "type": "string",
+      "description": "ID of the TourScript this engagement session was for"
+    },
+    "route_path": {
+      "type": "string",
+      "description": "Route path where the tour played"
+    },
+    "script_name": {
+      "type": "string",
+      "description": "Name of the tour script at time of playback"
+    },
+    "last_scene_id": {
+      "type": "string",
+      "description": "ID of the last scene the producer reached before completing or skipping"
+    },
+    "last_scene_index": {
+      "type": "number",
+      "description": "0-based index of the last scene the producer reached"
+    },
+    "total_scenes": {
+      "type": "number",
+      "description": "Total number of scenes in the script at time of playback"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "skipped"
+      ],
+      "default": "completed",
+      "description": "Whether the producer finished the tour naturally or skipped it"
+    }
+  },
+  "required": [
+    "route_path",
+    "action"
+  ]
+}

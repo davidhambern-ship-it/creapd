@@ -10,6 +10,7 @@ import {
 } from '@/lib/systemNarration';
 import { generateNarrationSpeech } from '@/lib/clonedVoice';
 import { useTourScript } from '@/hooks/useTourScript';
+import { logTourEngagement } from '@/lib/tourEngagement';
 import { FONT_CLASSES } from '@/lib/tourIcons';
 import NarrationVisual from './NarrationVisual';
 
@@ -97,6 +98,16 @@ export default function SystemNarrationOverlay() {
 
     if (currentScene >= narration.scenes.length - 1) {
       // Narration finished — fade out and reveal page
+      const lastScene = narration.scenes[narration.scenes.length - 1];
+      logTourEngagement({
+        tour_script_id: narration._scriptId || '',
+        route_path: pathname,
+        script_name: narration.name,
+        last_scene_id: lastScene?.id || '',
+        last_scene_index: narration.scenes.length - 1,
+        total_scenes: narration.scenes.length,
+        action: 'completed',
+      });
       markNarrationPlayed(pathname);
       setFadingOut(true);
       setTimeout(() => {
@@ -186,6 +197,16 @@ export default function SystemNarrationOverlay() {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
     if (audioRef.current) audioRef.current.pause();
+    const skipScene = narration.scenes[currentScene];
+    logTourEngagement({
+      tour_script_id: narration._scriptId || '',
+      route_path: pathname,
+      script_name: narration.name,
+      last_scene_id: skipScene?.id || '',
+      last_scene_index: currentScene,
+      total_scenes: narration.scenes.length,
+      action: 'skipped',
+    });
     markNarrationPlayed(pathname);
     setFadingOut(true);
     setTimeout(() => {
