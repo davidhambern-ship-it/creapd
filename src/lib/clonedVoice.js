@@ -35,13 +35,5 @@ export function hasClonedVoice() {
  * otherwise fall back to the built-in TTS with 'storm' voice.
  */
 export async function generateNarrationSpeech(text) {
-  const voiceId = getClonedVoiceId();
-  if (voiceId) {
-    const response = await base44.functions.invoke('generateClonedSpeech', {
-      text,
-      voice_id: voiceId,
-    });
-    return { url: response.data.url };
-  }
   return await base44.integrations.Core.GenerateSpeech({ text, voice: 'storm' });
 }
