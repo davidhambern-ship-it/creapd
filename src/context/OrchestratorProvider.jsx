@@ -1,27 +1,30 @@
 import React, { createContext, useContext, useReducer, useRef, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { registry } from '@/lib/creapr/Registry';
+import { base44 } from '@/api/base44Client';
 
 /**
  * OrchestratorProvider — the global CREAPr Engine shell.
  *
- * Holds the in-memory Orchestrator State Schema:
- *   - status: 'idle' | 'running' | 'paused' | 'completed' | 'faulted'
- *   - activeScriptId: ID of the currently executing hybrid script
- *   - currentStepIndex: pointer into the script's step array
- *   - contextVars: cross-step data store (read/written by steps and logic modules)
- *   - executionBuffer: queue of steps waiting to execute (for concurrent dispatch)
- *   - activeAtoms: snapshot of registered atom IDs at last check
- *   - fault: { stepIndex, targetId, type: 'missing_atom', message } when faulted
+ * In AUTOPILOT mode, this engine drives the entire app: it navigates routes,
+ * narrates what's happening, invokes backend functions, pauses for user
+ * approval at key gates, and issues commands to registered UI atoms.
  *
- * The provider exposes:
- *   - state (the schema above)
- *   - loadScript(script): parse a hybrid script and prime the engine
- *   - run(): begin execution from currentStepIndex
- *   - pause(): halt execution
- *   - resume(): continue from currentStepIndex
- *   - reset(): clear everything back to idle
- *   - setVar(key, value): write to contextVars
- *   - getVar(key): read from contextVars
+ * State Schema:
+ *   - status: 'idle' | 'running' | 'paused' | 'completed' | 'faulted' | 'awaiting_input'
+ *   - activeScriptId, currentStepIndex, contextVars, activeAtoms, fault, log
+ *   - narration: { text, speech, auto_advance, duration } | null
+ *   - pendingApproval: { prompt, approve_label, reject_label, step_index } | null
+ *
+ * Step types supported:
+ *   - set_context:     { action: 'set_context', payload: { key: value } }
+ *   - run_logic:       { action: 'run_logic', script: 'moduleName' }
+ *   - navigate:        { action: 'navigate', target: '/route/path', payload: { wait_ms } }
+ *   - narrate:         { action: 'narrate', payload: { text, speech, auto_advance, duration } }
+ *   - await_approval:  { action: 'await_approval', payload: { prompt, approve_label, reject_label } }
+ *   - invoke_function: { action: 'invoke_function', payload: { function_name, params, result_key } }
+ *   - wait:            { action: 'wait', payload: { duration } }
+ *   - atom command:    { action: 'highlight'|'dim'|'reset'|..., target: 'atomId', command: 'highlight' }
  */
 
 const initialState = {
@@ -33,6 +36,8 @@ const initialState = {
   activeAtoms: [],
   fault: null,
   log: [],
+  narration: null,
+  pendingApproval: null,
 };
 
 const OrchestratorContext = createContext(null);
@@ -64,6 +69,14 @@ function orchestratorReducer(state, action) {
       return { ...state, activeAtoms: action.ids };
     case 'LOG':
       return { ...state, log: [...state.log, { ts: Date.now(), msg: action.msg }] };
+    case 'SET_NARRATION':
+      return { ...state, narration: action.narration };
+    case 'CLEAR_NARRATION':
+      return { ...state, narration: null };
+    case 'AWAIT_INPUT':
+      return { ...state, status: 'awaiting_input', pendingApproval: action.approval };
+    case 'CLEAR_APPROVAL':
+      return { ...state, status: 'running', pendingApproval: null };
     case 'RESET':
       return { ...initialState };
     default:
@@ -74,9 +87,26 @@ function orchestratorReducer(state, action) {
 // ── Provider ────────────────────────────────────────────────────────
 export function OrchestratorProvider({ children }) {
   const [state, dispatch] = useReducer(orchestratorReducer, initialState);
-  const scriptRef = useRef(null); // holds the currently loaded script object
+  const scriptRef = useRef(null);
+  const navigateRef = useRef(null);
+  const approvalResolveRef = useRef(null);
+  const narrationResolveRef = useRef(null);
 
-  // Sync activeAtoms whenever the registry changes.
+  // useNavigate — safe because OrchestratorProvider is rendered inside <Router>
+  const navigate = useNavigate();
+  navigateRef.current = navigate;
+
+  // Refs for closure-safe access inside the async run() loop
+  const contextVarsRef = useRef(state.contextVars);
+  contextVarsRef.current = state.contextVars;
+
+  const statusRef = useRef(state.status);
+  statusRef.current = state.status;
+
+  const stepIndexRef = useRef(state.currentStepIndex);
+  stepIndexRef.current = state.currentStepIndex;
+
+  // Sync activeAtoms whenever the registry changes
   useEffect(() => {
     const unsub = registry.subscribe(() => {
       dispatch({ type: 'SYNC_ATOMS', ids: registry.list() });
@@ -93,34 +123,99 @@ export function OrchestratorProvider({ children }) {
       scriptId: script.id || script.name || 'unnamed',
       initialVars,
     });
+    stepIndexRef.current = 0;
+    statusRef.current = 'paused';
   }, []);
 
   const setVar = useCallback((key, value) => {
     dispatch({ type: 'SET_VAR', key, value });
+    contextVarsRef.current = { ...contextVarsRef.current, [key]: value };
   }, []);
-
-  const contextVarsRef = useRef(state.contextVars);
-  contextVarsRef.current = state.contextVars;
 
   const getVar = useCallback((key) => {
     return contextVarsRef.current[key];
   }, []);
 
   /**
-   * Execute a single step. This is the heart of the interpreter.
-   * Returns true if the step completed, false if it faulted.
+   * Execute a single step. Returns true if completed, false if faulted.
    */
   const executeStep = useCallback(async (step, index) => {
     const script = scriptRef.current;
     if (!script || !script.steps || index >= script.steps.length) {
       dispatch({ type: 'SET_STATUS', status: 'completed' });
+      statusRef.current = 'completed';
       dispatch({ type: 'LOG', msg: 'Script completed — no more steps.' });
       return true;
     }
 
-    dispatch({ type: 'LOG', msg: `Step ${index}: ${step.action} → ${step.target || '(no target)'}` });
+    const targetLabel = step.target || step.payload?.function_name || '(no target)';
+    dispatch({ type: 'LOG', msg: `Step ${index}: ${step.action} → ${targetLabel}` });
 
-    // ── Logic Module step: delegate to a JS function ──
+    // ── Navigate: change the route ──
+    if (step.action === 'navigate' && step.target) {
+      navigateRef.current(step.target);
+      const waitMs = step.payload?.wait_ms ?? 1500;
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+      return true;
+    }
+
+    // ── Narrate: show narration overlay + optional TTS ──
+    if (step.action === 'narrate' && step.payload) {
+      dispatch({ type: 'SET_NARRATION', narration: step.payload });
+      if (step.payload.auto_advance) {
+        const duration = step.payload.duration || 4000;
+        await new Promise(resolve => setTimeout(resolve, duration));
+        dispatch({ type: 'CLEAR_NARRATION' });
+      } else {
+        await new Promise(resolve => {
+          narrationResolveRef.current = resolve;
+        });
+        dispatch({ type: 'CLEAR_NARRATION' });
+      }
+      return true;
+    }
+
+    // ── Await Approval: pause until user approves or rejects ──
+    if (step.action === 'await_approval' && step.payload) {
+      dispatch({ type: 'AWAIT_INPUT', approval: { ...step.payload, step_index: index } });
+      await new Promise(resolve => {
+        approvalResolveRef.current = resolve;
+      });
+      dispatch({ type: 'CLEAR_APPROVAL' });
+      statusRef.current = 'running';
+      return true;
+    }
+
+    // ── Invoke Function: call a backend function ──
+    if (step.action === 'invoke_function' && step.payload) {
+      const { function_name, params, result_key } = step.payload;
+      try {
+        dispatch({ type: 'LOG', msg: `Invoking ${function_name}...` });
+        const response = await base44.functions.invoke(function_name, params || {});
+        const result = response?.data !== undefined ? response.data : response;
+        if (result_key) {
+          dispatch({ type: 'SET_VAR', key: result_key, value: result });
+          contextVarsRef.current = { ...contextVarsRef.current, [result_key]: result };
+        }
+        dispatch({ type: 'LOG', msg: `${function_name} completed.` });
+      } catch (err) {
+        dispatch({ type: 'LOG', msg: `${function_name} failed: ${err.message}` });
+        if (step.on_error === 'skip') return true;
+        dispatch({ type: 'SET_FAULT', fault: { stepIndex: index, targetId: function_name, type: 'function_error', message: err.message } });
+        statusRef.current = 'faulted';
+        return false;
+      }
+      return true;
+    }
+
+    // ── Wait: simple delay ──
+    if (step.action === 'wait' && step.payload) {
+      const duration = step.payload.duration || 1000;
+      await new Promise(resolve => setTimeout(resolve, duration));
+      return true;
+    }
+
+    // ── Logic Module: delegate to a JS function ──
     if (step.action === 'run_logic' && step.script) {
       const logicModule = script.logicModules?.[step.script];
       if (logicModule) {
@@ -129,44 +224,37 @@ export function OrchestratorProvider({ children }) {
           set: setVar,
           registry,
         });
-        if (result?.vars) dispatch({ type: 'SET_VARS', vars: result.vars });
-        dispatch({ type: 'LOG', msg: `Logic module "${step.script}" returned: ${JSON.stringify(result)}` });
+        if (result?.vars) {
+          dispatch({ type: 'SET_VARS', vars: result.vars });
+          contextVarsRef.current = { ...contextVarsRef.current, ...result.vars };
+        }
+        dispatch({ type: 'LOG', msg: `Logic module "${step.script}" completed.` });
         return true;
       }
       dispatch({ type: 'LOG', msg: `Logic module "${step.script}" not found — skipping.` });
       return true;
     }
 
-    // ── Atom Command step: issue a command to a registered component ──
-    if (step.target) {
+    // ── Atom Command: issue a command to a registered component ──
+    if (step.target && (step.command || ['highlight', 'dim', 'reset'].includes(step.action))) {
       const atom = registry.get(step.target);
-
       if (!atom) {
-        // ── Fault surface — the atom is missing ──
         const onMissing = step.on_missing || 'abort';
         dispatch({ type: 'LOG', msg: `Atom "${step.target}" missing. on_missing=${onMissing}` });
-
         if (onMissing === 'skip') return true;
-        if (onMissing === 'retry') {
-          // Re-queue for next tick — the component may be mounting.
-          return false;
-        }
-        // 'abort' (default)
-        dispatch({
-          type: 'SET_FAULT',
-          fault: { stepIndex: index, targetId: step.target, type: 'missing_atom', message: `Atom "${step.target}" not registered` },
-        });
+        if (onMissing === 'retry') return false;
+        dispatch({ type: 'SET_FAULT', fault: { stepIndex: index, targetId: step.target, type: 'missing_atom', message: `Atom "${step.target}" not registered` } });
+        statusRef.current = 'faulted';
         return false;
       }
-
-      // Issue the command
       await atom.onCommand(step.command || step.action, step.payload || {});
       return true;
     }
 
-    // ── No-op step (just logging / context set) ──
+    // ── Set Context ──
     if (step.action === 'set_context' && step.payload) {
       dispatch({ type: 'SET_VARS', vars: step.payload });
+      contextVarsRef.current = { ...contextVarsRef.current, ...step.payload };
       return true;
     }
 
@@ -175,12 +263,8 @@ export function OrchestratorProvider({ children }) {
   }, [getVar, setVar]);
 
   /**
-   * Run the script from the current step index. This is an event-driven
-   * loop — it executes one step, waits for completion, then advances.
+   * Run the script from the current step index.
    */
-  const stepIndexRef = useRef(state.currentStepIndex);
-  stepIndexRef.current = state.currentStepIndex;
-
   const run = useCallback(async () => {
     const script = scriptRef.current;
     if (!script) return;
@@ -193,8 +277,6 @@ export function OrchestratorProvider({ children }) {
     const steps = script.steps || [];
 
     while (index < steps.length) {
-      // Check if we've been paused or faulted from outside the loop.
-      // statusRef is updated synchronously and on each render.
       if (statusRef.current === 'paused' || statusRef.current === 'faulted') {
         dispatch({ type: 'SET_STEP', index });
         stepIndexRef.current = index;
@@ -203,7 +285,6 @@ export function OrchestratorProvider({ children }) {
 
       const ok = await executeStep(steps[index], index);
       if (!ok) {
-        // Fault or retry — stop here and preserve position.
         dispatch({ type: 'SET_STEP', index });
         stepIndexRef.current = index;
         return;
@@ -221,6 +302,7 @@ export function OrchestratorProvider({ children }) {
 
   const pause = useCallback(() => {
     dispatch({ type: 'SET_STATUS', status: 'paused' });
+    statusRef.current = 'paused';
   }, []);
 
   const resume = useCallback(() => {
@@ -230,11 +312,36 @@ export function OrchestratorProvider({ children }) {
   const reset = useCallback(() => {
     scriptRef.current = null;
     dispatch({ type: 'RESET' });
+    stepIndexRef.current = 0;
+    statusRef.current = 'idle';
   }, []);
 
-  // Keep a ref of the current status so the run() loop can check it.
-  const statusRef = useRef(state.status);
-  statusRef.current = state.status;
+  // ── Approval & Narration controls ──
+  const approve = useCallback(() => {
+    contextVarsRef.current = { ...contextVarsRef.current, last_approval: 'approved' };
+    dispatch({ type: 'SET_VAR', key: 'last_approval', value: 'approved' });
+    if (approvalResolveRef.current) {
+      approvalResolveRef.current();
+      approvalResolveRef.current = null;
+    }
+  }, []);
+
+  const reject = useCallback(() => {
+    contextVarsRef.current = { ...contextVarsRef.current, last_approval: 'rejected' };
+    dispatch({ type: 'SET_VAR', key: 'last_approval', value: 'rejected' });
+    if (approvalResolveRef.current) {
+      approvalResolveRef.current();
+      approvalResolveRef.current = null;
+    }
+  }, []);
+
+  const dismissNarration = useCallback(() => {
+    dispatch({ type: 'CLEAR_NARRATION' });
+    if (narrationResolveRef.current) {
+      narrationResolveRef.current();
+      narrationResolveRef.current = null;
+    }
+  }, []);
 
   const value = {
     state,
@@ -246,6 +353,9 @@ export function OrchestratorProvider({ children }) {
     setVar,
     getVar,
     registry,
+    approve,
+    reject,
+    dismissNarration,
   };
 
   return (

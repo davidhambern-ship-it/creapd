@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { CREAPModeProvider } from '@/context/CREAPModeContext';
 import SystemNarrationOverlay from '@/components/system/SystemNarrationOverlay';
 import SceneTransition from '@/components/creap/cinematic/SceneTransition';
+import AutopilotOverlay from '@/components/creap/AutopilotOverlay';
 
 /**
  * Thin layout route that wraps all authenticated pages in the CREAPModeProvider.
@@ -23,6 +24,7 @@ export default function CREAPModeLayout() {
       <Outlet />
       <SceneTransition />
       <SystemNarrationOverlay />
+      <AutopilotOverlay />
     </CREAPModeProvider>
   );
 }

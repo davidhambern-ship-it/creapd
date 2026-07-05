@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
 import ProfileCard from '@/components/home/ProfileCard';
@@ -10,7 +10,9 @@ import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useOrchestrator } from '@/context/OrchestratorProvider';
+import { useCREAPMode } from '@/context/CREAPModeContext';
 import { homeProfileSpotlightScript } from '@/lib/creapr/homeProfileScript';
+import { autopilotMasterScript } from '@/lib/creapr/autopilotMasterScript';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
@@ -20,6 +22,18 @@ export default function CreapdHome() {
   const [setupOpen, setSetupOpen] = useState(false);
   const { toast } = useToast();
   const { state, loadScript, run, reset } = useOrchestrator();
+  const { mode, isLoadingPrefs } = useCREAPMode();
+  const autopilotStartedRef = useRef(false);
+
+  // AUTOPILOT: auto-start the guided production cycle on first mount
+  useEffect(() => {
+    if (isLoadingPrefs || autopilotStartedRef.current) return;
+    if (mode === 'autopilot') {
+      autopilotStartedRef.current = true;
+      loadScript(autopilotMasterScript);
+      setTimeout(() => run(), 200);
+    }
+  }, [mode, isLoadingPrefs, loadScript, run]);
 
   const handleSpotlight = async () => {
     if (state.status === 'running') return;

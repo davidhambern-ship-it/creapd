@@ -264,6 +264,12 @@ export default function CreapdIntroSequence() {
   const handleSelectMode = async (modeKey) => {
     setSelectedMode(modeKey);
     await setMode(modeKey);
+    // AUTOPILOT goes straight to Home — the engine takes over from there
+    if (modeKey === CREAP_MODES.AUTOPILOT) {
+      resetNarration();
+      navigate('/home');
+      return;
+    }
     setPhase('intro');
     setCurrentScene(0);
     setRevealedWords(0);
