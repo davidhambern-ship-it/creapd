@@ -104,10 +104,6 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 lg:gap-2">
           <ModeToggle />
-          <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-berna-emerald/10 border border-berna-emerald/20">
-            <div className="w-1.5 h-1.5 rounded-full bg-berna-emerald pulse-glow" />
-            <span className="text-[10px] text-berna-emerald font-medium">Echo Online</span>
-          </div>
           <NotificationDropdown />
           <Link to="/news/profile">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white h-8 w-8">
