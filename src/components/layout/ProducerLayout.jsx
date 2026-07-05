@@ -4,6 +4,7 @@ import ProducerHeader from './ProducerHeader';
 import ProducerSidebar from './ProducerSidebar';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
+import CreapdLauncher from '@/components/creap/CreapdLauncher';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 
 export default function ProducerLayout() {
@@ -29,6 +30,7 @@ export default function ProducerLayout() {
         navItems={PRODUCER_NAV_ITEMS}
         variant="producer"
       />
+      <CreapdLauncher />
     </div>
   );
 }
