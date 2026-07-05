@@ -66,7 +66,7 @@ export default function SystemNarrationOverlay() {
     (async () => {
       try {
         const result = await base44.integrations.Core.GenerateSpeech({
-          text: scene.text,
+          text: scene.speech || scene.text,
           voice: 'storm',
         });
         if (!cancelled) {
