@@ -25,15 +25,15 @@ export const CREAPD_FONTS = {
     name: 'CreapdTagline',
     family: "'CreapdTagline', sans-serif",
     url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/4cb74d10b_CreapdTagline2.ttf',
-    description: 'Tagline font — "Create. Automate. Produce. Direct."',
+    description: 'Tagline font — "Create. Automate. Produce. Direct." (replaced by CreapdDigitalCard)',
     uploaded: '2026-07-05',
-    previous_url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/1dda4d144_CreapdTagline2.ttf',
+    previous_url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/4cb74d10b_CreapdTagline2.ttf',
   },
   digitalCard: {
     name: 'CreapdDigitalCard',
     family: "'CreapdDigitalCard', sans-serif",
     url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/47a5e6c15_DigitalCard.ttf',
-    description: 'Digital Cards Demo font — saved to registry, not yet assigned to any element',
+    description: 'Tagline font — "Create. Automate. Produce. Direct."',
     uploaded: '2026-07-05',
   },
 };

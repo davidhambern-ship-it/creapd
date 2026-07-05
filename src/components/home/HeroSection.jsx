@@ -63,7 +63,7 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           className="text-lg lg:text-2xl font-heading font-semibold mb-2 flex flex-wrap justify-center gap-x-3 gap-y-1"
-          style={{ fontFamily: "'CreapdTagline', sans-serif" }}
+          style={{ fontFamily: "'CreapdDigitalCard', sans-serif" }}
         >
           <span className="text-berna-orange">Create.</span>
           <span className="text-berna-purple">Automate.</span>
