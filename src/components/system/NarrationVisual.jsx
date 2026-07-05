@@ -16,8 +16,36 @@ const PROFILE_ICONS = [
   { icon: Users, color: 'text-pink-400', label: 'Cosmo' },
 ];
 
-export default function NarrationVisual({ visual }) {
+export default function NarrationVisual({ scene }) {
+  // Accept either a string (legacy) or a scene object
+  const visual = typeof scene === 'string' ? scene : scene?.visual;
+  const Icon = typeof scene === 'object' ? scene?.icon : null;
+  const color = typeof scene === 'object' ? scene?.color : null;
+
   switch (visual) {
+    case 'page-icon': {
+      const PageIcon = Icon || Sparkles;
+      return (
+        <motion.div
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.5, opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative"
+        >
+          <motion.div
+            className="absolute inset-0 rounded-2xl blur-2xl"
+            style={{ background: 'rgba(168, 85, 247, 0.15)' }}
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+          <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] border border-white/[0.1] flex items-center justify-center">
+            <PageIcon className={`w-12 h-12 ${color || 'text-berna-purple'}`} />
+          </div>
+        </motion.div>
+      );
+    }
+
     case 'persona':
       return (
         <motion.div
@@ -67,7 +95,7 @@ export default function NarrationVisual({ visual }) {
             { icon: Presentation, label: 'Direct', color: 'text-berna-emerald' },
             { icon: Download, label: 'Deliver', color: 'text-white' },
           ].map((step, i) => {
-            const Icon = step.icon;
+            const StepIcon = step.icon;
             return (
               <React.Fragment key={step.label}>
                 <motion.div
@@ -77,7 +105,7 @@ export default function NarrationVisual({ visual }) {
                   className="flex flex-col items-center gap-1.5"
                 >
                   <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-                    <Icon className={`w-5 h-5 ${step.color}`} />
+                    <StepIcon className={`w-5 h-5 ${step.color}`} />
                   </div>
                   <span className="text-[9px] text-muted-foreground font-mono uppercase">{step.label}</span>
                 </motion.div>
@@ -137,7 +165,7 @@ export default function NarrationVisual({ visual }) {
           className="flex flex-wrap gap-3 justify-center max-w-md"
         >
           {PROFILE_ICONS.map((p, i) => {
-            const Icon = p.icon;
+            const ProfileIcon = p.icon;
             return (
               <motion.div
                 key={p.label}
@@ -147,7 +175,7 @@ export default function NarrationVisual({ visual }) {
                 className="flex flex-col items-center gap-1.5"
               >
                 <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-                  <Icon className={`w-5 h-5 ${p.color}`} />
+                  <ProfileIcon className={`w-5 h-5 ${p.color}`} />
                 </div>
                 <span className="text-[9px] text-muted-foreground font-mono uppercase">{p.label}</span>
               </motion.div>

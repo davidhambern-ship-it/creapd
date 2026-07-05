@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SkipForward, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -23,7 +24,8 @@ import NarrationVisual from './NarrationVisual';
  */
 export default function SystemNarrationOverlay() {
   const { mode, isLoadingPrefs } = useCREAPMode();
-  const pathname = window.location.pathname;
+  const location = useLocation();
+  const pathname = location.pathname;
 
   const [active, setActive] = useState(false);
   const [currentScene, setCurrentScene] = useState(0);
@@ -39,6 +41,7 @@ export default function SystemNarrationOverlay() {
   const narration = getNarration(pathname);
   const shouldNarrate =
     !isLoadingPrefs &&
+    mode === CREAP_MODES.AUTOPILOT &&
     narration &&
     !hasNarrationPlayed(pathname);
 
@@ -253,7 +256,7 @@ export default function SystemNarrationOverlay() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <NarrationVisual visual={scene?.visual} />
+                  <NarrationVisual scene={scene} />
 
                   <p className="text-base lg:text-xl font-heading font-medium text-white leading-relaxed min-h-[3em] flex flex-wrap justify-center gap-x-1.5 gap-y-1">
                     {words.map((word, i) => (
