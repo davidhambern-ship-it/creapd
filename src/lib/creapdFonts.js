@@ -24,9 +24,10 @@ export const CREAPD_FONTS = {
   tagline: {
     name: 'CreapdTagline',
     family: "'CreapdTagline', sans-serif",
-    url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/ecb20b7b6_CreapdTagline.ttf',
+    url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/1dda4d144_CreapdTagline2.ttf',
     description: 'Tagline font — "Create. Automate. Produce. Direct."',
     uploaded: '2026-07-05',
+    previous_url: 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/ecb20b7b6_CreapdTagline.ttf',
   },
 };
 
