@@ -109,67 +109,76 @@ export default function CreaprTourOverlay() {
     if (!tourActive || isLoadingAudio || !audioUrl) return;
 
     const w = wordsRef.current;
+    if (!w.length) return;
 
-    const startTimedReveal = (wArr, duration) => {
-      const perWord = duration / wArr.length;
-      let count = 0;
-      wordTimerRef.current = setInterval(() => {
-        count++;
-        setRevealedWords(count);
-        if (count >= wArr.length) {
-          clearInterval(wordTimerRef.current);
-          setTimeout(() => handleSceneCompleteRef.current(), 800);
-        }
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.src = audioUrl;
+
+    // Use LOCAL variables (not refs) so cleanup always catches everything
+    let wordInterval = null;
+    let completionTimer = null;
+    let finished = false;
+
+    const finishScene = () => {
+      if (finished) return;
+      finished = true;
+      if (wordInterval) { clearInterval(wordInterval); wordInterval = null; }
+      if (completionTimer) { clearTimeout(completionTimer); completionTimer = null; }
+      setRevealedWords(w.length);
+      completionTimer = setTimeout(() => handleSceneCompleteRef.current(), 400);
+    };
+
+    const startWordReveal = (duration) => {
+      const perWord = Math.max(50, duration / w.length);
+      wordInterval = setInterval(() => {
+        setRevealedWords(prev => {
+          if (prev >= w.length) {
+            clearInterval(wordInterval);
+            wordInterval = null;
+            finishScene();
+            return prev;
+          }
+          return prev + 1;
+        });
       }, perWord);
     };
 
-    if (audioRef.current) {
-      const audio = audioRef.current;
-      audio.src = audioUrl;
+    audio.onloadedmetadata = () => {
+      const duration = audio.duration * 1000;
+      audio.play().then(() => {
+        // Audio playing — reveal words synced to audio duration
+        startWordReveal(duration);
+      }).catch(() => {
+        // Play failed (autoplay policy) — fallback to timed reveal
+        startWordReveal(duration);
+      });
+    };
 
-      audio.onloadedmetadata = () => {
-        const duration = audio.duration * 1000;
-        const perWord = duration / w.length;
+    audio.onended = () => {
+      finishScene();
+    };
 
-        audio.play().catch(() => {
-          startTimedReveal(w, duration);
-        });
-
-        wordTimerRef.current = setInterval(() => {
-          setRevealedWords(prev => {
-            if (prev >= w.length) {
-              clearInterval(wordTimerRef.current);
-              return prev;
-            }
-            return prev + 1;
-          });
-        }, perWord);
-      };
-
-      audio.onended = () => {
-        setRevealedWords(w.length);
-        setTimeout(() => handleSceneCompleteRef.current(), 400);
-      };
-
-      audio.onerror = () => {
-        startTimedReveal(w, 4000);
-      };
-    }
+    audio.onerror = () => {
+      startWordReveal(4000);
+    };
 
     return () => {
-      if (wordTimerRef.current) {
-        clearInterval(wordTimerRef.current);
-        wordTimerRef.current = null;
-      }
+      finished = true;
+      if (wordInterval) clearInterval(wordInterval);
+      if (completionTimer) clearTimeout(completionTimer);
       if (sceneTimerRef.current) {
         clearTimeout(sceneTimerRef.current);
         sceneTimerRef.current = null;
       }
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.removeAttribute('src');
-        audioRef.current.load();
-      }
+      wordTimerRef.current = null;
+      audio.pause();
+      audio.onloadedmetadata = null;
+      audio.onended = null;
+      audio.onerror = null;
+      audio.removeAttribute('src');
+      audio.load();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tourActive, isLoadingAudio, audioUrl, tourSceneIndex]);
@@ -177,7 +186,12 @@ export default function CreaprTourOverlay() {
   const handleSkip = () => {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onloadedmetadata = null;
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+    }
     skipTour();
   };
 
