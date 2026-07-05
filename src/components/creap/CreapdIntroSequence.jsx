@@ -58,12 +58,14 @@ function buildScript(mode, userName) {
     {
       id: 'welcome',
       text: `Welcome to CREAPD, ${name}. The AI Production Company.`,
+      speech: `Welcome to Creeped, ${name}. The AI Production Company.`,
       icon: Sparkles,
       visual: 'logo',
     },
     {
       id: 'intro',
       text: "I'm CREAPD. Your co-producer. Twenty years in the business, now running through silicon. I don't sleep, I don't take breaks, and I never miss a deadline.",
+      speech: "I'm Creeped. Your co-producer. Twenty years in the business, now running through silicon. I don't sleep, I don't take breaks, and I never miss a deadline.",
       icon: Bot,
       visual: 'persona',
     },
@@ -283,7 +285,7 @@ export default function CreapdIntroSequence() {
         script.map(async (scene) => {
           try {
             const result = await base44.integrations.Core.GenerateSpeech({
-              text: scene.text,
+              text: scene.speech || scene.text,
               voice: 'storm',
             });
             if (!cancelled) clips[scene.id] = result.url;
