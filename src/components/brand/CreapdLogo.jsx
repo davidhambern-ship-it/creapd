@@ -24,7 +24,7 @@ export default function CreapdLogo({ showWordmark = true, height = 'h-8 lg:h-9' 
       {/* Logo Icon */}
       <svg
         viewBox="0 0 40 40"
-        className={`${height} w-auto`}
+        className={`${height} w-auto logo-glow`}
         fill="none"
         xmlns="http://www.w3.org/2000/svg">
         
