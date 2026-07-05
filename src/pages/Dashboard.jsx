@@ -71,7 +71,7 @@ export default function Dashboard() {
               <CalendarDays className="w-5 h-5 text-berna-orange" />
               <p className="text-[10px] text-berna-orange uppercase tracking-[0.2em] font-semibold">Saturday Planning Day</p>
             </div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3 [font-family:'Rubik_Mono_One',_system-ui]">CREAP Your Week!</h1>
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3 [font-family:'Public_Sans',_sans-serif]">CREAP Your Week!</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
               Map out every day of the week in one view — assign daily themes, select focus topics and categories,
               schedule your morning briefings, choose which stories to prioritize, copy a previous week's plan as a starting point,
