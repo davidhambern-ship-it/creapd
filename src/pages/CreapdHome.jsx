@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Sparkles } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import CreapdSidebar from '@/components/home/CreapdSidebar';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
@@ -10,12 +11,14 @@ import ShowcaseSection from '@/components/home/ShowcaseSection';
 import QuickLaunch from '@/components/home/QuickLaunch';
 import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
 import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
+import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function CreapdHome() {
   const [detailsProfile, setDetailsProfile] = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
   const { toast } = useToast();
 
   const handleGetStarted = (profile) => {
@@ -75,7 +78,12 @@ export default function CreapdHome() {
         <section id="profiles" className="px-4 lg:px-6 py-8 max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Profiles</h2>
-            <span className="text-[10px] text-muted-foreground">{ACTIVE_PROFILES.length} active</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">{ACTIVE_PROFILES.length} active</span>
+              <Button size="sm" className="bg-gradient-to-r from-berna-emerald to-berna-purple hover:opacity-90 text-white text-xs h-8" onClick={() => setSetupOpen(true)}>
+                <Sparkles className="w-3 h-3 mr-1" />Build with CREAPD
+              </Button>
+            </div>
           </div>
 
           {/* Mobile: horizontal swipe, Desktop: grid */}
@@ -125,6 +133,7 @@ export default function CreapdHome() {
 
       {/* Production Details Modal */}
       <ProductionDetailsModal profile={detailsProfile} onClose={() => setDetailsProfile(null)} />
+      <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={() => { window.location.href = '/shows'; }} />
       <IdlePersonalityToast />
     </div>
   );
