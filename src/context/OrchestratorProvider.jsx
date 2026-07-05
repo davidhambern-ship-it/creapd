@@ -59,7 +59,7 @@ function orchestratorReducer(state, action) {
     case 'SET_FAULT':
       return { ...state, status: 'faulted', fault: action.fault };
     case 'CLEAR_FAULT':
-      return { ...state, status: 'paused', fault: null };
+      return { ...state, fault: null, status: state.status === 'faulted' ? 'paused' : state.status };
     case 'SYNC_ATOMS':
       return { ...state, activeAtoms: action.ids };
     case 'LOG':
@@ -99,9 +99,12 @@ export function OrchestratorProvider({ children }) {
     dispatch({ type: 'SET_VAR', key, value });
   }, []);
 
+  const contextVarsRef = useRef(state.contextVars);
+  contextVarsRef.current = state.contextVars;
+
   const getVar = useCallback((key) => {
-    return state.contextVars[key];
-  }, [state.contextVars]);
+    return contextVarsRef.current[key];
+  }, []);
 
   /**
    * Execute a single step. This is the heart of the interpreter.
@@ -175,22 +178,26 @@ export function OrchestratorProvider({ children }) {
    * Run the script from the current step index. This is an event-driven
    * loop — it executes one step, waits for completion, then advances.
    */
+  const stepIndexRef = useRef(state.currentStepIndex);
+  stepIndexRef.current = state.currentStepIndex;
+
   const run = useCallback(async () => {
     const script = scriptRef.current;
     if (!script) return;
 
     dispatch({ type: 'SET_STATUS', status: 'running' });
+    statusRef.current = 'running';
     dispatch({ type: 'CLEAR_FAULT' });
 
-    let index = state.currentStepIndex;
+    let index = stepIndexRef.current;
     const steps = script.steps || [];
 
     while (index < steps.length) {
       // Check if we've been paused or faulted from outside the loop.
-      // (We re-read via a closure-safe approach: the reducer is synchronous,
-      // but we can't call useReducer mid-loop. Instead, we use a ref.)
+      // statusRef is updated synchronously and on each render.
       if (statusRef.current === 'paused' || statusRef.current === 'faulted') {
         dispatch({ type: 'SET_STEP', index });
+        stepIndexRef.current = index;
         return;
       }
 
@@ -198,16 +205,19 @@ export function OrchestratorProvider({ children }) {
       if (!ok) {
         // Fault or retry — stop here and preserve position.
         dispatch({ type: 'SET_STEP', index });
+        stepIndexRef.current = index;
         return;
       }
 
       index++;
       dispatch({ type: 'SET_STEP', index });
+      stepIndexRef.current = index;
     }
 
     dispatch({ type: 'SET_STATUS', status: 'completed' });
+    statusRef.current = 'completed';
     dispatch({ type: 'LOG', msg: 'Script completed.' });
-  }, [state.currentStepIndex, executeStep]);
+  }, [executeStep]);
 
   const pause = useCallback(() => {
     dispatch({ type: 'SET_STATUS', status: 'paused' });
