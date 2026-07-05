@@ -4,6 +4,14 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Oswald:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&family=Ethnocentric:wght@400;500&family=Rubik+Mono+One:wght@400&family=Public+Sans:wght@300;400;500;600;700&display=swap');
 
+@font-face {
+  font-family: 'CreapdCustom';
+  src: url('https://drive.google.com/uc?export=download&id=1Ld1iKqLon71BNMWSJKF3_ZwbNpUA8yvw') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 220 20% 6%;

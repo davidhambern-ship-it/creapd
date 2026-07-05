@@ -52,7 +52,8 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.15 }}
-          className="text-3xl lg:text-5xl mb-3 tracking-wide animated-gradient-text font-mono font-bold"
+          className="text-3xl lg:text-5xl mb-3 tracking-wide animated-gradient-text"
+          style={{ fontFamily: "'CreapdCustom', sans-serif" }}
         >
           Welcome to CREAPD
         </motion.h1>
