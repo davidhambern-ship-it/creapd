@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Mic, Square, Loader2, CheckCircle2, Trash2, AlertCircle, Volume2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getClonedVoiceId, setClonedVoiceId, clearClonedVoice, hasClonedVoice, generateNarrationSpeech } from '@/lib/clonedVoice';
+import { resetNarration } from '@/lib/systemNarration';
 
 const RECORDING_TIME_LIMIT = 120; // seconds
 
@@ -123,6 +124,7 @@ export default function VoiceCloneModal({ open, onClose }) {
       if (response.data?.voice_id) {
         setClonedVoiceId(response.data.voice_id);
         setHasVoice(true);
+        resetNarration();
         setPhase('done');
       } else {
         setErrorMsg(response.data?.error || 'Voice cloning failed. Please try again.');
