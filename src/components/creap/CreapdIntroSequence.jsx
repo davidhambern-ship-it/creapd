@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { Zap, Users, Moon, ArrowRight, SkipForward, Loader2 } from 'lucide-react';
 import CreapdLogo from '@/components/brand/CreapdLogo';
 import { CREAP_MODES } from '@/lib/creapdPersonality';
+import { useCREAPMode } from '@/context/CREAPModeContext';
 import { generateNarrationSpeech } from '@/lib/clonedVoice';
 import {
   BlackLogoReveal, LogoExpand, AvatarIntro,
@@ -118,6 +120,9 @@ export default function CreapdIntroSequence() {
   const wordTimerRef = useRef(null);
   const sceneTimerRef = useRef(null);
 
+  const navigate = useNavigate();
+  const { setMode } = useCREAPMode();
+
   useEffect(() => {
     (async () => {
       try {
@@ -169,7 +174,7 @@ export default function CreapdIntroSequence() {
     if (currentScene >= script.length - 1) {
       setPhase('navigating');
       setTimeout(() => {
-        window.location.href = '/home';
+        navigate('/home');
       }, 800);
       return;
     }
@@ -254,18 +259,7 @@ export default function CreapdIntroSequence() {
 
   const handleSelectMode = async (modeKey) => {
     setSelectedMode(modeKey);
-
-    try {
-      const existing = await base44.entities.ProducerPreferences.filter({}, '-created_date', 1);
-      if (existing && existing.length > 0) {
-        await base44.entities.ProducerPreferences.update(existing[0].id, { creap_mode: modeKey });
-      } else {
-        await base44.entities.ProducerPreferences.create({ creap_mode: modeKey });
-      }
-    } catch {
-      // non-blocking
-    }
-
+    await setMode(modeKey);
     setPhase('intro');
     setCurrentScene(0);
     setRevealedWords(0);
@@ -275,7 +269,7 @@ export default function CreapdIntroSequence() {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     if (sceneTimerRef.current) clearTimeout(sceneTimerRef.current);
     if (audioRef.current) audioRef.current.pause();
-    window.location.href = '/home';
+    navigate('/home');
   };
 
   // ─── Mode Selection Phase ───
