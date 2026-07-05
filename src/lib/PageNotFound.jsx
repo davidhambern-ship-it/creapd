@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 
 const LEGACY_REDIRECTS = {
     '/': '/home',
-    '/dashboard': '/news/dashboard',
 };
 
 export default function PageNotFound({}) {
