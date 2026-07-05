@@ -42,13 +42,13 @@ export default function CreapdLogo({ showWordmark = true, height = 'h-8 lg:h-9' 
       </svg>
 
       {showWordmark &&
-      <div className="flex flex-col leading-none">
+      <div className="flex flex-col leading-none hidden">
           {/* Wordmark */}
           <div
           className="flex items-center tracking-tight text-lg lg:text-xl"
           style={{ fontFamily: "'Ethnocentric', 'Poppins', sans-serif", fontWeight: 400 }}>
           
-            <span style={metallicStyle}>CRE</span>
+            <span style={metallicStyle} className="hidden">CRE</span>
             <svg
             style={{ width: '0.6em', height: '0.88em', display: 'inline-block', margin: '0 -0.02em' }}
             viewBox="0 0 14 20"
@@ -87,7 +87,7 @@ export default function CreapdLogo({ showWordmark = true, height = 'h-8 lg:h-9' 
           className="mt-0.5 text-[6px] lg:text-[7px] font-heading font-semibold tracking-[0.06em] flex gap-[3px]"
           style={{ fontFamily: "'Poppins', 'Inter', sans-serif" }}>
           
-            <span style={{ color: '#FF8C00' }}>CREATE.</span>
+            <span style={{ color: '#FF8C00' }} className="hidden">CREATE.</span>
             <span style={{ color: '#8A2BE2' }} className="hidden">AUTOMATE.</span>
             <span style={{ color: '#00CED1' }} className="hidden">PRODUCE.</span>
             <span style={{ color: '#FFFFFF' }} className="hidden">DIRECT.</span>
