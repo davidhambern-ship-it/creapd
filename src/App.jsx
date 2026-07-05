@@ -7,6 +7,7 @@ import CreapdLoading from '@/components/shared/CreapdLoading';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
 
 import Login from '@/pages/Login';
@@ -143,6 +144,7 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route element={<CREAPModeLayout />}>
         <Route path="/home" element={<CreapdHome />} />
         <Route element={<ProducerLayout />}>
           <Route path="/" element={<DashboardRouter />} />
@@ -269,6 +271,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/foundation-seeder" element={<FoundationSeeder />} />
         <Route path="/admin/source-management-center" element={<SourceManagementCenter />} />
         <Route path="/admin/handler-registry" element={<HandlerRegistry />} />
+        </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

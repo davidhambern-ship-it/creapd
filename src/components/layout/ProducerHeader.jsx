@@ -6,6 +6,7 @@ import { Link, useLocation } from 'react-router-dom';
 import NotificationDropdown from '@/components/shared/NotificationDropdown';
 import GlobalSearch from '@/components/shared/GlobalSearch';
 import CreapdLogo from '@/components/brand/CreapdLogo';
+import ModeToggle from '@/components/creap/ModeToggle';
 import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
 
 export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
@@ -102,6 +103,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 lg:gap-2">
+          <ModeToggle />
           <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-berna-emerald/10 border border-berna-emerald/20">
             <div className="w-1.5 h-1.5 rounded-full bg-berna-emerald pulse-glow" />
             <span className="text-[10px] text-berna-emerald font-medium">Echo Online</span>

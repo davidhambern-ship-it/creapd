@@ -33,6 +33,16 @@
     },
     "notification_settings": {
       "type": "string"
+    },
+    "creap_mode": {
+      "type": "string",
+      "enum": [
+        "autopilot",
+        "hybrid",
+        "free"
+      ],
+      "default": "hybrid",
+      "description": "The producer's selected CREAP Mode \u2014 determines how CREAPD interacts (AUTOPILOT=drives, HYBRID=co-pilot, FREE=on-demand)"
     }
   },
   "required": []
