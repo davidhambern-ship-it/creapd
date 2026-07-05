@@ -45,7 +45,7 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           transition={{ duration: 0.6 }}
           className="flex justify-center mb-6"
         >
-          <CreapdLogo height="h-12 lg:h-14" />
+          <CreapdLogo height="h-28 lg:h-40" />
         </motion.div>
 
         <motion.h1
