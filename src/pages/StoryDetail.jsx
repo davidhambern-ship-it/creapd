@@ -201,6 +201,7 @@ export default function StoryDetail() {
       <NativeArticleReader
         article={article}
         sourceLabel={article.source_name || article.publication}
+        autoFetch
       />
 
       {/* Why It Matters */}

@@ -117,7 +117,7 @@ function HlsVideo({ videoUrl, isHls, videoRef, playbackError, setPlaybackError }
  * @param {object} article — the Article entity (must have `id` and `url`)
  * @param {string} sourceLabel — optional label for the source attribution
  */
-export default function NativeArticleReader({ article, sourceLabel }) {
+export default function NativeArticleReader({ article, sourceLabel, autoFetch = false }) {
   const [bodyContent, setBodyContent] = useState(article?.body_content || "");
   const [videoUrl, setVideoUrl] = useState(article?.video_url || "");
   const [loading, setLoading] = useState(false);
@@ -149,6 +149,13 @@ export default function NativeArticleReader({ article, sourceLabel }) {
       setLoading(false);
     }
   }, [article?.id, article?.url]);
+
+  // Auto-fetch full article on mount when requested
+  useEffect(() => {
+    if (autoFetch && !hasFetched && !loading && article?.id && article?.url) {
+      fetchContent();
+    }
+  }, [autoFetch, hasFetched, loading, article?.id, article?.url, fetchContent]);
 
   // No URL — can't fetch
   if (!article?.url) {
