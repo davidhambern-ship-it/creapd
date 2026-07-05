@@ -5,26 +5,36 @@ import { Button } from '@/components/ui/button';
 import TourSceneForm from './TourSceneForm';
 import { resolveTourIcon } from '@/lib/tourIcons';
 
-export default function TourSceneCard({ scene, index, onChange, onDelete, onPreview }) {
+export default function TourSceneCard({ scene, index, isActive, onChange, onDelete, onPreview, onSelect }) {
   const [expanded, setExpanded] = useState(false);
   const PreviewIcon = resolveTourIcon(scene.icon_name);
 
+  const handleCardClick = () => {
+    onSelect?.();
+    setExpanded(!expanded);
+  };
+
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+    <div className={`rounded-lg border overflow-hidden transition-all ${
+      isActive
+        ? 'border-berna-purple/40 bg-berna-purple/[0.04] glow-purple'
+        : 'border-white/[0.08] bg-white/[0.02]'
+    }`}>
       <div className="flex items-center gap-2 p-3">
         <div className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground">
           <GripVertical className="w-4 h-4" />
         </div>
 
-        <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0">
-          <PreviewIcon className={`w-3.5 h-3.5 ${scene.icon_color || 'text-berna-purple'}`} />
-        </div>
-
         <button
-          onClick={() => setExpanded(!expanded)}
+          onClick={handleCardClick}
           className="flex-1 text-left min-w-0"
         >
-          <p className="text-xs text-muted-foreground font-mono">#{index + 1} · {scene.scene_id || `scene-${index}`}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-mono">#{index + 1} · {scene.scene_id || `scene-${index}`}</span>
+            {isActive && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-berna-purple/15 text-berna-purple font-mono uppercase">Live</span>
+            )}
+          </div>
           <p className="text-sm text-white truncate">{scene.text || '(empty)'}</p>
         </button>
 

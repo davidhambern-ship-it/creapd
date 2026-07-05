@@ -132,6 +132,12 @@ export const TEXT_ALIGNMENT_OPTIONS = [
   { value: 'right', label: 'Right' },
 ];
 
+export const TEXT_ALIGN_CLASSES = {
+  center: 'text-center',
+  left: 'text-left',
+  right: 'text-right',
+};
+
 // ═══════════════════════════════════════════════
 // BACKGROUNDS
 // ═══════════════════════════════════════════════
@@ -144,6 +150,16 @@ export const BACKGROUND_TYPE_OPTIONS = [
   { value: 'solid-dark', label: 'Solid Dark' },
   { value: 'image', label: 'AI Generated Image' },
 ];
+
+export const BACKGROUND_CLASSES = {
+  default: 'bg-background',
+  'gradient-purple': 'bg-gradient-to-br from-berna-purple/30 to-background',
+  'gradient-orange': 'bg-gradient-to-br from-berna-orange/30 to-background',
+  'gradient-emerald': 'bg-gradient-to-br from-berna-emerald/30 to-background',
+  'gradient-navy': 'bg-gradient-to-br from-berna-navy to-background',
+  'solid-dark': 'bg-black',
+  image: 'bg-background',
+};
 
 // ═══════════════════════════════════════════════
 // LAYOUT

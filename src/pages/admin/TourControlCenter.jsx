@@ -15,6 +15,7 @@ import { findIconName, VOICE_OPTIONS } from '@/lib/tourIcons';
 import { clearTourScriptCache } from '@/hooks/useTourScript';
 import TourSceneList from '@/components/tour/TourSceneList';
 import TourPreview from '@/components/tour/TourPreview';
+import TourLivePreview from '@/components/tour/TourLivePreview';
 import TourEngagementPanel from '@/components/tour/TourEngagementPanel';
 import ElevenLabsVoicePicker from '@/components/tour/ElevenLabsVoicePicker';
 
@@ -31,6 +32,7 @@ export default function TourControlCenter() {
   const [elVoicePickerOpen, setElVoicePickerOpen] = useState(false);
   const [aiBatchScript, setAiBatchScript] = useState(false);
   const [aiBatchImage, setAiBatchImage] = useState(false);
+  const [activeSceneIndex, setActiveSceneIndex] = useState(0);
 
   const loadScripts = useCallback(async () => {
     setIsLoading(true);
@@ -58,11 +60,19 @@ export default function TourControlCenter() {
         const list = await base44.entities.TourScene.filter({ tour_script_id: selectedId });
         list.sort((a, b) => (a.scene_order || 0) - (b.scene_order || 0));
         setScenes(list.map(s => ({ ...s, _key: s.id })));
+        setActiveSceneIndex(0);
       } catch (err) {
         console.error('Failed to load scenes:', err);
       }
     })();
   }, [selectedId]);
+
+  // Keep activeSceneIndex in bounds when scenes change
+  useEffect(() => {
+    if (activeSceneIndex > scenes.length - 1 && scenes.length > 0) {
+      setActiveSceneIndex(scenes.length - 1);
+    }
+  }, [scenes.length, activeSceneIndex]);
 
   // ── Seed all hardcoded scripts into the database ──
   const handleSeedAll = async () => {
@@ -242,13 +252,17 @@ export default function TourControlCenter() {
     setPreviewOpen(true);
   };
 
+  const handleSetActiveScene = (index) => {
+    setActiveSceneIndex(Math.max(0, Math.min(index, scenes.length - 1)));
+  };
+
   const selectedScript = scripts.find(s => s.id === selectedId);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-white/[0.06] bg-white/[0.02]">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/settings" className="text-muted-foreground hover:text-white">
               <ChevronLeft className="w-5 h-5" />
@@ -270,59 +284,62 @@ export default function TourControlCenter() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 flex gap-6">
-        {/* Script List */}
-        <div className="w-72 shrink-0 space-y-2">
-          <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60 px-1 pb-2">
-            Tour Scripts ({scripts.length})
-          </p>
-          <div className="space-y-1 max-h-[70vh] overflow-y-auto">
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="max-w-[1600px] mx-auto px-4 py-4 flex gap-4">
+        {/* LEFT: Fixed Live Preview */}
+        <div className="w-[420px] shrink-0">
+          {scenes.length > 0 && selectedScript ? (
+            <TourLivePreview
+              scenes={scenes}
+              activeIndex={activeSceneIndex}
+              defaultVoice={draftScript?.default_voice || 'storm'}
+              defaultElevenLabsVoiceId={draftScript?.default_elevenlabs_voice_id || ''}
+              onNavigate={handleSetActiveScene}
+            />
+          ) : (
+            <div className="sticky top-6 h-[calc(100vh-7rem)] rounded-2xl border border-white/[0.08] bg-white/[0.02] flex items-center justify-center">
+              <div className="text-center px-6">
+                <Clapperboard className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {selectedScript ? 'No scenes yet' : 'Select a tour script'}
+                </p>
+                <p className="text-xs text-muted-foreground/50 mt-1">
+                  {selectedScript ? 'Add a scene to start editing' : 'or seed from defaults'}
+                </p>
               </div>
-            ) : scripts.length === 0 ? (
-              <div className="text-center py-8 px-4">
-                <p className="text-sm text-muted-foreground mb-3">No tour scripts yet.</p>
-                <p className="text-xs text-muted-foreground/60">Click "Seed All from Defaults" to import the built-in tours.</p>
-              </div>
-            ) : (
-              scripts.map(script => (
-                <button
-                  key={script.id}
-                  onClick={() => setSelectedId(script.id)}
-                  className={`w-full text-left p-3 rounded-lg transition-all ${
-                    selectedId === script.id
-                      ? 'bg-white/[0.06] border border-white/[0.1]'
-                      : 'border border-transparent hover:bg-white/[0.03]'
-                  }`}
-                >
-                  <p className="text-sm font-medium text-white truncate">{script.script_name}</p>
-                  <p className="text-xs text-muted-foreground font-mono truncate">{script.route_path}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                      script.is_active ? 'bg-berna-emerald/15 text-berna-emerald' : 'bg-white/[0.05] text-muted-foreground'
-                    }`}>
-                      {script.is_active ? 'Active' : 'Paused'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">{script.default_voice || 'storm'}</span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Scene Editor */}
-        <div className="flex-1 min-w-0">
-          {!selectedScript ? (
-            <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-              Select a tour script to edit, or seed from defaults to get started.
+        {/* RIGHT: Editing Toolbar */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Script selector + meta */}
+          <div className="glass-panel p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/60">
+                Script
+              </p>
+              <Button variant="outline" size="sm" onClick={handleSeedAll} disabled={isSeeding} className="h-6 text-[10px]">
+                {isSeeding ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                Seed All
+              </Button>
             </div>
-          ) : (
-            <div>
-              {/* Script meta editor */}
-              <div className="glass-panel p-4 mb-4 space-y-3">
+
+            {/* Script selector dropdown */}
+            <Select value={selectedId || ''} onValueChange={setSelectedId}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-sm">
+                <SelectValue placeholder={isLoading ? 'Loading…' : 'Select a tour script'} />
+              </SelectTrigger>
+              <SelectContent>
+                {scripts.map(script => (
+                  <SelectItem key={script.id} value={script.id}>
+                    {script.script_name} <span className="text-muted-foreground font-mono ml-1">{script.route_path}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {selectedScript && (
+              <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-muted-foreground">Script Name</Label>
@@ -391,10 +408,14 @@ export default function TourControlCenter() {
                     {draftScript?.default_elevenlabs_voice_id ? 'Overrides built-in voice for all scenes' : 'Optional — falls back to built-in voice above'}
                   </p>
                 </div>
-              </div>
+              </>
+            )}
+          </div>
 
+          {selectedScript && (
+            <>
               {/* AI Batch Generation */}
-              <div className="glass-panel p-4 mb-4">
+              <div className="glass-panel p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="w-4 h-4 text-berna-purple" />
                   <h3 className="text-sm font-heading font-semibold text-white">AI Batch Tools</h3>
@@ -442,14 +463,14 @@ export default function TourControlCenter() {
               </div>
 
               {/* Scene list + actions */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between">
                 <p className="text-sm font-heading font-semibold text-white">
                   Scenes ({scenes.length})
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handlePreview(0)} disabled={scenes.length === 0}>
+                  <Button variant="outline" size="sm" onClick={() => handlePreview(activeSceneIndex)} disabled={scenes.length === 0}>
                     <Play className="w-4 h-4 mr-1" />
-                    Preview Tour
+                    Fullscreen Preview
                   </Button>
                   <Button size="sm" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
@@ -464,17 +485,19 @@ export default function TourControlCenter() {
                 onChange={handleSceneChange}
                 onDelete={handleSceneDelete}
                 onAdd={handleSceneAdd}
-                onPreview={handlePreview}
+                onPreview={(index) => { handleSetActiveScene(index); handlePreview(index); }}
+                onSelect={handleSetActiveScene}
+                activeIndex={activeSceneIndex}
               />
 
-              <div className="mt-6">
+              <div>
                 <TourEngagementPanel
                   scriptId={selectedId}
                   routePath={draftScript?.route_path}
                   scenes={scenes}
                 />
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>

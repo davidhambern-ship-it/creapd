@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TourSceneCard from './TourSceneCard';
 
-export default function TourSceneList({ scenes, onReorder, onChange, onDelete, onAdd, onPreview }) {
+export default function TourSceneList({ scenes, onReorder, onChange, onDelete, onAdd, onPreview, onSelect, activeIndex }) {
   const handleDragEnd = (result) => {
     if (!result.destination) return;
     onReorder(result.source.index, result.destination.index);
@@ -27,9 +27,11 @@ export default function TourSceneList({ scenes, onReorder, onChange, onDelete, o
                       <TourSceneCard
                         scene={scene}
                         index={index}
+                        isActive={activeIndex === index}
                         onChange={(field, value) => onChange(index, field, value)}
                         onDelete={() => onDelete(index)}
                         onPreview={onPreview}
+                        onSelect={() => onSelect?.(index)}
                       />
                     </div>
                   )}
