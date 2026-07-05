@@ -10,6 +10,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
+import OrchestratorDevTools from '@/components/creapr/OrchestratorDevTools';
 
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -291,6 +292,7 @@ function App() {
           </OrchestratorProvider>
         </Router>
         <Toaster />
+        <OrchestratorDevTools />
       </QueryClientProvider>
     </AuthProvider>
   )
