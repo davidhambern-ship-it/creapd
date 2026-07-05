@@ -78,39 +78,7 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           The AI Production Company
         </motion.p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-3"
-        >
-          <button
-            onClick={onStart}
-            className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 text-white font-heading font-semibold text-sm transition-all glow-purple hover:scale-[1.02]"
-          >
-            <Sparkles className="w-4 h-4" />
-            Start Creating
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={onExplore}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white font-heading font-semibold text-sm transition-all"
-            >
-              <Compass className="w-4 h-4 text-berna-emerald" />
-              Explore Production Profiles
-            </button>
-            {onTour && (
-              <button
-                onClick={onTour}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-berna-purple/20 bg-berna-purple/5 hover:bg-berna-purple/10 text-berna-purple font-heading font-semibold text-sm transition-all"
-              >
-                <MapPin className="w-4 h-4" />
-                Take the Tour
-              </button>
-            )}
-          </div>
-        </motion.div>
+
       </div>
     </section>
   );
