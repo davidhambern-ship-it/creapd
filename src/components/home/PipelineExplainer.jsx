@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lightbulb, Clapperboard, Package, Volume2, Presentation, Share2 } from 'lucide-react';
+import CircuitBackground from './CircuitBackground';
 
 const PIPELINE_STEPS = [
   { icon: Lightbulb, label: 'Idea', color: 'text-berna-orange', bg: 'bg-berna-orange/10', border: 'border-berna-orange/50', glow: 'shadow-[0_0_20px_hsl(25_95%_55%/0.3)]', description: 'Start with a concept — a story, topic, or message you want to produce.' },
@@ -95,14 +96,9 @@ function FlipCard({ step, idx }) {
 
 export default function PipelineExplainer() {
   return (
-    <section
-      className="relative px-4 lg:px-6 py-8 lg:py-12 max-w-5xl mx-auto overflow-hidden rounded-xl"
-      style={{
-        backgroundImage: 'url(https://media.base44.com/images/public/6a4126962e5804304cc84b12/3559dbb78_generated_image.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
+    <section className="relative px-4 lg:px-6 py-8 lg:py-12 max-w-5xl mx-auto overflow-hidden rounded-xl">
+      {/* Animated circuit board background */}
+      <CircuitBackground />
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-background/70 rounded-xl pointer-events-none" />
 
