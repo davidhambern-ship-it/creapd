@@ -37,10 +37,10 @@ export default function SceneAudioTab({ scene, onChange }) {
       {!scene.elevenlabs_voice_id && (
         <div>
           <Label className="text-xs text-muted-foreground">Built-in Voice Override</Label>
-          <Select value={scene.voice_override || ''} onValueChange={v => onChange('voice_override', v)}>
+          <Select value={scene.voice_override || '__default__'} onValueChange={v => onChange('voice_override', v === '__default__' ? '' : v)}>
             <SelectTrigger className="bg-white/[0.03] border-white/[0.08] text-sm"><SelectValue placeholder="Use script default" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>Use script default</SelectItem>
+              <SelectItem value="__default__">Use script default</SelectItem>
               {VOICE_OPTIONS.map(v => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}
             </SelectContent>
           </Select>
