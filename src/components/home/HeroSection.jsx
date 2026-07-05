@@ -52,7 +52,8 @@ export default function HeroSection({ onStart, onExplore, onTour }) {
           initial={{ opacity: 0, y: 30, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.15 }}
-          className="text-6xl lg:text-8xl mb-4 tracking-wide digital-pop animated-gradient-text holo-shimmer"
+          className="text-6xl lg:text-8xl mb-4 tracking-wide digital-pop glitch-text animated-gradient-text holo-shimmer"
+          data-text="Welcome to CREAPD"
           style={{ fontFamily: "'CreapdCustom', sans-serif" }}
         >
           Welcome to CREAPD

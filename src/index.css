@@ -362,17 +362,17 @@
   pointer-events: none;
 }
 .glitch-text::before {
-  color: hsl(25 95% 55%);
+  color: hsl(270 80% 65%);
   animation: glitch-clip 4s infinite linear alternate-reverse;
   transform: translate(-2px, 0);
-  opacity: 0.7;
+  opacity: 0.6;
 }
 .glitch-text::after {
-  color: hsl(152 60% 50%);
+  color: hsl(25 95% 60%);
   animation: glitch-clip 3s infinite linear alternate-reverse;
   animation-delay: 0.2s;
   transform: translate(2px, 0);
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 /* Tagline word pop-in with neon glow per color */
