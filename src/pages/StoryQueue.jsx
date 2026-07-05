@@ -109,8 +109,18 @@ export default function StoryQueue() {
     const update = { status };
     if (reason) update.rejection_reason = reason;
     if (status === 'saved_for_later') update.is_saved = true;
+
+    if (status === 'rejected') {
+      // Archive immediately and remove from view
+      update.archived_date = new Date().toISOString();
+      setArticles(prev => prev.filter(a => a.id !== id));
+      setSelectedIds(prev => prev.filter(sid => sid !== id));
+    } else {
+      setArticles(prev => prev.map(a => a.id === id ? { ...a, ...update } : a));
+    }
+
     await base44.entities.Article.update(id, update);
-    setArticles(prev => prev.map(a => a.id === id ? { ...a, ...update } : a));
+
     const article = articles.find(a => a.id === id);
     const actionMap = { approved: 'approve', rejected: 'reject', saved_for_later: 'update', bernas_pick: 'approve', needs_research: 'update' };
     logActivity(actionMap[status] || 'update', {
@@ -119,6 +129,16 @@ export default function StoryQueue() {
       entity_name: article?.title || '',
       details: `Status changed to "${status}"${reason ? `: ${reason}` : ''}`,
     });
+
+    // Auto-load a new story to replace the rejected one
+    if (status === 'rejected') {
+      try {
+        await base44.functions.invoke('fetchStories', {});
+      } catch (e) {
+        console.error('Auto-fetch replacement story failed:', e);
+      }
+      loadArticles();
+    }
   };
 
   const handleArchive = async (id) => {

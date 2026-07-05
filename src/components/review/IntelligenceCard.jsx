@@ -83,8 +83,19 @@ export default function IntelligenceCard({ article, onRefresh }) {
   const handleReject = async () => {
     if (!rejecting) { setRejecting(true); return; }
     const history = addHistoryEntry(article.processing_history, 'rejected', rejectReason || 'Rejected by producer');
-    await base44.entities.Article.update(article.id, { status: 'rejected', rejection_reason: rejectReason, processing_history: history });
+    await base44.entities.Article.update(article.id, {
+      status: 'rejected',
+      rejection_reason: rejectReason,
+      archived_date: new Date().toISOString(),
+      processing_history: history,
+    });
     setRejecting(false); setRejectReason('');
+    // Auto-load a new story to replace the rejected one
+    try {
+      await base44.functions.invoke('fetchStories', {});
+    } catch (e) {
+      console.error('Auto-fetch replacement story failed:', e);
+    }
     onRefresh();
   };
 
