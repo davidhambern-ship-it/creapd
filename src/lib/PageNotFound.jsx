@@ -1,11 +1,16 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
+const LEGACY_REDIRECTS = {
+    '/': '/home',
+    '/dashboard': '/news/dashboard',
+};
 
 export default function PageNotFound({}) {
     const location = useLocation();
-    const pageName = location.pathname.substring(1);
+    
+    const redirect = LEGACY_REDIRECTS[location.pathname];
 
     const { data: authData, isFetched } = useQuery({
         queryKey: ['user'],
@@ -18,6 +23,12 @@ export default function PageNotFound({}) {
             }
         }
     });
+
+    if (redirect) {
+        return <Navigate to={redirect} replace />;
+    }
+    
+    const pageName = location.pathname.substring(1);
     
     return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
