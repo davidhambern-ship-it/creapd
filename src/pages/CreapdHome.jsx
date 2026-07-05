@@ -9,13 +9,24 @@ import ModeStatusBanner from '@/components/creap/ModeStatusBanner';
 import IdlePersonalityToast from '@/components/creap/IdlePersonalityToast';
 import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
+import { useOrchestrator } from '@/context/OrchestratorProvider';
+import { homeProfileSpotlightScript } from '@/lib/creapr/homeProfileScript';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
+import { Sparkles } from 'lucide-react';
 
 export default function CreapdHome() {
   const [detailsProfile, setDetailsProfile] = useState(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const { toast } = useToast();
+  const { state, loadScript, run, reset } = useOrchestrator();
+
+  const handleSpotlight = async () => {
+    if (state.status === 'running') return;
+    if (state.status === 'completed') reset();
+    loadScript(homeProfileSpotlightScript);
+    setTimeout(() => run(), 50);
+  };
 
   const handleGetStarted = (profile) => {
     if (profile.path) {
@@ -48,6 +59,10 @@ export default function CreapdHome() {
           <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Profiles</h2>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground hidden sm:inline">{ACTIVE_PROFILES.length} active</span>
+            <Button size="sm" variant="outline" onClick={handleSpotlight} disabled={state.status === 'running'} className="h-7 px-2.5 text-[10px]">
+              <Sparkles className="w-3 h-3 mr-1" />
+              {state.status === 'completed' ? 'Replay' : 'Spotlight'}
+            </Button>
           </div>
         </div>
 

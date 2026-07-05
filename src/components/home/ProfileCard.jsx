@@ -1,13 +1,39 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { ArrowRight, Info, Sparkles, Lock } from 'lucide-react';
+import { useDirectable } from '@/hooks/useDirectable';
 
 export default function ProfileCard({ profile, onGetStarted, onShowDetails, index }) {
   const Icon = profile.icon;
   const isAvailable = profile.available;
+  const [visualState, setVisualState] = useState('normal');
+
+  const atomId = `profile-${profile.key}`;
+
+  const handleCommand = useCallback((command) => {
+    if (command === 'highlight') setVisualState('highlighted');
+    else if (command === 'dim') setVisualState('dimmed');
+    else if (command === 'reset') setVisualState('normal');
+  }, []);
+
+  const getData = useCallback(() => ({
+    id: atomId,
+    key: profile.key,
+    label: profile.label,
+    available: profile.available,
+    visualState,
+  }), [atomId, profile.key, profile.label, profile.available, visualState]);
+
+  useDirectable(isAvailable ? atomId : null, {
+    onCommand: handleCommand,
+    getData,
+    isAvailable: () => isAvailable,
+  });
 
   return (
     <div
-      className={`relative glass-panel p-5 flex flex-col transition-all ${
+      className={`relative glass-panel p-5 flex flex-col transition-all duration-500 ${
+        visualState === 'highlighted' ? 'border-berna-purple/50 glow-purple scale-[1.02]' :
+        visualState === 'dimmed' ? 'opacity-40' :
         isAvailable ? 'hover:border-white/[0.15] hover:scale-[1.01]' : 'opacity-60'
       }`}
     >
