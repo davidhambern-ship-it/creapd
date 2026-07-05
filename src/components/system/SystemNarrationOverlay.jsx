@@ -39,7 +39,6 @@ export default function SystemNarrationOverlay() {
   const narration = getNarration(pathname);
   const shouldNarrate =
     !isLoadingPrefs &&
-    mode === CREAP_MODES.AUTOPILOT &&
     narration &&
     !hasNarrationPlayed(pathname);
 
