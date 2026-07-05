@@ -30,10 +30,20 @@ export default function CreaprTourOverlay() {
   const sceneTimerRef = useRef(null);
 
   const scene = tour?.scenes?.[tourSceneIndex];
-  const words = scene?.text?.split(' ') || [];
+
+  // Keep latest scene data in refs so audio effects don't re-fire
+  // when revealedWords updates (which recreates `words` array each render)
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+
+  const tourRef = useRef(tour);
+  tourRef.current = tour;
+
+  const wordsRef = useRef([]);
+  wordsRef.current = scene?.text?.split(' ') || [];
 
   // ── Tour Playback ──
-  // Generate TTS for current scene
+  // Generate TTS for current scene — only fires when scene index changes
   useEffect(() => {
     if (!tourActive || !tour || !scene) return;
 
@@ -65,7 +75,8 @@ export default function CreaprTourOverlay() {
     })();
 
     return () => { cancelled = true; };
-  }, [tourActive, tourSceneIndex, tour, scene]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourActive, tourSceneIndex]);
 
   const handleSceneComplete = useCallback(() => {
     if (wordTimerRef.current) {
@@ -73,32 +84,41 @@ export default function CreaprTourOverlay() {
       wordTimerRef.current = null;
     }
 
-    if (!tour) return;
+    const t = tourRef.current;
+    if (!t) return;
 
-    if (tourSceneIndex >= tour.scenes.length - 1) {
+    if (tourSceneIndex >= t.scenes.length - 1) {
       completeTour();
       return;
     }
 
+    const s = sceneRef.current;
     sceneTimerRef.current = setTimeout(() => {
       advanceTourScene();
       setRevealedWords(0);
-    }, scene?.pause_after_ms || 500);
-  }, [tour, tourSceneIndex, scene, advanceTourScene, completeTour]);
+    }, s?.pause_after_ms || 500);
+  }, [tourSceneIndex, advanceTourScene, completeTour]);
 
-  // Play audio + reveal words
+  // Keep latest handleSceneComplete in a ref so the audio effect
+  // doesn't re-fire when the callback identity changes
+  const handleSceneCompleteRef = useRef(handleSceneComplete);
+  handleSceneCompleteRef.current = handleSceneComplete;
+
+  // Play audio + reveal words — only fires when audio URL or scene index changes
   useEffect(() => {
-    if (!tourActive || isLoadingAudio || !audioUrl || !tour || !scene) return;
+    if (!tourActive || isLoadingAudio || !audioUrl) return;
 
-    const startTimedReveal = (w, duration) => {
-      const perWord = duration / w.length;
+    const w = wordsRef.current;
+
+    const startTimedReveal = (wArr, duration) => {
+      const perWord = duration / wArr.length;
       let count = 0;
       wordTimerRef.current = setInterval(() => {
         count++;
         setRevealedWords(count);
-        if (count >= w.length) {
+        if (count >= wArr.length) {
           clearInterval(wordTimerRef.current);
-          setTimeout(handleSceneComplete, 800);
+          setTimeout(() => handleSceneCompleteRef.current(), 800);
         }
       }, perWord);
     };
@@ -109,15 +129,15 @@ export default function CreaprTourOverlay() {
 
       audio.onloadedmetadata = () => {
         const duration = audio.duration * 1000;
-        const perWord = duration / words.length;
+        const perWord = duration / w.length;
 
         audio.play().catch(() => {
-          startTimedReveal(words, duration);
+          startTimedReveal(w, duration);
         });
 
         wordTimerRef.current = setInterval(() => {
           setRevealedWords(prev => {
-            if (prev >= words.length) {
+            if (prev >= w.length) {
               clearInterval(wordTimerRef.current);
               return prev;
             }
@@ -127,12 +147,12 @@ export default function CreaprTourOverlay() {
       };
 
       audio.onended = () => {
-        setRevealedWords(words.length);
-        setTimeout(handleSceneComplete, 400);
+        setRevealedWords(w.length);
+        setTimeout(() => handleSceneCompleteRef.current(), 400);
       };
 
       audio.onerror = () => {
-        startTimedReveal(words, 4000);
+        startTimedReveal(w, 4000);
       };
     }
 
@@ -147,9 +167,12 @@ export default function CreaprTourOverlay() {
       }
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.removeAttribute('src');
+        audioRef.current.load();
       }
     };
-  }, [tourActive, isLoadingAudio, audioUrl, tourSceneIndex, tour, scene, handleSceneComplete, words]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourActive, isLoadingAudio, audioUrl, tourSceneIndex]);
 
   const handleSkip = () => {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
@@ -242,7 +265,7 @@ export default function CreaprTourOverlay() {
                   )}
 
                   <p className={`text-base lg:text-xl ${FONT_CLASSES[scene?.font_style] || 'font-heading'} font-medium text-white leading-relaxed min-h-[3em] flex flex-wrap justify-center gap-x-1.5 gap-y-1`}>
-                    {words.map((word, i) => (
+                    {wordsRef.current.map((word, i) => (
                       <span
                         key={i}
                         className={`transition-all duration-200 ${
