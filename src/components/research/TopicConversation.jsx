@@ -73,15 +73,9 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   const speak = async (text) => {
     if (!text) return;
-    // Kill any currently playing audio before requesting new TTS
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-    }
+    if (audioRef.current) audioRef.current.pause();
     voicePendingRef.current = true;
     setSpeaking(true);
-    setAudioUrl(null);
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
@@ -103,26 +97,14 @@ export default function TopicConversation({ config, onClose, embedded = false })
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
-    // Always fully reset — no stale src can survive
-    audio.pause();
-    audio.removeAttribute('src');
     audio.src = audioUrl;
-    audio.load();
     setSpeaking(true);
     audio.play().catch(() => setSpeaking(false));
-    return () => {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-    };
+    return () => { audio.pause(); };
   }, [audioUrl]);
 
   const handleAudioEnded = () => {
     setAudioUrl(null);
-    if (audioRef.current) {
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-    }
     if (!voicePendingRef.current) {
       setSpeaking(false);
     }
@@ -139,11 +121,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   const stopAudio = () => {
     voicePendingRef.current = false;
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
-    }
+    if (audioRef.current) audioRef.current.pause();
     setSpeaking(false);
     setAudioUrl(null);
   };
@@ -501,7 +479,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   return (
     <div className={`${embedded ? 'relative h-full' : 'fixed inset-0 z-50'} creapd-bg-gradient flex flex-col overflow-hidden`}>
-      <audio ref={audioRef} onEnded={handleAudioEnded} onError={handleAudioEnded} />
+      <audio ref={audioRef} onEnded={handleAudioEnded} />
 
       {/* Animated background — CREAPD themed digital motions, non-interactive */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
