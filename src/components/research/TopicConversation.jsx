@@ -309,6 +309,7 @@ export default function TopicConversation({ config, onClose }) {
   const handleSend = (text) => {
     if (!text.trim() || thinking) return;
     stopAudio();
+    stopSmallTalk();
     setInput('');
     setInterimText('');
     setMessages(prev => [...prev, { role: 'user', content: text }]);
@@ -323,6 +324,7 @@ export default function TopicConversation({ config, onClose }) {
       return;
     }
     stopAudio();
+    stopSmallTalk();
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
