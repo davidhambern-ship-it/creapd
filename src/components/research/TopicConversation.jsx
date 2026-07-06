@@ -4,21 +4,26 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, Mic, Send, X, Radio, ExternalLink, CheckCircle2, AlertTriangle
+  Loader2, Mic, Send, X, Radio, ExternalLink, CheckCircle2
 } from 'lucide-react';
+import AnimatedText from '@/components/research/AnimatedText';
+import TopicWizard from '@/components/research/TopicWizard';
 
 const CREAP_VOICE = 'river';
+const MAX_NO_ATTEMPTS = 5;
 
 const CREAP_SYSTEM_PROMPT = `You are CREAP, a bold, energetic AI co-producer. You're chatting with a producer to find a research topic worth deep-diving.
 
 Rules:
-- Propose controversial, trending, or fascinating topics
+- Propose ONE controversial, trending, or fascinating topic at a time
 - Be conversational, punchy, opinionated — like a co-producer brainstorming
-- Keep responses SHORT: 1-3 sentences max (this is spoken dialogue, not an essay)
-- When the user seems interested, dig deeper — ask what angle interests them
-- When they're clearly engaged, offer to research it: ask "Want it CREAPd?!"
-- If they're not interested, pivot to a different topic
-- Crack jokes. Be fun. Have opinions.
+- Keep responses SHORT: 1-3 sentences max (this is spoken dialogue)
+- After proposing, WAIT for the user's reaction before offering to research
+- If the user seems interested or engaged, ask "Want it CREAPd?!" and include topic_data
+- If the user says NO to "Want it CREAPd?!", acknowledge it briefly and immediately propose a DIFFERENT topic
+- If the user isn't interested in a topic, pivot to a completely new one
+- Crack jokes. Be fun. Have opinions. Be bold and provocative.
+- You have a DECLINE_COUNTER that tracks how many times the user has said "No" to "Want it CREAPd?!"
 
 Return JSON:
 - message: what you say (spoken, conversational style)
@@ -27,10 +32,10 @@ Return JSON:
 
 Action guide:
 - propose: introducing a new topic to explore
-- discuss: engaging with the topic the user seems interested in
+- discuss: engaging with the topic, building interest before offering
 - offer: asking "Want it CREAPd?!" — MUST include topic_data
 - acknowledge_yes: user confirmed they want it CREAPd — MUST include topic_data
-- acknowledge_no: user declined, will pivot to something new`;
+- acknowledge_no: user declined "Want it CREAPd?!" — will pivot to a new topic`;
 
 const STAGE_LABELS = {
   query_expansion: 'Breaking down the query',
@@ -60,6 +65,8 @@ export default function TopicConversation({ config, onClose }) {
   const [speechSupported, setSpeechSupported] = useState(true);
   const [completedTopicId, setCompletedTopicId] = useState(null);
   const [pointCount, setPointCount] = useState(0);
+  const [noCount, setNoCount] = useState(0);
+  const [showWizard, setShowWizard] = useState(false);
 
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -70,10 +77,12 @@ export default function TopicConversation({ config, onClose }) {
   const lastOfferedTopicRef = useRef(null);
   const phaseRef = useRef('greeting');
   const speakingRef = useRef(false);
+  const noCountRef = useRef(0);
   const initializedRef = useRef(false);
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { speakingRef.current = speaking; }, [speaking]);
+  useEffect(() => { noCountRef.current = noCount; }, [noCount]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -127,16 +136,8 @@ export default function TopicConversation({ config, onClose }) {
           const d = dossiers[0];
           const meta = safeParse(d.orchestration_metadata, {});
           if (meta.current_stage) setResearchStage(meta.current_stage);
-          if (d.status === 'ready') {
-            stopPolling();
-            handleResearchComplete(topicId, d);
-            return;
-          }
-          if (d.status === 'failed') {
-            stopPolling();
-            handleResearchFailed(topicId, d);
-            return;
-          }
+          if (d.status === 'ready') { stopPolling(); handleResearchComplete(topicId, d); return; }
+          if (d.status === 'failed') { stopPolling(); handleResearchFailed(topicId, d); return; }
         }
       } catch {}
       pollTimerRef.current = setTimeout(poll, 2000);
@@ -145,10 +146,7 @@ export default function TopicConversation({ config, onClose }) {
   };
 
   const stopPolling = () => {
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
+    if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
   };
 
   const startSmallTalk = (topicData) => {
@@ -173,32 +171,25 @@ export default function TopicConversation({ config, onClose }) {
   };
 
   const stopSmallTalk = () => {
-    if (smallTalkTimerRef.current) {
-      clearTimeout(smallTalkTimerRef.current);
-      smallTalkTimerRef.current = null;
-    }
+    if (smallTalkTimerRef.current) { clearTimeout(smallTalkTimerRef.current); smallTalkTimerRef.current = null; }
   };
 
   const handleResearchComplete = async (topicId, dossier) => {
     stopSmallTalk();
     setPhase('complete');
     setResearchStage('complete');
-
     try {
       await base44.functions.invoke('extractResearchPoints', { topic_id: topicId });
     } catch (err) {
       console.error('Extraction failed:', err);
     }
-
     let pCount = 0;
     try {
       const points = await base44.entities.ResearchPoint.filter({ topic_id: topicId }, '-created_date', 50);
       pCount = points.length;
     } catch {}
-
     setPointCount(pCount);
     setCompletedTopicId(topicId);
-
     const sourceCount = safeParse(dossier.sources, []).length;
     const confidence = dossier.confidence_score || 0;
     const msg = `And we're done! Pulled in ${sourceCount} verified sources and extracted ${pCount} research points. Confidence is sitting at ${confidence}%. Want to check them out?`;
@@ -229,22 +220,34 @@ export default function TopicConversation({ config, onClose }) {
         research_depth: config.research_depth || 'standard',
         status: 'researching'
       });
-
       const launchMsg = `Let's go! Spinning up the research pipeline now — I'll be here while it cooks.`;
       conversationHistoryRef.current.push({ role: 'assistant', content: launchMsg });
       setMessages(prev => [...prev, { role: 'assistant', content: launchMsg }]);
       speak(launchMsg);
-
       base44.functions.invoke('deepResearchV2', {
         topic_id: topic.id,
         research_depth: topic.research_depth
       }).catch(err => console.error('Research invocation failed:', err));
-
       startPolling(topic.id);
       startSmallTalk(topicData);
     } catch (err) {
       console.error('Failed to start research:', err);
     }
+  };
+
+  const handleNoDecline = () => {
+    const newCount = noCountRef.current + 1;
+    setNoCount(newCount);
+    noCountRef.current = newCount;
+    if (newCount >= MAX_NO_ATTEMPTS) {
+      const wizardMsg = `Alright, I get it — you're not feeling my picks today. No worries! Let me set you up with the Topic Guide Wizard so you can steer the ship.`;
+      conversationHistoryRef.current.push({ role: 'assistant', content: wizardMsg });
+      setMessages(prev => [...prev, { role: 'assistant', content: wizardMsg }]);
+      speak(wizardMsg);
+      setTimeout(() => setShowWizard(true), 2000);
+      return true;
+    }
+    return false;
   };
 
   const creapRespond = async () => {
@@ -255,7 +258,7 @@ export default function TopicConversation({ config, onClose }) {
         .join('\n');
 
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `${CREAP_SYSTEM_PROMPT}\n\nConversation so far:\n${history}\n\nGenerate your next response.`,
+        prompt: `${CREAP_SYSTEM_PROMPT}\n\nDECLINE_COUNTER: ${noCountRef.current} (user has said "No" to "Want it CREAPd?!" ${noCountRef.current} times out of ${MAX_NO_ATTEMPTS} before fallback to wizard)\n\nConversation so far:\n${history}\n\nGenerate your next response.`,
         model: 'gpt_5_mini',
         response_json_schema: {
           type: 'object',
@@ -289,6 +292,8 @@ export default function TopicConversation({ config, onClose }) {
       } else if (action === 'acknowledge_yes') {
         const td = topicData || lastOfferedTopicRef.current;
         if (td) handleStartResearch(td);
+      } else if (action === 'acknowledge_no') {
+        handleNoDecline();
       }
     } catch (err) {
       console.error('CREAP response failed:', err);
@@ -322,7 +327,6 @@ export default function TopicConversation({ config, onClose }) {
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
-
     recognition.onresult = (event) => {
       let interim = '';
       let final = '';
@@ -332,14 +336,10 @@ export default function TopicConversation({ config, onClose }) {
         else interim += transcript;
       }
       if (interim) setInterimText(interim);
-      if (final) {
-        setInterimText('');
-        handleSend(final);
-      }
+      if (final) { setInterimText(''); handleSend(final); }
     };
     recognition.onerror = () => { setListening(false); setInterimText(''); };
     recognition.onend = () => setListening(false);
-
     recognition.start();
     recognitionRef.current = recognition;
     setListening(true);
@@ -353,12 +353,11 @@ export default function TopicConversation({ config, onClose }) {
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-
     const init = async () => {
       setThinking(true);
       try {
         const result = await base44.integrations.Core.InvokeLLM({
-          prompt: `${CREAP_SYSTEM_PROMPT}\n\nStart the conversation. Greet the producer and propose ONE controversial or fascinating topic that would make a great research subject. Try to find something trending or timely.`,
+          prompt: `${CREAP_SYSTEM_PROMPT}\n\nDECLINE_COUNTER: 0\n\nStart the conversation. Greet the producer and propose ONE controversial or fascinating topic that would make a great research subject. Try to find something trending or timely.`,
           add_context_from_internet: true,
           model: 'gemini_3_flash',
           response_json_schema: {
@@ -378,14 +377,12 @@ export default function TopicConversation({ config, onClose }) {
             }
           }
         });
-
         const creapMessage = result?.message || "Hey! I've got some wild topics today. What are you curious about?";
         conversationHistoryRef.current.push({ role: 'assistant', content: creapMessage });
         setMessages([{ role: 'assistant', content: creapMessage }]);
         speak(creapMessage);
         if (result?.topic_data) lastOfferedTopicRef.current = result.topic_data;
       } catch (err) {
-        console.error('Init failed:', err);
         const fallback = "Hey! I'm CREAP. What topic should we dig into today?";
         conversationHistoryRef.current.push({ role: 'assistant', content: fallback });
         setMessages([{ role: 'assistant', content: fallback }]);
@@ -407,6 +404,23 @@ export default function TopicConversation({ config, onClose }) {
   }, []);
 
   const canSend = !thinking && !listening;
+
+  if (showWizard) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background overflow-y-auto p-4 md:p-8">
+        <div className="max-w-2xl mx-auto pt-8">
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-md hover:bg-secondary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+          <TopicWizard
+            config={config}
+            onComplete={() => { setShowWizard(false); onClose(); }}
+            onCancel={() => onClose()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -441,6 +455,11 @@ export default function TopicConversation({ config, onClose }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {noCount > 0 && noCount < MAX_NO_ATTEMPTS && (
+            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md bg-orange-500/10 text-xs text-orange-400">
+              {noCount}/{MAX_NO_ATTEMPTS} skips
+            </div>
+          )}
           {phase === 'researching' && researchStage && (
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-xs text-primary">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -458,14 +477,19 @@ export default function TopicConversation({ config, onClose }) {
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+              <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground'
                   : msg.isSmallTalk
-                    ? 'bg-secondary/40 text-muted-foreground italic'
+                    ? 'bg-secondary/40 text-muted-foreground'
                     : 'bg-secondary text-secondary-foreground'
               }`}>
-                <p className="text-sm whitespace-pre-line">{msg.content}</p>
+                <AnimatedText
+                  text={msg.content}
+                  variant={msg.role === 'user' ? 'user' : msg.isSmallTalk ? 'smalltalk' : 'creap'}
+                  className={`text-sm whitespace-pre-line ${msg.role === 'user' || msg.isSmallTalk ? '' : 'font-conv text-base'}`}
+                  speed={msg.role === 'user' ? 50 : 75}
+                />
               </div>
             </div>
           ))}
@@ -534,7 +558,7 @@ export default function TopicConversation({ config, onClose }) {
           </div>
         </div>
         {listening && (
-          <p className="text-xs text-center text-red-400 mt-2 animate-pulse">🎤 Listening... speak now</p>
+          <p className="text-xs text-center text-red-400 mt-2 animate-pulse">Listening... speak now</p>
         )}
       </div>
     </div>
