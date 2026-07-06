@@ -32,7 +32,6 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const [thinking, setThinking] = useState(false);
   const [phase, setPhase] = useState('greeting');
   const [researchStage, setResearchStage] = useState('');
-  const [audioUrl, setAudioUrl] = useState(null);
   const [interimText, setInterimText] = useState('');
   const [speechSupported, setSpeechSupported] = useState(true);
   const [noCount, setNoCount] = useState(0);
@@ -74,24 +73,21 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   const speak = async (text) => {
     if (!text) return;
-    if (audioRef.current) audioRef.current.pause();
     const gen = ++speakGenRef.current;
+    if (audioRef.current) audioRef.current.pause();
     voicePendingRef.current = true;
     setSpeaking(true);
-    setAudioUrl(null);
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
         voice: creapSettingsRef.current.voice_id || 'daniel',
       });
-      // Stale request — a newer speak() superseded this one
       if (gen !== speakGenRef.current) return;
       voicePendingRef.current = false;
-      if (response?.data?.url) {
-        setAudioUrl(response.data.url);
-      } else {
-        setSpeaking(false);
-      }
+      const url = response?.data?.url;
+      if (!url || !audioRef.current) { setSpeaking(false); return; }
+      audioRef.current.src = url;
+      audioRef.current.play().catch(() => setSpeaking(false));
     } catch (err) {
       if (gen !== speakGenRef.current) return;
       voicePendingRef.current = false;
@@ -100,17 +96,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
     }
   };
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
-    audio.src = audioUrl;
-    setSpeaking(true);
-    audio.play().catch(() => setSpeaking(false));
-    return () => { audio.pause(); };
-  }, [audioUrl]);
-
   const handleAudioEnded = () => {
-    setAudioUrl(null);
     if (!voicePendingRef.current) {
       setSpeaking(false);
     }
@@ -128,9 +114,8 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const stopAudio = () => {
     speakGenRef.current++;
     voicePendingRef.current = false;
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
     setSpeaking(false);
-    setAudioUrl(null);
   };
 
   const startPolling = (topicId) => {
