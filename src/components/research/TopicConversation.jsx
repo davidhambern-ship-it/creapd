@@ -71,7 +71,6 @@ export default function TopicConversation({ config, onClose }) {
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const smallTalkTimerRef = useRef(null);
   const pollTimerRef = useRef(null);
   const conversationHistoryRef = useRef([]);
   const lastOfferedTopicRef = useRef(null);
@@ -149,33 +148,7 @@ export default function TopicConversation({ config, onClose }) {
     if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
   };
 
-  const startSmallTalk = (topicData) => {
-    const generateSmallTalk = async () => {
-      if (phaseRef.current !== 'researching') return;
-      if (speakingRef.current) {
-        smallTalkTimerRef.current = setTimeout(generateSmallTalk, 3000);
-        return;
-      }
-      try {
-        const result = await base44.integrations.Core.InvokeLLM({
-          prompt: `You are CREAP. Research is running on: "${topicData.title}". Make ONE brief, entertaining comment — a fun fact, related observation, or joke. 1-2 sentences max. Conversational and fun. No questions, no mentioning that research is running.`,
-          model: 'gpt_5_mini',
-        });
-        const smallTalk = typeof result === 'string' ? result : (result?.message || 'This is getting interesting...');
-        setMessages(prev => [...prev, { role: 'assistant', content: smallTalk, isSmallTalk: true }]);
-        speak(smallTalk);
-      } catch {}
-      smallTalkTimerRef.current = setTimeout(generateSmallTalk, 12000);
-    };
-    smallTalkTimerRef.current = setTimeout(generateSmallTalk, 8000);
-  };
-
-  const stopSmallTalk = () => {
-    if (smallTalkTimerRef.current) { clearTimeout(smallTalkTimerRef.current); smallTalkTimerRef.current = null; }
-  };
-
   const handleResearchComplete = async (topicId, dossier) => {
-    stopSmallTalk();
     setPhase('complete');
     setResearchStage('complete');
     try {
@@ -199,7 +172,6 @@ export default function TopicConversation({ config, onClose }) {
   };
 
   const handleResearchFailed = (topicId, dossier) => {
-    stopSmallTalk();
     setPhase('complete');
     const msg = `Looks like the research hit a snag. ${dossier?.error_message || 'Something went wrong on my end.'} We can try again or pick a different topic.`;
     conversationHistoryRef.current.push({ role: 'assistant', content: msg });
@@ -229,7 +201,6 @@ export default function TopicConversation({ config, onClose }) {
         research_depth: topic.research_depth
       }).catch(err => console.error('Research invocation failed:', err));
       startPolling(topic.id);
-      startSmallTalk(topicData);
     } catch (err) {
       console.error('Failed to start research:', err);
     }
@@ -309,7 +280,6 @@ export default function TopicConversation({ config, onClose }) {
   const handleSend = (text) => {
     if (!text.trim() || thinking) return;
     stopAudio();
-    stopSmallTalk();
     setInput('');
     setInterimText('');
     setMessages(prev => [...prev, { role: 'user', content: text }]);
@@ -324,7 +294,6 @@ export default function TopicConversation({ config, onClose }) {
       return;
     }
     stopAudio();
-    stopSmallTalk();
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
@@ -399,7 +368,6 @@ export default function TopicConversation({ config, onClose }) {
   useEffect(() => {
     return () => {
       stopPolling();
-      stopSmallTalk();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       if (audioRef.current) audioRef.current.pause();
     };
@@ -482,14 +450,12 @@ export default function TopicConversation({ config, onClose }) {
               <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground'
-                  : msg.isSmallTalk
-                    ? 'bg-secondary/40 text-muted-foreground'
-                    : 'bg-secondary text-secondary-foreground'
+                  : 'bg-secondary text-secondary-foreground'
               }`}>
                 <AnimatedText
                   text={msg.content}
-                  variant={msg.role === 'user' ? 'user' : msg.isSmallTalk ? 'smalltalk' : 'creap'}
-                  className={`text-sm whitespace-pre-line ${msg.role === 'user' || msg.isSmallTalk ? '' : 'font-conv text-base'}`}
+                  variant={msg.role === 'user' ? 'user' : 'creap'}
+                  className={`text-sm whitespace-pre-line ${msg.role === 'user' ? '' : 'font-conv text-base'}`}
                   speed={msg.role === 'user' ? 50 : 75}
                 />
               </div>
