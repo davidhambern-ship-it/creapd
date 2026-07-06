@@ -472,15 +472,15 @@
       transparent 60%,
       transparent 100%
     ),
-    /* orange→purple base gradient */
+    /* purple→orange base gradient */
     linear-gradient(
       180deg,
-      #FFB347 0%,
-      #FF8C00 15%,
-      #D65A1E 30%,
-      #8A2BE2 55%,
-      #6A0DAD 75%,
-      #4B0082 100%
+      #4B0082 0%,
+      #6A0DAD 25%,
+      #8A2BE2 45%,
+      #D65A1E 70%,
+      #FF8C00 85%,
+      #FFB347 100%
     );
   background-size: 100% 100%, 250% 100%, 100% 100%;
   -webkit-background-clip: text;
