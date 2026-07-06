@@ -299,27 +299,32 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       {showLoading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ zIndex: 15 }}>
           <div className="text-center">
-            <h2 className="font-heading font-bold text-2xl md:text-3xl mb-2" style={{ color: 'hsl(40 30% 85%)' }}>
+            <h2 className="font-mono font-bold text-2xl md:text-3xl mb-2 uppercase tracking-wider" style={{ color: 'hsl(0 0% 90%)' }}>
               The CREAPr Library
             </h2>
             <div className="flex items-center gap-2 justify-center">
-              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(40 40% 55%)' }} />
-              <span className="text-sm" style={{ color: 'hsl(40 30% 55%)' }}>Entering the library...</span>
+              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(190 90% 55%)' }} />
+              <span className="text-sm font-mono" style={{ color: 'hsl(190 60% 50%)' }}>▸ INITIALIZING SYSTEM...</span>
             </div>
           </div>
         </div>
       )}
 
       <div className="absolute top-4 left-4 flex items-center gap-3" style={{ zIndex: 15 }}>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-          speaking ? 'bg-primary/40 glow-purple' : thinking ? 'bg-primary/20' : 'bg-primary/15'
-        }`}>
-          <span className="text-sm font-heading font-bold text-primary-foreground">Cr</span>
+        <div
+          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${speaking ? 'animate-pulse' : ''}`}
+          style={{
+            background: speaking ? 'hsl(270 80% 50% / 0.25)' : thinking ? 'hsl(190 90% 45% / 0.15)' : 'hsl(190 60% 40% / 0.1)',
+            border: `1px solid ${speaking ? 'hsl(270 80% 60% / 0.5)' : 'hsl(190 60% 40% / 0.3)'}`,
+            boxShadow: speaking ? '0 0 16px hsl(270 80% 50% / 0.3)' : '0 0 8px hsl(190 90% 50% / 0.1)',
+          }}
+        >
+          <span className="text-sm font-mono font-bold" style={{ color: 'hsl(190 90% 55%)' }}>Cr</span>
         </div>
         <div>
-          <h3 className="font-heading font-semibold text-sm" style={{ color: 'hsl(40 30% 88%)' }}>CREAPr</h3>
-          <p className="text-xs" style={{ color: 'hsl(220 10% 45%)' }}>
-            {speaking ? 'Speaking...' : thinking ? 'Thinking...' : listening ? 'Listening...' : 'The Library'}
+          <h3 className="font-mono font-semibold text-sm uppercase tracking-wider" style={{ color: 'hsl(0 0% 90%)' }}>CREAPr</h3>
+          <p className="text-xs font-mono" style={{ color: 'hsl(190 60% 45%)' }}>
+            {speaking ? '▸ TRANSMITTING...' : thinking ? '▸ PROCESSING...' : listening ? '▸ LISTENING...' : '▸ LIBRARY ONLINE'}
           </p>
         </div>
       </div>
@@ -370,12 +375,14 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
       {deskPhase === null && completionRef.current > 0 && (
         <div className="absolute top-4 right-16 hidden md:flex items-center gap-2" style={{ zIndex: 15 }}>
-          <div className="w-24 h-1 rounded-full overflow-hidden" style={{ background: 'hsl(40 30% 15% / 0.4)' }}>
+          <span className="text-xs font-mono" style={{ color: 'hsl(190 60% 45%)' }}>DATA</span>
+          <div className="w-24 h-1 rounded-full overflow-hidden" style={{ background: 'hsl(220 35% 10% / 0.6)', border: '1px solid hsl(190 60% 30% / 0.2)' }}>
             <div
               className="h-full rounded-full transition-all duration-1000"
               style={{
                 width: `${Math.min(100, completionRef.current * 100)}%`,
-                background: 'linear-gradient(90deg, hsl(40 50% 45%), hsl(152 60% 45%))',
+                background: 'linear-gradient(90deg, hsl(270 80% 55%), hsl(190 90% 55%), hsl(152 60% 50%))',
+                boxShadow: '0 0 8px hsl(190 90% 55% / 0.4)',
               }}
             />
           </div>

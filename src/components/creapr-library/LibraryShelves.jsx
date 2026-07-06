@@ -2,7 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mountain, ScrollText, Globe2, FlaskConical, BookOpen,
-  Compass, CircuitBoard, Crown, Newspaper, Sparkles, History, Lightbulb
+  Compass, CircuitBoard, Crown, Newspaper, Sparkles, History, Lightbulb,
+  Cpu, Database, Radio, Network
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -14,90 +15,104 @@ const ICON_MAP = {
   compass: Compass,
   circuit: CircuitBoard,
   crown: Crown,
+  cpu: Cpu,
+  database: Database,
+  radio: Radio,
+  network: Network,
 };
 
 const BOOK_COLORS = [
-  'hsl(15 55% 35%)',
-  'hsl(200 40% 30%)',
-  'hsl(35 50% 35%)',
-  'hsl(140 35% 28%)',
-  'hsl(280 35% 35%)',
-  'hsl(0 45% 32%)',
-  'hsl(180 30% 30%)',
-  'hsl(45 45% 33%)',
+  { bg: 'hsl(270 80% 45%)', glow: 'hsl(270 80% 60%)' },
+  { bg: 'hsl(190 90% 40%)', glow: 'hsl(190 90% 55%)' },
+  { bg: 'hsl(152 60% 38%)', glow: 'hsl(152 60% 50%)' },
+  { bg: 'hsl(25 95% 45%)', glow: 'hsl(25 95% 60%)' },
+  { bg: 'hsl(340 75% 45%)', glow: 'hsl(340 75% 60%)' },
+  { bg: 'hsl(210 80% 45%)', glow: 'hsl(210 80% 60%)' },
 ];
 
-function BookSpine({ color, height, delay }) {
+function DataShard({ color, height, delay }) {
   return (
     <motion.div
-      className="w-2 rounded-t-sm shrink-0"
-      style={{ background: color, height }}
+      className="w-1.5 shrink-0 rounded-t-sm"
+      style={{
+        background: `linear-gradient(180deg, ${color.glow} 0%, ${color.bg} 100%)`,
+        height,
+        boxShadow: `0 0 6px ${color.glow} / 0.4`,
+      }}
       initial={{ height: 0, opacity: 0 }}
       animate={{ height, opacity: 1 }}
-      transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+      transition={{ delay, duration: 0.4, ease: 'easeOut' }}
     />
   );
 }
 
-function BookshelfCard({ item, index, onSelect, variant = 'category' }) {
-  const IconComp = ICON_MAP[item.icon_hint] || BookOpen;
-  const bookCount = 8 + (index % 4);
+function BookshelfCard({ item, index, onSelect }) {
+  const IconComp = ICON_MAP[item.icon_hint] || Database;
+  const shardCount = 10 + (index % 5);
 
   return (
     <motion.button
-      className="group relative w-full text-left rounded-xl overflow-hidden border transition-all hover:scale-[1.02]"
+      className="group relative w-full text-left rounded-lg overflow-hidden border transition-all"
       style={{
-        borderColor: 'hsl(40 25% 18% / 0.3)',
-        background: 'linear-gradient(180deg, hsl(30 25% 10% / 0.8) 0%, hsl(25 20% 6% / 0.9) 100%)',
+        borderColor: 'hsl(270 40% 30% / 0.4)',
+        background: 'linear-gradient(180deg, hsl(220 40% 8% / 0.85) 0%, hsl(220 35% 5% / 0.95) 100%)',
+        boxShadow: '0 0 12px hsl(270 80% 50% / 0.05), inset 0 1px 0 hsl(270 40% 20% / 0.2)',
+        backdropFilter: 'blur(8px)',
       }}
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: index * 0.08, duration: 0.5, ease: 'easeOut' }}
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -4, borderColor: 'hsl(190 90% 50% / 0.5)' }}
       onClick={() => onSelect(item)}
     >
-      {/* Bookshelf row at top */}
-      <div className="flex items-end gap-0.5 px-3 pt-3 h-16" style={{ background: 'hsl(25 20% 5% / 0.6)' }}>
-        {[...Array(bookCount)].map((_, i) => (
-          <BookSpine
+      {/* Data shard row at top — like a server rack */}
+      <div className="flex items-end gap-0.5 px-3 pt-3 h-14" style={{ background: 'hsl(220 40% 4% / 0.7)' }}>
+        {[...Array(shardCount)].map((_, i) => (
+          <DataShard
             key={i}
             color={BOOK_COLORS[(i + index) % BOOK_COLORS.length]}
-            height={20 + ((i * 7 + index * 3) % 30)}
-            delay={index * 0.08 + i * 0.03}
+            height={18 + ((i * 7 + index * 3) % 28)}
+            delay={index * 0.08 + i * 0.025}
           />
         ))}
       </div>
-      {/* Shelf line */}
-      <div className="h-1" style={{ background: 'hsl(30 25% 15% / 0.6)' }} />
+      {/* Circuit shelf line */}
+      <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, hsl(190 90% 50% / 0.3), transparent)' }} />
 
       <div className="p-4">
         <div className="flex items-center gap-2 mb-1.5">
-          <IconComp className="w-4 h-4" style={{ color: 'hsl(40 40% 55%)' }} />
-          <h4 className="font-heading font-semibold text-sm" style={{ color: 'hsl(40 30% 90%)' }}>
+          <IconComp className="w-4 h-4" style={{ color: 'hsl(190 90% 55%)' }} />
+          <h4 className="font-mono font-semibold text-sm uppercase tracking-wider" style={{ color: 'hsl(0 0% 90%)' }}>
             {item.name}
           </h4>
         </div>
-        <p className="text-xs leading-relaxed" style={{ color: 'hsl(220 10% 55%)' }}>
+        <p className="text-xs leading-relaxed font-mono" style={{ color: 'hsl(220 15% 55%)' }}>
           {item.description}
         </p>
       </div>
 
-      {/* Glow on hover */}
+      {/* Scan line on hover */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(40 50% 30% / 0.08) 0%, transparent 60%)' }}
+        style={{
+          background: 'linear-gradient(180deg, transparent 0%, hsl(190 90% 50% / 0.05) 50%, transparent 100%)',
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, hsl(190 90% 50% / 0.03) 4px)',
+        }}
+      />
+      {/* Corner accent */}
+      <div
+        className="absolute top-0 right-0 w-8 h-8 opacity-20"
+        style={{
+          borderTop: '1px solid hsl(190 90% 55%)',
+          borderRight: '1px solid hsl(190 90% 55%)',
+        }}
       />
     </motion.button>
   );
 }
 
-/**
- * Library Shelves — displays category bookshelves or featured discovery books.
- */
 export default function LibraryShelves({ items, onSelect, variant = 'category', title }) {
   if (!items || items.length === 0) return null;
-
-  const isFeatured = variant === 'featured';
 
   return (
     <AnimatePresence mode="wait">
@@ -108,18 +123,21 @@ export default function LibraryShelves({ items, onSelect, variant = 'category', 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
       >
         {title && (
-          <motion.p
-            className="text-sm uppercase tracking-[0.3em] mb-6"
-            style={{ color: 'hsl(40 30% 50%)' }}
+          <motion.div
+            className="flex items-center gap-2 mb-6"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.15 }}
           >
-            {title}
-          </motion.p>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'hsl(190 90% 55%)', boxShadow: '0 0 6px hsl(190 90% 55%)' }} />
+            <p className="text-xs uppercase tracking-[0.3em] font-mono" style={{ color: 'hsl(190 60% 55%)' }}>
+              {title}
+            </p>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'hsl(190 90% 55%)', boxShadow: '0 0 6px hsl(190 90% 55%)' }} />
+          </motion.div>
         )}
         <div className={`grid gap-4 w-full max-w-3xl ${
           items.length <= 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-3'
@@ -130,7 +148,6 @@ export default function LibraryShelves({ items, onSelect, variant = 'category', 
               item={item}
               index={i}
               onSelect={onSelect}
-              variant={variant}
             />
           ))}
         </div>

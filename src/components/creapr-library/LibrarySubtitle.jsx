@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * Library Subtitle Bar — cinematic subtitles near the bottom of the screen.
- * Displays CREAPr's spoken lines with elegant word-by-word reveal.
- */
 export default function LibrarySubtitle({ lines, onAllLinesShown }) {
   const [currentLineIdx, setCurrentLineIdx] = useState(0);
   const [visible, setVisible] = useState(false);
@@ -18,18 +14,15 @@ export default function LibrarySubtitle({ lines, onAllLinesShown }) {
     setVisible(true);
   }, [lines]);
 
-  // Advance through lines
   useEffect(() => {
     if (!visible || !lines || currentLineIdx >= lines.length) return;
     const line = lines[currentLineIdx];
-    // Duration based on line length — roughly 150ms per word + 1.5s base
     const wordCount = line.split(' ').length;
     const displayTime = Math.max(2500, wordCount * 200 + 1000);
     const timer = setTimeout(() => {
       if (currentLineIdx < lines.length - 1) {
         setCurrentLineIdx(prev => prev + 1);
       } else {
-        // All lines shown
         setVisible(false);
         setTimeout(() => onAllLinesShown?.(), 500);
       }
@@ -51,23 +44,35 @@ export default function LibrarySubtitle({ lines, onAllLinesShown }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
       >
         <div
-          className="px-8 py-4 rounded-2xl backdrop-blur-md"
+          className="px-8 py-4 rounded-lg backdrop-blur-md relative overflow-hidden"
           style={{
-            background: 'hsl(220 30% 4% / 0.6)',
-            border: '1px solid hsl(40 30% 20% / 0.15)',
+            background: 'hsl(220 35% 4% / 0.7)',
+            border: '1px solid hsl(190 60% 40% / 0.3)',
+            boxShadow: '0 0 20px hsl(270 80% 50% / 0.1), inset 0 1px 0 hsl(190 50% 30% / 0.1)',
           }}
         >
-          <p className="text-lg md:text-xl font-serif leading-relaxed" style={{ color: 'hsl(40 30% 92%)' }}>
+          {/* Top scan line */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{ background: 'linear-gradient(90deg, transparent, hsl(190 90% 55% / 0.5), transparent)' }}
+          />
+          {/* Corner accents */}
+          <div className="absolute top-1.5 left-1.5 w-2 h-2 border-l border-t" style={{ borderColor: 'hsl(190 90% 55% / 0.6)' }} />
+          <div className="absolute top-1.5 right-1.5 w-2 h-2 border-r border-t" style={{ borderColor: 'hsl(190 90% 55% / 0.6)' }} />
+          <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-l border-b" style={{ borderColor: 'hsl(190 90% 55% / 0.6)' }} />
+          <div className="absolute bottom-1.5 right-1.5 w-2 h-2 border-r border-b" style={{ borderColor: 'hsl(190 90% 55% / 0.6)' }} />
+
+          <p className="text-base md:text-lg font-mono leading-relaxed" style={{ color: 'hsl(0 0% 92%)' }}>
             {words.map((word, i) => (
               <motion.span
                 key={i}
                 className="inline-block mr-[0.25em]"
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06, duration: 0.4, ease: 'easeOut' }}
+                transition={{ delay: i * 0.05, duration: 0.35, ease: 'easeOut' }}
               >
                 {word}
               </motion.span>
