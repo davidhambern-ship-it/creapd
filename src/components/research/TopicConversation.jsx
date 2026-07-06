@@ -9,7 +9,7 @@ import {
 import AnimatedText from '@/components/research/AnimatedText';
 import TopicWizard from '@/components/research/TopicWizard';
 
-const CREAP_VOICE = 'river';
+const CREAP_VOICE = 'adam';
 const MAX_NO_ATTEMPTS = 5;
 
 const CREAP_SYSTEM_PROMPT = `You are CREAP, a bold, energetic AI co-producer. You're chatting with a producer to find a research topic worth deep-diving.
@@ -91,12 +91,12 @@ export default function TopicConversation({ config, onClose }) {
   const speak = async (text) => {
     if (!text) return;
     try {
-      const result = await base44.integrations.Core.GenerateSpeech({
+      const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
         voice: CREAP_VOICE,
       });
-      if (result?.url) {
-        setAudioUrl(result.url);
+      if (response?.data?.url) {
+        setAudioUrl(response.data.url);
         setSpeaking(true);
       }
     } catch (err) {
