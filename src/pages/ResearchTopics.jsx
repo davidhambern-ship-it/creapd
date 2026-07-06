@@ -33,7 +33,11 @@ export default function ResearchTopics() {
       <div className="flex items-center justify-center h-full p-6">
         <div className="max-w-md text-center">
           <FlaskConical className="w-12 h-12 text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">No production configured.</p>
+          <h2 className="text-xl font-heading font-semibold mb-2">No Research Production</h2>
+          <p className="text-muted-foreground mb-4">You need a research production configuration before entering the library.</p>
+          <Button asChild>
+            <Link to="/research/configure">Create a Production</Link>
+          </Button>
         </div>
       </div>
     );

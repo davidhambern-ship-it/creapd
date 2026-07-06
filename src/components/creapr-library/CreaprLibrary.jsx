@@ -28,6 +28,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [loadingGreeting, setLoadingGreeting] = useState(true);
 
+  const loadingGreetingRef = useRef(true);
   const conversationHistoryRef = useRef([]);
   const assignmentRef = useRef({});
   const creapSettingsRef = useRef(DEFAULT_CREAP_SETTINGS);
@@ -102,22 +103,36 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const handleGenerateGreeting = useCallback(async () => {
     if (!isMountedRef.current) return;
     const enhancedConfig = { ...config, _userName: userNameRef.current };
-    const result = await generateGreeting(
-      { full_name: userNameRef.current },
-      creapSettingsRef.current,
-      enhancedConfig
-    );
-    if (!isMountedRef.current) return;
-    setLoadingGreeting(false);
-    conversationHistoryRef.current.push({ role: 'assistant', content: result.spoken_lines.join(' ') });
-    completionRef.current = result.completion_confidence || 0;
-    speakLines(result.spoken_lines, () => {
+    try {
+      const result = await generateGreeting(
+        { full_name: userNameRef.current },
+        creapSettingsRef.current,
+        enhancedConfig
+      );
       if (!isMountedRef.current) return;
-      setInputEnabled(true);
-    });
+      loadingGreetingRef.current = false;
+      setLoadingGreeting(false);
+      conversationHistoryRef.current.push({ role: 'assistant', content: result.spoken_lines.join(' ') });
+      completionRef.current = result.completion_confidence || 0;
+      speakLines(result.spoken_lines, () => {
+        if (!isMountedRef.current) return;
+        setInputEnabled(true);
+      });
+    } catch {
+      if (!isMountedRef.current) return;
+      loadingGreetingRef.current = false;
+      setLoadingGreeting(false);
+      const fallback = ["Welcome to the library.", "What are we looking for today?"];
+      conversationHistoryRef.current.push({ role: 'assistant', content: fallback.join(' ') });
+      speakLines(fallback, () => {
+        if (!isMountedRef.current) return;
+        setInputEnabled(true);
+      });
+    }
   }, [config, speakLines]);
 
   useEffect(() => {
+    let timeoutId;
     (async () => {
       try {
         const settingsRes = await base44.entities.CreapSettings.filter({ is_active: true }, '-updated_date', 1);
@@ -128,11 +143,27 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         if (user?.full_name) userNameRef.current = user.full_name;
       } catch {}
       handleGenerateGreeting();
+
+      // Fallback: if greeting hasn't loaded after 12s, show fallback anyway
+      timeoutId = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        if (loadingGreetingRef.current) {
+          loadingGreetingRef.current = false;
+          setLoadingGreeting(false);
+          const fallback = ["Welcome to the library.", "What are we looking for today?"];
+          conversationHistoryRef.current.push({ role: 'assistant', content: fallback.join(' ') });
+          speakLines(fallback, () => {
+            if (!isMountedRef.current) return;
+            setInputEnabled(true);
+          });
+        }
+      }, 12000);
     })();
 
     return () => {
       isMountedRef.current = false;
       _audioLock = false;
+      if (timeoutId) clearTimeout(timeoutId);
       stopAudio();
     };
   }, []);
@@ -253,6 +284,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     conversationHistoryRef.current = [];
     completionRef.current = 0;
     setSubtitleLines(null);
+    loadingGreetingRef.current = true;
     setLoadingGreeting(true);
     handleGenerateGreeting();
   }, [handleGenerateGreeting, stopAudio]);
@@ -265,10 +297,15 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       <LibraryAmbience intensity={deskPhase === 'assembling' ? 'assembling' : speaking ? 'active' : 'calm'} />
 
       {showLoading && (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 15 }}>
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'hsl(40 40% 55%)' }} />
-            <span className="text-sm" style={{ color: 'hsl(40 30% 60%)' }}>Entering the library...</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ zIndex: 15 }}>
+          <div className="text-center">
+            <h2 className="font-heading font-bold text-2xl md:text-3xl mb-2" style={{ color: 'hsl(40 30% 85%)' }}>
+              The CREAPr Library
+            </h2>
+            <div className="flex items-center gap-2 justify-center">
+              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(40 40% 55%)' }} />
+              <span className="text-sm" style={{ color: 'hsl(40 30% 55%)' }}>Entering the library...</span>
+            </div>
           </div>
         </div>
       )}
