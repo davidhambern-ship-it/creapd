@@ -90,16 +90,24 @@ export default function TopicConversation({ config, onClose, embedded = false })
     }
   };
 
+  const lastPlayedUrlRef = useRef(null);
+
   useEffect(() => {
     if (!audioUrl) return;
     const audio = audioRef.current;
     if (!audio) return;
+    if (lastPlayedUrlRef.current === audioUrl) return;
+    lastPlayedUrlRef.current = audioUrl;
+    audio.pause();
+    audio.currentTime = 0;
     audio.src = audioUrl;
     audio.play().catch(() => setSpeaking(false));
+    return () => { audio.pause(); };
   }, [audioUrl]);
 
   const handleAudioEnded = () => {
     voicePendingRef.current = false;
+    lastPlayedUrlRef.current = null;
     setSpeaking(false);
     setAudioUrl(null);
     if (closeAfterSpeakingRef.current) {
