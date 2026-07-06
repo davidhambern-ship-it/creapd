@@ -1,0 +1,542 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Loader2, Mic, Send, X, Radio, ExternalLink, CheckCircle2, AlertTriangle
+} from 'lucide-react';
+
+const CREAP_VOICE = 'river';
+
+const CREAP_SYSTEM_PROMPT = `You are CREAP, a bold, energetic AI co-producer. You're chatting with a producer to find a research topic worth deep-diving.
+
+Rules:
+- Propose controversial, trending, or fascinating topics
+- Be conversational, punchy, opinionated — like a co-producer brainstorming
+- Keep responses SHORT: 1-3 sentences max (this is spoken dialogue, not an essay)
+- When the user seems interested, dig deeper — ask what angle interests them
+- When they're clearly engaged, offer to research it: ask "Want it CREAPd?!"
+- If they're not interested, pivot to a different topic
+- Crack jokes. Be fun. Have opinions.
+
+Return JSON:
+- message: what you say (spoken, conversational style)
+- action: "propose" | "discuss" | "offer" | "acknowledge_yes" | "acknowledge_no"
+- topic_data: { title, description, research_query, category } — REQUIRED when action is "offer" or "acknowledge_yes"
+
+Action guide:
+- propose: introducing a new topic to explore
+- discuss: engaging with the topic the user seems interested in
+- offer: asking "Want it CREAPd?!" — MUST include topic_data
+- acknowledge_yes: user confirmed they want it CREAPd — MUST include topic_data
+- acknowledge_no: user declined, will pivot to something new`;
+
+const STAGE_LABELS = {
+  query_expansion: 'Breaking down the query',
+  discovery: 'Searching the web',
+  source_verification: 'Verifying sources',
+  synthesis: 'Synthesizing findings',
+  verification: 'Fact-checking claims',
+  critical_analysis: 'Critical analysis',
+  complete: 'Complete'
+};
+
+function safeParse(str, fallback) {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
+export default function TopicConversation({ config, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [phase, setPhase] = useState('greeting');
+  const [researchStage, setResearchStage] = useState('');
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [interimText, setInterimText] = useState('');
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const [completedTopicId, setCompletedTopicId] = useState(null);
+  const [pointCount, setPointCount] = useState(0);
+
+  const audioRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const smallTalkTimerRef = useRef(null);
+  const pollTimerRef = useRef(null);
+  const conversationHistoryRef = useRef([]);
+  const lastOfferedTopicRef = useRef(null);
+  const phaseRef = useRef('greeting');
+  const speakingRef = useRef(false);
+  const initializedRef = useRef(false);
+
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { speakingRef.current = speaking; }, [speaking]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const speak = async (text) => {
+    if (!text) return;
+    try {
+      const result = await base44.integrations.Core.GenerateSpeech({
+        text: text.substring(0, 5000),
+        voice: CREAP_VOICE,
+      });
+      if (result?.url) {
+        setAudioUrl(result.url);
+        setSpeaking(true);
+      }
+    } catch (err) {
+      console.error('TTS failed:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!audioUrl) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.src = audioUrl;
+    audio.play().catch(() => setSpeaking(false));
+  }, [audioUrl]);
+
+  const handleAudioEnded = () => {
+    setSpeaking(false);
+    setAudioUrl(null);
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setSpeaking(false);
+    setAudioUrl(null);
+  };
+
+  const startPolling = (topicId) => {
+    const poll = async () => {
+      try {
+        const dossiers = await base44.entities.ResearchDossier.filter(
+          { topic_id: topicId }, '-created_date', 1
+        );
+        if (dossiers?.length > 0) {
+          const d = dossiers[0];
+          const meta = safeParse(d.orchestration_metadata, {});
+          if (meta.current_stage) setResearchStage(meta.current_stage);
+          if (d.status === 'ready') {
+            stopPolling();
+            handleResearchComplete(topicId, d);
+            return;
+          }
+          if (d.status === 'failed') {
+            stopPolling();
+            handleResearchFailed(topicId, d);
+            return;
+          }
+        }
+      } catch {}
+      pollTimerRef.current = setTimeout(poll, 2000);
+    };
+    poll();
+  };
+
+  const stopPolling = () => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  };
+
+  const startSmallTalk = (topicData) => {
+    const generateSmallTalk = async () => {
+      if (phaseRef.current !== 'researching') return;
+      if (speakingRef.current) {
+        smallTalkTimerRef.current = setTimeout(generateSmallTalk, 3000);
+        return;
+      }
+      try {
+        const result = await base44.integrations.Core.InvokeLLM({
+          prompt: `You are CREAP. Research is running on: "${topicData.title}". Make ONE brief, entertaining comment — a fun fact, related observation, or joke. 1-2 sentences max. Conversational and fun. No questions, no mentioning that research is running.`,
+          model: 'gpt_5_mini',
+        });
+        const smallTalk = typeof result === 'string' ? result : (result?.message || 'This is getting interesting...');
+        setMessages(prev => [...prev, { role: 'assistant', content: smallTalk, isSmallTalk: true }]);
+        speak(smallTalk);
+      } catch {}
+      smallTalkTimerRef.current = setTimeout(generateSmallTalk, 12000);
+    };
+    smallTalkTimerRef.current = setTimeout(generateSmallTalk, 8000);
+  };
+
+  const stopSmallTalk = () => {
+    if (smallTalkTimerRef.current) {
+      clearTimeout(smallTalkTimerRef.current);
+      smallTalkTimerRef.current = null;
+    }
+  };
+
+  const handleResearchComplete = async (topicId, dossier) => {
+    stopSmallTalk();
+    setPhase('complete');
+    setResearchStage('complete');
+
+    try {
+      await base44.functions.invoke('extractResearchPoints', { topic_id: topicId });
+    } catch (err) {
+      console.error('Extraction failed:', err);
+    }
+
+    let pCount = 0;
+    try {
+      const points = await base44.entities.ResearchPoint.filter({ topic_id: topicId }, '-created_date', 50);
+      pCount = points.length;
+    } catch {}
+
+    setPointCount(pCount);
+    setCompletedTopicId(topicId);
+
+    const sourceCount = safeParse(dossier.sources, []).length;
+    const confidence = dossier.confidence_score || 0;
+    const msg = `And we're done! Pulled in ${sourceCount} verified sources and extracted ${pCount} research points. Confidence is sitting at ${confidence}%. Want to check them out?`;
+    conversationHistoryRef.current.push({ role: 'assistant', content: msg });
+    setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
+    speak(msg);
+  };
+
+  const handleResearchFailed = (topicId, dossier) => {
+    stopSmallTalk();
+    setPhase('complete');
+    const msg = `Looks like the research hit a snag. ${dossier?.error_message || 'Something went wrong on my end.'} We can try again or pick a different topic.`;
+    conversationHistoryRef.current.push({ role: 'assistant', content: msg });
+    setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
+    speak(msg);
+  };
+
+  const handleStartResearch = async (topicData) => {
+    setPhase('researching');
+    try {
+      const topic = await base44.entities.ResearchTopic.create({
+        configuration_id: config.id,
+        title: topicData.title,
+        description: topicData.description || '',
+        research_query: topicData.research_query || topicData.title,
+        category: topicData.category || 'general',
+        priority: 'standard',
+        research_depth: config.research_depth || 'standard',
+        status: 'researching'
+      });
+
+      const launchMsg = `Let's go! Spinning up the research pipeline now — I'll be here while it cooks.`;
+      conversationHistoryRef.current.push({ role: 'assistant', content: launchMsg });
+      setMessages(prev => [...prev, { role: 'assistant', content: launchMsg }]);
+      speak(launchMsg);
+
+      base44.functions.invoke('deepResearchV2', {
+        topic_id: topic.id,
+        research_depth: topic.research_depth
+      }).catch(err => console.error('Research invocation failed:', err));
+
+      startPolling(topic.id);
+      startSmallTalk(topicData);
+    } catch (err) {
+      console.error('Failed to start research:', err);
+    }
+  };
+
+  const creapRespond = async () => {
+    setThinking(true);
+    try {
+      const history = conversationHistoryRef.current
+        .map(m => `${m.role === 'user' ? 'USER' : 'CREAP'}: ${m.content}`)
+        .join('\n');
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `${CREAP_SYSTEM_PROMPT}\n\nConversation so far:\n${history}\n\nGenerate your next response.`,
+        model: 'gpt_5_mini',
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' },
+            action: { type: 'string' },
+            topic_data: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                description: { type: 'string' },
+                research_query: { type: 'string' },
+                category: { type: 'string' }
+              }
+            }
+          }
+        }
+      });
+
+      const creapMessage = result?.message || 'Hmm, let me think about that...';
+      const action = result?.action || 'discuss';
+      const topicData = result?.topic_data;
+
+      conversationHistoryRef.current.push({ role: 'assistant', content: creapMessage });
+      setMessages(prev => [...prev, { role: 'assistant', content: creapMessage }]);
+      speak(creapMessage);
+
+      if (action === 'offer' && topicData) {
+        lastOfferedTopicRef.current = topicData;
+        setPhase('offering');
+      } else if (action === 'acknowledge_yes') {
+        const td = topicData || lastOfferedTopicRef.current;
+        if (td) handleStartResearch(td);
+      }
+    } catch (err) {
+      console.error('CREAP response failed:', err);
+      const errorMsg = 'Sorry, I glitched for a second. What were you saying?';
+      conversationHistoryRef.current.push({ role: 'assistant', content: errorMsg });
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+      speak(errorMsg);
+    } finally {
+      setThinking(false);
+    }
+  };
+
+  const handleSend = (text) => {
+    if (!text.trim() || thinking) return;
+    stopAudio();
+    setInput('');
+    setInterimText('');
+    setMessages(prev => [...prev, { role: 'user', content: text }]);
+    conversationHistoryRef.current.push({ role: 'user', content: text });
+    creapRespond();
+  };
+
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      return;
+    }
+    stopAudio();
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) final += transcript;
+        else interim += transcript;
+      }
+      if (interim) setInterimText(interim);
+      if (final) {
+        setInterimText('');
+        handleSend(final);
+      }
+    };
+    recognition.onerror = () => { setListening(false); setInterimText(''); };
+    recognition.onend = () => setListening(false);
+
+    recognition.start();
+    recognitionRef.current = recognition;
+    setListening(true);
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) recognitionRef.current.stop();
+    setListening(false);
+  };
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const init = async () => {
+      setThinking(true);
+      try {
+        const result = await base44.integrations.Core.InvokeLLM({
+          prompt: `${CREAP_SYSTEM_PROMPT}\n\nStart the conversation. Greet the producer and propose ONE controversial or fascinating topic that would make a great research subject. Try to find something trending or timely.`,
+          add_context_from_internet: true,
+          model: 'gemini_3_flash',
+          response_json_schema: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              action: { type: 'string' },
+              topic_data: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  description: { type: 'string' },
+                  research_query: { type: 'string' },
+                  category: { type: 'string' }
+                }
+              }
+            }
+          }
+        });
+
+        const creapMessage = result?.message || "Hey! I've got some wild topics today. What are you curious about?";
+        conversationHistoryRef.current.push({ role: 'assistant', content: creapMessage });
+        setMessages([{ role: 'assistant', content: creapMessage }]);
+        speak(creapMessage);
+        if (result?.topic_data) lastOfferedTopicRef.current = result.topic_data;
+      } catch (err) {
+        console.error('Init failed:', err);
+        const fallback = "Hey! I'm CREAP. What topic should we dig into today?";
+        conversationHistoryRef.current.push({ role: 'assistant', content: fallback });
+        setMessages([{ role: 'assistant', content: fallback }]);
+        speak(fallback);
+      } finally {
+        setThinking(false);
+      }
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopPolling();
+      stopSmallTalk();
+      if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
+      if (audioRef.current) audioRef.current.pause();
+    };
+  }, []);
+
+  const canSend = !thinking && !listening;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      <audio ref={audioRef} onEnded={handleAudioEnded} onError={handleAudioEnded} />
+
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+        <div className="flex items-center gap-3">
+          <div className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+            speaking ? 'bg-primary glow-purple scale-110' :
+            thinking ? 'bg-primary/50' :
+            listening ? 'bg-red-500/80' :
+            'bg-primary/30'
+          }`}>
+            {speaking && <div className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />}
+            {listening ? (
+              <Mic className="w-5 h-5 text-white animate-pulse" />
+            ) : (
+              <Radio className={`w-5 h-5 text-primary-foreground ${speaking ? 'animate-pulse' : ''}`} />
+            )}
+          </div>
+          <div>
+            <h3 className="font-heading font-semibold text-sm">CREAP</h3>
+            <p className="text-xs text-muted-foreground">
+              {speaking ? 'Speaking...' :
+               thinking ? 'Thinking...' :
+               listening ? 'Listening...' :
+               phase === 'researching' ? 'Researching...' :
+               phase === 'complete' ? 'Research Complete' :
+               'Ready to chat'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {phase === 'researching' && researchStage && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-xs text-primary">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              {STAGE_LABELS[researchStage] || researchStage}
+            </div>
+          )}
+          <button onClick={onClose} className="p-2 rounded-md hover:bg-secondary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                msg.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : msg.isSmallTalk
+                    ? 'bg-secondary/40 text-muted-foreground italic'
+                    : 'bg-secondary text-secondary-foreground'
+              }`}>
+                <p className="text-sm whitespace-pre-line">{msg.content}</p>
+              </div>
+            </div>
+          ))}
+
+          {thinking && (
+            <div className="flex justify-start">
+              <div className="bg-secondary rounded-2xl px-4 py-3 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          )}
+
+          {phase === 'complete' && completedTopicId && (
+            <div className="flex justify-start">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-emerald-400">{pointCount} research points extracted</p>
+                  <Button size="sm" className="mt-2" asChild>
+                    <Link to={`/research/manager?topic_id=${completedTopicId}`}>
+                      View Points <ExternalLink className="w-3 h-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-border shrink-0">
+        <div className="max-w-2xl mx-auto flex items-center gap-2">
+          {speechSupported && (
+            <button
+              onClick={listening ? stopListening : startListening}
+              disabled={thinking}
+              className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-50 ${
+                listening ? 'bg-red-500 text-white animate-pulse' : 'bg-secondary text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+          )}
+          <div className="flex-1 relative">
+            <Input
+              value={interimText || input}
+              onChange={e => { setInput(e.target.value); setInterimText(''); }}
+              onKeyDown={e => { if (e.key === 'Enter' && canSend && input.trim()) handleSend(input); }}
+              placeholder={listening ? 'Listening...' : speaking ? 'CREAP is talking — type to interrupt' : 'Type or speak your response...'}
+              disabled={thinking}
+              className="pr-10"
+            />
+            {canSend && (input.trim() || interimText) && (
+              <button
+                onClick={() => handleSend(input || interimText)}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+        {listening && (
+          <p className="text-xs text-center text-red-400 mt-2 animate-pulse">🎤 Listening... speak now</p>
+        )}
+      </div>
+    </div>
+  );
+}

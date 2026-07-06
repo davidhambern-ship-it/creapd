@@ -9,7 +9,7 @@ import {
   CheckCircle2, AlertCircle, FileSearch, Clock, ExternalLink
 } from 'lucide-react';
 import ResearchProgressModal from '@/components/research/ResearchProgressModal';
-import TopicWizard from '@/components/research/TopicWizard';
+import TopicConversation from '@/components/research/TopicConversation';
 
 export default function ResearchTopics() {
   const { config, topics, loading, refresh } = useResearchProduction();
@@ -83,15 +83,14 @@ export default function ResearchTopics() {
         </div>
         <Button onClick={() => setShowAdd(!showAdd)}>
           <Plus className="w-4 h-4 mr-1" />
-          Add Topic
+          Chat with CREAP
         </Button>
       </div>
 
       {showAdd && (
-        <TopicWizard
+        <TopicConversation
           config={config}
-          onComplete={() => { setShowAdd(false); refresh(); }}
-          onCancel={() => setShowAdd(false)}
+          onClose={() => { setShowAdd(false); refresh(); }}
         />
       )}
 
@@ -99,7 +98,7 @@ export default function ResearchTopics() {
         <div className="glass-panel p-8 text-center">
           <Lightbulb className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
           <p className="text-muted-foreground mb-3">No research topics yet. Add your first topic to begin.</p>
-          <Button onClick={() => setShowAdd(true)}><Plus className="w-4 h-4 mr-1" /> Add Topic</Button>
+          <Button onClick={() => setShowAdd(true)}><Plus className="w-4 h-4 mr-1" /> Chat with CREAP</Button>
         </div>
       ) : (
         <div className="space-y-3">
