@@ -3,22 +3,18 @@ import { Link } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatConfidence, TOPIC_STATUS_LABELS } from '@/lib/researchConstants';
 import {
   Loader2, FlaskConical, Lightbulb, Plus, Search, Trash2, ChevronDown, ChevronUp,
   CheckCircle2, AlertCircle, FileSearch, Clock, ExternalLink
 } from 'lucide-react';
 import ResearchProgressModal from '@/components/research/ResearchProgressModal';
+import TopicWizard from '@/components/research/TopicWizard';
 
 export default function ResearchTopics() {
   const { config, topics, loading, refresh } = useResearchProduction();
   const [showAdd, setShowAdd] = useState(false);
   const [researching, setResearching] = useState(null);
-  const [newTopic, setNewTopic] = useState({ title: '', description: '', category: '', priority: 'standard' });
   const [expanded, setExpanded] = useState(null);
   const [progressTopic, setProgressTopic] = useState(null);
 
@@ -40,24 +36,6 @@ export default function ResearchTopics() {
       </div>
     );
   }
-
-  const handleAddTopic = async () => {
-    if (!newTopic.title.trim()) return;
-    const research_query = `${newTopic.title}. ${newTopic.description || ''}`.trim();
-    await base44.entities.ResearchTopic.create({
-      configuration_id: config.id,
-      title: newTopic.title,
-      description: newTopic.description || '',
-      research_query,
-      category: newTopic.category || 'general',
-      priority: newTopic.priority,
-      research_depth: config.research_depth || 'standard',
-      status: 'pending'
-    });
-    setNewTopic({ title: '', description: '', category: '', priority: 'standard' });
-    setShowAdd(false);
-    refresh();
-  };
 
   const handleResearch = async (topic) => {
     setResearching(topic.id);
@@ -110,40 +88,11 @@ export default function ResearchTopics() {
       </div>
 
       {showAdd && (
-        <div className="glass-panel p-5 space-y-4">
-          <h3 className="font-heading font-semibold">New Research Topic</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Topic Title *</Label>
-              <Input value={newTopic.title} onChange={e => setNewTopic(s => ({ ...s, title: e.target.value }))} placeholder="The Impact of AI on Healthcare Diagnostics" />
-            </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Input value={newTopic.category} onChange={e => setNewTopic(s => ({ ...s, category: e.target.value }))} placeholder="Science, Technology, Policy..." />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea value={newTopic.description} onChange={e => setNewTopic(s => ({ ...s, description: e.target.value }))} placeholder="Describe what the research should cover..." rows={3} />
-          </div>
-          <div className="space-y-2">
-            <Label>Priority</Label>
-            <Select value={newTopic.priority} onValueChange={v => setNewTopic(s => ({ ...s, priority: v }))}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="breaking">Breaking</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="feature">Feature</SelectItem>
-                <SelectItem value="optional">Optional</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="!flex items-center gap-2">
-            <Button onClick={handleAddTopic} disabled={!newTopic.title.trim()}>Add Topic</Button>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-          </div>
-        </div>
+        <TopicWizard
+          config={config}
+          onComplete={() => { setShowAdd(false); refresh(); }}
+          onCancel={() => setShowAdd(false)}
+        />
       )}
 
       {topics.length === 0 ? (
