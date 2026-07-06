@@ -4,6 +4,7 @@ import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { POINT_TYPE_LABELS, POINT_TYPE_COLORS } from '@/lib/researchConstants';
+import PointMediaGenerator from '@/components/research/PointMediaGenerator';
 import {
   Loader2, FlaskConical, Layers, ChevronDown, ChevronUp, CheckCircle2,
   XCircle, Sparkles, AlertCircle, Filter, Package
@@ -23,7 +24,7 @@ const STATUS_FILTERS = [
 ];
 
 export default function ResearchManager() {
-  const { config, topics, points, loading, refresh } = useResearchProduction();
+  const { config, topics, points, packages, loading, refresh } = useResearchProduction();
   const [searchParams] = useSearchParams();
   const topicFilter = searchParams.get('topic_id');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -83,6 +84,10 @@ export default function ResearchManager() {
     } finally {
       setGenerating(null);
     }
+  };
+
+  const handleMediaUpdate = (updatedPkg) => {
+    refresh();
   };
 
   const selectedTopic = topicFilter ? topics.find(t => t.id === topicFilter) : null;
@@ -306,6 +311,11 @@ export default function ResearchManager() {
                     <p className="text-sm text-primary">Running multi-model synthesis (3 models → Chief Editor)...</p>
                   </div>
                 )}
+
+                {point.package_id && (() => {
+                  const pkg = packages.find(p => p.source_entity_id === point.id);
+                  return pkg ? <PointMediaGenerator pkg={pkg} onMediaUpdate={handleMediaUpdate} /> : null;
+                })()}
               </div>
             );
           })}

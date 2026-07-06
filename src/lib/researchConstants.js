@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings, Wand2
+  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings
 } from 'lucide-react';
 
 export const RESEARCH_DEPTH_OPTIONS = [
@@ -46,7 +46,6 @@ export const RESEARCH_NAV_ITEMS = [
   { icon: 'Lightbulb', label: 'Topics', path: '/research/topics', section: 'Workflow' },
   { icon: 'Layers', label: 'Point Manager', path: '/research/manager', section: 'Workflow' },
   { icon: 'Sparkles', label: 'Packages', path: '/research/assets', section: 'Output' },
-  { icon: 'Wand2', label: 'AI Generation', path: '/research/media', section: 'Output' },
   { icon: 'Download', label: 'Export', path: '/research/export', section: 'Output' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
@@ -56,7 +55,6 @@ export const MOBILE_NAV_ITEMS = [
   { icon: Lightbulb, label: 'Topics', path: '/research/topics' },
   { icon: Layers, label: 'Points', path: '/research/manager' },
   { icon: Sparkles, label: 'Packages', path: '/research/assets' },
-  { icon: Wand2, label: 'AI Gen', path: '/research/media' },
   { icon: Download, label: 'Export', path: '/research/export' }
 ];
 
@@ -98,7 +96,7 @@ export const TOPIC_STATUS_LABELS = {
 };
 
 export const ICON_MAP = {
-  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Wand2, Download, Settings
+  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings
 };
 
 export const RUNTIME_DEFAULTS = {

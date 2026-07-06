@@ -92,7 +92,6 @@ import ResearchDashboard from '@/pages/ResearchDashboard';
 import ResearchTopics from '@/pages/ResearchTopics';
 import ResearchManager from '@/pages/ResearchManager';
 import ResearchAssets from '@/pages/ResearchAssets';
-import ResearchMedia from '@/pages/ResearchMedia';
 import ResearchExport from '@/pages/ResearchExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import Presentations from '@/pages/Presentations';
@@ -259,7 +258,6 @@ const AuthenticatedApp = () => {
           <Route path="/research/topics" element={<ResearchTopics />} />
           <Route path="/research/manager" element={<ResearchManager />} />
           <Route path="/research/assets" element={<ResearchAssets />} />
-          <Route path="/research/media" element={<ResearchMedia />} />
           <Route path="/research/export" element={<ResearchExport />} />
         </Route>
 
