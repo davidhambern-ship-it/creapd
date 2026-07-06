@@ -24,6 +24,10 @@ function safeParse(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
+// Module-level cache — survives component remounts to prevent duplicate greeting audio
+let _cachedGreeting = null;
+let _cachedOfferedTopic = null;
+
 export default function TopicConversation({ config, onClose, embedded = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -47,6 +51,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const speakingRef = useRef(false);
   const noCountRef = useRef(0);
   const initializedRef = useRef(false);
+  const isMountedRef = useRef(true);
   const researchReadyRef = useRef(null);
   const completionAnnouncedRef = useRef(false);
   const closeAfterSpeakingRef = useRef(false);
@@ -92,7 +97,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
         text: text.substring(0, 5000),
         voice: creapSettingsRef.current.voice_id || 'daniel',
       });
-      if (gen !== speakGenRef.current) return;
+      if (gen !== speakGenRef.current || !isMountedRef.current) return;
       const url = response?.data?.url;
       if (!url) { voicePendingRef.current = false; setSpeaking(false); return; }
       const audio = new Audio(url);
@@ -413,6 +418,12 @@ export default function TopicConversation({ config, onClose, embedded = false })
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
+    if (_cachedGreeting) {
+      conversationHistoryRef.current.push({ role: 'assistant', content: _cachedGreeting });
+      setMessages([{ role: 'assistant', content: _cachedGreeting }]);
+      if (_cachedOfferedTopic) lastOfferedTopicRef.current = _cachedOfferedTopic;
+      return;
+    }
     const init = async () => {
       setThinking(true);
       try {
@@ -452,12 +463,19 @@ export default function TopicConversation({ config, onClose, embedded = false })
         const creapMessage = result?.message || "Hey! I've got some wild topics today. What are you curious about?";
         conversationHistoryRef.current.push({ role: 'assistant', content: creapMessage });
         setMessages([{ role: 'assistant', content: creapMessage }]);
+        _cachedGreeting = creapMessage;
+        if (result?.topic_data) {
+          lastOfferedTopicRef.current = result.topic_data;
+          _cachedOfferedTopic = result.topic_data;
+        }
+        if (!isMountedRef.current) return;
         speak(creapMessage);
-        if (result?.topic_data) lastOfferedTopicRef.current = result.topic_data;
       } catch (err) {
         const fallback = "Hey! I'm CREAP. What topic should we dig into today?";
         conversationHistoryRef.current.push({ role: 'assistant', content: fallback });
         setMessages([{ role: 'assistant', content: fallback }]);
+        _cachedGreeting = fallback;
+        if (!isMountedRef.current) return;
         speak(fallback);
       } finally {
         setThinking(false);
@@ -468,6 +486,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   useEffect(() => {
     return () => {
+      isMountedRef.current = false;
       stopPolling();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       cleanupAudio();
