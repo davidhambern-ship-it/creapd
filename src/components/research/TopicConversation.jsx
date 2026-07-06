@@ -104,15 +104,18 @@ export default function TopicConversation({ config, onClose, embedded = false })
     audio.pause();
     audio.currentTime = 0;
     audio.src = audioUrl;
+    setSpeaking(true);
     audio.play().catch(() => setSpeaking(false));
     return () => { audio.pause(); };
   }, [audioUrl]);
 
   const handleAudioEnded = () => {
-    voicePendingRef.current = false;
     lastPlayedUrlRef.current = null;
-    setSpeaking(false);
     setAudioUrl(null);
+    // Only clear speaking if no new TTS is pending — prevents indicator gap
+    if (!voicePendingRef.current) {
+      setSpeaking(false);
+    }
     if (closeAfterSpeakingRef.current) {
       closeAfterSpeakingRef.current = false;
       const navUrl = pendingNavigationRef.current;
