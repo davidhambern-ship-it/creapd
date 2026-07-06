@@ -472,14 +472,14 @@
       transparent 60%,
       transparent 100%
     ),
-    /* purple→orange base gradient */
+    /* purple→orange base gradient (orange-dominant) */
     linear-gradient(
       180deg,
-      #4B0082 0%,
-      #6A0DAD 25%,
-      #8A2BE2 45%,
-      #D65A1E 70%,
-      #FF8C00 85%,
+      #6A0DAD 0%,
+      #8A2BE2 15%,
+      #D65A1E 35%,
+      #FF8C00 55%,
+      #FFA500 75%,
       #FFB347 100%
     );
   background-size: 100% 100%, 250% 100%, 100% 100%;
