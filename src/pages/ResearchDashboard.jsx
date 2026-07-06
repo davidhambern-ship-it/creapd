@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
+import { useCreaprEngine } from '@/hooks/useCreaprEngine';
+import { useCREAPMode } from '@/context/CREAPModeContext';
+import GuidedFocus from '@/components/creapr/GuidedFocus';
 import { Button } from '@/components/ui/button';
 import { formatConfidence, POINT_TYPE_LABELS } from '@/lib/researchConstants';
 import {
@@ -16,7 +19,10 @@ function safeParse(str, fallback) {
 }
 
 export default function ResearchDashboard() {
-  const { config, topics, points, packages, loading, refresh } = useResearchProduction();
+  const researchData = useResearchProduction();
+  const { config, topics, points, packages, loading, refresh } = researchData;
+  const { mode } = useCREAPMode();
+  const engine = useCreaprEngine(researchData);
 
   if (loading) {
     return (
@@ -90,31 +96,39 @@ export default function ResearchDashboard() {
         </div>
       </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Runtime</p>
-          <p className="text-lg font-heading font-bold">{config.total_show_runtime} min</p>
+      {/* CREAPr Engine — Guided Focus Panel */}
+      <GuidedFocus
+        pocState={engine.pocState}
+        guidedFocus={engine.guidedFocus}
+        activeDepartment={engine.activeDepartment}
+        mode={mode}
+      />
+
+      {/* Compact Stats — supplementary to Guided Focus */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="glass-panel p-3 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">Runtime</p>
+          <p className="text-sm font-bold">{config.total_show_runtime}m</p>
         </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Research Depth</p>
+        <div className="glass-panel p-3 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">Depth</p>
           <p className="text-sm font-medium">{config.research_depth}</p>
         </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Topics</p>
-          <p className="text-lg font-heading font-bold text-primary">{topics.length}</p>
+        <div className="glass-panel p-3 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">Topics</p>
+          <p className="text-sm font-bold text-primary">{topics.length}</p>
         </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Point Cards</p>
-          <p className="text-lg font-heading font-bold text-primary">{points.length}</p>
+        <div className="glass-panel p-3 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">Points</p>
+          <p className="text-sm font-bold text-primary">{points.length}</p>
         </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Packages</p>
-          <p className="text-lg font-heading font-bold text-emerald-400">{packages.length}</p>
+        <div className="glass-panel p-3 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">Packages</p>
+          <p className="text-sm font-bold text-emerald-400">{packages.length}</p>
         </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Readiness</p>
-          <p className="text-lg font-heading font-bold text-emerald-400">{readinessPercent}%</p>
+        <div className="glass-panel p-3 text-center">
+          <p className="text-[10px] uppercase text-muted-foreground">Ready</p>
+          <p className="text-sm font-bold text-emerald-400">{readinessPercent}%</p>
         </div>
       </div>
 
