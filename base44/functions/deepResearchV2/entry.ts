@@ -8,6 +8,20 @@ const DEFAULT_ROLES = {
   critical_analysis: 'gpt_5_5'
 };
 
+async function writeStageProgress(base44, dossierId, currentStage, timings, extra = {}) {
+  if (!dossierId) return;
+  try {
+    await base44.entities.ResearchDossier.update(dossierId, {
+      orchestration_metadata: JSON.stringify({
+        pipeline: 'deepResearchV2',
+        current_stage: currentStage,
+        stage_timings: { ...timings },
+        ...extra
+      })
+    });
+  } catch {}
+}
+
 Deno.serve(async (req) => {
   let base44, dossierId;
   const timings = {};
@@ -103,6 +117,7 @@ Return JSON: { "queries": ["query1", "query2", ...] }`,
       subQueries = expansionRes.queries || [researchQuery];
       subQueriesRun = subQueries.length;
       timings.query_expansion_ms = Date.now() - t0;
+      await writeStageProgress(base44, dossierId, 'query_expansion', timings, { sub_queries_run: subQueriesRun });
     } catch (err) {
       stageErrors.push({ stage: 'query_expansion', error: err.message });
       subQueries = [researchQuery];
@@ -169,6 +184,7 @@ Return JSON:
 
       const discoveryResults = await Promise.all(discoveryPromises);
       timings.discovery_ms = Date.now() - t1;
+      await writeStageProgress(base44, dossierId, 'discovery', timings, { sub_queries_run: subQueriesRun, sources_discovered: sourcesDiscovered, findings_collected: findingsCollected });
 
       for (const result of discoveryResults) {
         allFindings.push(...(result.findings || []));
@@ -220,6 +236,7 @@ Return JSON:
       verifiedSources = fetchResults.filter(r => r.verified);
       sourcesVerified = verifiedSources.length;
       timings.source_verification_ms = Date.now() - t2;
+      await writeStageProgress(base44, dossierId, 'source_verification', timings, { sub_queries_run: subQueriesRun, sources_discovered: sourcesDiscovered, sources_verified: sourcesVerified, findings_collected: findingsCollected });
     } catch (err) {
       stageErrors.push({ stage: 'source_verification', error: err.message });
       timings.source_verification_ms = -1;
@@ -324,6 +341,7 @@ Return JSON with: executive_summary, key_facts, context_and_background, key_peop
       });
 
       timings.synthesis_ms = Date.now() - t3;
+      await writeStageProgress(base44, dossierId, 'synthesis', timings);
 
       await base44.entities.ResearchDossier.update(dossierId, {
         executive_summary: synData.executive_summary || '',
@@ -392,6 +410,7 @@ Return JSON: { "claims": [{ "claim": "...", "score": 0, "status": "...", "notes"
 
       claimConfidence = verifyRes.claims || [];
       timings.verification_ms = Date.now() - t4;
+      await writeStageProgress(base44, dossierId, 'verification', timings);
 
       await base44.entities.ResearchDossier.update(dossierId, {
         claim_confidence_scores: JSON.stringify(claimConfidence)
@@ -464,6 +483,7 @@ Return JSON: gray_areas (array of strings), logical_gaps (array of strings), com
       });
 
       timings.critical_analysis_ms = Date.now() - t5;
+      await writeStageProgress(base44, dossierId, 'critical_analysis', timings);
 
       await base44.entities.ResearchDossier.update(dossierId, {
         critical_analysis_report: JSON.stringify({
@@ -486,6 +506,7 @@ Return JSON: gray_areas (array of strings), logical_gaps (array of strings), com
     await base44.entities.ResearchDossier.update(dossierId, {
       orchestration_metadata: JSON.stringify({
         pipeline: 'deepResearchV2',
+        current_stage: 'complete',
         stage_timings: timings,
         models_used: roles,
         stage_errors: stageErrors,

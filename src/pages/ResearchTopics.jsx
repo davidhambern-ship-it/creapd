@@ -12,6 +12,7 @@ import {
   Loader2, FlaskConical, Lightbulb, Plus, Search, Trash2, ChevronDown, ChevronUp,
   CheckCircle2, AlertCircle, FileSearch, Clock, ExternalLink
 } from 'lucide-react';
+import ResearchProgressModal from '@/components/research/ResearchProgressModal';
 
 export default function ResearchTopics() {
   const { config, topics, loading, refresh } = useResearchProduction();
@@ -19,6 +20,7 @@ export default function ResearchTopics() {
   const [researching, setResearching] = useState(null);
   const [newTopic, setNewTopic] = useState({ title: '', description: '', category: '', priority: 'standard' });
   const [expanded, setExpanded] = useState(null);
+  const [progressTopic, setProgressTopic] = useState(null);
 
   if (loading) {
     return (
@@ -59,15 +61,18 @@ export default function ResearchTopics() {
 
   const handleResearch = async (topic) => {
     setResearching(topic.id);
+    setProgressTopic(topic);
     try {
       await base44.functions.invoke('deepResearchV2', { topic_id: topic.id, research_depth: topic.research_depth });
-      // After orchestration completes, extract points
+      await new Promise(r => setTimeout(r, 2000));
+      setProgressTopic(null);
       await base44.functions.invoke('extractResearchPoints', { topic_id: topic.id });
       refresh();
     } catch (err) {
       console.error('Research failed:', err);
     } finally {
       setResearching(null);
+      setProgressTopic(null);
     }
   };
 
@@ -231,12 +236,10 @@ export default function ResearchTopics() {
                   </div>
                 </div>
 
-                {isResearching && (
+                {isResearching && !progressTopic && (
                   <div className="mt-3 p-3 rounded-lg bg-primary/10 !flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <p className="text-sm text-primary">
-                      {topic.status === 'pending' ? 'Running deep research (multi-query search + source verification)...' : 'Extracting Point Cards from dossier...'}
-                    </p>
+                    <p className="text-sm text-primary">Extracting Point Cards from dossier...</p>
                   </div>
                 )}
               </div>
@@ -244,6 +247,13 @@ export default function ResearchTopics() {
           })}
         </div>
       )}
+
+      <ResearchProgressModal
+        open={!!progressTopic}
+        topicId={progressTopic?.id}
+        topicTitle={progressTopic?.title}
+        onClose={() => setProgressTopic(null)}
+      />
     </div>
   );
 }
