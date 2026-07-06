@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Loader2, FlaskConical, Lightbulb, PanelRightOpen, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ResearchProgressModal from '@/components/research/ResearchProgressModal';
-import TopicConversation from '@/components/research/TopicConversation';
+import CreaprLibrary from '@/components/creapr-library/CreaprLibrary';
 import TopicListPanel from '@/components/research/TopicListPanel';
 
 export default function ResearchTopics() {
@@ -77,7 +77,7 @@ export default function ResearchTopics() {
     <div className="flex h-full overflow-hidden relative">
       {/* Main: CREAP conversation IS the topics page */}
       <div className="flex-1 min-w-0 relative overflow-hidden">
-        <TopicConversation
+        <CreaprLibrary
           config={config}
           embedded
           onClose={refresh}
