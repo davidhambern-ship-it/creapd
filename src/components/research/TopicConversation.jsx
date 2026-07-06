@@ -37,7 +37,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const [noCount, setNoCount] = useState(0);
   const [showWizard, setShowWizard] = useState(false);
 
-  const audioRef = useRef(null);
+  const audioInstanceRef = useRef(null);
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
   const pollTimerRef = useRef(null);
@@ -71,10 +71,20 @@ export default function TopicConversation({ config, onClose, embedded = false })
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const cleanupAudio = () => {
+    if (audioInstanceRef.current) {
+      audioInstanceRef.current.onended = null;
+      audioInstanceRef.current.onerror = null;
+      audioInstanceRef.current.pause();
+      audioInstanceRef.current.src = '';
+      audioInstanceRef.current = null;
+    }
+  };
+
   const speak = async (text) => {
     if (!text) return;
     const gen = ++speakGenRef.current;
-    if (audioRef.current) audioRef.current.pause();
+    cleanupAudio();
     voicePendingRef.current = true;
     setSpeaking(true);
     try {
@@ -85,9 +95,21 @@ export default function TopicConversation({ config, onClose, embedded = false })
       if (gen !== speakGenRef.current) return;
       voicePendingRef.current = false;
       const url = response?.data?.url;
-      if (!url || !audioRef.current) { setSpeaking(false); return; }
-      audioRef.current.src = url;
-      audioRef.current.play().catch(() => setSpeaking(false));
+      if (!url) { setSpeaking(false); return; }
+      const audio = new Audio(url);
+      audio.onended = () => {
+        if (gen !== speakGenRef.current) return;
+        handleAudioEnded();
+      };
+      audio.onerror = () => {
+        if (gen !== speakGenRef.current) return;
+        setSpeaking(false);
+      };
+      audioInstanceRef.current = audio;
+      audio.play().catch(() => {
+        if (gen !== speakGenRef.current) return;
+        setSpeaking(false);
+      });
     } catch (err) {
       if (gen !== speakGenRef.current) return;
       voicePendingRef.current = false;
@@ -114,7 +136,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const stopAudio = () => {
     speakGenRef.current++;
     voicePendingRef.current = false;
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+    cleanupAudio();
     setSpeaking(false);
   };
 
@@ -446,7 +468,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
     return () => {
       stopPolling();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
-      if (audioRef.current) audioRef.current.pause();
+      cleanupAudio();
     };
   }, []);
 
@@ -471,7 +493,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   return (
     <div className={`${embedded ? 'relative h-full' : 'fixed inset-0 z-50'} creapd-bg-gradient flex flex-col overflow-hidden`}>
-      <audio ref={audioRef} onEnded={handleAudioEnded} />
+
 
       {/* Animated background — CREAPD themed digital motions, non-interactive */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
