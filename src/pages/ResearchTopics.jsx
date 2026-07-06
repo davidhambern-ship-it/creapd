@@ -76,7 +76,7 @@ export default function ResearchTopics() {
   return (
     <div className="flex h-full overflow-hidden relative">
       {/* Main: CREAP conversation IS the topics page */}
-      <div className="flex-1 min-w-0 relative">
+      <div className="flex-1 min-w-0 relative overflow-hidden">
         <TopicConversation
           config={config}
           embedded
@@ -85,7 +85,7 @@ export default function ResearchTopics() {
       </div>
 
       {/* Topics sidebar — desktop */}
-      <aside className="hidden lg:flex w-72 border-l border-border flex-col bg-background shrink-0">
+      <aside className="hidden lg:flex w-72 border-l border-border flex-col bg-background shrink-0 overflow-hidden">
         {/* Compact POC Focus */}
         {engine.pocState && (
           <div className="p-3 border-b border-border shrink-0">

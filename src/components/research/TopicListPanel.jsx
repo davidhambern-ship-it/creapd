@@ -10,7 +10,7 @@ export default function TopicListPanel({
   topics, researching, onResearch, onExtract, onDelete
 }) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       <div className="p-4 border-b border-border shrink-0">
         <h2 className="font-heading font-semibold flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-primary" />

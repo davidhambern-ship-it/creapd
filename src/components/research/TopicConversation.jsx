@@ -494,7 +494,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   }
 
   return (
-    <div className={`${embedded ? 'relative h-full' : 'fixed inset-0 z-50'} creapd-bg-gradient flex flex-col overflow-hidden`}>
+    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} creapd-bg-gradient flex flex-col overflow-hidden`}>
 
 
       {/* Animated background — CREAPD themed digital motions, non-interactive */}
