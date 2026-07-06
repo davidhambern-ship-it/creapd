@@ -93,21 +93,23 @@ export default function TopicConversation({ config, onClose, embedded = false })
         voice: creapSettingsRef.current.voice_id || 'daniel',
       });
       if (gen !== speakGenRef.current) return;
-      voicePendingRef.current = false;
       const url = response?.data?.url;
-      if (!url) { setSpeaking(false); return; }
+      if (!url) { voicePendingRef.current = false; setSpeaking(false); return; }
       const audio = new Audio(url);
       audio.onended = () => {
         if (gen !== speakGenRef.current) return;
+        voicePendingRef.current = false;
         handleAudioEnded();
       };
       audio.onerror = () => {
         if (gen !== speakGenRef.current) return;
+        voicePendingRef.current = false;
         setSpeaking(false);
       };
       audioInstanceRef.current = audio;
       audio.play().catch(() => {
         if (gen !== speakGenRef.current) return;
+        voicePendingRef.current = false;
         setSpeaking(false);
       });
     } catch (err) {
@@ -359,7 +361,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   };
 
   const handleSend = (text) => {
-    if (!text.trim() || thinking) return;
+    if (!text.trim() || thinking || thinkingRef.current) return;
     stopAudio();
     setInput('');
     setInterimText('');
@@ -472,7 +474,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
     };
   }, []);
 
-  const canSend = !thinking && !listening;
+  const canSend = !thinking && !listening && !thinkingRef.current;
 
   if (showWizard) {
     return (
