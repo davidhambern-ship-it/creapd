@@ -74,6 +74,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const speak = async (text) => {
     if (!text) return;
     voicePendingRef.current = true;
+    setSpeaking(true);
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
@@ -82,10 +83,12 @@ export default function TopicConversation({ config, onClose, embedded = false })
       voicePendingRef.current = false;
       if (response?.data?.url) {
         setAudioUrl(response.data.url);
-        setSpeaking(true);
+      } else {
+        setSpeaking(false);
       }
     } catch (err) {
       voicePendingRef.current = false;
+      setSpeaking(false);
       console.error('TTS failed:', err);
     }
   };
