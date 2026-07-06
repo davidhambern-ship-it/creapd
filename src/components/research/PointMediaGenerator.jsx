@@ -24,7 +24,7 @@ const STEPS = [
   { key: 'video', label: 'Video', icon: Film },
 ];
 
-export default function PointMediaGenerator({ pkg, onMediaUpdate }) {
+export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [mediaStep, setMediaStep] = useState(null);
 
@@ -143,7 +143,7 @@ export default function PointMediaGenerator({ pkg, onMediaUpdate }) {
       {/* Package content fields that feed the media generation pipeline */}
       <div className="mb-3 space-y-2">
         {Object.entries(MEDIA_CENTER_FIELDS).map(([key, label]) => {
-          const value = pkg[key];
+          const value = key === 'talking_points' ? point?.significance : pkg[key];
           if (!value) return null;
           return (
             <div key={key} className="p-2.5 rounded-md bg-secondary/40 border border-white/[0.03]">

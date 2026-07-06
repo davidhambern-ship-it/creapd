@@ -125,7 +125,7 @@ export default function ResearchAssets() {
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-border/50">
-                  <PointMediaGenerator pkg={pkg} onMediaUpdate={refresh} />
+                  <PointMediaGenerator pkg={pkg} point={point} onMediaUpdate={refresh} />
                 </div>
               </div>
             );
