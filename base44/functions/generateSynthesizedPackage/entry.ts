@@ -201,7 +201,40 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
       model: 'claude_opus_4_6'
     });
 
-    const modelsUsed = modelOutputs.map(m => m.model).join(', ') + ' → synthesized';
+    // ===== GEMINI STORY SUMMARY =====
+    // Send the full story to Gemini to produce the story_summary (used as teleprompter script)
+    const fullStory = `${sourceType === 'research_point' ? 'RESEARCH POINT' : 'STORY'}:
+Title: ${sourceTitle}
+Source: ${sourceName}
+Category: ${sourceCategory}
+
+${researchContext}${pointContext}
+
+PRODUCTION SETTINGS:
+Tone: ${tone || 'professional'}
+Reading Style: ${reading_style || 'broadcast_news'}
+Audience: ${audience || 'General Public'}
+Target Runtime: ${target_runtime || '1 Minute'}`;
+
+    const storySummaryPrompt = `You are a professional broadcast writer. Below is the full story with all research findings, context, and verified facts. Write a compelling, broadcast-ready Story Summary — a concise narrative script that a teleprompter can display and a host can read aloud.
+
+FULL STORY:
+${fullStory}
+
+Write the Story Summary as a polished, flowing narrative script. Do not include section labels, bullet points, or meta-commentary — write it as a continuous story that captures the key findings and their significance. The summary should be written for spoken delivery and fit within the target runtime. Return only the story summary text.`;
+
+    const geminiStorySummary = await base44.integrations.Core.InvokeLLM({
+      prompt: storySummaryPrompt,
+      model: 'gemini_3_flash'
+    });
+
+    if (geminiStorySummary) {
+      synthesized.story_summary = typeof geminiStorySummary === 'string'
+        ? geminiStorySummary
+        : (geminiStorySummary.story_summary || JSON.stringify(geminiStorySummary));
+    }
+
+    const modelsUsed = modelOutputs.map(m => m.model).join(', ') + ' → synthesized + gemini_story_summary';
 
     return await savePackage(base44, sourceRefId, sourceType, synthesized, requestedAssets, tone, reading_style, audience, target_runtime, modelsUsed);
   } catch (error) {
