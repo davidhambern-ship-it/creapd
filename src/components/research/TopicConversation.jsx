@@ -603,7 +603,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
             )}
           </div>
           <div>
-            <h3 className="font-heading font-semibold text-lg">CREAP</h3>
+            <h3 className="font-heading font-semibold text-lg">CREAPr</h3>
             <p className="text-sm text-muted-foreground">
               {speaking ? 'Speaking...' :
                thinking ? 'Thinking...' :
