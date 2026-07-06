@@ -1,0 +1,118 @@
+{
+  "name": "ResearchTopic",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the ResearchProductionConfiguration"
+    },
+    "title": {
+      "type": "string",
+      "description": "The research question or topic brief"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what the research should cover"
+    },
+    "research_query": {
+      "type": "string",
+      "description": "The refined query sent to performDeepResearch"
+    },
+    "category": {
+      "type": "string",
+      "description": "Research category (science, technology, health, policy, economics, etc.)"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated tags for filtering"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "breaking",
+        "high",
+        "standard",
+        "feature",
+        "optional"
+      ],
+      "default": "standard"
+    },
+    "source_domains": {
+      "type": "string",
+      "description": "JSON array of source domains searched for this topic"
+    },
+    "research_depth": {
+      "type": "string",
+      "enum": [
+        "quick_scan",
+        "standard",
+        "deep_dive",
+        "exhaustive"
+      ],
+      "default": "standard"
+    },
+    "dossier_id": {
+      "type": "string",
+      "description": "ID of the ResearchDossier created for this topic"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "researching",
+        "researched",
+        "in_review",
+        "selected",
+        "used",
+        "rejected",
+        "archived"
+      ],
+      "default": "pending"
+    },
+    "point_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of ResearchPoints derived from this topic"
+    },
+    "approved_point_count": {
+      "type": "number",
+      "default": 0
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "Inherited from the ResearchDossier (0-100)",
+      "default": 0
+    },
+    "sources_count": {
+      "type": "number",
+      "default": 0
+    },
+    "executive_summary": {
+      "type": "string",
+      "description": "Cached executive summary from the ResearchDossier"
+    },
+    "research_started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "research_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_saved": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "configuration_id",
+    "title"
+  ]
+}

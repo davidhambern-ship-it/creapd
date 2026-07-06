@@ -4,11 +4,15 @@
   "properties": {
     "article_id": {
       "type": "string",
-      "description": "ID of the Article this research was performed on"
+      "description": "ID of the Article this research was performed on (empty when researching a ResearchTopic)"
+    },
+    "topic_id": {
+      "type": "string",
+      "description": "ID of the ResearchTopic this research was performed on (empty when researching an Article)"
     },
     "research_query": {
       "type": "string",
-      "description": "The query or topic derived from the article for deep research"
+      "description": "The query or topic derived from the article/topic for deep research"
     },
     "executive_summary": {
       "type": "string",
@@ -69,7 +73,6 @@
     }
   },
   "required": [
-    "article_id",
     "research_query"
   ]
 }

@@ -8,32 +8,59 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { article_id, research_depth } = body;
+    const { article_id, topic_id, research_depth } = body;
 
-    if (!article_id) return Response.json({ error: 'article_id is required' }, { status: 400 });
+    if (!article_id && !topic_id) return Response.json({ error: 'article_id or topic_id is required' }, { status: 400 });
 
-    const article = await base44.entities.Article.get(article_id);
-    if (!article) return Response.json({ error: 'Article not found' }, { status: 404 });
+    // ===== Determine research context: Article or ResearchTopic =====
+    let researchQuery, contextBlock, articleRef = null, topicRef = null;
 
-    const researchQuery = `${article.title}. ${article.summary || ''}`.trim();
+    if (topic_id) {
+      // Research Topic mode — deep research on a producer-defined topic
+      topicRef = await base44.entities.ResearchTopic.get(topic_id);
+      if (!topicRef) return Response.json({ error: 'ResearchTopic not found' }, { status: 404 });
+
+      researchQuery = topicRef.research_query || `${topicRef.title}. ${topicRef.description || ''}`.trim();
+
+      // Update topic status to researching
+      await base44.entities.ResearchTopic.update(topic_id, {
+        status: 'researching',
+        research_started_at: new Date().toISOString()
+      });
+
+      contextBlock = `TOPIC: ${topicRef.title}
+DESCRIPTION: ${topicRef.description || 'No description provided'}
+CATEGORY: ${topicRef.category || 'general'}
+RESEARCH DEPTH: ${topicRef.research_depth || research_depth || 'standard'}`;
+    } else {
+      // Article mode — existing behavior
+      articleRef = await base44.entities.Article.get(article_id);
+      if (!articleRef) return Response.json({ error: 'Article not found' }, { status: 404 });
+
+      researchQuery = `${articleRef.title}. ${articleRef.summary || ''}`.trim();
+
+      contextBlock = `STORY:
+Title: ${articleRef.title}
+Source: ${articleRef.source_name || articleRef.publication || 'Unknown'}
+Summary: ${articleRef.summary || 'No summary available'}
+Category: ${articleRef.category || 'general'}
+Published: ${articleRef.published_at || 'Unknown'}`;
+    }
 
     // Create dossier record in "researching" state
-    const dossier = await base44.entities.ResearchDossier.create({
-      article_id,
+    const dossierCreateFields = {
       research_query: researchQuery,
       status: 'researching'
-    });
+    };
+    if (article_id) dossierCreateFields.article_id = article_id;
+    if (topic_id) dossierCreateFields.topic_id = topic_id;
+    const dossier = await base44.entities.ResearchDossier.create(dossierCreateFields);
     dossierId = dossier.id;
 
     // ===== LLM CALL: Deep research with internet context =====
-    const prompt = `You are a deep research analyst. Perform thorough, source-based research on the following story topic. Use information available on the internet to go well beyond what is in the original article.
+    const prompt = `You are a deep research analyst. Perform thorough, source-based research on the following topic. Use information available on the internet to provide comprehensive, well-sourced findings.
 
-STORY:
-Title: ${article.title}
-Source: ${article.source_name || article.publication || 'Unknown'}
-Summary: ${article.summary || 'No summary available'}
-Category: ${article.category || 'general'}
-Published: ${article.published_at || 'Unknown'}
+${contextBlock}
 
 RESEARCH OBJECTIVES:
 1. KEY FACTS: Identify 5-10 verifiable facts central to this story. Each fact must include a source attribution.
@@ -146,6 +173,18 @@ Return a JSON object with exactly these keys:
       confidence_score: llmResponse.confidence_score || 0,
       status: 'ready'
     });
+
+    // If topic mode, update the ResearchTopic with dossier reference and cached data
+    if (topic_id) {
+      await base44.entities.ResearchTopic.update(topic_id, {
+        status: 'researched',
+        dossier_id: dossierId,
+        confidence_score: llmResponse.confidence_score || 0,
+        sources_count: (llmResponse.sources || []).length,
+        executive_summary: llmResponse.executive_summary || '',
+        research_completed_at: new Date().toISOString()
+      });
+    }
 
     return Response.json({
       success: true,

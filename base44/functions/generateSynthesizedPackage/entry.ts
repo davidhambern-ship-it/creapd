@@ -1,27 +1,67 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
-  let base44, articleId;
+  let base44;
   try {
     base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { article_id, asset_types, tone, reading_style, audience, target_runtime, preferred_models } = body;
+    const { article_id, research_point_id, asset_types, tone, reading_style, audience, target_runtime, preferred_models } = body;
 
-    if (!article_id) return Response.json({ error: 'article_id is required' }, { status: 400 });
-    articleId = article_id;
+    if (!article_id && !research_point_id) return Response.json({ error: 'article_id or research_point_id is required' }, { status: 400 });
 
-    const article = await base44.entities.Article.get(article_id);
-    if (!article) return Response.json({ error: 'Article not found' }, { status: 404 });
+    // ===== Determine context: Article or ResearchPoint =====
+    let sourceTitle, sourceName, sourceCategory, dossier, sourceRefId, sourceType;
 
-    // Fetch the research dossier
-    const dossiers = await base44.entities.ResearchDossier.filter({ article_id, status: 'ready' }, '-created_date', 1);
-    if (!dossiers || dossiers.length === 0) {
-      return Response.json({ error: 'No ready ResearchDossier found for this article. Run performDeepResearch first.' }, { status: 400 });
+    if (research_point_id) {
+      // Research Point mode — generate from a ResearchPoint
+      const point = await base44.entities.ResearchPoint.get(research_point_id);
+      if (!point) return Response.json({ error: 'ResearchPoint not found' }, { status: 404 });
+
+      sourceRefId = research_point_id;
+      sourceType = 'research_point';
+      sourceTitle = point.title;
+      sourceName = point.topic_title || 'Research Production';
+      sourceCategory = point.point_type || 'finding';
+
+      // Fetch the dossier via the topic
+      if (!point.topic_id) return Response.json({ error: 'ResearchPoint has no topic_id' }, { status: 400 });
+      const topic = await base44.entities.ResearchTopic.get(point.topic_id);
+      if (!topic || !topic.dossier_id) return Response.json({ error: 'No dossier found for this topic. Run performDeepResearch first.' }, { status: 400 });
+      dossier = await base44.entities.ResearchDossier.get(topic.dossier_id);
+      if (!dossier || dossier.status !== 'ready') return Response.json({ error: `Dossier not ready (status: ${dossier?.status || 'missing'})` }, { status: 400 });
+
+      // Build point-specific context block
+      const pointContext = `\n\nRESEARCH POINT (the specific finding to produce):
+Point Title: ${point.title}
+Point Type: ${point.point_type}
+Point Content: ${point.content}
+Significance: ${point.significance || 'N/A'}
+Suggested Angle: ${point.suggested_angle || 'N/A'}
+Suggested Segment: ${point.suggested_segment || 'N/A'}
+Point Key Facts: ${safeParse(point.key_facts, []).map(f => `- ${f.fact} (Source: ${f.source})`).join('\n') || 'N/A'}
+Point Sources: ${safeParse(point.sources, []).map(s => `- ${s.name}: ${s.citation}`).join('\n') || 'N/A'}`;
+      // Prepend point context to researchContext later
+      body._pointContext = pointContext;
+      body._topicTitle = topic.title;
+    } else {
+      // Article mode — existing behavior
+      sourceRefId = article_id;
+      sourceType = 'article';
+      const article = await base44.entities.Article.get(article_id);
+      if (!article) return Response.json({ error: 'Article not found' }, { status: 404 });
+      sourceTitle = article.title;
+      sourceName = article.source_name || article.publication || 'Unknown';
+      sourceCategory = article.category || 'general';
+
+      const dossiers = await base44.entities.ResearchDossier.filter({ article_id, status: 'ready' }, '-created_date', 1);
+      if (!dossiers || dossiers.length === 0) {
+        return Response.json({ error: 'No ready ResearchDossier found for this article. Run performDeepResearch first.' }, { status: 400 });
+      }
+      dossier = dossiers[0];
     }
-    const dossier = dossiers[0];
 
     // Default asset types (same as generateProductionPackage)
     const ALL_ASSETS = ['teleprompter_script', 'story_summary', 'talking_points', 'lower_third_text', 'headline_suggestions', 'image_prompt', 'thumbnail_prompt', 'visual_suggestions', 'broll_suggestions', 'social_caption', 'fact_check_notes'];
@@ -69,14 +109,16 @@ ${safeParse(dossier.coverage_angles, []).map(a => `- ${a.angle}: ${a.rationale} 
 Sources:
 ${safeParse(dossier.sources, []).map(s => `- ${s.name} (${s.source_type}): ${s.citation}`).join('\n') || 'N/A'}`;
 
-    const buildPrompt = (modelName) => `You are a professional broadcast producer using the ${modelName} model. Generate production assets for the following story, using the deep research dossier provided.
+    const pointContext = body._pointContext || '';
+    const topicTitle = body._topicTitle || '';
 
-STORY:
-Title: ${article.title}
-Source: ${article.source_name || article.publication || 'Unknown'}
-Category: ${article.category || 'general'}
+    const buildPrompt = (modelName) => `You are a professional broadcast producer using the ${modelName} model. Generate production assets for the following ${sourceType === 'research_point' ? 'research point' : 'story'}, using the deep research dossier provided.${sourceType === 'research_point' ? `\n\nRESEARCH TOPIC: ${topicTitle}` : ''}
 
-${researchContext}
+${sourceType === 'research_point' ? 'RESEARCH POINT' : 'STORY'}:
+Title: ${sourceTitle}
+Source: ${sourceName}
+Category: ${sourceCategory}
+${researchContext}${pointContext}
 
 PRODUCTION SETTINGS:
 Tone: ${tone || 'professional'}
@@ -84,7 +126,7 @@ Reading Style: ${reading_style || 'broadcast_news'}
 Audience: ${audience || 'General Public'}
 Target Runtime: ${target_runtime || '1 Minute'}
 
-Generate the following production assets. Use the research dossier as your primary source of truth — incorporate verified facts, cite sources where relevant, and reflect the coverage angles in your script.
+Generate the following production assets. Use the research dossier as your primary source of truth — incorporate verified facts, cite sources where relevant, and reflect the coverage angles in your script.${sourceType === 'research_point' ? ' Focus the script on the specific research point provided above, using the broader dossier for context and supporting details.' : ''}
 
 ${requestedAssets.map(a => `- ${a}`).join('\n')}
 
@@ -120,7 +162,7 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
 
     // If only one succeeded, use it directly
     if (modelOutputs.length === 1) {
-      return await savePackage(base44, articleId, modelOutputs[0].data, requestedAssets, tone, reading_style, audience, target_runtime, modelOutputs[0].model);
+      return await savePackage(base44, sourceRefId, sourceType, modelOutputs[0].data, requestedAssets, tone, reading_style, audience, target_runtime, modelOutputs[0].model);
     }
 
     // ===== SYNTHESIS: Chief Editor merges all outputs =====
@@ -128,13 +170,13 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
       `=== ${m.model.toUpperCase()} OUTPUT ===\n${requestedAssets.map(a => `${a}: ${m.data[a] || 'N/A'}`).join('\n')}\nestimated_runtime: ${m.data.estimated_runtime || 'N/A'}`
     ).join('\n\n');
 
-    const synthesisPrompt = `You are the Chief Editor. You have received production assets generated by ${modelOutputs.length} different AI models for the same story. Your job is to synthesize the best elements from each into a single, high-quality production package.
+    const synthesisPrompt = `You are the Chief Editor. You have received production assets generated by ${modelOutputs.length} different AI models for the same ${sourceType === 'research_point' ? 'research point' : 'story'}. Your job is to synthesize the best elements from each into a single, high-quality production package.${sourceType === 'research_point' ? `\n\nRESEARCH TOPIC: ${topicTitle}` : ''}
 
-STORY:
-Title: ${article.title}
-Source: ${article.source_name || article.publication || 'Unknown'}
+${sourceType === 'research_point' ? 'RESEARCH POINT' : 'STORY'}:
+Title: ${sourceTitle}
+Source: ${sourceName}
 
-${researchContext}
+${researchContext}${pointContext}
 
 MODEL OUTPUTS:
 ${modelSummaries}
@@ -144,7 +186,7 @@ INSTRUCTIONS:
 - Ensure factual accuracy by cross-referencing against the research dossier.
 - The teleprompter script should be the strongest, most broadcast-ready version.
 - Eliminate any redundancy or hallucination — only verified facts from the dossier should remain.
-- Maintain consistent tone and style across all assets.
+- Maintain consistent tone and style across all assets.${sourceType === 'research_point' ? ' Focus the final script on the specific research point, using the dossier for context.' : ''}
 
 Generate the following assets:
 ${requestedAssets.map(a => `- ${a}`).join('\n')}
@@ -161,13 +203,13 @@ Return a JSON object with these exact string keys: ${[...requestedAssets, 'estim
 
     const modelsUsed = modelOutputs.map(m => m.model).join(', ') + ' → synthesized';
 
-    return await savePackage(base44, articleId, synthesized, requestedAssets, tone, reading_style, audience, target_runtime, modelsUsed);
+    return await savePackage(base44, sourceRefId, sourceType, synthesized, requestedAssets, tone, reading_style, audience, target_runtime, modelsUsed);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
 
-async function savePackage(base44, articleId, llmResponse, requestedAssets, tone, reading_style, audience, target_runtime, generationProvider) {
+async function savePackage(base44, sourceRefId, sourceType, llmResponse, requestedAssets, tone, reading_style, audience, target_runtime, generationProvider) {
   const updateFields = {};
   requestedAssets.forEach(a => { updateFields[a] = llmResponse[a] || ''; });
   updateFields.estimated_runtime = llmResponse.estimated_runtime || '';
@@ -179,7 +221,16 @@ async function savePackage(base44, articleId, llmResponse, requestedAssets, tone
   updateFields.generation_provider = generationProvider;
   updateFields.generated_at = new Date().toISOString();
 
-  const existing = await base44.entities.ProductionPackage.filter({ article_id: articleId });
+  let filterQuery, existing, profile;
+  if (sourceType === 'research_point') {
+    filterQuery = { source_entity_type: 'ResearchPoint', source_entity_id: sourceRefId };
+    profile = 'news'; // Research packages use news profile for now
+  } else {
+    filterQuery = { article_id: sourceRefId };
+    profile = 'news';
+  }
+
+  existing = await base44.entities.ProductionPackage.filter(filterQuery);
   let pkg;
 
   if (existing && existing.length > 0) {
@@ -189,9 +240,21 @@ async function savePackage(base44, articleId, llmResponse, requestedAssets, tone
     pkg = await base44.entities.ProductionPackage.update(existing[0].id, updateFields);
   } else {
     updateFields.generation_count = 1;
-    updateFields.production_profile = 'news';
-    updateFields.article_id = articleId;
+    updateFields.production_profile = profile;
+    if (sourceType === 'research_point') {
+      updateFields.source_entity_type = 'ResearchPoint';
+      updateFields.source_entity_id = sourceRefId;
+    } else {
+      updateFields.article_id = sourceRefId;
+    }
     pkg = await base44.entities.ProductionPackage.create(updateFields);
+  }
+
+  // If research point mode, link the package back to the point
+  if (sourceType === 'research_point') {
+    try {
+      await base44.entities.ResearchPoint.update(sourceRefId, { package_id: pkg.id, status: 'used' });
+    } catch {}
   }
 
   return Response.json({ package: pkg, models_used: generationProvider });

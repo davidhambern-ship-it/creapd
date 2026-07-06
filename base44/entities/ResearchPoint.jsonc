@@ -1,0 +1,128 @@
+{
+  "name": "ResearchPoint",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the ResearchProductionConfiguration"
+    },
+    "topic_id": {
+      "type": "string",
+      "description": "ID of the ResearchTopic this point was derived from"
+    },
+    "topic_title": {
+      "type": "string",
+      "description": "Cached title of the parent ResearchTopic"
+    },
+    "title": {
+      "type": "string",
+      "description": "The point headline \u2014 a concise summary of this finding"
+    },
+    "content": {
+      "type": "string",
+      "description": "The detailed finding content \u2014 what the producer reads and adapts"
+    },
+    "point_type": {
+      "type": "string",
+      "enum": [
+        "finding",
+        "statistic",
+        "quote",
+        "context",
+        "counter_argument",
+        "timeline_event",
+        "key_person",
+        "key_organization",
+        "coverage_angle",
+        "data_point"
+      ],
+      "default": "finding",
+      "description": "What kind of research point this is"
+    },
+    "key_facts": {
+      "type": "string",
+      "description": "JSON array of verified facts with source attribution"
+    },
+    "sources": {
+      "type": "string",
+      "description": "JSON array of sources \u2014 name, url, source_type, citation"
+    },
+    "significance": {
+      "type": "string",
+      "description": "Why this point matters for the production"
+    },
+    "suggested_angle": {
+      "type": "string",
+      "description": "AI-suggested coverage angle for this point"
+    },
+    "suggested_segment": {
+      "type": "string",
+      "enum": [
+        "Lead Story",
+        "Quick Hit",
+        "Feature",
+        "Breaking",
+        "Talking Points",
+        "Fact Check",
+        "B-Roll Package"
+      ],
+      "description": "AI-suggested broadcast segment placement"
+    },
+    "priority_score": {
+      "type": "number",
+      "description": "0-10 newsworthiness/relevance score",
+      "default": 5
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "How confident the research is about this point (0-100)",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "selected",
+        "approved",
+        "used",
+        "rejected",
+        "archived"
+      ],
+      "default": "pending"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order in the Research Manager"
+    },
+    "package_id": {
+      "type": "string",
+      "description": "ID of the ProductionPackage generated from this point"
+    },
+    "is_selected": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_saved": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by_ai": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if auto-extracted from dossier, false if manually created by producer"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "topic_id",
+    "title"
+  ]
+}
