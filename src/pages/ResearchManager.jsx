@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
+import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { POINT_TYPE_LABELS, POINT_TYPE_COLORS } from '@/lib/researchConstants';
@@ -23,7 +24,8 @@ const STATUS_FILTERS = [
 ];
 
 export default function ResearchManager() {
-  const { config, topics, points, packages, loading, refresh } = useResearchProduction();
+  const researchData = useResearchProduction();
+  const { config, topics, points, packages, loading, refresh } = researchData;
   const [searchParams] = useSearchParams();
   const topicFilter = searchParams.get('topic_id');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -152,6 +154,8 @@ export default function ResearchManager() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
+      <CreaprFocusBar researchData={researchData} />
+
       <div>
         <h1 className="text-2xl font-heading font-bold !flex items-center gap-2">
           <Layers className="w-5 h-5 text-primary" />

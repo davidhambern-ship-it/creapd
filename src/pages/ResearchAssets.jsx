@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
+import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
 import PointMediaGenerator from '@/components/research/PointMediaGenerator';
 import SpecialistInsights from '@/components/research/SpecialistInsights';
 import { Switch } from '@/components/ui/switch';
@@ -23,7 +24,8 @@ const MEDIA_CENTER_FIELDS = {
 };
 
 export default function ResearchAssets() {
-  const { config, packages, points, topics, dossiers, loading, refresh } = useResearchProduction();
+  const researchData = useResearchProduction();
+  const { config, packages, points, topics, dossiers, loading, refresh } = researchData;
   const [expanded, setExpanded] = useState(null);
   const [showSpecialistInsights, setShowSpecialistInsights] = useState(false);
 
@@ -62,6 +64,8 @@ export default function ResearchAssets() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
+      <CreaprFocusBar researchData={researchData} />
+
       <div>
         <h1 className="text-2xl font-heading font-bold !flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />

@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
+import { useCreaprEngine } from '@/hooks/useCreaprEngine';
+import { useCREAPMode } from '@/context/CREAPModeContext';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Loader2, FlaskConical, Lightbulb, PanelRightOpen } from 'lucide-react';
+import { Loader2, FlaskConical, Lightbulb, PanelRightOpen, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ResearchProgressModal from '@/components/research/ResearchProgressModal';
 import TopicConversation from '@/components/research/TopicConversation';
 import TopicListPanel from '@/components/research/TopicListPanel';
 
 export default function ResearchTopics() {
-  const { config, topics, loading, refresh } = useResearchProduction();
+  const researchData = useResearchProduction();
+  const { config, topics, loading, refresh } = researchData;
+  const { mode } = useCREAPMode();
+  const engine = useCreaprEngine(researchData);
   const [researching, setResearching] = useState(null);
   const [progressTopic, setProgressTopic] = useState(null);
   const [mobileTopicsOpen, setMobileTopicsOpen] = useState(false);
@@ -80,6 +86,22 @@ export default function ResearchTopics() {
 
       {/* Topics sidebar — desktop */}
       <aside className="hidden lg:flex w-72 border-l border-border flex-col bg-background shrink-0">
+        {/* Compact POC Focus */}
+        {engine.pocState && (
+          <div className="p-3 border-b border-border shrink-0">
+            <Link to={engine.pocState.nextRoute} className="block p-3 rounded-lg glass-panel hover:border-primary/30 transition-colors group">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Stage {engine.pocState.stage}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{mode}</span>
+              </div>
+              <p className="text-sm font-medium leading-tight">{engine.pocState.stageInfo.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{engine.pocState.pendingAction}</p>
+              <div className="flex items-center gap-1 mt-2 text-xs text-primary group-hover:gap-2 transition-all">
+                Continue <ArrowRight className="w-3 h-3" />
+              </div>
+            </Link>
+          </div>
+        )}
         <TopicListPanel
           topics={topics}
           researching={researching}

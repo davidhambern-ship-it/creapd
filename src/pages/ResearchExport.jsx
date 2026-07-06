@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
+import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
 import { Button } from '@/components/ui/button';
 import { Loader2, FlaskConical, Download, FileText, Package, CheckCircle2 } from 'lucide-react';
 
 export default function ResearchExport() {
-  const { config, topics, points, packages, loading } = useResearchProduction();
+  const researchData = useResearchProduction();
+  const { config, topics, points, packages, loading } = researchData;
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState(null);
 
@@ -65,6 +67,8 @@ export default function ResearchExport() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
+      <CreaprFocusBar researchData={researchData} />
+
       <div>
         <h1 className="text-2xl font-heading font-bold !flex items-center gap-2">
           <Download className="w-5 h-5 text-primary" />
