@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
+import PointMediaGenerator from '@/components/research/PointMediaGenerator';
 import { Loader2, FlaskConical, Sparkles, AlertCircle, ChevronDown, ChevronUp, Package, CheckCircle2 } from 'lucide-react';
 
 const ASSET_LABELS = {
@@ -18,7 +19,7 @@ const ASSET_LABELS = {
 };
 
 export default function ResearchAssets() {
-  const { config, packages, points, loading } = useResearchProduction();
+  const { config, packages, points, loading, refresh } = useResearchProduction();
   const [expanded, setExpanded] = useState(null);
 
   if (loading) {
@@ -109,6 +110,7 @@ export default function ResearchAssets() {
                         </div>
                       );
                     })}
+                    <PointMediaGenerator pkg={pkg} onMediaUpdate={refresh} />
                   </div>
                 )}
 
