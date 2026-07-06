@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, Mic, Send, X, Radio, ExternalLink, CheckCircle2
+  Loader2, Mic, Send, X, Radio
 } from 'lucide-react';
 import AnimatedText from '@/components/research/AnimatedText';
 import TopicWizard from '@/components/research/TopicWizard';
@@ -63,8 +62,6 @@ export default function TopicConversation({ config, onClose }) {
   const [audioUrl, setAudioUrl] = useState(null);
   const [interimText, setInterimText] = useState('');
   const [speechSupported, setSpeechSupported] = useState(true);
-  const [completedTopicId, setCompletedTopicId] = useState(null);
-  const [pointCount, setPointCount] = useState(0);
   const [noCount, setNoCount] = useState(0);
   const [showWizard, setShowWizard] = useState(false);
 
@@ -78,10 +75,22 @@ export default function TopicConversation({ config, onClose }) {
   const speakingRef = useRef(false);
   const noCountRef = useRef(0);
   const initializedRef = useRef(false);
+  const researchReadyRef = useRef(null);
+  const completionAnnouncedRef = useRef(false);
+  const closeAfterSpeakingRef = useRef(false);
+  const pendingNavigationRef = useRef(null);
+  const voicePendingRef = useRef(false);
+  const thinkingRef = useRef(false);
+  const userNameRef = useRef('');
+  const showWizardRef = useRef(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { speakingRef.current = speaking; }, [speaking]);
+  useEffect(() => { thinkingRef.current = thinking; }, [thinking]);
   useEffect(() => { noCountRef.current = noCount; }, [noCount]);
+  useEffect(() => { showWizardRef.current = showWizard; }, [showWizard]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -89,16 +98,19 @@ export default function TopicConversation({ config, onClose }) {
 
   const speak = async (text) => {
     if (!text) return;
+    voicePendingRef.current = true;
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
         voice: CREAP_VOICE,
       });
+      voicePendingRef.current = false;
       if (response?.data?.url) {
         setAudioUrl(response.data.url);
         setSpeaking(true);
       }
     } catch (err) {
+      voicePendingRef.current = false;
       console.error('TTS failed:', err);
     }
   };
@@ -112,11 +124,22 @@ export default function TopicConversation({ config, onClose }) {
   }, [audioUrl]);
 
   const handleAudioEnded = () => {
+    voicePendingRef.current = false;
     setSpeaking(false);
     setAudioUrl(null);
+    if (closeAfterSpeakingRef.current) {
+      closeAfterSpeakingRef.current = false;
+      const navUrl = pendingNavigationRef.current;
+      pendingNavigationRef.current = null;
+      if (navUrl) navigate(navUrl);
+      else onClose();
+      return;
+    }
+    maybeAnnounceCompletion();
   };
 
   const stopAudio = () => {
+    voicePendingRef.current = false;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -148,8 +171,26 @@ export default function TopicConversation({ config, onClose }) {
     if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
   };
 
+  const maybeAnnounceCompletion = () => {
+    if (!researchReadyRef.current || completionAnnouncedRef.current) return;
+    if (showWizardRef.current) return;
+    if (voicePendingRef.current || speakingRef.current || thinkingRef.current) return;
+    announceCompletion();
+  };
+
+  const announceCompletion = () => {
+    completionAnnouncedRef.current = true;
+    setPhase('asking_to_view');
+    phaseRef.current = 'asking_to_view';
+    const { topicId, pointCount, sourceCount } = researchReadyRef.current;
+    const firstName = (userNameRef.current || 'there').split(' ')[0];
+    const msg = `Alright ${firstName}, I'm done CREAPing! ${pointCount} research points are locked and loaded. Ready to check them out?`;
+    conversationHistoryRef.current.push({ role: 'assistant', content: msg });
+    setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
+    speak(msg);
+  };
+
   const handleResearchComplete = async (topicId, dossier) => {
-    setPhase('complete');
     setResearchStage('complete');
     try {
       await base44.functions.invoke('extractResearchPoints', { topic_id: topicId });
@@ -161,18 +202,13 @@ export default function TopicConversation({ config, onClose }) {
       const points = await base44.entities.ResearchPoint.filter({ topic_id: topicId }, '-created_date', 50);
       pCount = points.length;
     } catch {}
-    setPointCount(pCount);
-    setCompletedTopicId(topicId);
     const sourceCount = safeParse(dossier.sources, []).length;
-    const confidence = dossier.confidence_score || 0;
-    const msg = `And we're done! Pulled in ${sourceCount} verified sources and extracted ${pCount} research points. Confidence is sitting at ${confidence}%. Want to check them out?`;
-    conversationHistoryRef.current.push({ role: 'assistant', content: msg });
-    setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
-    speak(msg);
+    researchReadyRef.current = { topicId, pointCount: pCount, sourceCount };
+    completionAnnouncedRef.current = false;
+    maybeAnnounceCompletion();
   };
 
   const handleResearchFailed = (topicId, dossier) => {
-    setPhase('complete');
     const msg = `Looks like the research hit a snag. ${dossier?.error_message || 'Something went wrong on my end.'} We can try again or pick a different topic.`;
     conversationHistoryRef.current.push({ role: 'assistant', content: msg });
     setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
@@ -221,9 +257,57 @@ export default function TopicConversation({ config, onClose }) {
     return false;
   };
 
+  const handleViewResponse = async () => {
+    const lastUserMsg = conversationHistoryRef.current.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Determine if the user's response means YES (ready to view now) or NO (not right now).\n\nUser said: "${lastUserMsg}"\n\nReturn JSON.`,
+        model: 'gpt_5_mini',
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            response: { type: 'string', enum: ['yes', 'no'] }
+          }
+        }
+      });
+
+      if (result?.response === 'yes') {
+        const { topicId } = researchReadyRef.current;
+        const navMsg = `Let's go!`;
+        conversationHistoryRef.current.push({ role: 'assistant', content: navMsg });
+        setMessages(prev => [...prev, { role: 'assistant', content: navMsg }]);
+        speak(navMsg);
+        pendingNavigationRef.current = `/research/manager?topic_id=${topicId}`;
+        closeAfterSpeakingRef.current = true;
+      } else {
+        const firstName = (userNameRef.current || 'there').split(' ')[0];
+        const msg = `No worries, ${firstName}. You can find those points in the Research Manager whenever you're ready. We'll talk later...`;
+        conversationHistoryRef.current.push({ role: 'assistant', content: msg });
+        setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
+        speak(msg);
+        closeAfterSpeakingRef.current = true;
+      }
+    } catch (err) {
+      console.error('View response failed:', err);
+    }
+  };
+
   const creapRespond = async () => {
+    thinkingRef.current = true;
     setThinking(true);
     try {
+      // If research is ready but not announced, announce instead of normal chat
+      if (researchReadyRef.current && !completionAnnouncedRef.current) {
+        announceCompletion();
+        return;
+      }
+
+      // If we're asking the user if they want to view points
+      if (phaseRef.current === 'asking_to_view') {
+        await handleViewResponse();
+        return;
+      }
+
       const history = conversationHistoryRef.current
         .map(m => `${m.role === 'user' ? 'USER' : 'CREAP'}: ${m.content}`)
         .join('\n');
@@ -273,7 +357,9 @@ export default function TopicConversation({ config, onClose }) {
       setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
       speak(errorMsg);
     } finally {
+      thinkingRef.current = false;
       setThinking(false);
+      setTimeout(() => maybeAnnounceCompletion(), 500);
     }
   };
 
@@ -320,6 +406,12 @@ export default function TopicConversation({ config, onClose }) {
     if (recognitionRef.current) recognitionRef.current.stop();
     setListening(false);
   };
+
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      if (user?.full_name) userNameRef.current = user.full_name;
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -419,7 +511,7 @@ export default function TopicConversation({ config, onClose }) {
                thinking ? 'Thinking...' :
                listening ? 'Listening...' :
                phase === 'researching' ? 'Researching...' :
-               phase === 'complete' ? 'Research Complete' :
+               phase === 'asking_to_view' ? 'Points Ready' :
                'Ready to chat'}
             </p>
           </div>
@@ -468,22 +560,6 @@ export default function TopicConversation({ config, onClose }) {
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-            </div>
-          )}
-
-          {phase === 'complete' && completedTopicId && (
-            <div className="flex justify-start">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-emerald-400">{pointCount} research points extracted</p>
-                  <Button size="sm" className="mt-2" asChild>
-                    <Link to={`/research/manager?topic_id=${completedTopicId}`}>
-                      View Points <ExternalLink className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
               </div>
             </div>
           )}
