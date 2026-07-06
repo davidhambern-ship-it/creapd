@@ -24,7 +24,7 @@ function safeParse(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
-export default function TopicConversation({ config, onClose }) {
+export default function TopicConversation({ config, onClose, embedded = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [listening, setListening] = useState(false);
@@ -475,7 +475,7 @@ export default function TopicConversation({ config, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 creapd-bg-gradient flex flex-col overflow-hidden">
+    <div className={`${embedded ? 'relative h-full' : 'fixed inset-0 z-50'} creapd-bg-gradient flex flex-col overflow-hidden`}>
       <audio ref={audioRef} onEnded={handleAudioEnded} onError={handleAudioEnded} />
 
       {/* Animated background — CREAPD themed digital motions, non-interactive */}
@@ -574,9 +574,11 @@ export default function TopicConversation({ config, onClose }) {
               {STAGE_LABELS[researchStage] || researchStage}
             </div>
           )}
-          <button onClick={onClose} className="p-2.5 rounded-md hover:bg-secondary transition-colors">
-            <X className="w-6 h-6" />
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="p-2.5 rounded-md hover:bg-secondary transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          )}
         </div>
       </div>
 
