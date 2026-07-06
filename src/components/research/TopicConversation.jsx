@@ -28,6 +28,8 @@ function safeParse(str, fallback) {
 let _cachedGreeting = null;
 let _cachedOfferedTopic = null;
 let _greetingAudioPlayed = false;
+// Module-level audio lock — prevents overlapping TTS calls across component instances
+let _audioLock = false;
 
 export default function TopicConversation({ config, onClose, embedded = false }) {
   const [messages, setMessages] = useState([]);
@@ -89,6 +91,9 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   const speak = async (text) => {
     if (!text) return;
+    // Module-level lock — prevents overlapping TTS calls across component instances
+    if (_audioLock) return;
+    _audioLock = true;
     const gen = ++speakGenRef.current;
     cleanupAudio();
     voicePendingRef.current = true;
@@ -98,28 +103,32 @@ export default function TopicConversation({ config, onClose, embedded = false })
         text: text.substring(0, 5000),
         voice: creapSettingsRef.current.voice_id || 'daniel',
       });
-      if (gen !== speakGenRef.current || !isMountedRef.current) return;
+      if (gen !== speakGenRef.current || !isMountedRef.current) { _audioLock = false; return; }
       const url = response?.data?.url;
-      if (!url) { voicePendingRef.current = false; setSpeaking(false); return; }
+      if (!url) { _audioLock = false; voicePendingRef.current = false; setSpeaking(false); return; }
       const audio = new Audio(url);
       audio.onended = () => {
-        if (gen !== speakGenRef.current) return;
+        if (gen !== speakGenRef.current) { _audioLock = false; return; }
+        _audioLock = false;
         voicePendingRef.current = false;
         handleAudioEnded();
       };
       audio.onerror = () => {
-        if (gen !== speakGenRef.current) return;
+        if (gen !== speakGenRef.current) { _audioLock = false; return; }
+        _audioLock = false;
         voicePendingRef.current = false;
         setSpeaking(false);
       };
       audioInstanceRef.current = audio;
       audio.play().catch(() => {
-        if (gen !== speakGenRef.current) return;
+        if (gen !== speakGenRef.current) { _audioLock = false; return; }
+        _audioLock = false;
         voicePendingRef.current = false;
         setSpeaking(false);
       });
     } catch (err) {
-      if (gen !== speakGenRef.current) return;
+      if (gen !== speakGenRef.current) { _audioLock = false; return; }
+      _audioLock = false;
       voicePendingRef.current = false;
       setSpeaking(false);
       console.error('TTS failed:', err);
@@ -144,6 +153,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const stopAudio = () => {
     speakGenRef.current++;
     voicePendingRef.current = false;
+    _audioLock = false;
     cleanupAudio();
     setSpeaking(false);
   };
@@ -490,6 +500,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      _audioLock = false;
       stopPolling();
       if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
       cleanupAudio();
