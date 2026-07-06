@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Radio } from 'lucide-react';
 import { useCreaprEngine } from '@/hooks/useCreaprEngine';
 import { useCreaprNarration } from '@/hooks/useCreaprNarration';
 import GuidedFocus from '@/components/creapr/GuidedFocus';
@@ -80,6 +81,21 @@ export default function CreaprFocusBar({ researchData }) {
         activeDepartment={engine.activeDepartment}
         mode={engine.mode}
       />
+
+      {/* CREAPr narration caption — always visible while audio plays */}
+      {engine.currentNarration?.text && (
+        <div className="flex items-start gap-3 p-4 rounded-xl glass-panel border border-primary/20">
+          <div className="relative w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+            <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
+            <Radio className="w-4 h-4 text-primary relative" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-primary font-semibold mb-1">CREAPr</p>
+            <p className="text-sm text-foreground leading-relaxed font-conv">{engine.currentNarration.text}</p>
+          </div>
+        </div>
+      )}
+
       {engine.pendingPacket && (
         <DecisionPacketPanel
           packet={engine.pendingPacket}
