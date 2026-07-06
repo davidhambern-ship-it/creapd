@@ -7,34 +7,7 @@ import {
 } from 'lucide-react';
 import AnimatedText from '@/components/research/AnimatedText';
 import TopicWizard from '@/components/research/TopicWizard';
-
-const CREAP_VOICE = 'daniel';
-const MAX_NO_ATTEMPTS = 5;
-
-const CREAP_SYSTEM_PROMPT = `You are CREAP, a bold, energetic AI co-producer. You're chatting with a producer to find a research topic worth deep-diving.
-
-Rules:
-- Propose ONE controversial, trending, or fascinating topic at a time
-- Be conversational, punchy, opinionated — like a co-producer brainstorming
-- Keep responses SHORT: 1-3 sentences max (this is spoken dialogue)
-- After proposing, WAIT for the user's reaction before offering to research
-- If the user seems interested or engaged, ask "Want it CREAPd?!" and include topic_data
-- If the user says NO to "Want it CREAPd?!", acknowledge it briefly and immediately propose a DIFFERENT topic
-- If the user isn't interested in a topic, pivot to a completely new one
-- Crack jokes. Be fun. Have opinions. Be bold and provocative.
-- You have a DECLINE_COUNTER that tracks how many times the user has said "No" to "Want it CREAPd?!"
-
-Return JSON:
-- message: what you say (spoken, conversational style)
-- action: "propose" | "discuss" | "offer" | "acknowledge_yes" | "acknowledge_no"
-- topic_data: { title, description, research_query, category } — REQUIRED when action is "offer" or "acknowledge_yes"
-
-Action guide:
-- propose: introducing a new topic to explore
-- discuss: engaging with the topic, building interest before offering
-- offer: asking "Want it CREAPd?!" — MUST include topic_data
-- acknowledge_yes: user confirmed they want it CREAPd — MUST include topic_data
-- acknowledge_no: user declined "Want it CREAPd?!" — will pivot to a new topic`;
+import { buildCreapSystemPrompt, DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 
 const STAGE_LABELS = {
   query_expansion: 'Breaking down the query',
@@ -83,6 +56,8 @@ export default function TopicConversation({ config, onClose }) {
   const thinkingRef = useRef(false);
   const userNameRef = useRef('');
   const showWizardRef = useRef(false);
+  const creapSettingsRef = useRef(DEFAULT_CREAP_SETTINGS);
+  const [creapSettings, setCreapSettings] = useState(null);
 
   const navigate = useNavigate();
 
@@ -102,7 +77,7 @@ export default function TopicConversation({ config, onClose }) {
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
-        voice: CREAP_VOICE,
+        voice: creapSettingsRef.current.voice_id || 'daniel',
       });
       voicePendingRef.current = false;
       if (response?.data?.url) {
@@ -184,7 +159,8 @@ export default function TopicConversation({ config, onClose }) {
     phaseRef.current = 'asking_to_view';
     const { topicId, pointCount, sourceCount } = researchReadyRef.current;
     const firstName = (userNameRef.current || 'there').split(' ')[0];
-    const msg = `Alright ${firstName}, I'm done CREAPing! ${pointCount} research points are locked and loaded. Ready to check them out?`;
+    const completionPhrase = creapSettingsRef.current.completion_phrase || "I'm done CREAPing!";
+    const msg = `Alright ${firstName}, ${completionPhrase} ${pointCount} research points are locked and loaded. Ready to check them out?`;
     conversationHistoryRef.current.push({ role: 'assistant', content: msg });
     setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
     speak(msg);
@@ -207,6 +183,8 @@ export default function TopicConversation({ config, onClose }) {
     completionAnnouncedRef.current = false;
     maybeAnnounceCompletion();
   };
+
+  const maxNoAttempts = creapSettingsRef.current.max_decline_attempts || 5;
 
   const handleResearchFailed = (topicId, dossier) => {
     const msg = `Looks like the research hit a snag. ${dossier?.error_message || 'Something went wrong on my end.'} We can try again or pick a different topic.`;
@@ -246,7 +224,7 @@ export default function TopicConversation({ config, onClose }) {
     const newCount = noCountRef.current + 1;
     setNoCount(newCount);
     noCountRef.current = newCount;
-    if (newCount >= MAX_NO_ATTEMPTS) {
+    if (newCount >= (creapSettingsRef.current.max_decline_attempts || 5)) {
       const wizardMsg = `Alright, I get it — you're not feeling my picks today. No worries! Let me set you up with the Topic Guide Wizard so you can steer the ship.`;
       conversationHistoryRef.current.push({ role: 'assistant', content: wizardMsg });
       setMessages(prev => [...prev, { role: 'assistant', content: wizardMsg }]);
@@ -313,8 +291,8 @@ export default function TopicConversation({ config, onClose }) {
         .join('\n');
 
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `${CREAP_SYSTEM_PROMPT}\n\nDECLINE_COUNTER: ${noCountRef.current} (user has said "No" to "Want it CREAPd?!" ${noCountRef.current} times out of ${MAX_NO_ATTEMPTS} before fallback to wizard)\n\nConversation so far:\n${history}\n\nGenerate your next response.`,
-        model: 'gpt_5_mini',
+        prompt: `${buildCreapSystemPrompt(creapSettingsRef.current)}\n\nDECLINE_COUNTER: ${noCountRef.current} (user has said "No" to "${creapSettingsRef.current.catchphrase || 'Want it CREAPd?!'}" ${noCountRef.current} times out of ${creapSettingsRef.current.max_decline_attempts || 5} before fallback to wizard)\n\nConversation so far:\n${history}\n\nGenerate your next response.`,
+        model: creapSettingsRef.current.ai_model || 'gpt_5_mini',
         response_json_schema: {
           type: 'object',
           properties: {
@@ -419,8 +397,20 @@ export default function TopicConversation({ config, onClose }) {
     const init = async () => {
       setThinking(true);
       try {
+        // Load CREAP settings
+        try {
+          const settingsRes = await base44.entities.CreapSettings.filter({ is_active: true }, '-updated_date', 1);
+          if (settingsRes.length > 0) {
+            creapSettingsRef.current = settingsRes[0];
+            setCreapSettings(settingsRes[0]);
+          }
+        } catch (err) {
+          console.error('Failed to load CREAP settings:', err);
+        }
+
+        const systemPrompt = buildCreapSystemPrompt(creapSettingsRef.current);
         const result = await base44.integrations.Core.InvokeLLM({
-          prompt: `${CREAP_SYSTEM_PROMPT}\n\nDECLINE_COUNTER: 0\n\nStart the conversation. Greet the producer and propose ONE controversial or fascinating topic that would make a great research subject. Try to find something trending or timely.`,
+          prompt: `${systemPrompt}\n\nDECLINE_COUNTER: 0\n\nStart the conversation. Greet the producer and propose ONE controversial or fascinating topic that would make a great research subject. Try to find something trending or timely.`,
           add_context_from_internet: true,
           model: 'gemini_3_flash',
           response_json_schema: {
@@ -573,9 +563,9 @@ export default function TopicConversation({ config, onClose }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {noCount > 0 && noCount < MAX_NO_ATTEMPTS && (
+          {noCount > 0 && noCount < maxNoAttempts && (
             <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-orange-500/10 text-sm text-orange-400">
-              {noCount}/{MAX_NO_ATTEMPTS} skips
+              {noCount}/{maxNoAttempts} skips
             </div>
           )}
           {phase === 'researching' && researchStage && (

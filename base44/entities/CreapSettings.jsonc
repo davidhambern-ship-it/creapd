@@ -1,0 +1,108 @@
+{
+  "name": "CreapSettings",
+  "type": "object",
+  "properties": {
+    "persona_name": {
+      "type": "string",
+      "default": "CREAP",
+      "description": "The name CREAP goes by in conversation"
+    },
+    "personality_description": {
+      "type": "string",
+      "default": "bold, energetic AI co-producer",
+      "description": "Free-text description of CREAP's personality traits"
+    },
+    "tone": {
+      "type": "string",
+      "enum": [
+        "bold",
+        "professional",
+        "conversational",
+        "energetic",
+        "serious",
+        "investigative",
+        "educational",
+        "inspirational",
+        "humorous",
+        "neutral"
+      ],
+      "default": "bold",
+      "description": "CREAP's overall conversational tone"
+    },
+    "speaking_style": {
+      "type": "string",
+      "default": "punchy, opinionated",
+      "description": "How CREAP delivers lines \u2014 punchy, verbose, laid-back, etc."
+    },
+    "humor_level": {
+      "type": "number",
+      "default": 7,
+      "description": "0-10 how much humor CREAP injects into conversation"
+    },
+    "response_length": {
+      "type": "string",
+      "enum": [
+        "very_short",
+        "short",
+        "medium",
+        "long"
+      ],
+      "default": "short",
+      "description": "How long CREAP's spoken responses should be"
+    },
+    "voice_id": {
+      "type": "string",
+      "default": "daniel",
+      "description": "ElevenLabs voice identifier from the VOICE_MAP"
+    },
+    "catchphrase": {
+      "type": "string",
+      "default": "Want it CREAPd?!",
+      "description": "CREAP's signature phrase when offering to research a topic"
+    },
+    "completion_phrase": {
+      "type": "string",
+      "default": "I'm done CREAPing!",
+      "description": "What CREAP says when research is complete"
+    },
+    "greeting_style": {
+      "type": "string",
+      "enum": [
+        "energetic",
+        "casual",
+        "professional",
+        "mysterious"
+      ],
+      "default": "energetic",
+      "description": "How CREAP greets the producer at the start"
+    },
+    "max_decline_attempts": {
+      "type": "number",
+      "default": 5,
+      "description": "How many times the user can decline before fallback to the Topic Wizard"
+    },
+    "ai_model": {
+      "type": "string",
+      "enum": [
+        "automatic",
+        "gpt_5_mini",
+        "gemini_3_flash",
+        "claude_sonnet_4_6"
+      ],
+      "default": "gpt_5_mini",
+      "description": "AI model used for CREAP's conversation responses"
+    },
+    "system_prompt_override": {
+      "type": "string",
+      "description": "Optional full custom system prompt \u2014 when set, overrides all personality settings"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether these settings are currently active"
+    }
+  },
+  "required": [
+    "persona_name"
+  ]
+}
