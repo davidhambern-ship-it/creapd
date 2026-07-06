@@ -20,7 +20,7 @@ export default function ResearchTopics() {
   const [progressTopic, setProgressTopic] = useState(null);
   const [mobileTopicsOpen, setMobileTopicsOpen] = useState(false);
 
-  if (loading) {
+  if (loading && !config) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
