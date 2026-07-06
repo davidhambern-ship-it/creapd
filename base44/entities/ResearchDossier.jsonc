@@ -1,0 +1,75 @@
+{
+  "name": "ResearchDossier",
+  "type": "object",
+  "properties": {
+    "article_id": {
+      "type": "string",
+      "description": "ID of the Article this research was performed on"
+    },
+    "research_query": {
+      "type": "string",
+      "description": "The query or topic derived from the article for deep research"
+    },
+    "executive_summary": {
+      "type": "string",
+      "description": "A 2-3 paragraph synthesis of all research findings"
+    },
+    "key_facts": {
+      "type": "string",
+      "description": "JSON array of verified key facts with source attribution"
+    },
+    "context_and_background": {
+      "type": "string",
+      "description": "Historical context and background information needed to understand the story"
+    },
+    "key_people": {
+      "type": "string",
+      "description": "JSON array of key people involved \u2014 name, role, relevance"
+    },
+    "key_organizations": {
+      "type": "string",
+      "description": "JSON array of key organizations \u2014 name, role, relevance"
+    },
+    "timeline": {
+      "type": "string",
+      "description": "JSON array of timeline events \u2014 date, event, significance"
+    },
+    "counter_arguments": {
+      "type": "string",
+      "description": "JSON array of differing viewpoints or counter-arguments with attribution"
+    },
+    "data_and_statistics": {
+      "type": "string",
+      "description": "JSON array of relevant statistics, figures, and data points with sources"
+    },
+    "sources": {
+      "type": "string",
+      "description": "JSON array of all sources consulted \u2014 name, url, source_type, citation"
+    },
+    "coverage_angles": {
+      "type": "string",
+      "description": "JSON array of suggested coverage angles \u2014 angle, rationale, target_audience"
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "Overall confidence in research completeness (0-100)",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "researching",
+        "ready",
+        "failed"
+      ],
+      "default": "researching"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "article_id",
+    "research_query"
+  ]
+}
