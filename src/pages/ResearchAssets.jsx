@@ -110,9 +110,12 @@ export default function ResearchAssets() {
                         </div>
                       );
                     })}
-                    <PointMediaGenerator pkg={pkg} onMediaUpdate={refresh} />
                   </div>
                 )}
+
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <PointMediaGenerator pkg={pkg} onMediaUpdate={refresh} />
+                </div>
 
                 <div className="!flex items-center justify-end mt-3">
                   <button
