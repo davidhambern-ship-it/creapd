@@ -93,24 +93,24 @@ export default function ResearchManager() {
       const storySummary = llmResult?.story_summary || '';
       const talkingPoints = llmResult?.talking_points || '';
 
+      const pkgFields = {
+        teleprompter_script: teleprompterScript,
+        story_summary: storySummary,
+        talking_points: talkingPoints,
+        status: 'generated',
+        generation_provider: 'gemini_3_flash'
+      };
+
       let pkg = null;
       if (point.package_id) {
-        pkg = await base44.entities.ProductionPackage.update(point.package_id, {
-          story_summary: storySummary,
-          talking_points: talkingPoints,
-          status: 'generated',
-          generation_provider: 'gemini_3_flash'
-        });
+        pkg = await base44.entities.ProductionPackage.update(point.package_id, pkgFields);
       } else {
         pkg = await base44.entities.ProductionPackage.create({
+          ...pkgFields,
           source_entity_type: 'ResearchPoint',
           source_entity_id: point.id,
           configuration_id: point.configuration_id,
           production_profile: 'news',
-          story_summary: storySummary,
-          talking_points: talkingPoints,
-          status: 'generated',
-          generation_provider: 'gemini_3_flash',
           generation_count: 1
         });
       }
