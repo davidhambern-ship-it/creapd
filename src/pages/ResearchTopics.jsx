@@ -60,8 +60,8 @@ export default function ResearchTopics() {
   const handleResearch = async (topic) => {
     setResearching(topic.id);
     try {
-      await base44.functions.invoke('performDeepResearch', { topic_id: topic.id, research_depth: topic.research_depth });
-      // After deep research completes, extract points
+      await base44.functions.invoke('researchDepartmentOrchestrator', { topic_id: topic.id, research_depth: topic.research_depth });
+      // After orchestration completes, extract points
       await base44.functions.invoke('extractResearchPoints', { topic_id: topic.id });
       refresh();
     } catch (err) {
@@ -235,7 +235,7 @@ export default function ResearchTopics() {
                   <div className="mt-3 p-3 rounded-lg bg-primary/10 !flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     <p className="text-sm text-primary">
-                      {topic.status === 'pending' ? 'Running deep research with internet context...' : 'Extracting Point Cards from dossier...'}
+                      {topic.status === 'pending' ? 'Running research department orchestration (3 specialists)...' : 'Extracting Point Cards from dossier...'}
                     </p>
                   </div>
                 )}
