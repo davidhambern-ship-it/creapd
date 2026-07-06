@@ -3,8 +3,19 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import MediaGenerator from '@/components/production/MediaGenerator';
 import {
-  Loader2, ImageIcon, Film, Volume2, Wand2, Sparkles
+  Loader2, ImageIcon, Film, Volume2, Wand2, Sparkles, FileText
 } from 'lucide-react';
+
+const MEDIA_CENTER_FIELDS = {
+  teleprompter_script: 'Teleprompter Script',
+  talking_points: 'Talking Points',
+  image_prompt: 'Image Prompt',
+  thumbnail_prompt: 'Thumbnail Prompt',
+  visual_suggestions: 'Visual Suggestions',
+  broll_suggestions: 'B-Roll Suggestions',
+  social_caption: 'Social Caption',
+  fact_check_notes: 'Fact Check Notes'
+};
 
 const STEPS = [
   { key: 'voiceover', label: 'Voiceover', icon: Volume2 },
@@ -128,6 +139,23 @@ export default function PointMediaGenerator({ pkg, onMediaUpdate }) {
           })}
         </div>
       )}
+
+      {/* Package content fields that feed the media generation pipeline */}
+      <div className="mb-3 space-y-2">
+        {Object.entries(MEDIA_CENTER_FIELDS).map(([key, label]) => {
+          const value = pkg[key];
+          if (!value) return null;
+          return (
+            <div key={key} className="p-2.5 rounded-md bg-secondary/40 border border-white/[0.03]">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 !flex items-center gap-1">
+                <FileText className="w-2.5 h-2.5" />
+                {label}
+              </p>
+              <p className="text-xs text-foreground/90 whitespace-pre-line leading-relaxed">{value}</p>
+            </div>
+          );
+        })}
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <MediaGenerator

@@ -4,18 +4,21 @@ import PointMediaGenerator from '@/components/research/PointMediaGenerator';
 import { Loader2, FlaskConical, Sparkles, AlertCircle, ChevronDown, ChevronUp, Package, CheckCircle2 } from 'lucide-react';
 
 const ASSET_LABELS = {
-  teleprompter_script: 'Teleprompter Script',
   story_summary: 'Story Summary',
-  talking_points: 'Talking Points',
   lower_third_text: 'Lower Third Text',
   headline_suggestions: 'Headline Suggestions',
+  estimated_runtime: 'Estimated Runtime'
+};
+
+const MEDIA_CENTER_FIELDS = {
+  teleprompter_script: 'Teleprompter Script',
+  talking_points: 'Talking Points',
   image_prompt: 'Image Prompt',
   thumbnail_prompt: 'Thumbnail Prompt',
   visual_suggestions: 'Visual Suggestions',
   broll_suggestions: 'B-Roll Suggestions',
   social_caption: 'Social Caption',
-  fact_check_notes: 'Fact Check Notes',
-  estimated_runtime: 'Estimated Runtime'
+  fact_check_notes: 'Fact Check Notes'
 };
 
 export default function ResearchAssets() {
