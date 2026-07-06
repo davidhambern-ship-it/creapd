@@ -70,6 +70,35 @@
     },
     "error_message": {
       "type": "string"
+    },
+    "discovery_raw_data": {
+      "type": "string",
+      "description": "JSON string of raw findings from the Discovery Specialist \u2014 unprocessed search results, article excerpts, and initial data points before organization"
+    },
+    "organization_structure": {
+      "type": "string",
+      "description": "JSON string of organized research clusters \u2014 themes, background context, timeline groupings, and categorized findings produced by the Organization Specialist"
+    },
+    "critical_analysis_report": {
+      "type": "string",
+      "description": "JSON string of the Critical Analysis Specialist's output \u2014 contains gray_areas (array), logical_gaps (array), competing_perspectives (array of {viewpoint, evidence, weakness}), and open_questions (array)"
+    },
+    "debate_potential_score": {
+      "type": "number",
+      "description": "0-10 score indicating how much debate/discussion potential this topic has \u2014 higher means more contested viewpoints suitable for talk/debate segments",
+      "default": 0
+    },
+    "claim_confidence_scores": {
+      "type": "string",
+      "description": "JSON string mapping individual claims to confidence scores \u2014 array of {claim: string, score: number, notes: string} for fact-check transparency"
+    },
+    "role_assignments": {
+      "type": "string",
+      "description": "JSON string mapping specialist roles to AI model names \u2014 e.g. {discovery: 'gemini_3_flash', organization: 'gpt_5_mini', critical_analysis: 'claude_sonnet_4_6'}. Allows model swapping without code changes."
+    },
+    "orchestration_metadata": {
+      "type": "string",
+      "description": "JSON string tracking the orchestration pipeline run \u2014 contains stage_timings, model_versions, credit_usage, and any stage-specific errors"
     }
   },
   "required": [
