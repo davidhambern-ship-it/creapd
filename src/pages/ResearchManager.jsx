@@ -76,18 +76,20 @@ export default function ResearchManager() {
         : 'No key facts available.';
 
       const llmResult = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a broadcast news producer and fact-checker.\n\nFULL STORY:\n${point.content || ''}\n\nKEY FACTS TO VERIFY:\n${factsText}\n\nBased on the Full Story above, write a detailed Story Summary — a broadcast-ready narration script that a host can read on air. Make it engaging, clear, and comprehensive.\n\nThen, review the Key Facts listed above. For each fact, verify it against the Full Story and your knowledge. Provide your fact-checking findings — note which facts are confirmed, which are questionable, and any corrections needed.\n\nReturn your response as JSON with two fields:\n- story_summary: the detailed broadcast-ready story summary\n- talking_points: your fact-check findings for each key fact`,
+        prompt: `You are a broadcast news producer and fact-checker.\n\nFULL STORY:\n${point.content || ''}\n\nKEY FACTS TO VERIFY:\n${factsText}\n\nBased on the Full Story above, write:\n1. A Teleprompter Script — a broadcast-ready teleprompter script that a host can read on air. Include natural pauses, clear transitions, and a conversational yet professional tone. This is what goes on the teleprompter.\n2. A Story Summary — a detailed broadcast-ready narration script that a host can read on air. Make it engaging, clear, and comprehensive.\n3. Talking Points — review the Key Facts listed above. For each fact, verify it against the Full Story and your knowledge. Provide your fact-checking findings — note which facts are confirmed, which are questionable, and any corrections needed.\n\nReturn your response as JSON with three fields:\n- teleprompter_script: the broadcast-ready teleprompter script\n- story_summary: the detailed broadcast-ready story summary\n- talking_points: your fact-check findings for each key fact`,
         model: 'gemini_3_flash',
         add_context_from_internet: true,
         response_json_schema: {
           type: 'object',
           properties: {
+            teleprompter_script: { type: 'string' },
             story_summary: { type: 'string' },
             talking_points: { type: 'string' }
           }
         }
       });
 
+      const teleprompterScript = llmResult?.teleprompter_script || '';
       const storySummary = llmResult?.story_summary || '';
       const talkingPoints = llmResult?.talking_points || '';
 
