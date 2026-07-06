@@ -87,6 +87,12 @@ import CosmoGuests from '@/pages/CosmoGuests';
 import CosmoRundown from '@/pages/CosmoRundown';
 import CosmoAssets from '@/pages/CosmoAssets';
 import CosmoExport from '@/pages/CosmoExport';
+import ResearchConfigure from '@/pages/ResearchConfigure';
+import ResearchDashboard from '@/pages/ResearchDashboard';
+import ResearchTopics from '@/pages/ResearchTopics';
+import ResearchManager from '@/pages/ResearchManager';
+import ResearchAssets from '@/pages/ResearchAssets';
+import ResearchExport from '@/pages/ResearchExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import Presentations from '@/pages/Presentations';
 import PresentationReview from '@/pages/PresentationReview';
@@ -94,6 +100,7 @@ import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
 import CosmoLayout from '@/components/layout/CosmoLayout';
+import ResearchLayout from '@/components/layout/ResearchLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
@@ -242,6 +249,16 @@ const AuthenticatedApp = () => {
           <Route path="/cosmo/rundown" element={<CosmoRundown />} />
           <Route path="/cosmo/assets" element={<CosmoAssets />} />
           <Route path="/cosmo/export" element={<CosmoExport />} />
+        </Route>
+
+        {/* Research Production */}
+        <Route element={<ResearchLayout />}>
+          <Route path="/research/configure" element={<ResearchConfigure />} />
+          <Route path="/research/dashboard" element={<ResearchDashboard />} />
+          <Route path="/research/topics" element={<ResearchTopics />} />
+          <Route path="/research/manager" element={<ResearchManager />} />
+          <Route path="/research/assets" element={<ResearchAssets />} />
+          <Route path="/research/export" element={<ResearchExport />} />
         </Route>
 
         {/* Spiritual Production */}

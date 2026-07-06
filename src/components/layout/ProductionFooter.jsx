@@ -6,7 +6,7 @@ import {
   Church, BookOpen, GraduationCap, PenTool,
   Mic2, Lightbulb, Users, ClipboardList,
   ChefHat, Carrot, Trophy, Sparkles,
-  Zap
+  Zap, FlaskConical, Layers
 } from 'lucide-react';
 
 const VARIANTS = {
@@ -81,6 +81,18 @@ const VARIANTS = {
       { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
     ],
     action: { icon: Zap, label: 'Open Rundown', path: '/cosmo/rundown' },
+  },
+  research: {
+    label: 'Research Production',
+    icon: FlaskConical,
+    stats: [
+      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
+      { icon: Lightbulb, label: 'Topics', value: '3 active' },
+      { icon: Layers, label: 'Points', value: '24' },
+      { icon: CheckCircle, label: 'Approved', value: '12', color: 'text-berna-emerald' },
+      { icon: Sparkles, label: 'Packages', value: '5', color: 'text-berna-emerald' },
+    ],
+    action: { icon: Zap, label: 'Open Topics', path: '/research/topics' },
   },
 };
 
