@@ -73,8 +73,15 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   const speak = async (text) => {
     if (!text) return;
+    // Kill any currently playing audio before requesting new TTS
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
     voicePendingRef.current = true;
     setSpeaking(true);
+    setAudioUrl(null);
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
@@ -93,26 +100,29 @@ export default function TopicConversation({ config, onClose, embedded = false })
     }
   };
 
-  const lastPlayedUrlRef = useRef(null);
-
   useEffect(() => {
-    if (!audioUrl) return;
     const audio = audioRef.current;
-    if (!audio) return;
-    if (lastPlayedUrlRef.current === audioUrl) return;
-    lastPlayedUrlRef.current = audioUrl;
+    if (!audio || !audioUrl) return;
+    // Always fully reset — no stale src can survive
     audio.pause();
-    audio.currentTime = 0;
+    audio.removeAttribute('src');
     audio.src = audioUrl;
+    audio.load();
     setSpeaking(true);
     audio.play().catch(() => setSpeaking(false));
-    return () => { audio.pause(); };
+    return () => {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    };
   }, [audioUrl]);
 
   const handleAudioEnded = () => {
-    lastPlayedUrlRef.current = null;
     setAudioUrl(null);
-    // Only clear speaking if no new TTS is pending — prevents indicator gap
+    if (audioRef.current) {
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
+    }
     if (!voicePendingRef.current) {
       setSpeaking(false);
     }
@@ -131,7 +141,8 @@ export default function TopicConversation({ config, onClose, embedded = false })
     voicePendingRef.current = false;
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
     }
     setSpeaking(false);
     setAudioUrl(null);
