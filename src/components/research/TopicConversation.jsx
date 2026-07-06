@@ -485,13 +485,34 @@ export default function TopicConversation({ config, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
       <audio ref={audioRef} onEnded={handleAudioEnded} onError={handleAudioEnded} />
 
+      {/* Animated background — non-interactive, behind everything */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        <div className="absolute inset-0 creap-grid-bg" />
+        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-primary/8 blur-3xl animate-orb-1" />
+        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-accent/8 blur-3xl animate-orb-2" />
+        <div className="absolute -bottom-24 left-1/4 w-72 h-72 rounded-full bg-chart-3/8 blur-3xl animate-orb-3" />
+        {[...Array(12)].map((_, i) => (
+          <span
+            key={i}
+            className="particle-dot"
+            style={{
+              left: `${(i * 8.3) % 100}%`,
+              bottom: '-10px',
+              animationDuration: `${15 + (i % 5) * 4}s`,
+              animationDelay: `${i * 1.5}s`,
+              background: i % 3 === 0 ? 'hsl(25 95% 60% / 0.4)' : i % 3 === 1 ? 'hsl(270 80% 70% / 0.4)' : 'hsl(152 60% 50% / 0.3)',
+            }}
+          />
+        ))}
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+      <div className="relative flex items-center justify-between p-4 border-b border-border shrink-0" style={{ zIndex: 1 }}>
         <div className="flex items-center gap-3">
-          <div className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+          <div className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all ${
             speaking ? 'bg-primary glow-purple scale-110' :
             thinking ? 'bg-primary/50' :
             listening ? 'bg-red-500/80' :
@@ -499,14 +520,14 @@ export default function TopicConversation({ config, onClose }) {
           }`}>
             {speaking && <div className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />}
             {listening ? (
-              <Mic className="w-5 h-5 text-white animate-pulse" />
+              <Mic className="w-6 h-6 text-white animate-pulse" />
             ) : (
-              <Radio className={`w-5 h-5 text-primary-foreground ${speaking ? 'animate-pulse' : ''}`} />
+              <Radio className={`w-6 h-6 text-primary-foreground ${speaking ? 'animate-pulse' : ''}`} />
             )}
           </div>
           <div>
-            <h3 className="font-heading font-semibold text-sm">CREAP</h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="font-heading font-semibold text-lg">CREAP</h3>
+            <p className="text-sm text-muted-foreground">
               {speaking ? 'Speaking...' :
                thinking ? 'Thinking...' :
                listening ? 'Listening...' :
@@ -518,36 +539,36 @@ export default function TopicConversation({ config, onClose }) {
         </div>
         <div className="flex items-center gap-2">
           {noCount > 0 && noCount < MAX_NO_ATTEMPTS && (
-            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-md bg-orange-500/10 text-xs text-orange-400">
+            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-orange-500/10 text-sm text-orange-400">
               {noCount}/{MAX_NO_ATTEMPTS} skips
             </div>
           )}
           {phase === 'researching' && researchStage && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-xs text-primary">
-              <Loader2 className="w-3 h-3 animate-spin" />
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary/10 text-sm text-primary">
+              <Loader2 className="w-4 h-4 animate-spin" />
               {STAGE_LABELS[researchStage] || researchStage}
             </div>
           )}
-          <button onClick={onClose} className="p-2 rounded-md hover:bg-secondary transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-2.5 rounded-md hover:bg-secondary transition-colors">
+            <X className="w-6 h-6" />
           </button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <div className="relative flex-1 overflow-y-auto p-4 md:p-6" style={{ zIndex: 1 }}>
+        <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-5 py-3 ${
+              <div className={`max-w-[80%] rounded-3xl px-7 py-5 ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                  : 'bg-secondary/90 text-secondary-foreground backdrop-blur-sm border border-border/50'
               }`}>
                 <AnimatedText
                   text={msg.content}
                   variant={msg.role === 'user' ? 'user' : 'creap'}
-                  className={`text-sm whitespace-pre-line ${msg.role === 'user' ? '' : 'font-conv text-base'}`}
+                  className={`whitespace-pre-line leading-relaxed ${msg.role === 'user' ? 'text-lg' : 'font-conv text-xl'}`}
                   speed={msg.role === 'user' ? 50 : 75}
                 />
               </div>
@@ -556,10 +577,10 @@ export default function TopicConversation({ config, onClose }) {
 
           {thinking && (
             <div className="flex justify-start">
-              <div className="bg-secondary rounded-2xl px-4 py-3 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="bg-secondary/90 backdrop-blur-sm border border-border/50 rounded-3xl px-6 py-5 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-3 h-3 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-3 h-3 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           )}
@@ -569,17 +590,17 @@ export default function TopicConversation({ config, onClose }) {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-border shrink-0">
-        <div className="max-w-2xl mx-auto flex items-center gap-2">
+      <div className="relative p-4 border-t border-border shrink-0 bg-background/80 backdrop-blur-sm" style={{ zIndex: 1 }}>
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
           {speechSupported && (
             <button
               onClick={listening ? stopListening : startListening}
               disabled={thinking}
-              className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-50 ${
+              className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all disabled:opacity-50 ${
                 listening ? 'bg-red-500 text-white animate-pulse' : 'bg-secondary text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Mic className="w-4 h-4" />
+              <Mic className="w-5 h-5" />
             </button>
           )}
           <div className="flex-1 relative">
@@ -589,20 +610,20 @@ export default function TopicConversation({ config, onClose }) {
               onKeyDown={e => { if (e.key === 'Enter' && canSend && input.trim()) handleSend(input); }}
               placeholder={listening ? 'Listening...' : speaking ? 'CREAP is talking — type to interrupt' : 'Type or speak your response...'}
               disabled={thinking}
-              className="pr-10"
+              className="pr-12 h-12 text-lg"
             />
             {canSend && (input.trim() || interimText) && (
               <button
                 onClick={() => handleSend(input || interimText)}
-                className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-primary hover:bg-primary/10 transition-colors"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-5 h-5" />
               </button>
             )}
           </div>
         </div>
         {listening && (
-          <p className="text-xs text-center text-red-400 mt-2 animate-pulse">Listening... speak now</p>
+          <p className="text-sm text-center text-red-400 mt-2 animate-pulse">Listening... speak now</p>
         )}
       </div>
     </div>

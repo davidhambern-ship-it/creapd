@@ -517,6 +517,60 @@
   animation: holo-sweep 4s ease-in-out infinite;
 }
 
+/* ═══ CREAP Conversation Animated Background ═══ */
+
+/* Slow drifting gradient orbs */
+@keyframes orb-drift-1 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -40px) scale(1.15); }
+  66% { transform: translate(-30px, 50px) scale(0.9); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes orb-drift-2 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-50px, 30px) scale(1.1); }
+  66% { transform: translate(40px, -50px) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes orb-drift-3 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 40px) scale(1.2); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.animate-orb-1 { animation: orb-drift-1 18s ease-in-out infinite; }
+.animate-orb-2 { animation: orb-drift-2 22s ease-in-out infinite; }
+.animate-orb-3 { animation: orb-drift-3 16s ease-in-out infinite; }
+
+/* Animated grid sweep */
+@keyframes grid-pan {
+  0% { background-position: 0 0; }
+  100% { background-position: 60px 60px; }
+}
+.creap-grid-bg {
+  background-image:
+    linear-gradient(rgba(124, 58, 237, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: grid-pan 20s linear infinite;
+}
+
+/* Floating particle dots */
+@keyframes particle-float {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+}
+.particle-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: hsl(270 80% 70% / 0.5);
+  animation: particle-float linear infinite;
+}
+
 /* CREAP Conversation Font */
 @font-face {
   font-family: 'CreapConvFont';
