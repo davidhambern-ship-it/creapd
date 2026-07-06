@@ -110,7 +110,7 @@ export default function TodaysBrief() {
     setGenerating(true);
     setError(null);
     try {
-      await base44.functions.invoke('generateBriefing', { content_domain: selectedDomain });
+      await base44.functions.invoke('generateNewsBriefing', {});
       await loadData();
     } catch (err) {
       setError(err.response?.data?.error || err.message);

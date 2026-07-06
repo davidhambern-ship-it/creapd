@@ -30,7 +30,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.ProducerSettings.filter({}, '-created_date', 1),
+      base44.entities.NewsSettings.filter({}, '-created_date', 1),
       base44.entities.ProducerPreferences.filter({}, '-created_date', 1),
       base44.auth.me().catch(() => null),
     ]).then(([settingsRes, prefsRes, user]) => {
@@ -77,9 +77,9 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       if (settings.id) {
-        await base44.entities.ProducerSettings.update(settings.id, settings);
+        await base44.entities.NewsSettings.update(settings.id, settings);
       } else {
-        const created = await base44.entities.ProducerSettings.create(settings);
+        const created = await base44.entities.NewsSettings.create(settings);
         setSettings(created);
       }
       if (prefs.id) {
@@ -127,10 +127,10 @@ export default function SettingsPage() {
         preferred_translation_language: 'en',
       };
       if (settings.id) {
-        await base44.entities.ProducerSettings.update(settings.id, defaults);
+        await base44.entities.NewsSettings.update(settings.id, defaults);
         setSettings({ ...settings, ...defaults });
       } else {
-        const created = await base44.entities.ProducerSettings.create(defaults);
+        const created = await base44.entities.NewsSettings.create(defaults);
         setSettings(created);
       }
       const defaultPrefs = {

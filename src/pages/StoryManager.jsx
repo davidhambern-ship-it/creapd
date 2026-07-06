@@ -204,7 +204,7 @@ export default function StoryManager() {
     setGeneratingAll(true);
     for (const article of stories) {
       try {
-        const res = await base44.functions.invoke('generateProductionPackage', {
+        const res = await base44.functions.invoke('buildNewsProduction', {
           article_id: article.id,
           asset_types: null,
           content_domain: bulkDomain,

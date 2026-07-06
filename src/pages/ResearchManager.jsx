@@ -132,7 +132,7 @@ export default function ResearchManager() {
     setGenerating(point.id);
     try {
       const preferredModels = safeParse(config.preferred_models, ['gemini_3_flash', 'gpt_5_mini', 'claude_sonnet_4_6']);
-      await base44.functions.invoke('generateSynthesizedPackage', {
+      await base44.functions.invoke('buildResearchProduction', {
         research_point_id: point.id,
         tone: config.tone,
         reading_style: config.reading_style,

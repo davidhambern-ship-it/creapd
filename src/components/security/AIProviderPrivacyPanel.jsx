@@ -24,7 +24,7 @@ export default function AIProviderPrivacyPanel() {
   useEffect(() => {
     (async () => {
       try {
-        const items = await base44.entities.ProducerSettings.list();
+        const items = await base44.entities.NewsSettings.list();
         if (items.length > 0) setSettings(items[0]);
       } catch (e) { /* ignore */ }
       setLoading(false);

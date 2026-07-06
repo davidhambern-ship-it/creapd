@@ -75,7 +75,7 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
 
   useEffect(() => {
     base44.entities.PromptTemplate.filter({ is_active: true }, '-created_date', 50).then(setPromptTemplates).catch(() => {});
-    base44.entities.ProducerSettings.filter({}, '-created_date', 1).then(res => {
+    base44.entities.NewsSettings.filter({}, '-created_date', 1).then(res => {
       if (res.length > 0) setPreferredTextModel(res[0].preferred_text_model || 'automatic');
     }).catch(() => {});
     base44.entities.ContentDomain.list().then(d => setContentDomains(d.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))).catch(() => {});
@@ -121,7 +121,7 @@ export default function PackageWorkspace({ article, pkg, onPackageUpdate, onPack
     } else if (selectedTemplateId) {
       params.prompt_template_id = selectedTemplateId;
     }
-    const res = await base44.functions.invoke('generateProductionPackage', params);
+    const res = await base44.functions.invoke('buildNewsProduction', params);
     return res.data.package;
   };
 
