@@ -113,10 +113,6 @@ export default function ResearchAssets() {
                   </div>
                 )}
 
-                <div className="mt-3 pt-3 border-t border-border/50">
-                  <PointMediaGenerator pkg={pkg} onMediaUpdate={refresh} />
-                </div>
-
                 <div className="!flex items-center justify-end mt-3">
                   <button
                     onClick={() => setExpanded(isExpanded ? null : pkg.id)}
@@ -124,6 +120,10 @@ export default function ResearchAssets() {
                   >
                     {isExpanded ? <><ChevronUp className="w-3 h-3" /> Less</> : <><ChevronDown className="w-3 h-3" /> Expand Full Package</>}
                   </button>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <PointMediaGenerator pkg={pkg} onMediaUpdate={refresh} />
                 </div>
               </div>
             );
