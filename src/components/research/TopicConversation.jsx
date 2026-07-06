@@ -27,6 +27,7 @@ function safeParse(str, fallback) {
 // Module-level cache — survives component remounts to prevent duplicate greeting audio
 let _cachedGreeting = null;
 let _cachedOfferedTopic = null;
+let _greetingAudioPlayed = false;
 
 export default function TopicConversation({ config, onClose, embedded = false }) {
   const [messages, setMessages] = useState([]);
@@ -468,14 +469,16 @@ export default function TopicConversation({ config, onClose, embedded = false })
           lastOfferedTopicRef.current = result.topic_data;
           _cachedOfferedTopic = result.topic_data;
         }
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || _greetingAudioPlayed) return;
+        _greetingAudioPlayed = true;
         speak(creapMessage);
       } catch (err) {
         const fallback = "Hey! I'm CREAP. What topic should we dig into today?";
         conversationHistoryRef.current.push({ role: 'assistant', content: fallback });
         setMessages([{ role: 'assistant', content: fallback }]);
         _cachedGreeting = fallback;
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || _greetingAudioPlayed) return;
+        _greetingAudioPlayed = true;
         speak(fallback);
       } finally {
         setThinking(false);
