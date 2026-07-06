@@ -153,7 +153,7 @@ export default function ResearchManager() {
   const selectedTopic = topicFilter ? topics.find(t => t.id === topicFilter) : null;
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="h-full overflow-y-auto p-6 md:p-8 space-y-6">
       <CreaprFocusBar researchData={researchData} />
 
       <div>
