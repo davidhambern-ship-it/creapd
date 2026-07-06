@@ -4,7 +4,6 @@ import PointMediaGenerator from '@/components/research/PointMediaGenerator';
 import { Loader2, FlaskConical, Sparkles, AlertCircle, ChevronDown, ChevronUp, Package, CheckCircle2 } from 'lucide-react';
 
 const ASSET_LABELS = {
-  story_summary: 'Story Summary',
   lower_third_text: 'Lower Third Text',
   headline_suggestions: 'Headline Suggestions',
   estimated_runtime: 'Estimated Runtime'

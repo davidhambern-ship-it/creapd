@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 const MEDIA_CENTER_FIELDS = {
-  teleprompter_script: 'Teleprompter Script',
+  story_summary: 'Teleprompter Script',
   talking_points: 'Talking Points',
   image_prompt: 'Image Prompt',
   thumbnail_prompt: 'Thumbnail Prompt',
@@ -36,10 +36,10 @@ export default function PointMediaGenerator({ pkg, onMediaUpdate }) {
     setGeneratingAll(true);
     setMediaStep('voiceover');
     try {
-      if (pkg.teleprompter_script) {
+      if (pkg.story_summary) {
         try {
           const vpResult = await base44.functions.invoke('generateVoicePackage', {
-            script_text: pkg.teleprompter_script,
+            script_text: pkg.story_summary,
             voice: 'river',
             language_code: 'en',
             source_type: 'production_package',
@@ -161,7 +161,7 @@ export default function PointMediaGenerator({ pkg, onMediaUpdate }) {
         <MediaGenerator
           pkg={pkg}
           mediaType="audio"
-          promptField="teleprompter_script"
+          promptField="story_summary"
           urlField="generated_audio_url"
           label="AI Voiceover"
           icon={Volume2}
