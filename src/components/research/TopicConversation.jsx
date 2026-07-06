@@ -54,6 +54,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const pendingNavigationRef = useRef(null);
   const voicePendingRef = useRef(false);
   const thinkingRef = useRef(false);
+  const speakGenRef = useRef(0);
   const userNameRef = useRef('');
   const showWizardRef = useRef(false);
   const creapSettingsRef = useRef(DEFAULT_CREAP_SETTINGS);
@@ -74,13 +75,17 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const speak = async (text) => {
     if (!text) return;
     if (audioRef.current) audioRef.current.pause();
+    const gen = ++speakGenRef.current;
     voicePendingRef.current = true;
     setSpeaking(true);
+    setAudioUrl(null);
     try {
       const response = await base44.functions.invoke('generateCreapSpeech', {
         text: text.substring(0, 5000),
         voice: creapSettingsRef.current.voice_id || 'daniel',
       });
+      // Stale request — a newer speak() superseded this one
+      if (gen !== speakGenRef.current) return;
       voicePendingRef.current = false;
       if (response?.data?.url) {
         setAudioUrl(response.data.url);
@@ -88,6 +93,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
         setSpeaking(false);
       }
     } catch (err) {
+      if (gen !== speakGenRef.current) return;
       voicePendingRef.current = false;
       setSpeaking(false);
       console.error('TTS failed:', err);
@@ -120,6 +126,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   };
 
   const stopAudio = () => {
+    speakGenRef.current++;
     voicePendingRef.current = false;
     if (audioRef.current) audioRef.current.pause();
     setSpeaking(false);
