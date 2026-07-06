@@ -8,7 +8,7 @@ import LibrarySubtitle from './LibrarySubtitle';
 import LibraryShelves from './LibraryShelves';
 import LibraryDesk from './LibraryDesk';
 import LibraryInput from './LibraryInput';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Volume2, VolumeX } from 'lucide-react';
 
 // Module-level audio lock — prevents overlapping TTS across instances
 let _audioLock = false;
@@ -27,7 +27,9 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const [inputEnabled, setInputEnabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loadingGreeting, setLoadingGreeting] = useState(true);
+  const [muted, setMuted] = useState(false);
 
+  const mutedRef = useRef(false);
   const loadingGreetingRef = useRef(true);
   const conversationHistoryRef = useRef([]);
   const assignmentRef = useRef({});
@@ -43,6 +45,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const speakLine = useCallback((text) => {
     return new Promise(async (resolve) => {
       if (!text || !isMountedRef.current) { resolve(); return; }
+      if (mutedRef.current) { resolve(); return; }
       if (_audioLock) { resolve(); return; }
       _audioLock = true;
       const gen = ++speakGenRef.current;
@@ -329,15 +332,34 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         </div>
       </div>
 
-      {!embedded && (
+      <div className="absolute top-4 right-4 flex items-center gap-2" style={{ zIndex: 15 }}>
         <button
-          onClick={() => { stopAudio(); onClose?.(); }}
-          className="absolute top-4 right-4 p-2.5 rounded-full transition-all hover:bg-white/5"
-          style={{ zIndex: 15, border: '1px solid hsl(40 30% 20% / 0.3)' }}
+          onClick={() => {
+            const next = !mutedRef.current;
+            mutedRef.current = next;
+            setMuted(next);
+            if (next) stopAudio();
+          }}
+          className="p-2.5 rounded-lg transition-all hover:bg-white/5"
+          style={{ border: `1px solid ${muted ? 'hsl(0 60% 45% / 0.4)' : 'hsl(190 60% 35% / 0.3)'}` }}
+          title={muted ? 'Unmute' : 'Mute'}
         >
-          <X className="w-5 h-5" style={{ color: 'hsl(220 10% 55%)' }} />
+          {muted ? (
+            <VolumeX className="w-5 h-5" style={{ color: 'hsl(0 60% 55%)' }} />
+          ) : (
+            <Volume2 className="w-5 h-5" style={{ color: 'hsl(190 90% 55%)' }} />
+          )}
         </button>
-      )}
+        {!embedded && (
+          <button
+            onClick={() => { stopAudio(); onClose?.(); }}
+            className="p-2.5 rounded-lg transition-all hover:bg-white/5"
+            style={{ border: '1px solid hsl(190 60% 35% / 0.3)' }}
+          >
+            <X className="w-5 h-5" style={{ color: 'hsl(220 10% 55%)' }} />
+          </button>
+        )}
+      </div>
 
       {shelves && (
         <LibraryShelves
