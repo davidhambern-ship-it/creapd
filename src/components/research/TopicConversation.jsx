@@ -9,7 +9,7 @@ import {
 import AnimatedText from '@/components/research/AnimatedText';
 import TopicWizard from '@/components/research/TopicWizard';
 
-const CREAP_VOICE = 'adam';
+const CREAP_VOICE = 'daniel';
 const MAX_NO_ATTEMPTS = 5;
 
 const CREAP_SYSTEM_PROMPT = `You are CREAP, a bold, energetic AI co-producer. You're chatting with a producer to find a research topic worth deep-diving.
