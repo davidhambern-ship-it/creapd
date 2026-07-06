@@ -136,7 +136,7 @@ export default function PipelineExplainer() {
             style={{ fontFamily: "'HollywoodDrive', sans-serif", letterSpacing: '0.05em', color: 'hsl(0 0% 70%)', textShadow: '0 0 8px hsl(25 95% 55% / 0.4)' }}
           >?</motion.span>
         </motion.h2>
-        <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto leading-relaxed" style={{ fontFamily: "'Robotica', sans-serif" }}>
+        <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto leading-relaxed tracking-[0.2em] uppercase">
           CREAPD helps creators turn ideas into complete productions. Choose a Production Profile,
           generate a structured package, create voice, media, and presentation assets, direct the
           final presentation, then export or share your finished production.
