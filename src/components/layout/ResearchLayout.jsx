@@ -30,7 +30,7 @@ export default function ResearchLayout() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+        <main className="flex-1 overflow-hidden">
           <Outlet />
         </main>
       </div>
