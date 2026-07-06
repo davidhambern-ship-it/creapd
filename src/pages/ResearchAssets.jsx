@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import PointMediaGenerator from '@/components/research/PointMediaGenerator';
-import { Loader2, FlaskConical, Sparkles, AlertCircle, ChevronDown, ChevronUp, Package, CheckCircle2 } from 'lucide-react';
+import SpecialistInsights from '@/components/research/SpecialistInsights';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, FlaskConical, Sparkles, AlertCircle, ChevronDown, ChevronUp, Package, CheckCircle2, Brain } from 'lucide-react';
 
 const ASSET_LABELS = {
   lower_third_text: 'Lower Third Text',
@@ -21,8 +23,17 @@ const MEDIA_CENTER_FIELDS = {
 };
 
 export default function ResearchAssets() {
-  const { config, packages, points, loading, refresh } = useResearchProduction();
+  const { config, packages, points, topics, dossiers, loading, refresh } = useResearchProduction();
   const [expanded, setExpanded] = useState(null);
+  const [showSpecialistInsights, setShowSpecialistInsights] = useState(false);
+
+  const getDossierForPackage = (pkg) => {
+    const point = points.find(p => p.id === pkg.source_entity_id);
+    if (!point) return null;
+    const topic = topics.find(t => t.id === point.topic_id);
+    if (!topic || !topic.dossier_id) return null;
+    return dossiers.find(d => d.id === topic.dossier_id) || null;
+  };
 
   if (loading) {
     return (
@@ -57,6 +68,18 @@ export default function ResearchAssets() {
           Production Packages
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Multi-model synthesized packages generated from your approved research points</p>
+
+        <div className="flex items-center gap-3 mt-4 p-3 rounded-lg glass-panel">
+          <Brain className="w-4 h-4 text-berna-purple" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Specialist Insights</p>
+            <p className="text-xs text-muted-foreground">Show debate potential, competing perspectives, gray areas & claim confidence</p>
+          </div>
+          <Switch
+            checked={showSpecialistInsights}
+            onCheckedChange={setShowSpecialistInsights}
+          />
+        </div>
       </div>
 
       {packagesWithPoints.length === 0 ? (
@@ -127,6 +150,11 @@ export default function ResearchAssets() {
                 <div className="mt-3 pt-3 border-t border-border/50">
                   <PointMediaGenerator pkg={pkg} point={point} onMediaUpdate={refresh} />
                 </div>
+
+                {showSpecialistInsights && (() => {
+                  const dossier = getDossierForPackage(pkg);
+                  return <SpecialistInsights dossier={dossier} />;
+                })()}
               </div>
             );
           })}

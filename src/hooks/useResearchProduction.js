@@ -6,6 +6,7 @@ export function useResearchProduction(configId) {
   const [topics, setTopics] = useState([]);
   const [points, setPoints] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [dossiers, setDossiers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -23,6 +24,7 @@ export function useResearchProduction(configId) {
         setTopics([]);
         setPoints([]);
         setPackages([]);
+        setDossiers([]);
         setLoading(false);
         return;
       }
@@ -50,6 +52,16 @@ export function useResearchProduction(configId) {
       pkgs = (pkgs || []).filter(pkg => pointIds.includes(pkg.source_entity_id));
     }
     setPackages(pkgs || []);
+
+    // Fetch dossiers for topics that have one
+    const dossierIds = (t || []).map(tp => tp.dossier_id).filter(Boolean);
+    let doss = [];
+    if (dossierIds.length > 0) {
+      doss = await base44.entities.ResearchDossier.filter({}, '-created_date');
+      doss = (doss || []).filter(d => dossierIds.includes(d.id));
+    }
+    setDossiers(doss);
+
     setLoading(false);
   }, [configId]);
 
@@ -57,5 +69,5 @@ export function useResearchProduction(configId) {
     loadAll();
   }, [loadAll]);
 
-  return { config, topics, points, packages, loading, refresh: loadAll };
+  return { config, topics, points, packages, dossiers, loading, refresh: loadAll };
 }
