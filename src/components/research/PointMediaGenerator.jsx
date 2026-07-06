@@ -143,7 +143,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
       {/* Package content fields that feed the media generation pipeline */}
       <div className="mb-3 space-y-2">
         {Object.entries(MEDIA_CENTER_FIELDS).map(([key, label]) => {
-          const value = key === 'talking_points' ? point?.significance : pkg[key];
+          const value = pkg[key];
           if (!value) return null;
           return (
             <div key={key} className="p-2.5 rounded-md bg-secondary/40 border border-white/[0.03]">

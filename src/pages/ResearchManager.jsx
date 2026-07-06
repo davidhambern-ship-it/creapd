@@ -30,6 +30,7 @@ export default function ResearchManager() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [expanded, setExpanded] = useState(null);
   const [generating, setGenerating] = useState(null);
+  const [approving, setApproving] = useState(null);
 
   const filteredPoints = useMemo(() => {
     let result = points;
@@ -61,7 +62,67 @@ export default function ResearchManager() {
   }
 
   const handleStatusChange = async (point, newStatus) => {
-    await base44.entities.ResearchPoint.update(point.id, { status: newStatus });
+    if (newStatus !== 'approved') {
+      await base44.entities.ResearchPoint.update(point.id, { status: newStatus });
+      refresh();
+      return;
+    }
+
+    setApproving(point.id);
+    try {
+      const keyFacts = safeParse(point.key_facts, []);
+      const factsText = keyFacts.length > 0
+        ? keyFacts.map((f, i) => `${i + 1}. ${f.fact} (Source: ${f.source || 'N/A'})`).join('\n')
+        : 'No key facts available.';
+
+      const llmResult = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a broadcast news producer and fact-checker.\n\nFULL STORY:\n${point.content || ''}\n\nKEY FACTS TO VERIFY:\n${factsText}\n\nBased on the Full Story above, write a detailed Story Summary — a broadcast-ready narration script that a host can read on air. Make it engaging, clear, and comprehensive.\n\nThen, review the Key Facts listed above. For each fact, verify it against the Full Story and your knowledge. Provide your fact-checking findings — note which facts are confirmed, which are questionable, and any corrections needed.\n\nReturn your response as JSON with two fields:\n- story_summary: the detailed broadcast-ready story summary\n- talking_points: your fact-check findings for each key fact`,
+        model: 'gemini_3_flash',
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            story_summary: { type: 'string' },
+            talking_points: { type: 'string' }
+          }
+        }
+      });
+
+      const storySummary = llmResult?.story_summary || '';
+      const talkingPoints = llmResult?.talking_points || '';
+
+      let pkg = null;
+      if (point.package_id) {
+        pkg = await base44.entities.ProductionPackage.update(point.package_id, {
+          story_summary: storySummary,
+          talking_points: talkingPoints,
+          status: 'generated',
+          generation_provider: 'gemini_3_flash'
+        });
+      } else {
+        pkg = await base44.entities.ProductionPackage.create({
+          source_entity_type: 'ResearchPoint',
+          source_entity_id: point.id,
+          configuration_id: point.configuration_id,
+          production_profile: 'news',
+          story_summary: storySummary,
+          talking_points: talkingPoints,
+          status: 'generated',
+          generation_provider: 'gemini_3_flash',
+          generation_count: 1
+        });
+      }
+
+      await base44.entities.ResearchPoint.update(point.id, {
+        status: 'approved',
+        package_id: pkg.id
+      });
+    } catch (err) {
+      console.error('Approval generation failed:', err);
+      await base44.entities.ResearchPoint.update(point.id, { status: 'approved' });
+    } finally {
+      setApproving(null);
+    }
     refresh();
   };
 
@@ -252,9 +313,12 @@ export default function ResearchManager() {
                       <>
                         <button
                           onClick={() => handleStatusChange(point, 'approved')}
-                          className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors !flex items-center gap-1"
+                          disabled={approving === point.id}
+                          className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors !flex items-center gap-1 disabled:opacity-50"
                         >
-                          <CheckCircle2 className="w-3 h-3" /> Approve
+                          {approving === point.id
+                            ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</>
+                            : <><CheckCircle2 className="w-3 h-3" /> Approve</>}
                         </button>
                         <button
                           onClick={() => handleStatusChange(point, 'rejected')}
@@ -299,6 +363,13 @@ export default function ResearchManager() {
                     )}
                   </div>
                 </div>
+
+                {approving === point.id && (
+                  <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 !flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                    <p className="text-sm text-emerald-400">Sending to Gemini for Story Summary & Fact Check...</p>
+                  </div>
+                )}
 
                 {generating === point.id && (
                   <div className="mt-3 p-3 rounded-lg bg-primary/10 !flex items-center gap-2">
