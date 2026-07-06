@@ -16,8 +16,8 @@ export default function CreaprFocusBar({ researchData }) {
   const engine = useCreaprEngine(researchData);
   const { config, points, refresh } = researchData;
 
-  // Connect the engine's narration queue to TTS audio playback
-  useCreaprNarration(engine, { voice: 'daniel' });
+  // Narration TTS disabled — only chat-rendered TTS should autoplay
+  useCreaprNarration(engine, { voice: 'daniel', enabled: false });
 
   // Track whether we've already emitted a packet for the current batch of pending points
   const lastPendingCountRef = useRef(0);
