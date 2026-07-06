@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useCreaprEngine } from '@/hooks/useCreaprEngine';
+import { useCreaprNarration } from '@/hooks/useCreaprNarration';
 import GuidedFocus from '@/components/creapr/GuidedFocus';
 import DecisionPacketPanel from '@/components/creapr/DecisionPacketPanel';
 
@@ -13,6 +14,9 @@ import DecisionPacketPanel from '@/components/creapr/DecisionPacketPanel';
 export default function CreaprFocusBar({ researchData }) {
   const engine = useCreaprEngine(researchData);
   const { config, points, refresh } = researchData;
+
+  // Connect the engine's narration queue to TTS audio playback
+  useCreaprNarration(engine, { voice: 'daniel' });
 
   // Track whether we've already emitted a packet for the current batch of pending points
   const lastPendingCountRef = useRef(0);
