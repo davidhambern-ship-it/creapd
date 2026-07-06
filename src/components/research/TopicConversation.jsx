@@ -584,19 +584,19 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
       {/* Messages */}
       <div className="relative flex-1 overflow-y-auto p-4 md:p-6" style={{ zIndex: 1 }}>
-        <div className="max-w-3xl mx-auto space-y-5">
+        <div className="max-w-3xl mx-auto space-y-3">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-3xl px-7 py-5 ${
+              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-emerald-600/90 text-white backdrop-blur-sm border border-emerald-400/30 shadow-lg shadow-emerald-500/20'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-emerald-600/90 text-white backdrop-blur-sm border border-emerald-400/30 shadow-md shadow-emerald-500/15'
               }`}>
                 <AnimatedText
                   text={msg.content}
                   variant={msg.role === 'user' ? 'user' : 'creap'}
-                  className={`whitespace-pre-line leading-relaxed ${msg.role === 'user' ? 'text-lg' : 'font-conv text-xl'}`}
-                  speed={msg.role === 'user' ? 50 : 75}
+                  className={`whitespace-pre-line leading-snug ${msg.role === 'user' ? 'text-sm' : 'font-conv text-base'}`}
+                  speed={msg.role === 'user' ? 40 : 60}
                 />
               </div>
             </div>
@@ -604,7 +604,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
           {thinking && (
             <div className="flex justify-start">
-              <div className="bg-secondary/90 backdrop-blur-sm border border-border/50 rounded-3xl px-6 py-5 flex items-center gap-2">
+              <div className="bg-secondary/90 backdrop-blur-sm border border-border/50 rounded-2xl px-4 py-3 flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-3 h-3 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-3 h-3 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: '300ms' }} />
