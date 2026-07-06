@@ -571,6 +571,75 @@
   animation: particle-float linear infinite;
 }
 
+/* ═══ CREAP Conversation Digital Motions ═══ */
+
+/* Scan line sweep across the screen */
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+.scan-line-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(152 60% 55% / 0.6), transparent);
+  box-shadow: 0 0 12px hsl(152 60% 55% / 0.4);
+  animation: scan-sweep 8s ease-in-out infinite;
+}
+
+/* Digital circuit lines */
+@keyframes circuit-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.4; }
+}
+.circuit-line {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, hsl(270 80% 70% / 0.3), transparent);
+  animation: circuit-pulse 4s ease-in-out infinite;
+}
+
+/* Binary stream falling */
+@keyframes binary-fall {
+  0% { transform: translateY(-20px); opacity: 0; }
+  10% { opacity: 0.25; }
+  90% { opacity: 0.25; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+.binary-stream {
+  position: absolute;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: hsl(152 60% 50% / 0.2);
+  white-space: pre;
+  line-height: 1.2;
+  animation: binary-fall linear infinite;
+  user-select: none;
+}
+
+/* Digital pulse rings */
+@keyframes digital-ring {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.digital-ring {
+  position: absolute;
+  border: 1px solid hsl(270 80% 70% / 0.15);
+  border-radius: 50%;
+  animation: digital-ring 6s ease-out infinite;
+}
+
+/* CREAPD themed gradient base */
+.creapd-bg-gradient {
+  background:
+    radial-gradient(ellipse at 15% 20%, hsl(270 80% 60% / 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 80%, hsl(25 95% 55% / 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, hsl(152 60% 45% / 0.03) 0%, transparent 60%),
+    hsl(220 20% 6%);
+}
+
 /* CREAP Conversation Font */
 @font-face {
   font-family: 'CreapConvFont';

@@ -485,15 +485,50 @@ export default function TopicConversation({ config, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 creapd-bg-gradient flex flex-col overflow-hidden">
       <audio ref={audioRef} onEnded={handleAudioEnded} onError={handleAudioEnded} />
 
-      {/* Animated background — non-interactive, behind everything */}
+      {/* Animated background — CREAPD themed digital motions, non-interactive */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
         <div className="absolute inset-0 creap-grid-bg" />
-        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-primary/8 blur-3xl animate-orb-1" />
-        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-accent/8 blur-3xl animate-orb-2" />
-        <div className="absolute -bottom-24 left-1/4 w-72 h-72 rounded-full bg-chart-3/8 blur-3xl animate-orb-3" />
+        {/* CREAPD themed orbs: purple, orange, emerald */}
+        <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-primary/10 blur-3xl animate-orb-1" />
+        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-accent/10 blur-3xl animate-orb-2" />
+        <div className="absolute -bottom-24 left-1/4 w-72 h-72 rounded-full bg-chart-3/10 blur-3xl animate-orb-3" />
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-primary/8 blur-3xl animate-orb-2" />
+
+        {/* Digital circuit lines */}
+        <div className="circuit-line w-full h-px top-1/4" style={{ animationDelay: '0s' }} />
+        <div className="circuit-line w-full h-px top-1/2" style={{ animationDelay: '1.5s' }} />
+        <div className="circuit-line w-full h-px top-3/4" style={{ animationDelay: '3s' }} />
+        <div className="circuit-line h-full w-px left-1/4" style={{ animationDelay: '0.5s', background: 'linear-gradient(180deg, transparent, hsl(25 95% 60% / 0.2), transparent)' }} />
+        <div className="circuit-line h-full w-px left-2/3" style={{ animationDelay: '2s', background: 'linear-gradient(180deg, transparent, hsl(152 60% 55% / 0.2), transparent)' }} />
+
+        {/* Digital pulse rings */}
+        <div className="digital-ring w-40 h-40 top-1/4 left-1/4" style={{ animationDelay: '0s' }} />
+        <div className="digital-ring w-60 h-60 bottom-1/4 right-1/3" style={{ animationDelay: '2s' }} />
+        <div className="digital-ring w-32 h-32 top-1/2 right-1/4" style={{ animationDelay: '4s' }} />
+
+        {/* Scan line sweep */}
+        <div className="scan-line-overlay" />
+
+        {/* Binary streams — CREAPD themed digital rain */}
+        {[0, 1, 2, 3, 4, 5].map(i => (
+          <div
+            key={`binary-${i}`}
+            className="binary-stream"
+            style={{
+              left: `${8 + i * 16}%`,
+              animationDuration: `${18 + i * 3}s`,
+              animationDelay: `${i * 2}s`,
+              color: i % 3 === 0 ? 'hsl(270 80% 70% / 0.18)' : i % 3 === 1 ? 'hsl(25 95% 60% / 0.15)' : 'hsl(152 60% 50% / 0.18)',
+            }}
+          >
+            {Array.from({ length: 30 }, () => Math.random() > 0.5 ? '1' : '0').join('\n')}
+          </div>
+        ))}
+
+        {/* Floating particle dots */}
         {[...Array(12)].map((_, i) => (
           <span
             key={i}
@@ -562,8 +597,8 @@ export default function TopicConversation({ config, onClose }) {
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-3xl px-7 py-5 ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                  : 'bg-secondary/90 text-secondary-foreground backdrop-blur-sm border border-border/50'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-emerald-600/90 text-white backdrop-blur-sm border border-emerald-400/30 shadow-lg shadow-emerald-500/20'
               }`}>
                 <AnimatedText
                   text={msg.content}
