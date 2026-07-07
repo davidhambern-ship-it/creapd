@@ -71,6 +71,20 @@
       ],
       "default": "pending"
     },
+    "pipeline_stage": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "approving",
+        "building",
+        "qa",
+        "assembling",
+        "complete",
+        "failed"
+      ],
+      "default": "idle",
+      "description": "Current stage of the automated RPP pipeline (RPP-AI-001 \u00a712)"
+    },
     "point_count": {
       "type": "number",
       "default": 0,

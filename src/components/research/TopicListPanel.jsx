@@ -6,6 +6,25 @@ import {
   Loader2, Search, Trash2, FileSearch, ExternalLink, BookMarked, Clock
 } from 'lucide-react';
 
+const PIPELINE_STAGE_LABELS = {
+  idle: null,
+  approving: 'Approving',
+  building: 'Building',
+  qa: 'QA Pending',
+  assembling: 'Assembling',
+  complete: 'Packet Ready',
+  failed: 'Failed',
+};
+
+const PIPELINE_STAGE_COLORS = {
+  approving: 'hsl(35 90% 55%)',
+  building: 'hsl(190 80% 55%)',
+  qa: 'hsl(270 80% 60%)',
+  assembling: 'hsl(152 60% 50%)',
+  complete: 'hsl(152 60% 50%)',
+  failed: 'hsl(0 70% 55%)',
+};
+
 const SPINE_GRADIENTS = [
   'linear-gradient(180deg, hsl(190 60% 22% / 0.6), hsl(190 50% 12% / 0.4))',
   'linear-gradient(180deg, hsl(270 50% 22% / 0.5), hsl(270 40% 12% / 0.4))',
@@ -59,6 +78,17 @@ function TopicCard({ topic, idx, researching, onResearch, onExtract, onDelete, h
           {topic.research_depth && <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" /> {topic.research_depth}</span>}
           {topic.point_count > 0 && <span>{topic.point_count} pts</span>}
           {topic.sources_count > 0 && <span>{topic.sources_count} src</span>}
+          {topic.pipeline_stage && topic.pipeline_stage !== 'idle' && PIPELINE_STAGE_LABELS[topic.pipeline_stage] && (
+            <span
+              className="px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
+              style={{ background: `${PIPELINE_STAGE_COLORS[topic.pipeline_stage]} / 0.15)`, color: PIPELINE_STAGE_COLORS[topic.pipeline_stage] }}
+            >
+              {(topic.pipeline_stage === 'building' || topic.pipeline_stage === 'qa' || topic.pipeline_stage === 'approving' || topic.pipeline_stage === 'assembling') && (
+                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+              )}
+              {PIPELINE_STAGE_LABELS[topic.pipeline_stage]}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1 pt-0.5">

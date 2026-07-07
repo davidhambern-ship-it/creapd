@@ -43,18 +43,13 @@ Deno.serve(async (req) => {
       quality_mode,     // 'draft' | 'standard' | 'professional' | 'broadcast'
       skip_qa,          // Skip the Review→QA→Controller pipeline (for non-asset tasks like topic mapping)
       configuration_id, // Research production configuration
+      pre_generated_content, // Pre-generated content — skips Generation Worker, goes straight to Review→QA→Controller
+      production_id,    // Associated production/topic ID for QualityReport tracing
     } = body;
 
     if (!worker_id || !department) {
       return Response.json({
         error: 'worker_id and department are required',
-      }, { status: 400 });
-    }
-
-    // ── Stage 1: Generation Worker ──
-    if (!task_prompt) {
-      return Response.json({
-        error: 'task_prompt is required for generation',
       }, { status: 400 });
     }
 
@@ -83,13 +78,27 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Unknown worker: ${worker_id}` }, { status: 400 });
     }
 
-    const genModel = getModelForCapability(workerCap.capability);
+    // ── Stage 1: Generation Worker ──
+    // If pre_generated_content is provided, skip generation (for QA on existing assets)
+    let generationResult;
+    let genModel;
+    if (pre_generated_content) {
+      generationResult = pre_generated_content;
+      genModel = 'pre_generated';
+    } else {
+      if (!task_prompt) {
+        return Response.json({
+          error: 'task_prompt is required for generation (or provide pre_generated_content)',
+        }, { status: 400 });
+      }
 
-    const generationResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: task_prompt,
-      model: genModel,
-      add_context_from_internet: workerCap.capability === 'deep_research',
-    });
+      genModel = getModelForCapability(workerCap.capability);
+      generationResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt: task_prompt,
+        model: genModel,
+        add_context_from_internet: workerCap.capability === 'deep_research',
+      });
+    }
 
     // ── Skip QA for non-asset tasks (e.g. topic intent mapping, research dispatch) ──
     if (skip_qa) {
@@ -186,6 +195,7 @@ ${typeof reviewResult === 'string' ? reviewResult : JSON.stringify(reviewResult,
       maximum_iterations: 5,
       production_profile: 'research',
       quality_mode: quality_mode || 'standard',
+      production_id: production_id || null,
     });
 
     // ── Stage 5: Controller Decision Engine ──

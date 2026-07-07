@@ -33,12 +33,16 @@ export default function ResearchTopics() {
   const usedCount = topics.filter(t => t.status === 'used').length;
   const totalSources = topics.reduce((sum, t) => sum + (t.source_count || 0), 0);
 
+  const pipelineActive = topics.some(t => t.pipeline_stage && t.pipeline_stage !== 'idle' && t.pipeline_stage !== 'complete');
+  const pipelineComplete = topics.some(t => t.pipeline_stage === 'complete');
+  const qaPendingCount = topics.filter(t => t.pipeline_stage === 'qa').length;
+
   const progressStages = {
     topics: topics.length > 0,
     research: researchedCount > 0,
-    dossier: topics.some(t => t.status === 'in_review' || t.status === 'used'),
-    develop: usedCount > 0,
-    packet: usedCount > 0,
+    dossier: topics.some(t => t.dossier_id),
+    develop: topics.some(t => ['building', 'qa', 'assembling', 'complete'].includes(t.pipeline_stage)),
+    packet: pipelineComplete,
   };
 
   useEffect(() => {
@@ -137,9 +141,15 @@ export default function ResearchTopics() {
     ? 'Define your research topic with CREAPr to begin.'
     : researchingCount > 0
       ? researchingCount + ' topic' + (researchingCount > 1 ? 's' : '') + ' currently being researched.'
-      : researchedCount > 0
-        ? 'Research complete — extract points or continue to the Dossier.'
-        : 'Your topic is defined — start research to gather knowledge.';
+      : pipelineActive
+        ? qaPendingCount > 0
+          ? qaPendingCount + ' topic' + (qaPendingCount > 1 ? 's' : '') + ' in QA — pipeline will auto-advance when all reports pass.'
+          : 'Automated pipeline running — building packages and assembling presentation.'
+        : pipelineComplete
+          ? 'Production packet ready — review your presentation.'
+          : researchedCount > 0
+            ? 'Research complete — extract points to launch the auto-pipeline.'
+            : 'Your topic is defined — start research to gather knowledge.';
 
   return (
     <div className="nc-shell">
