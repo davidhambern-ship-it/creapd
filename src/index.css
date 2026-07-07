@@ -1445,3 +1445,301 @@
 .animate-small-talk {
   animation: small-talk-fade 0.5s ease-out both;
 }
+
+/* ═══════════════════════════════════════════════════════ */
+/* ═══ CREAPr Library — Premium Digital Library (LIBIS-001) ═══ */
+/* ═════════════════════════════════════════════════════════ */
+
+/* Scene — warm premium library atmosphere */
+.plib-scene {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 25% 15%, hsl(35 28% 13% / 0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 85%, hsl(28 22% 11% / 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, hsl(30 12% 8% / 0.3) 0%, transparent 60%),
+    hsl(30 8% 5%);
+}
+
+/* Breathing ambient light */
+@keyframes plib-breathe {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.72; transform: scale(1.06); }
+}
+
+/* Dust particles */
+@keyframes plib-dust-float {
+  0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+  10% { opacity: 0.35; }
+  90% { opacity: 0.35; }
+  100% { transform: translate(40px, -100vh) scale(1); opacity: 0; }
+}
+.plib-dust {
+  position: absolute;
+  border-radius: 50%;
+  background: hsl(40 50% 75% / 0.4);
+  animation: plib-dust-float linear infinite;
+  pointer-events: none;
+}
+
+/* Glass reflection sweep */
+@keyframes plib-glass-sweep {
+  0%, 100% { transform: translateX(-150%) rotate(12deg); opacity: 0; }
+  50% { transform: translateX(150%) rotate(12deg); opacity: 1; }
+}
+.plib-glass-sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.plib-glass-sweep::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 0;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(105deg, transparent 40%, hsl(40 50% 80% / 0.03) 50%, transparent 60%);
+  animation: plib-glass-sweep 14s ease-in-out infinite;
+}
+
+/* Status indicator */
+@keyframes plib-status-pulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 4px currentColor; }
+  50% { opacity: 1; box-shadow: 0 0 10px currentColor; }
+}
+.plib-status-dot {
+  animation: plib-status-pulse 3s ease-in-out infinite;
+}
+
+/* OLED shelf label */
+.plib-shelf-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  background: hsl(30 12% 8% / 0.5);
+  backdrop-filter: blur(6px);
+  border: 1px solid hsl(35 18% 24% / 0.2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: hsl(40 28% 62%);
+  transition: all 0.3s ease;
+}
+
+/* Wing (bookshelf section) */
+.plib-wing {
+  position: relative;
+  border-radius: 0.625rem;
+  padding: 1rem;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: hsl(30 10% 7% / 0.5);
+  border: 1px solid hsl(35 12% 18% / 0.3);
+  backdrop-filter: blur(8px);
+}
+.plib-wing:hover {
+  background: hsl(30 14% 10% / 0.6);
+  border-color: hsl(35 22% 28% / 0.4);
+  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.3), 0 0 16px hsl(40 40% 30% / 0.06);
+  transform: translateY(-2px);
+}
+.plib-wing-focused {
+  background: hsl(35 18% 12% / 0.65);
+  border-color: hsl(40 32% 35% / 0.5);
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.35), 0 0 24px hsl(40 42% 35% / 0.1);
+}
+
+/* Wings container — neighbor dim on hover (lighting guidance) */
+.plib-wings-grid:hover .plib-wing {
+  opacity: 0.85;
+}
+.plib-wings-grid .plib-wing:hover {
+  opacity: 1;
+  filter: brightness(1.12);
+}
+
+/* Book spine */
+.plib-book-spine {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 2px 2px 0 0;
+  transition: all 180ms ease-out;
+  box-shadow: inset -2px 0 4px hsl(0 0% 0% / 0.3), inset 2px 0 2px hsl(0 0% 100% / 0.05);
+}
+.plib-book-spine-interactive {
+  cursor: pointer;
+}
+.plib-book-spine-interactive:hover {
+  transform: translateY(-12px);
+  box-shadow:
+    inset -2px 0 4px hsl(0 0% 0% / 0.3),
+    inset 2px 0 2px hsl(0 0% 100% / 0.1),
+    0 0 0 1px hsl(152 50% 50% / 0.3),
+    0 4px 12px hsl(0 0% 0% / 0.3),
+    0 0 12px hsl(152 50% 50% / 0.15);
+}
+
+/* Shelf plank */
+.plib-shelf-plank {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, hsl(28 22% 17%) 0%, hsl(28 18% 11%) 100%);
+  box-shadow: 0 2px 4px hsl(0 0% 0% / 0.3);
+}
+
+/* Typing cursor */
+@keyframes plib-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+.plib-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: hsl(38 60% 55%);
+  animation: plib-cursor-blink 0.7s ease-in-out infinite;
+  vertical-align: text-bottom;
+  margin-left: 3px;
+  border-radius: 1px;
+  transition: opacity 0.3s ease;
+}
+.plib-cursor-faded {
+  opacity: 0;
+}
+
+/* Message panel — glass */
+.plib-message-panel {
+  background: hsl(30 10% 7% / 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid hsl(35 16% 22% / 0.3);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
+}
+
+/* Research table surface */
+.plib-table-surface {
+  background: linear-gradient(180deg, hsl(28 20% 13% / 0.85) 0%, hsl(28 16% 8% / 0.95) 100%);
+  border: 1px solid hsl(35 18% 22% / 0.3);
+  box-shadow: 0 12px 48px hsl(0 0% 0% / 0.4), inset 0 1px 0 hsl(35 22% 28% / 0.1);
+  border-radius: 0.75rem;
+}
+
+/* Open book pages */
+.plib-book-page {
+  flex: 1;
+  min-height: 260px;
+  padding: 1.25rem;
+  position: relative;
+}
+.plib-book-page-left {
+  background: linear-gradient(135deg, hsl(35 22% 91% / 0.95) 0%, hsl(35 18% 87% / 0.95) 100%);
+  border-radius: 4px 0 0 4px;
+  box-shadow: inset -4px 0 8px hsl(0 0% 0% / 0.1);
+  color: hsl(30 22% 15%);
+}
+.plib-book-page-right {
+  background: linear-gradient(225deg, hsl(35 22% 91% / 0.95) 0%, hsl(35 18% 87% / 0.95) 100%);
+  border-radius: 0 4px 4px 0;
+  box-shadow: inset 4px 0 8px hsl(0 0% 0% / 0.1);
+  color: hsl(30 22% 15%);
+}
+.plib-book-spine-center {
+  width: 4px;
+  background: linear-gradient(180deg, hsl(0 0% 40% / 0.3) 0%, hsl(0 0% 15% / 0.5) 50%, hsl(0 0% 40% / 0.3) 100%);
+  box-shadow: 0 0 8px hsl(0 0% 0% / 0.3);
+  flex-shrink: 0;
+}
+
+/* Glass input panel */
+.plib-input-panel {
+  background: hsl(30 8% 7% / 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid hsl(35 15% 22% / 0.3);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
+}
+
+/* Knowledge dashboard — confidence indicator */
+.plib-dashboard {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  background: hsl(30 10% 8% / 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid hsl(35 15% 22% / 0.2);
+}
+.plib-dashboard-bar {
+  width: 80px;
+  height: 3px;
+  border-radius: 2px;
+  background: hsl(30 10% 15% / 0.5);
+  overflow: hidden;
+}
+.plib-dashboard-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, hsl(38 55% 50%), hsl(152 45% 48%));
+  transition: width 1s ease;
+}
+
+/* Entrance animations */
+@keyframes plib-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.plib-animate-fade-up { animation: plib-fade-up 0.5s ease-out both; }
+
+@keyframes plib-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+.plib-animate-scale-in { animation: plib-scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Stagger delays */
+.plib-stagger-1 { animation-delay: 0.05s; }
+.plib-stagger-2 { animation-delay: 0.1s; }
+.plib-stagger-3 { animation-delay: 0.15s; }
+.plib-stagger-4 { animation-delay: 0.2s; }
+.plib-stagger-5 { animation-delay: 0.25s; }
+.plib-stagger-6 { animation-delay: 0.3s; }
+
+/* RSS shelf — warm themed */
+.plib-rss-shelf {
+  height: 36px;
+  overflow: hidden;
+  border-top: 1px solid hsl(35 15% 18% / 0.2);
+  background: hsl(30 8% 4% / 0.5);
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+@keyframes plib-rss-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.plib-rss-track {
+  display: flex;
+  gap: 2rem;
+  animation: plib-rss-scroll 45s linear infinite;
+  width: max-content;
+  padding: 0 1rem;
+}
+.plib-rss-shelf:hover .plib-rss-track {
+  animation-play-state: paused;
+}
+.plib-rss-item {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 11px;
+  white-space: nowrap;
+}

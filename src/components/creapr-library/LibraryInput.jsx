@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Send, Loader2 } from 'lucide-react';
 
-export default function LibraryInput({ onSend, disabled, listening, onToggleListen, thinking, placeholder }) {
+export default function LibraryInput({ onSend, onStartTyping, disabled, listening, onToggleListen, thinking, placeholder }) {
   const [text, setText] = useState('');
   const [interim, setInterim] = useState('');
   const [speechSupported, setSpeechSupported] = useState(true);
@@ -51,77 +51,71 @@ export default function LibraryInput({ onSend, disabled, listening, onToggleList
     setInterim('');
   };
 
+  const handleChange = (e) => {
+    setText(e.target.value);
+    setInterim('');
+    onStartTyping?.();
+  };
+
   const canSend = !disabled && !thinking && (text.trim() || interim);
 
   return (
     <AnimatePresence>
       <motion.div
-        className="absolute bottom-0 left-0 right-0 p-4 md:p-6"
+        className="absolute bottom-12 left-0 right-0 p-4 md:p-6"
         style={{ zIndex: 25 }}
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: disabled ? 0.3 : 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        animate={{ opacity: disabled ? 0.4 : 1, y: 0 }}
+        transition={{ duration: 0.4 }}
       >
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           {speechSupported && (
             <button
               onClick={() => onToggleListen(!listening)}
               disabled={disabled}
-              className={`shrink-0 w-12 h-12 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 ${
-                listening ? 'bg-red-500/80 text-white animate-pulse' : 'bg-white/5 hover:bg-white/10'
+              className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 ${
+                listening ? 'animate-pulse' : 'hover:bg-white/5'
               }`}
               style={{
-                border: '1px solid hsl(190 60% 40% / 0.3)',
-                boxShadow: listening ? '0 0 16px hsl(0 72% 51% / 0.4)' : '0 0 8px hsl(190 90% 50% / 0.1)',
+                background: listening ? 'hsl(0 50% 40% / 0.3)' : 'hsl(30 10% 8% / 0.5)',
+                border: `1px solid ${listening ? 'hsl(0 50% 45% / 0.4)' : 'hsl(35 18% 24% / 0.3)'}`,
+                color: listening ? 'hsl(0 60% 60%)' : 'hsl(38 45% 52%)',
               }}
             >
-              <Mic className="w-5 h-5" style={{ color: listening ? '#fff' : 'hsl(190 90% 55%)' }} />
+              <Mic className="w-5 h-5" />
             </button>
           )}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative plib-input-panel">
             <input
               ref={inputRef}
               type="text"
               value={interim || text}
-              onChange={e => { setText(e.target.value); setInterim(''); }}
+              onChange={handleChange}
               onKeyDown={e => { if (e.key === 'Enter' && canSend) handleSend(); }}
               disabled={disabled}
-              placeholder={listening ? 'Listening...' : thinking ? 'CREAPr is processing...' : placeholder || 'Speak or type...'}
-              className="w-full h-12 px-5 pr-12 rounded-lg text-sm font-mono outline-none transition-all disabled:opacity-50"
+              placeholder={listening ? 'Listening...' : thinking ? 'CREAPr is thinking...' : placeholder || 'Type or speak...'}
+              className="w-full h-11 px-5 pr-12 rounded-lg text-sm outline-none transition-all disabled:opacity-50 bg-transparent"
               style={{
-                background: 'hsl(220 35% 4% / 0.7)',
-                border: '1px solid hsl(190 60% 35% / 0.3)',
-                color: 'hsl(0 0% 90%)',
-                backdropFilter: 'blur(8px)',
-                boxShadow: 'inset 0 1px 0 hsl(190 50% 30% / 0.1)',
+                color: 'hsl(35 18% 88%)',
+                fontFamily: '"Inter", sans-serif',
               }}
-            />
-            {/* Top scan line accent */}
-            <div
-              className="absolute top-0 left-0 right-0 h-px pointer-events-none rounded-t-lg"
-              style={{ background: 'linear-gradient(90deg, transparent, hsl(190 90% 55% / 0.4), transparent)' }}
             />
             {canSend && (
               <button
                 onClick={() => handleSend()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all hover:bg-white/10"
-                style={{ color: 'hsl(152 60% 50%)' }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all hover:bg-white/5"
+                style={{ color: 'hsl(152 42% 48%)' }}
               >
                 <Send className="w-5 h-5" />
               </button>
             )}
             {thinking && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'hsl(190 90% 55%)' }} />
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'hsl(38 50% 52%)' }} />
               </div>
             )}
           </div>
         </div>
-        {listening && (
-          <p className="text-center text-xs mt-2 animate-pulse font-mono" style={{ color: 'hsl(0 60% 55%)' }}>
-            ▮ AUDIO INPUT ACTIVE — SPEAK NOW
-          </p>
-        )}
       </motion.div>
     </AnimatePresence>
   );
