@@ -74,18 +74,17 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
       <div
         className="relative mx-4 mb-4 rounded-lg overflow-hidden"
         style={{
-          height: '320px',
-          background: 'hsl(190 30% 4% / 0.35)',
-          border: '1px solid hsl(190 40% 50% / 0.12)',
-          boxShadow: 'inset 0 2px 8px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
-          backdropFilter: 'blur(4px)',
+        height: '320px',
+        background: 'transparent',
+        border: '1px solid hsl(190 40% 50% / 0.12)',
+        backdropFilter: 'blur(4px)',
         }}
       >
         {/* Fade mask top + bottom */}
         <div className="absolute top-0 left-0 right-0 h-4 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(180deg, hsl(190 30% 4% / 0.95), transparent)' }} />
+          style={{ background: 'linear-gradient(180deg, transparent, transparent)' }} />
         <div className="absolute bottom-0 left-0 right-0 h-4 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(0deg, hsl(190 30% 4% / 0.95), transparent)' }} />
+          style={{ background: 'linear-gradient(0deg, transparent, transparent)' }} />
 
         <div className="cabinet-screen-track py-2">
           {[...scrollText, ...scrollText].map((block, i) => (
