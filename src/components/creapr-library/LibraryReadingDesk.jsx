@@ -6,7 +6,7 @@ import { BookOpen, Feather } from 'lucide-react';
  * A central reading desk that anchors the library scene.
  * Shows an open book with a warm lamp glow when in idle/overview state.
  */
-export default function LibraryReadingDesk({ thinking, greeting }) {
+export default function LibraryReadingDesk({ thinking, greeting, message }) {
   return (
     <motion.div
       className="absolute left-1/2 -translate-x-1/2"
@@ -113,9 +113,9 @@ export default function LibraryReadingDesk({ thinking, greeting }) {
           }}
         />
 
-        {/* Right page */}
+        {/* Right page — CREAPr narration */}
         <div
-          className="flex-1 p-4 relative overflow-hidden"
+          className="flex-1 p-4 relative overflow-hidden flex flex-col"
           style={{
             minHeight: '120px',
             background: 'linear-gradient(225deg, hsl(36 30% 88%) 0%, hsl(34 25% 82%) 100%)',
@@ -123,23 +123,43 @@ export default function LibraryReadingDesk({ thinking, greeting }) {
             boxShadow: 'inset 3px 0 6px hsl(0 0% 0% / 0.08)',
           }}
         >
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2 shrink-0">
             <BookOpen style={{ width: '12px', height: '12px', color: 'hsl(35 35% 40%)' }} />
             <span style={{ fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'hsl(35 25% 45%)', fontFamily: '"Oswald", sans-serif', fontWeight: 600 }}>
               CREAPr Journal
             </span>
           </div>
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              style={{
-                height: '1px',
-                background: 'hsl(30 20% 60% / 0.3)',
-                marginBottom: '8px',
-                width: `${80 - i * 8}%`,
-              }}
-            />
-          ))}
+          <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+            {message ? (
+              <motion.p
+                key={message}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+                style={{
+                  fontSize: '10px',
+                  lineHeight: '1.6',
+                  color: 'hsl(30 25% 20%)',
+                  fontFamily: 'Georgia, serif',
+                }}
+              >
+                {message}
+                {!thinking && <span className="plib-cursor" />}
+              </motion.p>
+            ) : (
+              [...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: '1px',
+                    background: 'hsl(30 20% 60% / 0.3)',
+                    marginBottom: '8px',
+                    width: `${80 - i * 8}%`,
+                  }}
+                />
+              ))
+            )}
+          </div>
           {thinking && (
             <motion.div
               className="absolute bottom-3 right-3"

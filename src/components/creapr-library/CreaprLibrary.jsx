@@ -64,6 +64,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const [focusedWing, setFocusedWing] = useState(null);
   const [completionConfidence, setCompletionConfidence] = useState(0);
   const [tourActive, setTourActive] = useState(false);
+  const [lastMessage, setLastMessage] = useState('');
 
   const isMountedRef = useRef(true);
   const conversationHistoryRef = useRef([]);
@@ -85,7 +86,9 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       if (!isMountedRef.current) return;
       loadingGreetingRef.current = false;
       setLoadingGreeting(false);
-      conversationHistoryRef.current.push({ role: 'assistant', content: result.spoken_lines.join(' ') });
+      const greetingText = result.spoken_lines.join(' ');
+      conversationHistoryRef.current.push({ role: 'assistant', content: greetingText });
+      setLastMessage(greetingText);
       setCompletionConfidence(result.completion_confidence || 0);
       setInputEnabled(true);
     } catch {
@@ -93,7 +96,9 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       loadingGreetingRef.current = false;
       setLoadingGreeting(false);
       const fallback = ["Welcome to the library.", "What are we looking for today?"];
-      conversationHistoryRef.current.push({ role: 'assistant', content: fallback.join(' ') });
+      const fallbackText = fallback.join(' ');
+      conversationHistoryRef.current.push({ role: 'assistant', content: fallbackText });
+      setLastMessage(fallbackText);
       setInputEnabled(true);
     }
   }, [config]);
@@ -161,7 +166,9 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     const result = brainResponse.department_result || {};
     const spokenLines = result.spoken_lines || (brainResponse.message_to_user ? [brainResponse.message_to_user] : ["Let me try that again."]);
 
-    conversationHistoryRef.current.push({ role: 'assistant', content: spokenLines.join(' ') });
+    const responseText = spokenLines.join(' ');
+    conversationHistoryRef.current.push({ role: 'assistant', content: responseText });
+    setLastMessage(responseText);
 
     if (result.assignment_update) {
       assignmentRef.current = { ...assignmentRef.current, ...result.assignment_update };
@@ -332,7 +339,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
       {/* Central reading desk — idle/overview state */}
       {view === 'overview' && !wings && !showLoading && (
-        <LibraryReadingDesk thinking={thinking} greeting={!loadingGreeting} />
+        <LibraryReadingDesk thinking={thinking} greeting={!loadingGreeting} message={lastMessage} />
       )}
 
       {/* Wings — spatial category browsing */}
