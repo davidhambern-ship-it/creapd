@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, Sparkles, PerspectiveCamera } from '@react-three/drei';
+import { Float, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 const BOOK_COLORS = [
@@ -100,6 +100,38 @@ function CeilingLight({ position, intensity }) {
   );
 }
 
+function DustParticle({ index }) {
+  const ref = useRef();
+  const data = useMemo(() => ({
+    x: (Math.random() - 0.5) * 10,
+    y: Math.random() * 6 - 1,
+    z: (Math.random() - 0.5) * 6,
+    speed: 0.2 + Math.random() * 0.4,
+    offset: Math.random() * 10,
+    scale: 0.02 + Math.random() * 0.03,
+  }), []);
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const t = clock.elapsedTime;
+    ref.current.position.y = data.y + Math.sin(t * data.speed + data.offset) * 0.5;
+    ref.current.position.x = data.x + Math.cos(t * data.speed * 0.7 + data.offset) * 0.3;
+  });
+  return (
+    <mesh ref={ref} position={[data.x, data.y, data.z]} scale={data.scale}>
+      <sphereGeometry args={[1, 6, 6]} />
+      <meshBasicMaterial color="#ffc080" transparent opacity={0.5} />
+    </mesh>
+  );
+}
+
+function DustParticles({ count }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => <DustParticle key={i} index={i} />)}
+    </>
+  );
+}
+
 function DeskLamp({ intensity }) {
   return (
     <group position={[0, -1.4, 2]}>
@@ -177,14 +209,7 @@ export default function Workspace3DScene({ intensity = 'calm' }) {
       <CeilingLight position={[2, 3.5, 0]} intensity={lightIntensity * 0.9} />
       <CeilingLight position={[0, 3.5, -1]} intensity={lightIntensity * 0.7} />
 
-      <Sparkles
-        count={sparkleCount}
-        scale={[10, 6, 6]}
-        size={1.5}
-        speed={0.3}
-        color="#ffc080"
-        opacity={0.4}
-      />
+      <DustParticles count={sparkleCount} />
     </Canvas>
   );
 }
