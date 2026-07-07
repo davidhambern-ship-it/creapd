@@ -29,6 +29,35 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const processingRef = useRef(false);
   const messagesEndRef = useRef(null);
 
+  const sessionKey = `creapr_conv_${config?.id || 'default'}`;
+
+  const persistSession = useCallback(() => {
+    try {
+      sessionStorage.setItem(sessionKey, JSON.stringify({
+        history: conversationHistoryRef.current,
+        assignment: assignmentRef.current,
+      }));
+    } catch {}
+  }, [sessionKey]);
+
+  const restoreSession = useCallback(() => {
+    try {
+      const saved = sessionStorage.getItem(sessionKey);
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      if (parsed.history?.length > 0) {
+        conversationHistoryRef.current = parsed.history;
+        assignmentRef.current = parsed.assignment || {};
+        return parsed;
+      }
+    } catch {}
+    return null;
+  }, [sessionKey]);
+
+  const clearSession = useCallback(() => {
+    try { sessionStorage.removeItem(sessionKey); } catch {}
+  }, [sessionKey]);
+
   const handleGenerateGreeting = useCallback(async () => {
     if (!isMountedRef.current) return;
     const enhancedConfig = { ...config, _userName: userNameRef.current };
@@ -66,6 +95,17 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         const user = await base44.auth.me();
         if (user?.full_name) userNameRef.current = user.full_name;
       } catch {}
+
+      const restored = restoreSession();
+      if (restored) {
+        setLoadingGreeting(false);
+        setMessages(restored.history);
+        setAssignment(restored.assignment || null);
+        setCompletionConfidence(restored.assignment?.completion_confidence || 0);
+        setInputEnabled(true);
+        return;
+      }
+
       handleGenerateGreeting();
 
       timeoutId = setTimeout(() => {
@@ -126,6 +166,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     const responseText = spokenLines.join(' ');
     conversationHistoryRef.current.push({ role: 'assistant', content: responseText });
     setMessages(prev => [...prev, { role: 'assistant', content: responseText }]);
+    persistSession();
 
     if (result.assignment_update) {
       assignmentRef.current = { ...assignmentRef.current, ...result.assignment_update };
@@ -200,8 +241,9 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     setCompletionConfidence(0);
     setLoadingGreeting(true);
     setMessages([]);
+    clearSession();
     handleGenerateGreeting();
-  }, [handleGenerateGreeting]);
+  }, [handleGenerateGreeting, clearSession]);
 
   const handleSend = () => {
     const trimmed = input.trim();
