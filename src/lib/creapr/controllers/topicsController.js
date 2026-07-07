@@ -154,6 +154,9 @@ Greet the producer naturally and conversationally. Be warm, specific to them, an
       const salvage = result.message || result.message_to_user || result.response || result.text;
       result.spoken_lines = salvage ? [String(salvage)] : FALLBACK_GREETING.spoken_lines;
     }
+    result.spoken_lines = result.spoken_lines.map(line =>
+      typeof line === 'string' ? line : (line?.text || line?.message || JSON.stringify(line))
+    );
 
     if (memory?.id) {
       updateCreaprMemory(memory.id, {
@@ -282,6 +285,10 @@ Return your response as JSON.`;
       const salvage = result.message || result.message_to_user || result.response || result.text;
       result.spoken_lines = salvage ? [String(salvage)] : FALLBACK_RESPONSE.spoken_lines;
     }
+    // Coerce every element to a string — LLMs sometimes return objects inside the array
+    result.spoken_lines = result.spoken_lines.map(line =>
+      typeof line === 'string' ? line : (line?.text || line?.message || JSON.stringify(line))
+    );
     return result;
   } catch {
     return FALLBACK_RESPONSE;
