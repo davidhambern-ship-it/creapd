@@ -1,9 +1,9 @@
 import React from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
-import { ChevronLeft, Volume2, VolumeX, CheckCircle2, Circle } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Circle } from 'lucide-react';
 
-export default function RPPDepartmentNav({ config, progressStages = {}, researchingCount = 0, voiceEnabled, onToggleVoice }) {
+export default function RPPDepartmentNav({ config, progressStages = {}, researchingCount = 0 }) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -63,7 +63,7 @@ export default function RPPDepartmentNav({ config, progressStages = {}, research
         })}
       </nav>
 
-      {/* Right: Progress + Voice */}
+      {/* Right: Progress */}
       <div className="rpp-topbar-actions">
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'hsl(190 30% 10% / 0.3)', border: '1px solid hsl(190 25% 18% / 0.3)' }}>
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Readiness</span>
@@ -75,13 +75,6 @@ export default function RPPDepartmentNav({ config, progressStages = {}, research
             />
           </div>
         </div>
-        <button
-          onClick={onToggleVoice}
-          className={`p-2 rounded-lg transition-colors ${voiceEnabled ? 'text-amber-400 bg-amber-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-          title={voiceEnabled ? 'Voice on' : 'Voice off'}
-        >
-          {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-        </button>
       </div>
     </header>
   );

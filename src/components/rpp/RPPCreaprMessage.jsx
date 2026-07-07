@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, VolumeX, Send, MessageSquare, ChevronDown, BookOpen } from 'lucide-react';
+import { Send, ChevronDown, BookOpen } from 'lucide-react';
 
-export default function RPPCreaprMessage({ messages = [], voiceEnabled, onToggleVoice, onSendMessage, onSpeak, onCollapse }) {
+export default function RPPCreaprMessage({ messages = [], onSendMessage, onCollapse }) {
   const [input, setInput] = useState('');
   const [displayedText, setDisplayedText] = useState('');
   const messagesEndRef = useRef(null);
@@ -29,14 +29,13 @@ export default function RPPCreaprMessage({ messages = [], voiceEnabled, onToggle
       } else {
         clearInterval(typingIntervalRef.current);
         typingIntervalRef.current = null;
-        if (voiceEnabled && onSpeak) onSpeak(lastMessage.text);
       }
     }, 25);
 
     return () => {
       if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
     };
-  }, [lastMessage, voiceEnabled, onSpeak]);
+  }, [lastMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -72,13 +71,6 @@ export default function RPPCreaprMessage({ messages = [], voiceEnabled, onToggle
             Online · Library Assistant
           </p>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleVoice(); }}
-          className={`p-1.5 rounded-md transition-colors shrink-0 ${voiceEnabled ? 'text-amber-400 bg-amber-500/10' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-          title={voiceEnabled ? 'Voice on' : 'Voice off'}
-        >
-          {voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-        </button>
         <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
       </div>
 
