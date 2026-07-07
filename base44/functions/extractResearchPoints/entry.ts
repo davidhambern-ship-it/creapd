@@ -181,10 +181,18 @@ Return a JSON array of point objects with these fields:
       point_count: pointRecords.length
     });
 
+    // ── Auto-advance: kick off the Develop → Packet pipeline (§12) ──
+    // Fire-and-forget — extractResearchPoints returns immediately while
+    // rppAutoAdvance runs in the background to build packages + assemble packet.
+    base44.functions.invoke('rppAutoAdvance', { topic_id }).catch(err => {
+      console.error('rppAutoAdvance failed:', err.message);
+    });
+
     return Response.json({
       success: true,
       topic_id,
-      points_extracted: pointRecords.length
+      points_extracted: pointRecords.length,
+      auto_advance_triggered: true
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

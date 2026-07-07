@@ -64,6 +64,8 @@
         "in_review",
         "selected",
         "used",
+        "developed",
+        "packet_ready",
         "rejected",
         "archived"
       ],
