@@ -37,6 +37,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const userNameRef = useRef('');
   const audioRef = useRef(null);
   const speakGenRef = useRef(0);
+  const speakLinesGenRef = useRef(0);
   const isMountedRef = useRef(true);
   const subtitleDoneRef = useRef(null);
   const completionRef = useRef(0);
@@ -73,6 +74,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
   const stopAudio = useCallback(() => {
     speakGenRef.current++;
+    speakLinesGenRef.current++;
     _audioLock = false;
     if (audioRef.current) {
       audioRef.current.onended = null;
@@ -85,12 +87,15 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
   const speakLines = useCallback(async (lines, onComplete) => {
     if (!lines || lines.length === 0) { onComplete?.(); return; }
+    const gen = ++speakLinesGenRef.current;
     setSubtitleLines(lines);
     subtitleDoneRef.current = onComplete;
     for (let i = 0; i < lines.length; i++) {
       if (!isMountedRef.current) return;
+      if (gen !== speakLinesGenRef.current) return;
       await speakLine(lines[i]);
       if (!isMountedRef.current) return;
+      if (gen !== speakLinesGenRef.current) return;
       await new Promise(r => setTimeout(r, 600));
     }
   }, [speakLine]);
