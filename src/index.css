@@ -640,6 +640,148 @@
     hsl(220 20% 6%);
 }
 
+/* ═══ Research Production Profile — Institute Aesthetic ═══ */
+
+.rpp-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: hsl(220 18% 7%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient living environment — subtle, professional */
+.rpp-ambient-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 15% 20%, hsl(270 50% 12% / 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 80%, hsl(190 50% 12% / 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, hsl(220 15% 10% / 0.20) 0%, transparent 60%),
+    hsl(220 18% 7%);
+}
+
+.rpp-ambient-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(hsl(220 15% 15% / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(220 15% 15% / 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-pan 40s linear infinite;
+}
+
+/* Soft animated status indicator dots */
+.rpp-ambient-bg::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  right: 10%;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsl(152 50% 40% / 0.04) 0%, transparent 70%);
+  animation: orb-drift-3 20s ease-in-out infinite;
+  filter: blur(40px);
+}
+
+/* Top bar — persistent shell */
+.rpp-topbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.625rem 1rem;
+  background: hsl(220 20% 9% / 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid hsl(220 15% 15%);
+  flex-shrink: 0;
+}
+
+/* Progress bar — below top bar */
+.rpp-progress-bar {
+  position: relative;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: hsl(220 20% 8% / 0.6);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid hsl(220 15% 12%);
+  flex-shrink: 0;
+}
+
+/* Main workspace — departments replace only this */
+.rpp-workspace {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Lobby styles */
+.rpp-lobby {
+  min-height: 100%;
+  padding-bottom: 6rem;
+}
+
+/* Continue card */
+.rpp-continue-card {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, hsl(270 50% 15% / 0.20), hsl(220 30% 10% / 0.30));
+  border: 1px solid hsl(270 50% 30% / 0.25);
+  transition: all 0.25s ease;
+}
+.rpp-continue-card:hover {
+  border-color: hsl(270 60% 40% / 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px hsl(270 50% 20% / 0.15);
+}
+
+/* Department directory card */
+.rpp-dept-card {
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  background: hsl(220 18% 10% / 0.50);
+  border: 1px solid hsl(220 15% 15%);
+  transition: all 0.25s ease;
+  backdrop-filter: blur(8px);
+}
+.rpp-dept-card:hover {
+  background: hsl(220 18% 12% / 0.60);
+  border-color: hsl(270 50% 35% / 0.30);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px hsl(220 30% 4% / 0.4);
+}
+
+/* Generic panel */
+.rpp-panel {
+  border-radius: 0.75rem;
+  background: hsl(220 18% 10% / 0.50);
+  border: 1px solid hsl(220 15% 15%);
+  backdrop-filter: blur(8px);
+}
+
+/* CREAPr message panel */
+.rpp-message-panel {
+  border-radius: 0.875rem;
+  background: hsl(220 20% 11% / 0.92);
+  border: 1px solid hsl(220 15% 18%);
+  backdrop-filter: blur(16px);
+  padding: 1rem 1.25rem;
+  box-shadow: 0 8px 32px hsl(220 40% 4% / 0.5);
+}
+
 /* CREAP Conversation Font */
 @font-face {
   font-family: 'CreapConvFont';

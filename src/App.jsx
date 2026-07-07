@@ -100,7 +100,8 @@ import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
 import CosmoLayout from '@/components/layout/CosmoLayout';
-import ResearchLayout from '@/components/layout/ResearchLayout';
+import RPPShell from '@/components/rpp/RPPShell';
+import RPPLobby from '@/pages/RPPLobby';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
@@ -252,10 +253,11 @@ const AuthenticatedApp = () => {
           <Route path="/cosmo/export" element={<CosmoExport />} />
         </Route>
 
-        {/* Research Production */}
-        <Route element={<ResearchLayout />}>
+        {/* Research Production Profile */}
+        <Route element={<RPPShell />}>
+          <Route path="/research" element={<RPPLobby />} />
+          <Route path="/research/dashboard" element={<Navigate to="/research" replace />} />
           <Route path="/research/configure" element={<ResearchConfigure />} />
-          <Route path="/research/dashboard" element={<ResearchDashboard />} />
           <Route path="/research/topics" element={<ResearchTopics />} />
           <Route path="/research/manager" element={<ResearchManager />} />
           <Route path="/research/assets" element={<ResearchAssets />} />
