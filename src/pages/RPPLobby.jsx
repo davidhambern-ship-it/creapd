@@ -5,7 +5,10 @@ import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
 import { base44 } from '@/api/base44Client';
 import { Loader2, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
 import DepartmentCabinet from '@/components/rpp/lobby/DepartmentCabinet';
-import LobbyHoloBackground from '@/components/rpp/lobby/LobbyHoloBackground';
+import NerveCenterBackground from '@/components/rpp/lobby/NerveCenterBackground';
+import NerveCenterTopBar from '@/components/rpp/lobby/NerveCenterTopBar';
+import NerveCenterSideRail from '@/components/rpp/lobby/NerveCenterSideRail';
+import NerveCenterBottomConsole from '@/components/rpp/lobby/NerveCenterBottomConsole';
 
 function getDeptStatus(deptId, topics, points, packages, dossiers) {
   const researchingTopics = topics.filter(t => t.status === 'researching');
@@ -91,8 +94,15 @@ export default function RPPLobby() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'hsl(190 80% 55%)' }} />
+      <div className="nc-shell">
+        <NerveCenterBackground />
+        <NerveCenterTopBar readiness={0} />
+        <div className="nc-body">
+          <div className="nc-viewport flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'hsl(190 80% 55%)' }} />
+          </div>
+        </div>
+        <NerveCenterBottomConsole />
       </div>
     );
   }
@@ -100,88 +110,96 @@ export default function RPPLobby() {
   const firstName = userName || 'there';
 
   return (
-    <div className="rpp-lobby h-full overflow-y-auto px-4 md:px-8 py-6 md:py-10 relative">
-      <LobbyHoloBackground />
-      <div className="max-w-6xl mx-auto relative" style={{ zIndex: 1 }}>
-        {/* ═══ Hero ═══ */}
-        <div className="text-center mb-10 md:mb-14 cc-animate-fade-up">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <BookOpen className="w-3.5 h-3.5" style={{ color: 'hsl(35 80% 55%)' }} />
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Research Production Profile
-            </span>
-          </div>
-          <h1
-            className="text-3xl md:text-4xl font-heading font-bold mb-2"
-            style={{ textShadow: '0 0 24px hsl(190 80% 60% / 0.15)' }}
-          >
-            Welcome back, {firstName}.
-          </h1>
-          <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto">
-            {config?.production_name
-              ? <>Your <span style={{ color: 'hsl(35 80% 58%)' }}>{config.production_name}</span> project is <span style={{ color: 'hsl(152 55% 50%)' }}>{readinessPercent}% ready</span>.</>
-              : 'No active research project configured yet.'}
-          </p>
-
-          {/* Recommendation + CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            {recommendation && (
-              <div className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(190 70% 55%)' }}>
-                <Sparkles className="w-3 h-3 shrink-0" />
-                <span>{recommendation}</span>
+    <div className="nc-shell">
+      <NerveCenterBackground />
+      <NerveCenterTopBar readiness={readinessPercent} />
+      <div className="nc-body">
+        <NerveCenterSideRail side="left" />
+        <div className="nc-viewport">
+          <div className="max-w-5xl mx-auto relative" style={{ zIndex: 1 }}>
+            {/* ═══ Hero ═══ */}
+            <div className="text-center mb-8 md:mb-10 cc-animate-fade-up">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <BookOpen className="w-3.5 h-3.5" style={{ color: 'hsl(35 80% 55%)' }} />
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Research Production Profile
+                </span>
               </div>
-            )}
-            <button
-              onClick={() => navigate(recommendedDept.path)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all hover:gap-3 shrink-0"
+              <h1
+                className="text-3xl md:text-4xl font-heading font-bold mb-2"
+                style={{ textShadow: '0 0 24px hsl(190 80% 60% / 0.15)' }}
+              >
+                Welcome back, {firstName}.
+              </h1>
+              <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto">
+                {config?.production_name
+                  ? <>Your <span style={{ color: 'hsl(35 80% 58%)' }}>{config.production_name}</span> project is <span style={{ color: 'hsl(152 55% 50%)' }}>{readinessPercent}% ready</span>.</>
+                  : 'No active research project configured yet.'}
+              </p>
+
+              {/* Recommendation + CTA */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                {recommendation && (
+                  <div className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(190 70% 55%)' }}>
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    <span>{recommendation}</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => navigate(recommendedDept.path)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all hover:gap-3 shrink-0"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(190 50% 18% / 0.5), hsl(270 50% 18% / 0.3))',
+                    border: '1px solid hsl(190 50% 35% / 0.5)',
+                    color: 'hsl(190 80% 65%)',
+                    boxShadow: '0 0 20px hsl(190 50% 30% / 0.1)',
+                  }}
+                >
+                  {ctaLabel}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* ═══ Department Cabinets ═══ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              {departments.map((d) => (
+                <DepartmentCabinet
+                  key={d.dept.id}
+                  dept={d.dept}
+                  status={d.status}
+                  count={d.count}
+                  recommended={d.recommended}
+                  index={d.index}
+                />
+              ))}
+            </div>
+
+            {/* ═══ Readiness bar ═══ */}
+            <div className="mt-8 flex items-center gap-3 px-4 py-3 rounded-xl cc-animate-fade-up cc-stagger-5"
               style={{
-                background: 'linear-gradient(135deg, hsl(190 50% 18% / 0.5), hsl(270 50% 18% / 0.3))',
-                border: '1px solid hsl(190 50% 35% / 0.5)',
-                color: 'hsl(190 80% 65%)',
-                boxShadow: '0 0 20px hsl(190 50% 30% / 0.1)',
+                background: 'hsl(210 40% 7% / 0.5)',
+                border: '1px solid hsl(190 30% 20% / 0.3)',
+                backdropFilter: 'blur(8px)',
               }}
             >
-              {ctaLabel}
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 shrink-0">Readiness</span>
+              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(190 20% 12% / 0.5)' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${readinessPercent}%`,
+                    background: 'linear-gradient(90deg, hsl(190 60% 45%), hsl(152 55% 50%))',
+                  }}
+                />
+              </div>
+              <span className="text-sm font-bold shrink-0" style={{ color: 'hsl(190 70% 55%)' }}>{readinessPercent}%</span>
+            </div>
           </div>
         </div>
-
-        {/* ═══ Department Cabinets ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {departments.map((d) => (
-            <DepartmentCabinet
-              key={d.dept.id}
-              dept={d.dept}
-              status={d.status}
-              count={d.count}
-              recommended={d.recommended}
-              index={d.index}
-            />
-          ))}
-        </div>
-
-        {/* ═══ Readiness bar ═══ */}
-        <div className="mt-10 flex items-center gap-3 px-4 py-3 rounded-xl cc-animate-fade-up cc-stagger-5"
-          style={{
-            background: 'hsl(210 40% 7% / 0.5)',
-            border: '1px solid hsl(190 30% 20% / 0.3)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 shrink-0">Readiness</span>
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(190 20% 12% / 0.5)' }}>
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{
-                width: `${readinessPercent}%`,
-                background: 'linear-gradient(90deg, hsl(190 60% 45%), hsl(152 55% 50%))',
-              }}
-            />
-          </div>
-          <span className="text-sm font-bold shrink-0" style={{ color: 'hsl(190 70% 55%)' }}>{readinessPercent}%</span>
-        </div>
+        <NerveCenterSideRail side="right" />
       </div>
+      <NerveCenterBottomConsole />
     </div>
   );
 }
