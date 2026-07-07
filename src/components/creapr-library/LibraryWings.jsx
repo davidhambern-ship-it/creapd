@@ -222,7 +222,7 @@ export default function LibraryWings({ items, variant = 'category', title, focus
     <AnimatePresence mode="wait">
       <motion.div
         key={title || 'wings'}
-        className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-36 pt-20"
+        className="absolute inset-0 flex flex-col items-center px-4 pb-32 pt-16 overflow-y-auto"
         style={{ zIndex: 10 }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
