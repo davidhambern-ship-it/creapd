@@ -293,6 +293,13 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
               />
             </div>
           </div>
+          <button
+            onClick={handleRestart}
+            title="Clear conversation"
+            className="p-2 rounded-lg hover:bg-white/5 transition-all"
+          >
+            <RotateCcw className="w-4 h-4 text-muted-foreground" />
+          </button>
           {!embedded && (
             <button
               onClick={() => onClose?.()}
