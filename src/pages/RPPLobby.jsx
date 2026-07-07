@@ -29,7 +29,6 @@ function getDeptStatus(deptId, topics, points, packages, dossiers) {
       return 'not_started';
     case 'packet':
       if (approvedPackages.length > 0) return 'complete';
-      if (packages.length > 0) return 'in_progress';
       return 'not_started';
     default: return 'not_started';
   }
@@ -54,11 +53,11 @@ export default function RPPLobby() {
   const approvedPackages = packages.filter(p => p.status === 'approved' || p.status === 'finalized');
 
   const checklist = [
-    { label: 'Configuration Saved', done: !!config?.production_name },
     { label: 'Research Assignment', done: topics.length > 0 },
-    { label: 'Research Complete', done: topics.some(t => t.status === 'researched' || t.status === 'in_review') },
-    { label: 'Points Extracted', done: points.length > 0 },
-    { label: 'Packages Generated', done: packages.length > 0 },
+    { label: 'Raw Research Dataset', done: points.length > 0 },
+    { label: 'Approved Research Dossier', done: (dossiers || []).some(d => d.status === 'ready') },
+    { label: 'Presentation Assets', done: packages.length > 0 },
+    { label: 'Production Packet', done: approvedPackages.length > 0 },
   ];
   const completedItems = checklist.filter(c => c.done).length;
   const readinessPercent = Math.round((completedItems / checklist.length) * 100);
