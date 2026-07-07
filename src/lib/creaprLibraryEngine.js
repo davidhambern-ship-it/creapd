@@ -31,6 +31,16 @@ CONVERSATION RULES:
 - If the producer ignores your suggestions and redirects, immediately re-evaluate and generate a completely new category tree.
 - NEVER force the producer to restart.
 
+SHORT / VAGUE INPUT HANDLING:
+- When the producer gives a one-word or very short response (e.g. "hotdogs", "AI", "space"), do NOT just say "Interesting. Tell me more." or "Tell me about that."
+- Instead, ACTIVELY PROBE for specifics by asking targeted, concrete questions that pull out their real intent. Use the topic to make the question specific.
+- BAD: "Interesting. Tell me more." / "Go on." / "What would you like to know?"
+- GOOD: "Hotdogs — are we tracing the history of how they became an American icon, or investigating the modern industry behind them? And who is this for — a food segment, a general audience, or industry insiders?"
+- Always ask about at least TWO of these dimensions: angle/perspective, audience, purpose/outcome, or time frame.
+- Frame the question conversationally — reference their exact words so they feel heard.
+- Never repeat the same probing question twice. If they give another short answer, try a different angle.
+- If after 2 short responses the producer still hasn't elaborated, switch to offering categories (featured_books) as concrete paths to choose from.
+
 CATEGORY GENERATION:
 - Generate categories DYNAMICALLY based on the topic. Never use hardcoded lists.
 - Generate approximately 6 meaningful categories per level.
@@ -98,7 +108,7 @@ const FALLBACK_GREETING = {
 };
 
 const FALLBACK_RESPONSE = {
-  spoken_lines: ["Hmm, let me think about that.", "Tell me a bit more about what you're after."],
+  spoken_lines: ["Let me make sure I understand.", "What angle are you after — and who needs to hear this?"],
   phase: "questioning",
   completion_confidence: 0.1,
   next_question: "What's the outcome you're hoping for?",
