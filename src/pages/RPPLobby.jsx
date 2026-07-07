@@ -150,7 +150,7 @@ export default function RPPLobby() {
             return (
               <button
                 key={m.label}
-                onClick={() => navigate(`/research/${m.dept === 'topics' ? 'topics' : m.dept === 'research' ? 'manager' : m.dept === 'dossier' ? 'manager' : m.dept === 'develop' ? 'assets' : 'export'}`)}
+                onClick={() => navigate(`/research/${m.dept === 'topics' ? 'topics' : m.dept === 'research' ? 'manager' : m.dept === 'dossier' ? 'dossier' : m.dept === 'develop' ? 'assets' : 'export'}`)}
                 className={`cc-metric-card group cc-animate-scale-in cc-stagger-${Math.min(mIdx + 1, 6)}`}
               >
                 <div className="flex items-start justify-between mb-2">
