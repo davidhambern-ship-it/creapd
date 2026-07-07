@@ -135,16 +135,55 @@ const FALLBACK_RESPONSE = {
 
 // ─── Original Engine Functions (preserved for backward compat) ───
 
+const OPENING_APPROACHES = [
+  'Start by making an observation about the time of day or day of week.',
+  'Start by referencing something happening in the world right now (news, season, cultural moment).',
+  'Start with a warm, personal welcome that uses their name in an unexpected way.',
+  'Start by posing a thought-provoking question about what curiosity brought them here.',
+  'Start by painting a brief atmospheric image of the library around them.',
+];
+
+function _getTimeContext() {
+  const now = new Date();
+  const hour = now.getHours();
+  let timeOfDay;
+  if (hour < 5) timeOfDay = 'late night';
+  else if (hour < 12) timeOfDay = 'morning';
+  else if (hour < 17) timeOfDay = 'afternoon';
+  else if (hour < 21) timeOfDay = 'evening';
+  else timeOfDay = 'night';
+  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  return { timeOfDay, dayName, hour };
+}
+
 export async function generateGreeting(user, settings, config) {
   const firstName = (user?.full_name || 'there').split(' ')[0];
   const greetingStyle = settings?.greeting_style || 'mysterious';
+  const { timeOfDay, dayName } = _getTimeContext();
+  const openingApproach = OPENING_APPROACHES[Math.floor(Math.random() * OPENING_APPROACHES.length)];
+
+  let recentTopicStr = '';
+  try {
+    const recentTopics = await base44.entities.ResearchTopic.list('-created_date', 3);
+    if (recentTopics && recentTopics.length > 0) {
+      const topicTitles = recentTopics.map(t => t.title).filter(Boolean);
+      if (topicTitles.length > 0) {
+        recentTopicStr = `\nRECENT TOPICS THE PRODUCER EXPLORED:\n${topicTitles.map(t => `- ${t}`).join('\n')}\nIf it feels natural, you may briefly reference their most recent topic — but do NOT force it. Only mention it if it adds warmth or continuity.`;
+      }
+    }
+  } catch {}
+
   const prompt = `${LIBRARY_SYSTEM_PROMPT}
 
 You are greeting the producer as they enter the library. Their name is ${firstName}.
 Greeting style: ${greetingStyle}.
+Current time context: It is ${dayName} ${timeOfDay}.
+Opening approach: ${openingApproach}
 The production is configured for: ${config?.production_name || 'a research production'}.
 Target audience (from config): ${config?.target_audience || 'General Public'}.
-Research depth (from config): ${config?.research_depth || 'standard'}.
+Research depth (from config): ${config?.research_depth || 'standard'}.${recentTopicStr}
+
+CRITICAL: Do NOT use a generic "Welcome back" or "What are we looking for today?" opening. Your opening MUST reflect the time context and opening approach above. Be specific and varied — never produce the same greeting twice.
 
 Generate your greeting. Phase should be "greeting". Do NOT include categories or assignment yet. Just welcome them and ask what they're looking for.`;
 
@@ -188,6 +227,16 @@ export async function processProducerInput(
     ? `\nThe producer selected the category: "${selectedCategory}". Generate the next level of refinement for this category.`
     : '';
 
+  const exchangeCount = conversationHistory.filter(m => m.role === 'user').length;
+  const RESPONSE_STYLES = [
+    'Respond with a sharp, direct observation about what the producer said.',
+    'Respond with a slightly unexpected angle or reframe of their input.',
+    'Respond by connecting their input to a broader theme before narrowing down.',
+    'Respond with a vivid metaphor or analogy that illuminates their topic.',
+    'Respond by naming what is NOT yet clear before offering the next step.',
+  ];
+  const responseStyle = RESPONSE_STYLES[exchangeCount % RESPONSE_STYLES.length];
+
   const prompt = `${LIBRARY_SYSTEM_PROMPT}
 
 PRODUCER NAME: ${firstName}
@@ -201,9 +250,12 @@ ${assignmentStr}
 CONVERSATION HISTORY (most recent):
 ${historyStr}
 
+EXCHANGE COUNT: This is exchange #${exchangeCount + 1} in this conversation.
+RESPONSE STYLE FOR THIS TURN: ${responseStyle}
+
 PRODUCER'S LATEST INPUT: "${userInput}"${selectionNote}
 
-CRITICAL: Review the conversation history above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation.
+CRITICAL: Review the conversation history above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation. Your opening words must be different from every previous response.
 
 Check which assignment fields are already filled. Only probe for EMPTY fields. If you can reasonably infer a field from what the producer said, fill it yourself in assignment_update and increase completion_confidence.
 
