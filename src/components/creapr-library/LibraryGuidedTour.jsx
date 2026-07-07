@@ -104,20 +104,34 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
       >
         {/* Spotlight or dark overlay */}
         {targetRect ? (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              top: targetRect.top - 12,
-              left: targetRect.left - 12,
-              width: targetRect.width + 24,
-              height: targetRect.height + 24,
-              borderRadius: 16,
-              boxShadow: '0 0 0 9999px hsl(220 20% 4% / 0.88), 0 0 24px hsl(270 80% 60% / 0.4), 0 0 48px hsl(270 80% 60% / 0.15)',
-              border: '3px solid hsl(270 80% 65%)',
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              animation: 'pulse-glow 2s ease-in-out infinite',
-            }}
-          />
+          <>
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                top: targetRect.top - 12,
+                left: targetRect.left - 12,
+                width: targetRect.width + 24,
+                height: targetRect.height + 24,
+                borderRadius: 16,
+                boxShadow: '0 0 0 9999px hsl(220 20% 4% / 0.88)',
+                border: '3px solid hsl(270 80% 65%)',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            />
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                top: targetRect.top - 12,
+                left: targetRect.left - 12,
+                width: targetRect.width + 24,
+                height: targetRect.height + 24,
+                borderRadius: 16,
+                border: '3px solid hsl(270 80% 70%)',
+                animation: 'pulse-glow 2s ease-in-out infinite',
+                color: 'hsl(270 80% 60%)',
+              }}
+            />
+          </>
         ) : (
           <div className="absolute inset-0" style={{ background: 'hsl(220 20% 4% / 0.85)' }} />
         )}
