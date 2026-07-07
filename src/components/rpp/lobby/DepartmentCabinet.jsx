@@ -67,7 +67,7 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
 
       {/* Header — title only */}
       <div className="p-4 pb-2 text-center">
-        <h3 className="font-heading font-semibold text-sm text-white">{dept.name}</h3>
+        <h3 className="font-semibold text-sm text-white" style={{ fontFamily: "'Robotica', sans-serif" }}>{dept.name}</h3>
       </div>
 
       {/* RSS feed display — vertical scroll */}
@@ -89,9 +89,9 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
         <div className="cabinet-screen-track py-2 text-center">
           {[...scrollText, ...scrollText].map((block, i) => (
             <div key={i} className="px-3 pb-3">
-              <p className="text-[11px] leading-relaxed text-muted-foreground/80">{block.title}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground/80">{block.title}</p>
               {block.output && (
-                <p className="text-[9px] uppercase tracking-wider mt-1" style={{ color: `${statusCfg.color} / 0.7)` }}>
+                <p className="text-[11px] uppercase tracking-wider mt-1" style={{ color: `${statusCfg.color} / 0.7)` }}>
                   Output: {block.output}
                 </p>
               )}
