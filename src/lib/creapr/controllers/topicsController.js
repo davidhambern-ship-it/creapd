@@ -134,20 +134,18 @@ CRITICAL: Return your greeting as a single string in the "message" field. Do NOT
   try {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,
-      model: settings?.ai_model || 'claude-sonnet-5',
+      model: settings?.ai_model || 'gpt_5_mini',
       add_context_from_internet: false,
       response_json_schema: {
         type: 'object',
         properties: {
           message: { type: 'string', description: 'Your full greeting as a single string' },
-          spoken_lines: { type: 'array', items: { type: 'string' } },
           phase: { type: 'string' },
           completion_confidence: { type: 'number' },
         },
       },
     });
 
-    // Normalize — same guard as processProducerInput
     if (typeof result === 'string') {
       return { ...FALLBACK_GREETING, spoken_lines: [result] };
     }
@@ -157,11 +155,6 @@ CRITICAL: Return your greeting as a single string in the "message" field. Do NOT
     const greetMsg = result.message || result.message_to_user || result.response || result.text;
     if (typeof greetMsg === 'string' && greetMsg.length > 0) {
       result.spoken_lines = [greetMsg];
-    } else if (Array.isArray(result.spoken_lines) && result.spoken_lines.length > 0) {
-      result.spoken_lines = result.spoken_lines.map(line =>
-        typeof line === 'string' ? line
-        : (typeof line === 'object' && line !== null ? (line.text || line.message || line.content || JSON.stringify(line)) : String(line ?? ''))
-      );
     } else {
       result.spoken_lines = FALLBACK_GREETING.spoken_lines;
     }
@@ -173,7 +166,8 @@ CRITICAL: Return your greeting as a single string in the "message" field. Do NOT
     }
 
     return result;
-  } catch {
+  } catch (error) {
+    console.error('[CREAPr] generateGreeting LLM error:', error);
     return FALLBACK_GREETING;
   }
 }
@@ -232,13 +226,12 @@ Return your response as JSON.`;
   try {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,
-      model: settings?.ai_model || 'claude-sonnet-5',
+      model: settings?.ai_model || 'gpt_5_mini',
       add_context_from_internet: false,
       response_json_schema: {
         type: 'object',
         properties: {
           message: { type: 'string', description: 'Your full response to the producer as a single string' },
-          spoken_lines: { type: 'array', items: { type: 'string' } },
           phase: { type: 'string' },
           categories: {
             type: 'array',
@@ -282,8 +275,6 @@ Return your response as JSON.`;
       },
     });
 
-    // Normalize — accept either a string, an object with `message`, or an object with `spoken_lines`.
-    // Always produce spoken_lines as an array of plain strings.
     if (typeof result === 'string') {
       return { ...FALLBACK_RESPONSE, spoken_lines: [result] };
     }
@@ -293,16 +284,12 @@ Return your response as JSON.`;
     const msg = result.message || result.message_to_user || result.response || result.text;
     if (typeof msg === 'string' && msg.length > 0) {
       result.spoken_lines = [msg];
-    } else if (Array.isArray(result.spoken_lines) && result.spoken_lines.length > 0) {
-      result.spoken_lines = result.spoken_lines.map(line =>
-        typeof line === 'string' ? line
-        : (typeof line === 'object' && line !== null ? (line.text || line.message || line.content || JSON.stringify(line)) : String(line ?? ''))
-      );
     } else {
       result.spoken_lines = FALLBACK_RESPONSE.spoken_lines;
     }
     return result;
-  } catch {
+  } catch (error) {
+    console.error('[CREAPr] processProducerInput LLM error:', error);
     return FALLBACK_RESPONSE;
   }
 }

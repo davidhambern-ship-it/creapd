@@ -35,9 +35,8 @@ export const CREAP_GREETING_STYLES = [
 ];
 
 export const CREAP_MODELS = [
-  { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 (Default — Natural conversation)' },
+  { value: 'gpt_5_mini', label: 'GPT-5 Mini (Default — Fast)' },
   { value: 'automatic', label: 'Automatic' },
-  { value: 'gpt_5_mini', label: 'GPT-5 Mini (Fast)' },
   { value: 'gemini_3_flash', label: 'Gemini 3 Flash (Web search)' },
   { value: 'claude_sonnet_4_6', label: 'Claude Sonnet 4.6 (Premium)' },
 ];
@@ -54,7 +53,7 @@ export const DEFAULT_CREAP_SETTINGS = {
   completion_phrase: "I'm done CREAPing!",
   greeting_style: 'energetic',
   max_decline_attempts: 5,
-  ai_model: 'claude-sonnet-5',
+  ai_model: 'gpt_5_mini',
   system_prompt_override: '',
   is_active: true,
 };
