@@ -4,8 +4,7 @@ import { useCreaprEngine } from '@/hooks/useCreaprEngine';
 import { useCREAPMode } from '@/context/CREAPModeContext';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Loader2, FlaskConical, Lightbulb, PanelRightOpen, ArrowRight } from 'lucide-react';
+import { Loader2, FlaskConical, Lightbulb, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ResearchProgressModal from '@/components/research/ResearchProgressModal';
 import CreaprLibrary from '@/components/creapr-library/CreaprLibrary';
@@ -19,7 +18,6 @@ export default function ResearchTopics() {
   const engine = useCreaprEngine(researchData);
   const [researching, setResearching] = useState(null);
   const [progressTopic, setProgressTopic] = useState(null);
-  const [mobileTopicsOpen, setMobileTopicsOpen] = useState(false);
 
   if (loading && !config) {
     return (
@@ -83,9 +81,9 @@ export default function ResearchTopics() {
   return (
     <div className="flex h-full overflow-hidden relative flex-col">
       <TopicsRoomHeader topicCount={topics.length} />
-      <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        {/* Main: CREAP conversation IS the topics page */}
-        <div className="flex-1 min-w-0 relative overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative flex-col">
+        {/* Main: CREAP conversation */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
           <CreaprLibrary
             config={config}
             embedded
@@ -93,60 +91,28 @@ export default function ResearchTopics() {
           />
         </div>
 
-        {/* Topics sidebar — desktop */}
-        <aside className="hidden lg:flex w-72 flex-col shrink-0 overflow-hidden" style={{ borderLeft: '1px solid hsl(190 30% 18% / 0.35)', background: 'hsl(210 40% 6% / 0.6)', backdropFilter: 'blur(12px)' }}>
+        {/* Topics — bottom horizontal strip */}
+        <div
+          className="shrink-0 h-44 lg:h-52 flex flex-col overflow-hidden"
+          style={{ borderTop: '1px solid hsl(190 30% 18% / 0.35)', background: 'hsl(210 40% 6% / 0.6)', backdropFilter: 'blur(12px)' }}
+        >
           {/* Compact POC Focus */}
           {engine.pocState && (
-            <div className="p-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 30% 14% / 0.3)' }}>
-              <Link to={engine.pocState.nextRoute} className="block p-3 rounded-lg transition-colors group cc-glass-card hover:border-opacity-50">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Stage {engine.pocState.stage}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full capitalize" style={{ background: 'hsl(190 50% 15% / 0.3)', color: 'hsl(190 70% 55%)' }}>{mode}</span>
-                </div>
-                <p className="text-sm font-medium leading-tight">{engine.pocState.stageInfo.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{engine.pocState.pendingAction}</p>
-                <div className="flex items-center gap-1 mt-2 text-xs group-hover:gap-2 transition-all" style={{ color: 'hsl(190 80% 55%)' }}>
-                  Continue <ArrowRight className="w-3 h-3" />
-                </div>
-              </Link>
+            <div className="px-4 py-1.5 shrink-0 flex items-center gap-2" style={{ borderBottom: '1px solid hsl(190 30% 14% / 0.3)' }}>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Stage {engine.pocState.stage}</span>
+              <Link to={engine.pocState.nextRoute} className="text-xs font-medium hover:underline">{engine.pocState.stageInfo.name}</Link>
+              <ArrowRight className="w-3 h-3" style={{ color: 'hsl(190 80% 55%)' }} />
             </div>
           )}
-          <div className="flex-1 overflow-y-auto">
-            <TopicListPanel
-              topics={topics}
-              researching={researching}
-              onResearch={handleResearch}
-              onExtract={handleExtract}
-              onDelete={handleDelete}
-            />
-          </div>
-        </aside>
-
-        {/* Mobile: floating button to open topics */}
-        <button
-          onClick={() => setMobileTopicsOpen(true)}
-          className="lg:hidden absolute bottom-4 right-4 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg transition-all"
-          style={{ background: 'linear-gradient(135deg, hsl(190 50% 18% / 0.9), hsl(190 40% 10% / 0.9))', border: '1px solid hsl(190 50% 28% / 0.5)', color: 'hsl(190 80% 60%)', boxShadow: '0 8px 24px hsl(190 50% 3% / 0.5), 0 0 20px hsl(190 40% 22% / 0.15)' }}
-        >
-          <PanelRightOpen className="w-4 h-4" />
-          <span className="text-sm font-medium">{topics.length} Topics</span>
-        </button>
-
-        {/* Mobile: topics sheet */}
-        <Sheet open={mobileTopicsOpen} onOpenChange={setMobileTopicsOpen}>
-          <SheetContent side="right" className="w-80 p-0">
-            <SheetHeader className="sr-only">
-              <SheetTitle>Research Topics</SheetTitle>
-            </SheetHeader>
-            <TopicListPanel
-              topics={topics}
-              researching={researching}
-              onResearch={(t) => { handleResearch(t); setMobileTopicsOpen(false); }}
-              onExtract={(t) => { handleExtract(t); setMobileTopicsOpen(false); }}
-              onDelete={handleDelete}
-            />
-          </SheetContent>
-        </Sheet>
+          <TopicListPanel
+            topics={topics}
+            researching={researching}
+            onResearch={handleResearch}
+            onExtract={handleExtract}
+            onDelete={handleDelete}
+            horizontal
+          />
+        </div>
 
         <ResearchProgressModal
           open={!!progressTopic}
