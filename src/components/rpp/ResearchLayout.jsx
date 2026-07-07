@@ -35,8 +35,8 @@ export default function ResearchLayout() {
         researchingCount={topics.filter(t => t.status === 'researching').length}
       />
 
-      <main className="rpp-workspace flex flex-col">
-        <div className="rpp-workspace-content flex-1 flex flex-col">
+      <main className="rpp-workspace flex flex-col min-w-0">
+        <div className="rpp-workspace-content flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <Outlet />
         </div>
       </main>
