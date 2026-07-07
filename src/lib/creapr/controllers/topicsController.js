@@ -152,9 +152,14 @@ CRITICAL: Return your greeting as a single string in the "message" field. Do NOT
     if (!result || typeof result !== 'object') {
       return FALLBACK_GREETING;
     }
-    const greetMsg = result.message || result.message_to_user || result.response || result.text;
+    // LLM may nest the response under a "response" key
+    const source = result.response && typeof result.response === 'object' ? result.response : result;
+    const greetMsg = source.message || source.message_to_user || source.text ||
+      (typeof result.response === 'string' ? result.response : '');
     if (typeof greetMsg === 'string' && greetMsg.length > 0) {
       result.spoken_lines = [greetMsg];
+      result.phase = source.phase || result.phase;
+      result.completion_confidence = source.completion_confidence ?? result.completion_confidence ?? 0;
     } else {
       result.spoken_lines = FALLBACK_GREETING.spoken_lines;
     }
@@ -281,9 +286,18 @@ Return your response as JSON.`;
     if (!result || typeof result !== 'object') {
       return FALLBACK_RESPONSE;
     }
-    const msg = result.message || result.message_to_user || result.response || result.text;
+    // LLM may nest the response under a "response" key
+    const source = result.response && typeof result.response === 'object' ? result.response : result;
+    const msg = source.message || source.message_to_user || source.text ||
+      (typeof result.response === 'string' ? result.response : '');
     if (typeof msg === 'string' && msg.length > 0) {
       result.spoken_lines = [msg];
+      result.phase = source.phase || result.phase;
+      result.categories = source.categories || result.categories;
+      result.assignment_update = source.assignment_update || result.assignment_update;
+      result.completion_confidence = source.completion_confidence ?? result.completion_confidence ?? 0;
+      result.next_question = source.next_question || result.next_question;
+      result.assignment = source.assignment || result.assignment;
     } else {
       result.spoken_lines = FALLBACK_RESPONSE.spoken_lines;
     }
