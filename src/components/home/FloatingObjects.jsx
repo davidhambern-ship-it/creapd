@@ -37,13 +37,14 @@ export default function FloatingObjects() {
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
     camera.position.z = 5;
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
     // ── Environment map for realistic reflections ──
@@ -82,6 +83,16 @@ export default function FloatingObjects() {
 
     const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
     keyLight.position.set(3, 5, 4);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 20;
+    keyLight.shadow.camera.left = -6;
+    keyLight.shadow.camera.right = 6;
+    keyLight.shadow.camera.top = 6;
+    keyLight.shadow.camera.bottom = -6;
+    keyLight.shadow.bias = -0.0005;
+    keyLight.shadow.radius = 4;
     scene.add(keyLight);
 
     const fillLight = new THREE.DirectionalLight(0x9090ff, 0.5);
@@ -108,7 +119,12 @@ export default function FloatingObjects() {
       const obj = o.builder();
       obj.position.set(...o.pos);
       obj.scale.setScalar(o.scale);
-
+      obj.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
       scene.add(obj);
       return {
         obj,

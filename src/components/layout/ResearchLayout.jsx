@@ -1,54 +1,50 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { ResearchProvider, useResearch } from '@/context/ResearchContext';
-import DepartmentNavigator from '@/components/research/DepartmentNavigator';
-import CreaprMessageArea from '@/components/research/CreaprMessageArea';
-import ResearchProgressIndicator from '@/components/research/ResearchProgressIndicator';
-import AmbientBackground from '@/components/research/AmbientBackground';
-import { getProjectStatus } from '@/lib/researchConstants';
-
-function ResearchShell() {
-  const { activeProject, loadingProject } = useResearch();
-  const status = activeProject ? getProjectStatus(activeProject.status) : null;
-
-  return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <DepartmentNavigator />
-      <div className="flex-1 flex flex-col relative">
-        <AmbientBackground />
-        <div className="relative z-10 flex flex-col h-full">
-          <header className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-white/[0.06] glass-panel-navy rounded-none">
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Active Project</p>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm font-heading font-bold text-white truncate">
-                  {loadingProject ? 'Loading...' : activeProject?.production_name || 'No Project Selected'}
-                </h1>
-                {status && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${status.bg} ${status.color} font-medium`}>
-                    {status.label}
-                  </span>
-                )}
-              </div>
-            </div>
-            <ResearchProgressIndicator />
-          </header>
-
-          <main className="flex-1 overflow-y-auto">
-            <Outlet />
-          </main>
-
-          <CreaprMessageArea />
-        </div>
-      </div>
-    </div>
-  );
-}
+import React, { useState } from 'react';
+import { Outlet, Link } from 'react-router-dom';
+import { RESEARCH_NAV_ITEMS, MOBILE_NAV_ITEMS, ICON_MAP } from '@/lib/researchConstants';
+import { LayoutGrid } from 'lucide-react';
+import AdminSidebarSection from './AdminSidebarSection';
+import SidebarNavSections from './SidebarNavSections';
+import ProducerHeader from './ProducerHeader';
+import ProductionFooter from './ProductionFooter';
+import MobileNavDrawer from './MobileNavDrawer';
+import MobileBottomNav from './MobileBottomNav';
 
 export default function ResearchLayout() {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   return (
-    <ResearchProvider>
-      <ResearchShell />
-    </ResearchProvider>
+    <div className="flex h-screen bg-background overflow-hidden flex-col">
+      <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
+
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="hidden md:flex w-60 flex-col border-r border-border bg-sidebar">
+          <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+            <SidebarNavSections items={RESEARCH_NAV_ITEMS} iconMap={ICON_MAP} />
+            <AdminSidebarSection variant="research" onNavigate={() => {}} />
+          </nav>
+          <div className="p-3 border-t border-sidebar-border">
+            <Link to="/home" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent transition-colors">
+              <LayoutGrid className="w-4 h-4" />
+              CREAPD Home
+            </Link>
+          </div>
+        </aside>
+
+        <main className="flex-1 overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
+
+      <ProductionFooter variant="research" />
+      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+
+      <MobileNavDrawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        navItems={RESEARCH_NAV_ITEMS}
+        iconMap={ICON_MAP}
+        variant="research"
+      />
+    </div>
   );
 }

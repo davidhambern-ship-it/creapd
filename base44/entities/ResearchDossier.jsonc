@@ -2,71 +2,106 @@
   "name": "ResearchDossier",
   "type": "object",
   "properties": {
-    "project_id": {
+    "article_id": {
       "type": "string",
-      "description": "ID of the ResearchProject this dossier belongs to"
+      "description": "ID of the Article this research was performed on (empty when researching a ResearchTopic)"
+    },
+    "topic_id": {
+      "type": "string",
+      "description": "ID of the ResearchTopic this research was performed on (empty when researching an Article)"
+    },
+    "research_query": {
+      "type": "string",
+      "description": "The query or topic derived from the article/topic for deep research"
     },
     "executive_summary": {
       "type": "string",
-      "description": "Executive summary of the research"
-    },
-    "background": {
-      "type": "string",
-      "description": "Background and context"
-    },
-    "timeline": {
-      "type": "string",
-      "description": "JSON array of timeline event objects {date, event}"
+      "description": "A 2-3 paragraph synthesis of all research findings"
     },
     "key_facts": {
       "type": "string",
-      "description": "JSON array of key fact objects"
+      "description": "JSON array of verified key facts with source attribution"
     },
-    "important_people": {
+    "context_and_background": {
       "type": "string",
-      "description": "JSON array of person objects {name, role, context}"
+      "description": "Historical context and background information needed to understand the story"
     },
-    "organizations": {
+    "key_people": {
       "type": "string",
-      "description": "JSON array of organization objects"
+      "description": "JSON array of key people involved \u2014 name, role, relevance"
     },
-    "statistics": {
+    "key_organizations": {
       "type": "string",
-      "description": "JSON array of statistic objects"
+      "description": "JSON array of key organizations \u2014 name, role, relevance"
     },
-    "verified_sources": {
+    "timeline": {
       "type": "string",
-      "description": "JSON array of source objects with citations"
+      "description": "JSON array of timeline events \u2014 date, event, significance"
     },
-    "areas_of_debate": {
+    "counter_arguments": {
       "type": "string",
-      "description": "JSON array of debate/competing viewpoint strings"
+      "description": "JSON array of differing viewpoints or counter-arguments with attribution"
     },
-    "supporting_documents": {
+    "data_and_statistics": {
       "type": "string",
-      "description": "JSON array of supporting document references"
+      "description": "JSON array of relevant statistics, figures, and data points with sources"
     },
-    "related_topics": {
+    "sources": {
       "type": "string",
-      "description": "JSON array of related topic strings"
+      "description": "JSON array of all sources consulted \u2014 name, url, source_type, citation"
+    },
+    "coverage_angles": {
+      "type": "string",
+      "description": "JSON array of suggested coverage angles \u2014 angle, rationale, target_audience"
     },
     "confidence_score": {
       "type": "number",
-      "default": 0,
-      "description": "Overall confidence score 0-100"
+      "description": "Overall confidence in research completeness (0-100)",
+      "default": 0
     },
     "status": {
       "type": "string",
       "enum": [
-        "pending",
-        "drafting",
-        "approved",
-        "revision"
+        "researching",
+        "ready",
+        "failed"
       ],
-      "default": "pending"
+      "default": "researching"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "discovery_raw_data": {
+      "type": "string",
+      "description": "JSON string of raw findings from the Discovery Specialist \u2014 unprocessed search results, article excerpts, and initial data points before organization"
+    },
+    "organization_structure": {
+      "type": "string",
+      "description": "JSON string of organized research clusters \u2014 themes, background context, timeline groupings, and categorized findings produced by the Organization Specialist"
+    },
+    "critical_analysis_report": {
+      "type": "string",
+      "description": "JSON string of the Critical Analysis Specialist's output \u2014 contains gray_areas (array), logical_gaps (array), competing_perspectives (array of {viewpoint, evidence, weakness}), and open_questions (array)"
+    },
+    "debate_potential_score": {
+      "type": "number",
+      "description": "0-10 score indicating how much debate/discussion potential this topic has \u2014 higher means more contested viewpoints suitable for talk/debate segments",
+      "default": 0
+    },
+    "claim_confidence_scores": {
+      "type": "string",
+      "description": "JSON string mapping individual claims to confidence scores \u2014 array of {claim: string, score: number, notes: string} for fact-check transparency"
+    },
+    "role_assignments": {
+      "type": "string",
+      "description": "JSON string mapping specialist roles to AI model names \u2014 e.g. {discovery: 'gemini_3_flash', organization: 'gpt_5_mini', critical_analysis: 'claude_sonnet_4_6'}. Allows model swapping without code changes."
+    },
+    "orchestration_metadata": {
+      "type": "string",
+      "description": "JSON string tracking the orchestration pipeline run \u2014 contains stage_timings, model_versions, credit_usage, and any stage-specific errors"
     }
   },
   "required": [
-    "project_id"
+    "research_query"
   ]
 }

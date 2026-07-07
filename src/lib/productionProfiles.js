@@ -147,29 +147,28 @@ export const PRODUCTION_PROFILES = [
     outputs: 'Recipes, cooking instructions, ingredient guides, host scripts, voiceovers, show rundowns, presentation prompts',
     examples: ['Step-by-Step Tutorial', 'Cuisine Exploration', 'Ingredient Spotlight']
   },
-
   {
     key: 'research',
     label: 'Research Production',
     shortLabel: 'Research',
-    description: 'Deep research investigations, structured dossiers, and complete production packets — everything you need to be production-ready.',
+    description: 'Deep research investigations, multi-model synthesized packages, and evidence-based production assets from any topic.',
     icon: FlaskConical,
     available: true,
-    path: '/research/lobby',
+    path: '/research/dashboard',
     gradient: 'from-cyan-500/20 to-blue-500/10',
     accent: 'text-cyan-400',
     accentBg: 'bg-cyan-500/10',
     accentBorder: 'border-cyan-500/20',
-    spotlightFeature: 'Production Packet System',
-    spotlightDescription: 'Transform curiosity into production readiness. Define topics in the CREAPr Library, conduct deep research, build structured dossiers, generate production assets, and assemble a complete Production Packet.',
+    spotlightFeature: 'Point Card System',
+    spotlightDescription: 'Define research topics, run deep AI research with internet context, extract structured Point Cards, and generate multi-model synthesized production packages from approved findings.',
     workflow: [
-      'Define your research topic in the CREAPr Library',
-      'Conduct deep research with internet-sourced context',
-      'Build a structured Research Dossier with verified findings',
-      'Generate production assets from the approved dossier',
-      'Assemble a complete Production Packet and export'
+      'Define research topics and production parameters',
+      'Run deep research with internet-sourced context',
+      'Extract structured Point Cards from research dossiers',
+      'Approve points and generate multi-model synthesized packages',
+      'Export or share your research production'
     ],
-    outputs: 'Research dossiers, teleprompter scripts, talking points, fact-check notes, visual prompts, production packets',
+    outputs: 'Research dossiers, Point Cards, teleprompter scripts, talking points, fact-check notes, visual prompts',
     examples: ['Deep Investigation', 'Expert Briefing', 'Research-Driven Documentary']
   },
   {
