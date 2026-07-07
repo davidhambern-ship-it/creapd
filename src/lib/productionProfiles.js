@@ -1,5 +1,5 @@
 import {
-  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush, FlaskConical
+  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush
 } from 'lucide-react';
 
 export const PRODUCTION_PROFILES = [
