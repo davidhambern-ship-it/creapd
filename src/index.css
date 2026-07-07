@@ -1014,6 +1014,267 @@
   .rpp-creapr-fab { right: 1rem; bottom: 1rem; }
 }
 
+/* ═══════════════════════════════════════════════════ */
+/* ═══ Command Center — Immersive Animations ═════════ */
+/* ═══════════════════════════════════════════════════ */
+
+/* Floating particle dots */
+@keyframes cc-particle-float {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0.5);
+    opacity: 0;
+  }
+  10% { opacity: var(--particle-opacity, 0.3); }
+  90% { opacity: var(--particle-opacity, 0.3); }
+  100% {
+    transform: translateY(-10vh) translateX(40px) scale(1);
+    opacity: 0;
+  }
+}
+.cc-particle {
+  position: absolute;
+  bottom: 0;
+  border-radius: 50%;
+  animation: cc-particle-float linear infinite;
+  will-change: transform, opacity;
+}
+
+/* Drifting glow orbs */
+@keyframes cc-orb-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, -40px) scale(1.15); }
+  66% { transform: translate(-30px, 50px) scale(0.9); }
+}
+@keyframes cc-orb-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-50px, 30px) scale(1.1); }
+  66% { transform: translate(40px, -50px) scale(0.95); }
+}
+@keyframes cc-orb-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 40px) scale(1.2); }
+}
+
+/* Scan line sweep across the whole workspace */
+@keyframes cc-scan-sweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateY(calc(100vh + 100%)); opacity: 0; }
+}
+.cc-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(190 80% 55% / 0.4), transparent);
+  box-shadow: 0 0 12px hsl(190 80% 55% / 0.3);
+  animation: cc-scan-sweep 10s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+/* Animated grid floor at bottom of screen */
+@keyframes cc-grid-floor-pan {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+}
+.cc-grid-floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background-image:
+    linear-gradient(hsl(190 60% 45% / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(190 60% 45% / 0.06) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: linear-gradient(to top, hsl(0 0% 0% / 1), transparent);
+  -webkit-mask-image: linear-gradient(to top, hsl(0 0% 0% / 1), transparent);
+  animation: cc-grid-floor-pan 8s linear infinite;
+  pointer-events: none;
+}
+
+/* ═══ Entrance Animations ═══ */
+
+@keyframes cc-fade-up {
+  0% { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.cc-animate-fade-up {
+  animation: cc-fade-up 0.6s ease-out both;
+}
+
+@keyframes cc-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.cc-animate-fade-in {
+  animation: cc-fade-in 0.8s ease-out both;
+}
+
+@keyframes cc-scale-in {
+  0% { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.cc-animate-scale-in {
+  animation: cc-scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes cc-slide-right {
+  0% { opacity: 0; transform: translateX(-30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.cc-animate-slide-right {
+  animation: cc-slide-right 0.5s ease-out both;
+}
+
+@keyframes cc-slide-left {
+  0% { opacity: 0; transform: translateX(30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.cc-animate-slide-left {
+  animation: cc-slide-left 0.5s ease-out both;
+}
+
+/* Stagger delays for grid items */
+.cc-stagger-1 { animation-delay: 0.05s; }
+.cc-stagger-2 { animation-delay: 0.1s; }
+.cc-stagger-3 { animation-delay: 0.15s; }
+.cc-stagger-4 { animation-delay: 0.2s; }
+.cc-stagger-5 { animation-delay: 0.25s; }
+.cc-stagger-6 { animation-delay: 0.3s; }
+
+/* ═══ Hover Glow & Pulse Effects ═══ */
+
+/* Metric card hover — stronger glow */
+.cc-metric-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 32px hsl(190 50% 2% / 0.4), 0 0 28px hsl(190 50% 25% / 0.12);
+}
+
+/* Dept tile hover — lift + glow */
+.cc-dept-tile:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 32px hsl(190 50% 2% / 0.4), 0 0 24px hsl(190 40% 25% / 0.1);
+}
+
+/* Hero banner hover — glow expansion */
+.cc-hero-banner:hover {
+  transform: scale(1.005);
+  box-shadow: 0 16px 48px hsl(190 50% 2% / 0.5), 0 0 40px hsl(190 35% 25% / 0.15);
+}
+
+/* Top bar glow on hover for active tab */
+.rpp-nav-tab.active {
+  animation: cc-tab-glow-pulse 3s ease-in-out infinite;
+}
+@keyframes cc-tab-glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px hsl(190 50% 20% / 0.12), inset 0 1px 0 hsl(190 40% 30% / 0.1); }
+  50% { box-shadow: 0 0 20px hsl(190 50% 25% / 0.2), inset 0 1px 0 hsl(190 40% 30% / 0.15); }
+}
+
+/* Glass card glow on hover */
+.cc-glass-card:hover {
+  box-shadow: 0 8px 28px hsl(190 50% 2% / 0.35), 0 0 20px hsl(190 40% 22% / 0.08);
+}
+
+/* CREAPr dock entrance */
+@keyframes cc-dock-appear {
+  0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.rpp-creapr-dock {
+  animation: cc-dock-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* CREAPr FAB entrance + idle pulse */
+@keyframes cc-fab-appear {
+  0% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes cc-fab-pulse {
+  0%, 100% { box-shadow: 0 8px 24px hsl(190 50% 3% / 0.5), 0 0 20px hsl(190 40% 22% / 0.15); }
+  50% { box-shadow: 0 8px 24px hsl(190 50% 3% / 0.5), 0 0 32px hsl(190 50% 30% / 0.3); }
+}
+.rpp-creapr-fab {
+  animation: cc-fab-appear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both, cc-fab-pulse 3s ease-in-out infinite 0.5s;
+}
+
+/* Number counter pop */
+@keyframes cc-number-pop {
+  0% { opacity: 0; transform: scale(0.5); filter: blur(4px); }
+  60% { opacity: 1; transform: scale(1.1); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.cc-number-pop {
+  animation: cc-number-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Status dot active pulse — already has pulse-glow, add ring */
+@keyframes cc-status-ring {
+  0% { box-shadow: 0 0 0 0 hsl(35 90% 55% / 0.4); }
+  100% { box-shadow: 0 0 0 8px hsl(35 90% 55% / 0); }
+}
+.status-dot-active {
+  animation: pulse-glow 2s ease-in-out infinite, cc-status-ring 2s ease-out infinite;
+}
+
+/* Smooth transition on all interactive cards */
+.cc-metric-card,
+.cc-dept-tile,
+.cc-glass-card,
+.cc-hero-banner {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hero banner content subtle floating */
+@keyframes cc-hero-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.cc-hero-icon-float {
+  animation: cc-hero-float 3s ease-in-out infinite;
+}
+
+/* Shimmer sweep on metric cards */
+@keyframes cc-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.cc-metric-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, hsl(190 60% 50% / 0.04), transparent);
+  animation: cc-shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+}
+.cc-metric-card:hover::after {
+  animation-duration: 2s;
+}
+
+/* Ambient background grid slow pan */
+.rpp-ambient-bg::before {
+  animation: cc-grid-floor-pan 30s linear infinite;
+}
+
+/* Top bar subtle slide in on mount */
+.rpp-topbar {
+  animation: cc-slide-right 0.5s ease-out both;
+}
+
+/* Department tile icon hover glow */
+.cc-dept-tile:hover .cc-dept-icon {
+  filter: drop-shadow(0 0 8px hsl(190 60% 50% / 0.4));
+  transform: scale(1.1);
+}
+.cc-dept-icon {
+  transition: all 0.3s ease;
+}
+
 /* CREAP Conversation Font */
 @font-face {
   font-family: 'CreapConvFont';

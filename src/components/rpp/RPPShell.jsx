@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import RPPDepartmentNav from './RPPDepartmentNav';
 import RPPCreaprMessage from './RPPCreaprMessage';
+import CommandCenterAmbience from './CommandCenterAmbience';
 
 export default function RPPShell() {
   const location = useLocation();
@@ -79,6 +80,7 @@ export default function RPPShell() {
   return (
     <div className="rpp-shell">
       <div className="rpp-ambient-bg" />
+      <CommandCenterAmbience />
 
       {/* Top Navigation Bar */}
       <RPPDepartmentNav

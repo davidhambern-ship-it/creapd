@@ -85,7 +85,7 @@ export default function RPPLobby() {
       <div className="px-4 md:px-6 pt-4 pb-3">
         <button
           onClick={() => navigate(nextDept.path)}
-          className="cc-hero-banner w-full text-left block"
+          className="cc-hero-banner w-full text-left block cc-animate-fade-up"
         >
           {/* Background image */}
           <div className="absolute inset-0">
@@ -116,7 +116,7 @@ export default function RPPLobby() {
                 </span>
               </div>
             </div>
-            <div className="hidden md:flex shrink-0">
+            <div className="hidden md:flex shrink-0 cc-hero-icon-float">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(190 50% 18% / 0.4), hsl(190 40% 10% / 0.2))', border: '1px solid hsl(190 40% 28% / 0.4)' }}>
                 <ArrowRight className="w-6 h-6" style={{ color: 'hsl(35 90% 60%)' }} />
               </div>
@@ -145,13 +145,13 @@ export default function RPPLobby() {
       {/* Metrics Grid (3x2) */}
       <div className="px-4 md:px-6 pb-4">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {metrics.map((m) => {
+          {metrics.map((m, mIdx) => {
             const Icon = m.icon;
             return (
               <button
                 key={m.label}
                 onClick={() => navigate(`/research/${m.dept === 'topics' ? 'topics' : m.dept === 'research' ? 'manager' : m.dept === 'dossier' ? 'manager' : m.dept === 'develop' ? 'assets' : 'export'}`)}
-                className="cc-metric-card group"
+                className={`cc-metric-card group cc-animate-scale-in cc-stagger-${Math.min(mIdx + 1, 6)}`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'hsl(190 40% 12% / 0.3)' }}>
@@ -161,7 +161,7 @@ export default function RPPLobby() {
                     <span className="status-dot status-dot-active" />
                   )}
                 </div>
-                <p className="text-2xl md:text-3xl font-bold font-mono" style={{ color: 'hsl(35 90% 60%)' }}>{m.value}</p>
+                <p className="text-2xl md:text-3xl font-bold font-mono cc-number-pop" style={{ color: 'hsl(35 90% 60%)', animationDelay: `${0.15 + mIdx * 0.05}s` }}>{m.value}</p>
                 <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: 'hsl(152 40% 55% / 0.7)' }}>{m.label}</p>
                 <p className="text-xs text-muted-foreground/60">{m.sub}</p>
               </button>
@@ -173,7 +173,7 @@ export default function RPPLobby() {
       {/* Department Tiles (horizontal row) */}
       <div className="px-4 md:px-6 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-          {RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map(dept => {
+          {RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map((dept, dIdx) => {
             const Icon = dept.icon;
             const stats = {
               topics: topics.length,
@@ -187,10 +187,10 @@ export default function RPPLobby() {
               <button
                 key={dept.id}
                 onClick={() => navigate(dept.path)}
-                className="cc-dept-tile group"
+                className={`cc-dept-tile group cc-animate-fade-up cc-stagger-${Math.min(dIdx + 1, 6)}`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center group-hover:bg-opacity-20 transition-colors" style={{ background: 'hsl(190 30% 12% / 0.3)' }}>
+                  <div className="cc-dept-icon w-9 h-9 rounded-lg flex items-center justify-center group-hover:bg-opacity-20" style={{ background: 'hsl(190 30% 12% / 0.3)' }}>
                     <Icon className="w-4.5 h-4.5" style={{ color: 'hsl(190 55% 50% / 0.6)' }} />
                   </div>
                   {count > 0 && (
@@ -217,7 +217,7 @@ export default function RPPLobby() {
       {/* Footer Modules: 3 columns */}
       <div className="px-4 md:px-6 pb-4 grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Platform Status */}
-        <div className="cc-glass-card p-4">
+        <div className="cc-glass-card p-4 cc-animate-fade-up cc-stagger-1">
           <div className="flex items-center gap-2 mb-3">
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ background: 'hsl(152 50% 15% / 0.3)', border: '1px solid hsl(152 40% 25% / 0.3)' }}>
               <CheckCircle2 className="w-3 h-3" style={{ color: 'hsl(152 60% 50%)' }} />
@@ -253,7 +253,7 @@ export default function RPPLobby() {
         </div>
 
         {/* Latest Creation Packets */}
-        <div className="cc-glass-card p-4">
+        <div className="cc-glass-card p-4 cc-animate-fade-up cc-stagger-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-heading font-semibold">Latest Packets</h3>
             <Link to="/research/export" className="text-[10px] hover:underline" style={{ color: 'hsl(190 70% 55%)' }}>View all</Link>
@@ -287,7 +287,7 @@ export default function RPPLobby() {
         </div>
 
         {/* CREAPr RSS Feed */}
-        <div className="cc-glass-card p-4">
+        <div className="cc-glass-card p-4 cc-animate-fade-up cc-stagger-3">
           <div className="flex items-center gap-2 mb-3">
             <Rss className="w-4 h-4" style={{ color: 'hsl(190 60% 50% / 0.7)' }} />
             <h3 className="text-sm font-heading font-semibold">Knowledge Feed</h3>
