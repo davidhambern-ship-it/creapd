@@ -143,13 +143,25 @@ Greet the producer naturally and conversationally. Be warm, specific to them, an
       },
     });
 
-    if (result?.spoken_lines && memory?.id) {
+    // Normalize — same guard as processProducerInput
+    if (typeof result === 'string') {
+      return { ...FALLBACK_GREETING, spoken_lines: [result] };
+    }
+    if (!result || typeof result !== 'object') {
+      return FALLBACK_GREETING;
+    }
+    if (!Array.isArray(result.spoken_lines) || result.spoken_lines.length === 0) {
+      const salvage = result.message || result.message_to_user || result.response || result.text;
+      result.spoken_lines = salvage ? [String(salvage)] : FALLBACK_GREETING.spoken_lines;
+    }
+
+    if (memory?.id) {
       updateCreaprMemory(memory.id, {
         last_greeting: result.spoken_lines.join(' ').substring(0, 150),
       });
     }
 
-    return result || FALLBACK_GREETING;
+    return result;
   } catch {
     return FALLBACK_GREETING;
   }
@@ -257,7 +269,20 @@ Return your response as JSON.`;
         },
       },
     });
-    return result || FALLBACK_RESPONSE;
+
+    // Normalize — InvokeLLM may return a string instead of an object,
+    // or an object without spoken_lines. Ensure spoken_lines is always populated.
+    if (typeof result === 'string') {
+      return { ...FALLBACK_RESPONSE, spoken_lines: [result] };
+    }
+    if (!result || typeof result !== 'object') {
+      return FALLBACK_RESPONSE;
+    }
+    if (!Array.isArray(result.spoken_lines) || result.spoken_lines.length === 0) {
+      const salvage = result.message || result.message_to_user || result.response || result.text;
+      result.spoken_lines = salvage ? [String(salvage)] : FALLBACK_RESPONSE.spoken_lines;
+    }
+    return result;
   } catch {
     return FALLBACK_RESPONSE;
   }
