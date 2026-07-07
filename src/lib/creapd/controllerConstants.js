@@ -51,26 +51,27 @@ export const DECISIONS = {
 // ── Worker Routing Map (Section 11) ─────────────────────────────────────────
 // Maps asset types and common recommendation keywords to the responsible Worker.
 
+// RPP-AI-001 aligned — maps asset types to canonical worker IDs from aiWorkerRegistry
 export const WORKER_ROUTING = {
-  PresentationPoint: 'Research Worker',
-  StorySlide: 'StorySlide Worker',
-  PresentationScript: 'Script Worker',
-  ImageAsset: 'Image Worker',
-  VoicePackage: 'Voice Worker',
-  VideoAsset: 'Video Worker',
-  Layout: 'Layout Worker',
-  ProductionPackage: 'Packet Worker',
+  PresentationPoint: 'develop_planning',
+  StorySlide: 'packet_assembly',
+  PresentationScript: 'develop_script',
+  ImageAsset: 'develop_image',
+  VoicePackage: 'develop_voice',
+  VideoAsset: 'develop_video',
+  Layout: 'develop_design',
+  ProductionPackage: 'packet_assembly',
 };
 
-// Keyword-based routing for recommendation analysis
+// Keyword-based routing for recommendation analysis (RPP-AI-001 Section 5 & 7 workers)
 export const RECOMMENDATION_KEYWORD_ROUTING = [
-  { keywords: ['image', 'visual quality', 'resolution', 'artifact'], worker: 'Image Worker' },
-  { keywords: ['narration', 'voice', 'wpm', 'runtime', 'pacing', 'speech'], worker: 'Voice Worker' },
-  { keywords: ['layout', 'hierarchy', 'whitespace', 'eye flow', 'balance'], worker: 'Layout Worker' },
-  { keywords: ['script', 'redundancy', 'tone', 'wording', 'narrative'], worker: 'Script Worker' },
-  { keywords: ['research', 'statistic', 'fact', 'citation', 'missing data'], worker: 'Research Worker' },
-  { keywords: ['slide', 'storyslide', 'point', 'hierarchy'], worker: 'StorySlide Worker' },
-  { keywords: ['video', 'motion', 'synchronization', 'animation'], worker: 'Video Worker' },
+  { keywords: ['image', 'visual quality', 'resolution', 'artifact'], worker: 'develop_image' },
+  { keywords: ['narration', 'voice', 'wpm', 'runtime', 'pacing', 'speech'], worker: 'develop_voice' },
+  { keywords: ['layout', 'hierarchy', 'whitespace', 'eye flow', 'balance'], worker: 'develop_design' },
+  { keywords: ['script', 'redundancy', 'tone', 'wording', 'narrative'], worker: 'develop_script' },
+  { keywords: ['research', 'statistic', 'fact', 'citation', 'missing data'], worker: 'research_fact' },
+  { keywords: ['slide', 'storyslide', 'point', 'hierarchy'], worker: 'packet_assembly' },
+  { keywords: ['video', 'motion', 'synchronization', 'animation'], worker: 'develop_video' },
 ];
 
 // ── Classification Labels (for UI) ──────────────────────────────────────────
