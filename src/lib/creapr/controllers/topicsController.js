@@ -254,6 +254,11 @@ export async function processProducerInput(
 
   const exchangeCount = conversationHistory.filter(m => m.role === 'user').length;
 
+  // Extract last assistant message to prevent repetition
+  const lastAssistantMsgs = conversationHistory.filter(m => m.role === 'assistant');
+  const lastAssistantMsg = lastAssistantMsgs.length > 0 ? lastAssistantMsgs[lastAssistantMsgs.length - 1].content : '';
+  const lastUserMsg = conversationHistory.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+
   const prompt = `${LIBRARY_SYSTEM_PROMPT}
 
 PRODUCER NAME: ${firstName}
@@ -275,7 +280,12 @@ SESSION TYPE: ${sessionType || 'returning'}
 
 PRODUCER'S LATEST INPUT: "${userInput}"${selectionNote}
 
-CRITICAL: Review the conversation history AND the producer memory above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation. Your opening words must be different from every previous response.
+CRITICAL — ANTI-REPETITION GUARD:
+Your LAST response to the producer was: "${lastAssistantMsg}"
+The producer just replied: "${lastUserMsg}"
+You MUST NOT repeat that question or any variation of it. Your response must acknowledge what they said and advance to the NEXT step. Do NOT ask the same question again.
+
+Review the full conversation history AND producer memory above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation. Your opening words must be different from every previous response.
 
 If the producer has common interests or recent topics in memory, use those to make your response specific and personal. If they have an unfinished topic, offer to resume it. If they just completed a packet, acknowledge it.
 
