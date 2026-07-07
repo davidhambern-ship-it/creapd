@@ -100,9 +100,7 @@ export default function ResearchTopics() {
     setProgressTopic(topic);
     try {
       await base44.functions.invoke('deepResearchV2', { topic_id: topic.id, research_depth: topic.research_depth });
-      await new Promise(r => setTimeout(r, 2000));
       setProgressTopic(null);
-      await base44.functions.invoke('extractResearchPoints', { topic_id: topic.id });
       refresh();
     } catch (err) {
       console.error('Research failed:', err);

@@ -527,6 +527,13 @@ Return JSON: gray_areas (array of strings), logical_gaps (array of strings), com
         executive_summary: synData.executive_summary || '',
         research_completed_at: new Date().toISOString()
       });
+
+      // Auto-extract research points now that the dossier is ready
+      try {
+        await base44.functions.invoke('extractResearchPoints', { topic_id });
+      } catch (extractErr) {
+        stageErrors.push({ stage: 'auto_extract', error: extractErr.message });
+      }
     }
 
     return Response.json({
