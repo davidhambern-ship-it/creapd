@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 const STATUS_CONFIG = {
   not_started: { color: 'hsl(220 10% 35%)', label: 'Not Started' },
@@ -12,11 +12,9 @@ const STATUS_CONFIG = {
 
 export default function DepartmentCabinet({ dept, status, count, recommended, index }) {
   const navigate = useNavigate();
-  const Icon = dept.icon;
   const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG.not_started;
 
-  // Build a long scrolling text block — repeat the description a few times
-  // so the vertical scroll looks like a continuous screen display
+  // Build a long scrolling text block for the RSS feed
   const scrollText = Array.from({ length: 4 }, (_, i) => ({
     key: i,
     title: dept.description,
@@ -66,96 +64,37 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start gap-2.5 p-4 pb-3">
-        <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all group-hover:scale-110"
-          style={{
-            background: `linear-gradient(135deg, ${statusCfg.color} / 0.15, ${statusCfg.color} / 0.05)`,
-            border: `1px solid ${statusCfg.color} / 0.25`,
-          }}
-        >
-          <Icon className="w-4 h-4" style={{ color: statusCfg.color }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-heading font-semibold text-sm text-white">{dept.name}</h3>
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60">{dept.subtitle}</p>
-        </div>
+      {/* Header — title only */}
+      <div className="p-4 pb-2">
+        <h3 className="font-heading font-semibold text-sm text-white">{dept.name}</h3>
       </div>
 
-      {/* Screen display — vertically scrolling text */}
+      {/* RSS feed display */}
       <div
-        className="relative mx-4 mb-3 rounded-lg overflow-hidden"
+        className="relative mx-4 mb-4 rounded-lg overflow-hidden"
         style={{
-          height: '80px',
+          height: '40px',
           background: 'hsl(190 30% 4% / 0.35)',
           border: '1px solid hsl(190 40% 50% / 0.12)',
           boxShadow: 'inset 0 2px 8px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
           backdropFilter: 'blur(4px)',
         }}
       >
-        {/* Scan line overlay */}
         <div
-          className="cabinet-scanline absolute left-0 right-0 h-4 pointer-events-none z-10"
-          style={{
-            background: `linear-gradient(180deg, transparent, ${statusCfg.color} / 0.06, transparent)`,
-          }}
-        />
-
-        {/* Fade mask top + bottom */}
-        <div
-          className="absolute top-0 left-0 right-0 h-4 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(180deg, hsl(190 30% 4% / 0.95), transparent)' }}
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 h-4 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(0deg, hsl(190 30% 4% / 0.95), transparent)' }}
-        />
-
-        {/* Scrolling track */}
-        <div className="cabinet-screen-track py-2">
-          {scrollText.map((block) => (
-            <div key={block.key} className="px-3 pb-3">
-              <p className="text-[11px] leading-relaxed text-muted-foreground/80">{block.title}</p>
-              {block.output && (
-                <p className="text-[9px] uppercase tracking-wider mt-1" style={{ color: `${statusCfg.color} / 0.7)` }}>
-                  Output: {block.output}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer — status + count */}
-      <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <div className="flex items-center gap-1.5">
-          <span
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{
-              background: statusCfg.color,
-              boxShadow: status === 'in_progress' ? `0 0 8px ${statusCfg.color}` : 'none',
-              animation: status === 'in_progress' ? 'pulse-glow 2s ease-in-out infinite' : 'none',
-            }}
-          />
-          <span className="text-[9px] uppercase tracking-wider" style={{ color: statusCfg.color }}>{statusCfg.label}</span>
-        </div>
-        {count > 0 && (
-          <span
-            className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-            style={{ background: `${statusCfg.color} / 0.12)`, color: statusCfg.color }}
+          className="flex items-center h-full"
+          style={{ overflow: 'hidden' }}
+        >
+          <div
+            className="flex items-center gap-4 whitespace-nowrap"
+            style={{ animation: 'nc-ticker-scroll 20s linear infinite' }}
           >
-            {count}
-          </span>
-        )}
-      </div>
-
-      {/* Enter prompt */}
-      <div
-        className="flex items-center gap-1 px-4 pb-3 text-[9px] uppercase tracking-wider transition-all group-hover:gap-2"
-        style={{ color: 'hsl(190 70% 55%)' }}
-      >
-        Enter <ChevronRight className="w-3 h-3" />
+            {[...scrollText, ...scrollText].map((block, i) => (
+              <span key={i} className="text-[10px] font-mono px-2" style={{ color: `${statusCfg.color} / 0.8)` }}>
+                {block.title}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </button>
   );
