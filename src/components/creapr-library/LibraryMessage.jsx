@@ -97,7 +97,7 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="absolute top-[11%] left-1/2 -translate-x-1/2 w-[80%] max-w-xl plib-message-panel px-6 py-4 max-h-[45vh] overflow-y-auto"
+          className="absolute top-[11%] left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-xl plib-message-panel px-6 py-4 max-h-[45vh] overflow-y-auto"
           style={{ zIndex: 20 }}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -105,8 +105,8 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
           transition={{ duration: 0.4 }}
         >
           <p
-            className="text-center text-base md:text-lg leading-relaxed"
-            style={{ ...typography, minHeight: '1.5em' }}
+            className="text-center text-base md:text-lg leading-relaxed break-words"
+            style={{ ...typography, minHeight: '1.5em', wordBreak: 'break-word' }}
           >
             {typedText}
             <span className={`plib-cursor ${done ? 'plib-cursor-faded' : ''}`} />
