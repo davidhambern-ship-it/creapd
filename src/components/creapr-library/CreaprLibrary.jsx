@@ -253,7 +253,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const canShowInput = view === 'overview' && tablePhase === null;
 
   return (
-    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-hidden`} style={{ background: 'hsl(28 22% 8%)', border: '3px solid red' }}>
+    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-hidden`} style={{ background: 'hsl(28 22% 8%)' }}>
       <LibraryEnvironment intensity={envIntensity} />
 
       {/* Loading state */}
