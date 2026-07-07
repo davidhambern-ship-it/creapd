@@ -1,71 +1,25 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 import { generateGreeting, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
 import { runCreaprBrain } from '@/lib/creapr/creaprBrain';
-import LibraryEnvironment from './LibraryEnvironment';
-import Workspace3DScene from './Workspace3DScene';
-import LibraryWings from './LibraryWings';
-import LibraryResearchTable from './LibraryResearchTable';
-import LibraryInput from './LibraryInput';
-import LibraryGuidedTour from './LibraryGuidedTour';
-import LibraryReadingDesk from './LibraryReadingDesk';
-import { X, Loader2, BookOpen, Compass } from 'lucide-react';
-
-const TOUR_STEPS = [
-  {
-    title: 'The CREAPr Library',
-    narration: 'Welcome to the CREAPr Library — a guided research experience. Let me walk you through how this works.',
-    target: null,
-  },
-  {
-    title: 'Your Research Companion',
-    narration: 'This is CREAPr, your AI research librarian. The status indicator pulses while CREAPr searches the stacks for you.',
-    target: 'creapr-header',
-  },
-  {
-    title: 'Understanding Meter',
-    narration: 'This bar shows how well CREAPr understands your request. As it fills toward green, the library is getting closer to assembling your research assignment.',
-    target: 'understanding-meter',
-  },
-  {
-    title: 'The Bookshelves',
-    narration: 'When you start exploring, bookshelf wings appear here — each shelf is a category of knowledge. Click any wing to dive into that topic.',
-    target: 'library-wings',
-  },
-  {
-    title: 'The Research Table',
-    narration: 'Once CREAPr has enough understanding, a research table assembles here. Your compiled assignment appears as an open book — ready to approve and send to deep research.',
-    target: 'research-table',
-  },
-  {
-    title: 'Speak or Type',
-    narration: 'Type your request here, or tap the microphone to speak. CREAPr will guide you toward a complete research assignment at any time.',
-    target: 'library-input',
-  },
-  {
-    title: 'Ready to Begin',
-    narration: "That's the tour. Tell CREAPr what you'd like to research, and the library will come alive.",
-    target: null,
-  },
-];
+import { X, Loader2, Send, Sparkles, ArrowRight, Edit3, RotateCcw, BookOpen } from 'lucide-react';
 
 export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const navigate = useNavigate();
 
-  const [view, setView] = useState('overview');
-  const [wings, setWings] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [categories, setCategories] = useState(null);
   const [assignment, setAssignment] = useState(null);
-  const [tablePhase, setTablePhase] = useState(null);
   const [thinking, setThinking] = useState(false);
   const [inputEnabled, setInputEnabled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [loadingGreeting, setLoadingGreeting] = useState(true);
-  const [focusedWing, setFocusedWing] = useState(null);
+  const [input, setInput] = useState('');
+  const [showAssignment, setShowAssignment] = useState(false);
   const [completionConfidence, setCompletionConfidence] = useState(0);
-  const [tourActive, setTourActive] = useState(false);
-  const [lastMessage, setLastMessage] = useState('');
 
   const isMountedRef = useRef(true);
   const conversationHistoryRef = useRef([]);
@@ -73,7 +27,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const creapSettingsRef = useRef(DEFAULT_CREAP_SETTINGS);
   const userNameRef = useRef('');
   const processingRef = useRef(false);
-  const loadingGreetingRef = useRef(true);
+  const messagesEndRef = useRef(null);
 
   const handleGenerateGreeting = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -85,21 +39,18 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         enhancedConfig
       );
       if (!isMountedRef.current) return;
-      loadingGreetingRef.current = false;
       setLoadingGreeting(false);
       const greetingText = result.spoken_lines.join(' ');
       conversationHistoryRef.current.push({ role: 'assistant', content: greetingText });
-      setLastMessage(greetingText);
+      setMessages([{ role: 'assistant', content: greetingText }]);
       setCompletionConfidence(result.completion_confidence || 0);
       setInputEnabled(true);
     } catch {
       if (!isMountedRef.current) return;
-      loadingGreetingRef.current = false;
       setLoadingGreeting(false);
-      const fallback = ["Welcome to the library.", "What are we looking for today?"];
-      const fallbackText = fallback.join(' ');
-      conversationHistoryRef.current.push({ role: 'assistant', content: fallbackText });
-      setLastMessage(fallbackText);
+      const fallback = "Welcome to the research library. What are we looking for today?";
+      conversationHistoryRef.current.push({ role: 'assistant', content: fallback });
+      setMessages([{ role: 'assistant', content: fallback }]);
       setInputEnabled(true);
     }
   }, [config]);
@@ -119,11 +70,11 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
       timeoutId = setTimeout(() => {
         if (!isMountedRef.current) return;
-        if (loadingGreetingRef.current) {
-          loadingGreetingRef.current = false;
-          setLoadingGreeting(false);
-          const fallback = ["Welcome to the library.", "What are we looking for today?"];
-          conversationHistoryRef.current.push({ role: 'assistant', content: fallback.join(' ') });
+        setLoadingGreeting(false);
+        if (conversationHistoryRef.current.length === 0) {
+          const fallback = "Welcome to the research library. What are we looking for today?";
+          conversationHistoryRef.current.push({ role: 'assistant', content: fallback });
+          setMessages([{ role: 'assistant', content: fallback }]);
           setInputEnabled(true);
         }
       }, 12000);
@@ -135,15 +86,20 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     };
   }, []);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, thinking]);
+
   const handleProducerInput = useCallback(async (input, selectedCategory = null) => {
     if (!isMountedRef.current || processingRef.current) return;
     processingRef.current = true;
     setInputEnabled(false);
-    setWings(null);
-    setFocusedWing(null);
+    setCategories(null);
 
     const userMessage = selectedCategory ? `[Selected: ${selectedCategory}]` : input;
     conversationHistoryRef.current.push({ role: 'user', content: userMessage });
+    setMessages(prev => [...prev, { role: 'user', content: selectedCategory || input }]);
+    setInput('');
 
     setThinking(true);
     const brainResponse = await runCreaprBrain({
@@ -169,7 +125,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
     const responseText = spokenLines.join(' ');
     conversationHistoryRef.current.push({ role: 'assistant', content: responseText });
-    setLastMessage(responseText);
+    setMessages(prev => [...prev, { role: 'assistant', content: responseText }]);
 
     if (result.assignment_update) {
       assignmentRef.current = { ...assignmentRef.current, ...result.assignment_update };
@@ -180,33 +136,26 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     setCompletionConfidence(newConfidence);
 
     if (result.phase === 'assembling' || result.phase === 'reveal' || (newConfidence >= 0.8 && result.assignment)) {
-      setView('table');
-      setTablePhase('assembling');
+      const fullAssignment = {
+        ...result.assignment,
+        research_depth: result.assignment.research_depth || config?.research_depth || 'standard',
+        audience: result.assignment.audience || config?.target_audience || 'General Public',
+      };
+      setAssignment(fullAssignment);
+      assignmentRef.current = fullAssignment;
       setTimeout(() => {
         if (!isMountedRef.current) return;
-        setTablePhase('reveal');
-        if (!result.assignment) return;
-        const fullAssignment = {
-          ...result.assignment,
-          research_depth: result.assignment.research_depth || config?.research_depth || 'standard',
-          audience: result.assignment.audience || config?.target_audience || 'General Public',
-        };
-        setAssignment(fullAssignment);
-        assignmentRef.current = fullAssignment;
-      }, 2500);
+        setShowAssignment(true);
+      }, 1500);
       setInputEnabled(true);
       processingRef.current = false;
       return;
     }
 
-    const hasWings = (result.categories?.length > 0) || (result.featured_books?.length > 0);
-
-    if (hasWings) {
-      if (result.categories) {
-        setWings({ items: result.categories, variant: 'category', title: 'Explore the Library' });
-      } else {
-        setWings({ items: result.featured_books, variant: 'featured', title: 'Featured Discoveries' });
-      }
+    if (result.categories?.length > 0) {
+      setCategories({ items: result.categories, title: 'Explore the Library' });
+    } else if (result.featured_books?.length > 0) {
+      setCategories({ items: result.featured_books, title: 'Featured Discoveries' });
     }
 
     setInputEnabled(true);
@@ -214,8 +163,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   }, [config]);
 
   const handleCategorySelect = useCallback((item) => {
-    setFocusedWing(item.name);
-    setTimeout(() => handleProducerInput(item.name, item.name), 400);
+    handleProducerInput(item.name, item.name);
   }, [handleProducerInput]);
 
   const handleApprove = useCallback(async () => {
@@ -238,153 +186,333 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   }, [config, navigate, submitting]);
 
   const handleEdit = useCallback(() => {
-    setTablePhase(null);
-    setView('overview');
-    setWings(null);
+    setShowAssignment(false);
+    setCategories(null);
     setInputEnabled(true);
   }, []);
 
   const handleRestart = useCallback(() => {
-    setTablePhase(null);
-    setView('overview');
-    setWings(null);
+    setShowAssignment(false);
+    setCategories(null);
     setAssignment(null);
     assignmentRef.current = {};
     conversationHistoryRef.current = [];
     setCompletionConfidence(0);
-    loadingGreetingRef.current = true;
     setLoadingGreeting(true);
+    setMessages([]);
     handleGenerateGreeting();
   }, [handleGenerateGreeting]);
 
-  const envIntensity = tablePhase === 'assembling' ? 'assembling' : thinking ? 'active' : 'calm';
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed || !inputEnabled || thinking) return;
+    handleProducerInput(trimmed);
+  };
+
   const showLoading = loadingGreeting && !thinking;
-  const canShowInput = view === 'overview' && tablePhase === null;
 
   return (
-    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-y-auto overflow-x-hidden`} style={{ background: 'hsl(28 22% 8%)' }}>
-      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <Workspace3DScene intensity={envIntensity} />
+    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} flex flex-col bg-background overflow-hidden`}>
+      {/* Ambient gradient blobs — matching home theme */}
+      <motion.div
+        className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-berna-purple/15 blur-[120px] pointer-events-none"
+        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-berna-orange/15 blur-[100px] pointer-events-none"
+        animate={{ x: [0, -50, 0], y: [0, 40, 0] }}
+        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute top-1/2 right-1/3 w-64 h-64 rounded-full bg-berna-emerald/10 blur-[90px] pointer-events-none"
+        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Particle dots */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {Array.from({ length: 16 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/20"
+            style={{ left: `${(i * 37) % 100}%`, top: `${(i * 53) % 100}%` }}
+            animate={{ opacity: [0.1, 0.4, 0.1], scale: [0.5, 1, 0.5] }}
+            transition={{ duration: 3 + (i % 4), repeat: Infinity, delay: i * 0.2 }}
+          />
+        ))}
+      </div>
+
+      {/* Header — CREAPr identity */}
+      <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-berna-purple/20 to-berna-orange/10 border border-white/[0.08] flex items-center justify-center">
+            <span className="text-sm font-mono font-bold text-berna-purple">Cr</span>
+          </div>
+          <div>
+            <h3 className="font-heading font-semibold text-sm text-white">CREAPr</h3>
+            <p className="text-[10px] flex items-center gap-1.5 text-muted-foreground">
+              <span className={`w-1.5 h-1.5 rounded-full ${thinking ? 'bg-berna-orange' : 'bg-berna-emerald'}`} style={{ boxShadow: '0 0 6px currentColor' }} />
+              {thinking ? 'Searching...' : 'Research Library'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Understanding meter */}
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Understanding</span>
+            <div className="w-20 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.min(100, completionConfidence * 100)}%`,
+                  background: 'linear-gradient(90deg, hsl(270 80% 60%), hsl(25 95% 55%), hsl(152 60% 45%))',
+                }}
+              />
+            </div>
+          </div>
+          {!embedded && (
+            <button
+              onClick={() => onClose?.()}
+              className="p-2 rounded-lg hover:bg-white/5 transition-all"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Loading state */}
       {showLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ zIndex: 15 }}>
+        <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: 'hsl(35 25% 12% / 0.4)', border: '1px solid hsl(35 22% 25% / 0.3)' }}>
-              <BookOpen className="w-7 h-7" style={{ color: 'hsl(38 50% 52%)' }} />
+            <div className="w-12 h-12 rounded-xl bg-berna-purple/10 border border-white/[0.08] flex items-center justify-center mx-auto mb-3">
+              <BookOpen className="w-6 h-6 text-berna-purple" />
             </div>
-            <h2 className="font-heading font-semibold text-xl mb-2" style={{ color: 'hsl(35 18% 88%)' }}>
-              The CREAPr Library
-            </h2>
             <div className="flex items-center gap-2 justify-center">
-              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(38 50% 52%)' }} />
-              <span className="text-sm" style={{ color: 'hsl(40 25% 50%)', fontFamily: 'Georgia, serif' }}>Opening the stacks...</span>
+              <Loader2 className="w-4 h-4 animate-spin text-berna-purple" />
+              <span className="text-sm text-muted-foreground">Opening the library...</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header — CREAPr identity */}
-      <div className="absolute top-4 left-4 flex items-center gap-3 p-3 rounded-xl" style={{ zIndex: 15, background: 'hsl(28 20% 10% / 0.7)', backdropFilter: 'blur(12px)', border: '1px solid hsl(35 22% 22% / 0.4)', boxShadow: '0 4px 16px hsl(0 0% 0% / 0.3)' }} data-tour="creapr-header">
-        <div
-          className={`w-11 h-11 rounded-lg flex items-center justify-center transition-all ${thinking ? 'animate-pulse' : ''}`}
-          style={{
-            background: thinking ? 'hsl(38 45% 38% / 0.25)' : 'hsl(35 25% 15% / 0.6)',
-            border: `1px solid ${thinking ? 'hsl(38 45% 45% / 0.5)' : 'hsl(35 22% 28% / 0.4)'}`,
-            boxShadow: thinking ? '0 0 16px hsl(38 50% 45% / 0.2)' : 'none',
-          }}
-        >
-          <span className="text-base font-mono font-bold" style={{ color: 'hsl(38 55% 58%)' }}>Cr</span>
-        </div>
-        <div>
-          <h3 className="font-heading font-semibold text-base" style={{ color: 'hsl(35 20% 90%)' }}>CREAPr</h3>
-          <p className="text-xs flex items-center gap-1.5" style={{ color: 'hsl(40 25% 52%)', fontFamily: 'Georgia, serif' }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: thinking ? 'hsl(38 55% 52%)' : 'hsl(152 45% 50%)', boxShadow: '0 0 6px currentColor' }} />
-            {thinking ? 'Searching the stacks...' : 'Library Online'}
-          </p>
-        </div>
-        <button
-          onClick={() => setTourActive(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-white/5"
-          style={{ background: 'hsl(30 10% 8% / 0.5)', border: '1px solid hsl(35 18% 24% / 0.3)', color: 'hsl(38 45% 52%)' }}
-        >
-          <Compass className="w-3.5 h-3.5" />
-          Tour
-        </button>
-      </div>
+      {/* Messages — chat area */}
+      {!showLoading && !showAssignment && (
+        <div className="flex-1 overflow-y-auto px-4 py-6 relative z-10">
+          <div className="max-w-2xl mx-auto space-y-4">
+            {messages.map((msg, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
+              >
+                <div
+                  className={`max-w-[80%] px-4 py-2.5 rounded-xl text-sm ${
+                    msg.role === 'user'
+                      ? 'bg-berna-purple/15 border border-berna-purple/20 text-white'
+                      : 'glass-panel text-white/90'
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              </motion.div>
+            ))}
 
-      {/* Knowledge dashboard — confidence indicator */}
-      {view === 'overview' && (
-        <div className="absolute top-4 right-4 hidden md:flex plib-dashboard" style={{ zIndex: 15 }} data-tour="understanding-meter">
-          <span className="text-[10px] uppercase tracking-wider" style={{ color: 'hsl(40 22% 48%)', fontFamily: '"Oswald", sans-serif' }}>
-            Understanding
-          </span>
-          <div className="plib-dashboard-bar">
-            <div
-              className="plib-dashboard-fill"
-              style={{ width: `${Math.min(100, completionConfidence * 100)}%` }}
-            />
+            {/* Thinking indicator */}
+            {thinking && (
+              <div className="flex justify-start">
+                <div className="glass-panel px-4 py-3 rounded-xl">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-berna-purple animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-berna-purple animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-berna-purple animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Category chips */}
+            {categories && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="pt-2"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 text-center">{categories.title}</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {categories.items.map((item, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleCategorySelect(item)}
+                      className="glass-panel px-3 py-2 rounded-lg text-xs font-medium text-white/80 hover:border-berna-purple/30 hover:text-white transition-all group"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        {item.name}
+                        <ArrowRight className="w-3 h-3 text-berna-purple opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            <div ref={messagesEndRef} />
           </div>
         </div>
       )}
 
-      {/* Close button */}
-      {!embedded && (
-        <button
-          onClick={() => { onClose?.(); }}
-          className="absolute top-4 right-4 p-2.5 rounded-lg transition-all hover:bg-white/5 md:right-44"
-          style={{ zIndex: 20, background: 'hsl(30 10% 8% / 0.5)', border: '1px solid hsl(35 18% 24% / 0.3)' }}
-        >
-          <X className="w-5 h-5" style={{ color: 'hsl(35 12% 58%)' }} />
-        </button>
-      )}
+      {/* Assignment card — completion state */}
+      <AnimatePresence>
+        {showAssignment && assignment && (
+          <motion.div
+            className="flex-1 overflow-y-auto px-4 py-6 relative z-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="max-w-2xl mx-auto glass-panel p-6"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
+                <div className="w-10 h-10 rounded-lg bg-berna-emerald/10 border border-berna-emerald/20 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-berna-emerald" />
+                </div>
+                <div>
+                  <h2 className="font-heading font-semibold text-base text-white">Research Assignment</h2>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Compiled by CREAPr</p>
+                </div>
+              </div>
 
-      {/* Central reading desk — idle/overview state */}
-      {view === 'overview' && !wings && !showLoading && (
-        <LibraryReadingDesk thinking={thinking} greeting={!loadingGreeting} message={lastMessage} />
-      )}
+              {/* Fields */}
+              <div className="space-y-4">
+                {assignment.title && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Title</p>
+                    <p className="text-sm text-white">{assignment.title}</p>
+                  </div>
+                )}
+                {assignment.objective && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Objective</p>
+                    <p className="text-sm text-white/80">{assignment.objective}</p>
+                  </div>
+                )}
+                {assignment.primary_research_question && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Primary Question</p>
+                    <p className="text-sm text-white/80">{assignment.primary_research_question}</p>
+                  </div>
+                )}
+                {assignment.supporting_questions?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Supporting Questions</p>
+                    <ul className="space-y-1">
+                      {assignment.supporting_questions.map((q, i) => (
+                        <li key={i} className="text-sm text-white/70 flex items-start gap-2">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-berna-purple shrink-0" />
+                          {q}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  {assignment.scope && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Scope</p>
+                      <p className="text-xs text-white/70">{assignment.scope}</p>
+                    </div>
+                  )}
+                  {assignment.audience && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Audience</p>
+                      <p className="text-xs text-white/70">{assignment.audience}</p>
+                    </div>
+                  )}
+                  {assignment.intent && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Intent</p>
+                      <p className="text-xs text-white/70">{assignment.intent}</p>
+                    </div>
+                  )}
+                  {assignment.research_depth && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Depth</p>
+                      <p className="text-xs text-white/70">{assignment.research_depth}</p>
+                    </div>
+                  )}
+                </div>
+                {assignment.deliverables && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Deliverables</p>
+                    <p className="text-xs text-white/70">{assignment.deliverables}</p>
+                  </div>
+                )}
+              </div>
 
-      {/* Wings — spatial category browsing */}
-      {wings && view === 'overview' && (
-        <LibraryWings
-          items={wings.items}
-          variant={wings.variant}
-          title={wings.title}
-          focusedWing={focusedWing}
-          onSelect={handleCategorySelect}
-        />
-      )}
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-2 pt-5 mt-5 border-t border-white/[0.06]">
+                <button
+                  onClick={handleApprove}
+                  disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm bg-gradient-to-r from-berna-emerald to-berna-emerald/80 hover:opacity-90 text-white transition-all disabled:opacity-50"
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {submitting ? 'Launching...' : 'Approve & Research'}
+                </button>
+                <button
+                  onClick={handleEdit}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  Refine
+                </button>
+                <button
+                  onClick={handleRestart}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Start Over
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Research table — completion state */}
-      {view === 'table' && (
-        <LibraryResearchTable
-          assignment={assignment}
-          phase={tablePhase}
-          onApprove={handleApprove}
-          onEdit={handleEdit}
-          onRestart={handleRestart}
-        />
-      )}
-
-      {/* Input — producer response */}
-      {canShowInput && (
-        <LibraryInput
-          onSend={(text) => handleProducerInput(text)}
-          onStartTyping={() => {}}
-          disabled={!inputEnabled || submitting}
-          thinking={thinking}
-          placeholder={view === 'overview' && !wings ? "What are we looking for today?" : "Continue exploring..."}
-        />
-      )}
-
-      {/* Guided tour overlay */}
-      {tourActive && (
-        <LibraryGuidedTour
-          steps={TOUR_STEPS}
-          onClose={() => setTourActive(false)}
-          onComplete={() => setTourActive(false)}
-        />
+      {/* Input bar */}
+      {!showLoading && !showAssignment && (
+        <div className="relative z-10 px-4 py-3 border-t border-white/[0.06]">
+          <div className="max-w-2xl mx-auto flex items-center gap-2">
+            <div className="flex-1 glass-panel flex items-center gap-2 px-3">
+              <Sparkles className="w-4 h-4 text-berna-purple shrink-0" />
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+                disabled={!inputEnabled || thinking}
+                placeholder={thinking ? 'CREAPr is thinking...' : 'What are we looking for today?'}
+                className="flex-1 h-11 bg-transparent text-sm text-white outline-none placeholder:text-muted-foreground disabled:opacity-50"
+              />
+              {thinking && <Loader2 className="w-4 h-4 animate-spin text-berna-purple" />}
+            </div>
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || !inputEnabled || thinking}
+              className="w-11 h-11 rounded-lg bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:opacity-90 text-white flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
