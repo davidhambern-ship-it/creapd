@@ -89,7 +89,7 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
         <div className="cabinet-screen-track py-2 text-center">
           {[...scrollText, ...scrollText].map((block, i) => (
             <div key={i} className="px-3 pb-3">
-              <p className="text-sm leading-relaxed text-muted-foreground/80">{block.title}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground/80" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{block.title}</p>
               {block.output && (
                 <p className="text-[11px] uppercase tracking-wider mt-1" style={{ color: `${statusCfg.color} / 0.7)` }}>
                   Output: {block.output}
