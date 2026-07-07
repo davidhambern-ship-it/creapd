@@ -89,7 +89,6 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     if (!lines || lines.length === 0) { onComplete?.(); return; }
     const gen = ++speakLinesGenRef.current;
     setSubtitleLines(lines);
-    subtitleDoneRef.current = onComplete;
     for (let i = 0; i < lines.length; i++) {
       if (!isMountedRef.current) return;
       if (gen !== speakLinesGenRef.current) return;
@@ -98,14 +97,12 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       if (gen !== speakLinesGenRef.current) return;
       await new Promise(r => setTimeout(r, 600));
     }
+    if (gen !== speakLinesGenRef.current) return;
+    onComplete?.();
   }, [speakLine]);
 
   const handleSubtitlesDone = useCallback(() => {
-    if (subtitleDoneRef.current) {
-      const cb = subtitleDoneRef.current;
-      subtitleDoneRef.current = null;
-      cb();
-    }
+    // Subtitles finished typing — no-op; callback fires after TTS completes
   }, []);
 
   const handleGenerateGreeting = useCallback(async () => {
