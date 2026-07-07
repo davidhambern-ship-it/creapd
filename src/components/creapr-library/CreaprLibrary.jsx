@@ -31,6 +31,10 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
   const sessionKey = `creapr_conv_${config?.id || 'default'}`;
 
+  const coerceLines = (lines) => (Array.isArray(lines) ? lines : []).map(l =>
+    typeof l === 'string' ? l : (l?.text || l?.message || l?.content || String(l ?? ''))
+  );
+
   const persistSession = useCallback(() => {
     try {
       sessionStorage.setItem(sessionKey, JSON.stringify({
@@ -46,9 +50,13 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       if (!saved) return null;
       const parsed = JSON.parse(saved);
       if (parsed.history?.length > 0) {
-        conversationHistoryRef.current = parsed.history;
+        const cleanHistory = parsed.history.filter(m =>
+          typeof m?.content === 'string' && !m.content.includes('[object Object]')
+        );
+        if (cleanHistory.length === 0) return null;
+        conversationHistoryRef.current = cleanHistory;
         assignmentRef.current = parsed.assignment || {};
-        return parsed;
+        return { ...parsed, history: cleanHistory };
       }
     } catch {}
     return null;
@@ -69,7 +77,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       );
       if (!isMountedRef.current) return;
       setLoadingGreeting(false);
-      const greetingText = result.spoken_lines.join(' ');
+      const greetingText = coerceLines(result.spoken_lines).join(' ');
       conversationHistoryRef.current.push({ role: 'assistant', content: greetingText });
       setMessages([{ role: 'assistant', content: greetingText }]);
       setCompletionConfidence(result.completion_confidence || 0);
@@ -161,7 +169,8 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     if (!isMountedRef.current) return;
 
     const result = brainResponse.department_result || {};
-    const spokenLines = result.spoken_lines || (brainResponse.message_to_user ? [brainResponse.message_to_user] : ["Let me try that again."]);
+    const rawLines = result.spoken_lines || (brainResponse.message_to_user ? [brainResponse.message_to_user] : ["Let me try that again."]);
+    const spokenLines = coerceLines(rawLines);
 
     const responseText = spokenLines.join(' ');
     conversationHistoryRef.current.push({ role: 'assistant', content: responseText });
