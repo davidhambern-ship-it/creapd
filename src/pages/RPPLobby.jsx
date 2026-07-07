@@ -3,12 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Rss } from 'lucide-react';
-import LobbyHero from '@/components/rpp/lobby/LobbyHero';
-import DepartmentDirectory from '@/components/rpp/lobby/DepartmentDirectory';
-import ProjectStatusBoard from '@/components/rpp/lobby/ProjectStatusBoard';
-import ProductionReadinessPanel from '@/components/rpp/lobby/ProductionReadinessPanel';
-import PacketPickupPanel from '@/components/rpp/lobby/PacketPickupPanel';
+import { Loader2, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
+import DepartmentCabinet from '@/components/rpp/lobby/DepartmentCabinet';
 
 function getDeptStatus(deptId, topics, points, packages, dossiers) {
   const researchingTopics = topics.filter(t => t.status === 'researching');
@@ -47,50 +43,33 @@ function getRecommendedDeptId(topics, points, packages, approvedPackages, dossie
 export default function RPPLobby() {
   const navigate = useNavigate();
   const researchData = useResearchProduction();
-  const { config, topics, points, packages, dossiers, loading, refresh } = researchData;
+  const { config, topics, points, packages, dossiers, loading } = researchData;
   const [userName, setUserName] = useState('');
 
   const researchingTopics = topics.filter(t => t.status === 'researching');
-  const researchedTopics = topics.filter(t => t.status === 'researched' || t.status === 'in_review');
-  const approvedPoints = points.filter(p => p.status === 'approved' || p.status === 'used');
   const approvedPackages = packages.filter(p => p.status === 'approved' || p.status === 'finalized');
 
   const checklist = [
     { label: 'Configuration Saved', done: !!config?.production_name },
     { label: 'Research Assignment', done: topics.length > 0 },
-    { label: 'Research Complete', done: researchedTopics.length > 0 },
+    { label: 'Research Complete', done: topics.some(t => t.status === 'researched' || t.status === 'in_review') },
     { label: 'Points Extracted', done: points.length > 0 },
-    { label: 'Points Approved', done: approvedPoints.length > 0 },
     { label: 'Packages Generated', done: packages.length > 0 },
   ];
-  const completedItems = checklist.filter(c => c.done).map(c => c.label);
-  const missingItems = checklist.filter(c => !c.done).map(c => c.label);
-  const readinessPercent = Math.round((completedItems.length / checklist.length) * 100);
+  const completedItems = checklist.filter(c => c.done).length;
+  const readinessPercent = Math.round((completedItems / checklist.length) * 100);
 
   const recommendedDeptId = getRecommendedDeptId(topics, points, packages, approvedPackages, dossiers);
   const recommendedDept = RPP_DEPARTMENTS.find(d => d.id === recommendedDeptId) || RPP_DEPARTMENTS[1];
 
-  // Build department directory data
-  const departments = RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map(d => ({
+  const departments = RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map((d, i) => ({
     dept: d,
     status: getDeptStatus(d.id, topics, points, packages, dossiers),
     count: { topics: topics.length, research: points.length, dossier: (dossiers || []).length, develop: packages.length, packet: approvedPackages.length }[d.id] || 0,
     recommended: d.id === recommendedDeptId,
+    index: i,
   }));
 
-  // Pipeline stages
-  const stages = RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map(d => ({
-    id: d.id,
-    name: d.name,
-    path: d.path,
-    status: getDeptStatus(d.id, topics, points, packages, dossiers),
-  }));
-
-  // Packet state
-  const packetState = approvedPackages.length > 0 ? 'ready' : packages.length > 0 ? 'in_progress' : 'none';
-  const packetTitle = (approvedPackages[0] || packages[0])?.title || '';
-
-  // CREAPr recommendation
   const recommendation = (() => {
     if (!config?.production_name || topics.length === 0)
       return 'We need a topic before the team can work — start in Topics.';
@@ -103,10 +82,8 @@ export default function RPPLobby() {
     return 'Your Production Packet is ready — collect it from Packet.';
   })();
 
-  // Primary CTA
   const ctaLabel = topics.length === 0 ? 'Start New Topic' : approvedPackages.length > 0 ? 'Collect Packet' : 'Continue Project';
 
-  // Fetch user name + send CREAPr greeting on mount
   useEffect(() => {
     base44.auth.me().then(u => { if (u?.full_name) setUserName(u.full_name.split(' ')[0]); }).catch(() => {});
   }, []);
@@ -119,63 +96,88 @@ export default function RPPLobby() {
     );
   }
 
-  // Knowledge ticker items
-  const tickerItems = topics.length > 0
-    ? topics.slice(0, 8).map(t => ({ title: t.title, sub: t.category || 'Research' }))
-    : [{ title: 'No active research topics yet', sub: 'Visit Topics to begin' }];
+  const firstName = userName || 'there';
 
   return (
-    <div className="rpp-lobby px-4 md:px-6 py-4 space-y-4">
-      {/* 1. Lobby Hero */}
-      <LobbyHero
-        userName={userName}
-        config={config}
-        recommendation={recommendation}
-        ctaLabel={ctaLabel}
-        onCTAClick={() => navigate(recommendedDept.path)}
-        readinessPercent={readinessPercent}
-      />
-
-      {/* 2. Department Directory */}
-      <DepartmentDirectory departments={departments} />
-
-      {/* 3 + 4. Pipeline + Readiness (two columns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ProjectStatusBoard stages={stages} />
-        <ProductionReadinessPanel
-          readinessPercent={readinessPercent}
-          completedItems={completedItems}
-          missingItems={missingItems}
-          nextStep={recommendedDept.name}
-          onNextStep={() => navigate(recommendedDept.path)}
-        />
-      </div>
-
-      {/* 5. Packet Pickup Panel */}
-      <PacketPickupPanel
-        packetState={packetState}
-        packetTitle={packetTitle}
-        onAction={() => navigate(packetState === 'none' ? recommendedDept.path : '/research/export')}
-      />
-
-      {/* Knowledge ticker — ambient motion */}
-      <div className="pt-2">
-        <div className="flex items-center gap-2 mb-2">
-          <Rss className="w-3.5 h-3.5" style={{ color: 'hsl(190 60% 50% / 0.6)' }} />
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Live Knowledge Feed</span>
-        </div>
-        <div className="rss-shelf">
-          <div className="rss-feed-track py-2 px-1">
-            {[...tickerItems, ...tickerItems].map((item, idx) => (
-              <div key={idx} className="rss-feed-item">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="status-dot status-dot-idle" />
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{item.sub}</span>
-                </div>
-                <p className="text-xs font-medium text-foreground/80 truncate">{item.title}</p>
-              </div>
-            ))}
+    <div className="rpp-lobby h-full overflow-y-auto px-4 md:px-8 py-6 md:py-10">
+      <div className="max-w-6xl mx-auto">
+        {/* ═══ Hero ═══ */}
+        <div className="text-center mb-10 md:mb-14 cc-animate-fade-up">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <BookOpen className="w-3.5 h-3.5" style={{ color: 'hsl(35 80% 55%)' }} />
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Research Production Profile
+            </span>
           </div>
+          <h1
+            className="text-3xl md:text-4xl font-heading font-bold mb-2"
+            style={{ textShadow: '0 0 24px hsl(190 80% 60% / 0.15)' }}
+          >
+            Welcome back, {firstName}.
+          </h1>
+          <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto">
+            {config?.production_name
+              ? <>Your <span style={{ color: 'hsl(35 80% 58%)' }}>{config.production_name}</span> project is <span style={{ color: 'hsl(152 55% 50%)' }}>{readinessPercent}% ready</span>.</>
+              : 'No active research project configured yet.'}
+          </p>
+
+          {/* Recommendation + CTA */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            {recommendation && (
+              <div className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(190 70% 55%)' }}>
+                <Sparkles className="w-3 h-3 shrink-0" />
+                <span>{recommendation}</span>
+              </div>
+            )}
+            <button
+              onClick={() => navigate(recommendedDept.path)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all hover:gap-3 shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, hsl(190 50% 18% / 0.5), hsl(270 50% 18% / 0.3))',
+                border: '1px solid hsl(190 50% 35% / 0.5)',
+                color: 'hsl(190 80% 65%)',
+                boxShadow: '0 0 20px hsl(190 50% 30% / 0.1)',
+              }}
+            >
+              {ctaLabel}
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ═══ Department Cabinets ═══ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {departments.map((d) => (
+            <DepartmentCabinet
+              key={d.dept.id}
+              dept={d.dept}
+              status={d.status}
+              count={d.count}
+              recommended={d.recommended}
+              index={d.index}
+            />
+          ))}
+        </div>
+
+        {/* ═══ Readiness bar ═══ */}
+        <div className="mt-10 flex items-center gap-3 px-4 py-3 rounded-xl cc-animate-fade-up cc-stagger-5"
+          style={{
+            background: 'hsl(210 40% 7% / 0.5)',
+            border: '1px solid hsl(190 30% 20% / 0.3)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 shrink-0">Readiness</span>
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(190 20% 12% / 0.5)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${readinessPercent}%`,
+                background: 'linear-gradient(90deg, hsl(190 60% 45%), hsl(152 55% 50%))',
+              }}
+            />
+          </div>
+          <span className="text-sm font-bold shrink-0" style={{ color: 'hsl(190 70% 55%)' }}>{readinessPercent}%</span>
         </div>
       </div>
     </div>
