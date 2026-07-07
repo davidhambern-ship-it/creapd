@@ -99,15 +99,16 @@ export default function RPPCreaprMessage({ messages = [], voiceEnabled, onToggle
           const isUser = msg.role === 'user';
           const text = isLast && !isUser ? displayedText : msg.text;
           return (
-            <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] ${isUser ? 'creapr-bubble-user' : 'creapr-bubble-assistant'}`}>
-                <p className="text-sm leading-relaxed text-foreground/90">
-                  {text}
-                  {isLast && !isUser && isTyping && (
-                    <span className="inline-block w-0.5 h-4 ml-0.5 animate-pulse align-middle" style={{ background: 'hsl(190 80% 55%)' }} />
-                  )}
-                </p>
-              </div>
+            <div key={msg.id} className="space-y-0.5">
+              {!isUser && (
+                <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'hsl(190 60% 50% / 0.5)' }}>CREAPr</span>
+              )}
+              <p className={`text-sm leading-relaxed ${isUser ? 'text-foreground/70 italic' : 'text-foreground/90'}`}>
+                {text}
+                {isLast && !isUser && isTyping && (
+                  <span className="inline-block w-0.5 h-4 ml-0.5 animate-pulse align-middle" style={{ background: 'hsl(190 80% 55%)' }} />
+                )}
+              </p>
             </div>
           );
         })}
