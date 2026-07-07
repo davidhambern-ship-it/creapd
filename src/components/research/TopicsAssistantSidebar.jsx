@@ -15,13 +15,13 @@ export default function TopicsAssistantSidebar({ config, topics, onClose }) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* CREAPr Assistant — fills most of the sidebar */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      {/* CREAPr Assistant — compact, takes ~1/4 of the sidebar */}
+      <div className="shrink-0 h-1/4 min-h-[140px] overflow-hidden border-b border-white/[0.06] glass-panel">
         <CreaprLibrary config={config} embedded onClose={onClose} />
       </div>
 
-      {/* Knowledge Shelf stats — bottom strip */}
-      <div className="shrink-0 border-t border-white/[0.06] px-3 py-2.5 bg-background/60 backdrop-blur-sm">
+      {/* Knowledge Shelf stats — fills remaining space */}
+      <div className="flex-1 min-h-0 border-t border-white/[0.06] px-3 py-2.5 bg-background/60 backdrop-blur-sm">
         <div className="flex items-center gap-1.5 mb-2">
           <Database className="w-3 h-3 text-muted-foreground" />
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Knowledge Shelf</span>
