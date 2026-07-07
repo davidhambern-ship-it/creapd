@@ -5,6 +5,7 @@ import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
 import { base44 } from '@/api/base44Client';
 import { Loader2, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
 import DepartmentCabinet from '@/components/rpp/lobby/DepartmentCabinet';
+import LobbyHoloBackground from '@/components/rpp/lobby/LobbyHoloBackground';
 
 function getDeptStatus(deptId, topics, points, packages, dossiers) {
   const researchingTopics = topics.filter(t => t.status === 'researching');
@@ -99,8 +100,9 @@ export default function RPPLobby() {
   const firstName = userName || 'there';
 
   return (
-    <div className="rpp-lobby h-full overflow-y-auto px-4 md:px-8 py-6 md:py-10">
-      <div className="max-w-6xl mx-auto">
+    <div className="rpp-lobby h-full overflow-y-auto px-4 md:px-8 py-6 md:py-10 relative">
+      <LobbyHoloBackground />
+      <div className="max-w-6xl mx-auto relative" style={{ zIndex: 1 }}>
         {/* ═══ Hero ═══ */}
         <div className="text-center mb-10 md:mb-14 cc-animate-fade-up">
           <div className="flex items-center justify-center gap-2 mb-3">
