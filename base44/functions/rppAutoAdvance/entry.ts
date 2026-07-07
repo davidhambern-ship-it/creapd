@@ -1,22 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
- * RPP-AI-001 §12 — Automated Pipeline Orchestrator (v2)
+ * RPP-AI-001 §12 — Automated Pipeline Orchestrator (v3)
  *
- * Chains the remaining stages after extractResearchPoints:
+ * Implements event-driven department handoffs:
  *
- *   Stage 1: Auto-approve pending research points
- *   Stage 2: Build ProductionPackage per point (buildResearchProduction)
- *            → Run QA via dispatchWorker (Review → QA Worker → QualityReport → Controller)  [#1]
- *   Stage 3: Verify all QA passed → pause if not (entity automation resumes when ready)     [#2]
- *   Stage 4: packetAssemblyWorker creates the assembly map                                  [#3]
- *   Stage 5: buildResearchPacket assembles the final StoriesPresentation + StorySlides
+ *   Dossier Dept  →  Develop Dept  →  Packet Dept
+ *   (dossier_qa)     (building+qa)     (assembling)
  *
- * Resume/Recovery [#4]: Each stage updates topic.pipeline_stage. If the function
- * fails or is re-invoked, it resumes from the last incomplete stage.
+ * The pipeline pauses at each QA gate. The onQualityReportPass
+ * automation resumes it when the Controller marks the asset as "pass".
  *
- * Manual approval remains enforced at Research Assignment (§4) and Final
- * Presentation (§8) per project specifications.
+ * Stages:
+ *   approving       → auto-approve pending research points
+ *   dossier_qa      → run QA on the dossier via dispatchWorker → PAUSE
+ *                     (onQualityReportPass resumes from develop_planning)
+ *   develop_planning→ run developPlanningWorker + build packages + QA each → PAUSE
+ *                     (onQualityReportPass resumes from assembling)
+ *   assembling      → run packetAssemblyWorker + buildResearchPacket → complete
  */
 
 Deno.serve(async (req) => {
@@ -35,7 +36,6 @@ Deno.serve(async (req) => {
       ? await base44.asServiceRole.entities.ResearchProductionConfiguration.get(topic.configuration_id)
       : null;
 
-    // ── Resume logic (#4): pick up from the last stage ──
     let stage = resume_from || topic.pipeline_stage || 'approving';
     if (stage === 'idle') stage = 'approving';
     if (stage === 'complete') {
@@ -55,11 +55,67 @@ Deno.serve(async (req) => {
           { $set: { status: 'approved', is_selected: true } }
         );
       }
-      stage = 'building';
+
+      // If topic has a dossier, run QA on it (Dossier → Develop gate)
+      if (topic.dossier_id) {
+        stage = 'dossier_qa';
+      } else {
+        // No dossier — skip directly to develop
+        stage = 'develop_planning';
+      }
     }
 
-    // ═══ Stage 2: Build packages + run QA (#1) ═══
-    if (stage === 'building' || stage === 'qa') {
+    // ═══ Stage 2: Dossier QA (Dossier Department exit gate) ═══
+    if (stage === 'dossier_qa') {
+      await base44.asServiceRole.entities.ResearchTopic.update(topic_id, { pipeline_stage: 'dossier_qa' });
+
+      // Check if dossier already has a passed QualityReport
+      const existingReports = await base44.asServiceRole.entities.QualityReport.filter({
+        asset_id: topic.dossier_id,
+        asset_type: 'ResearchDossier',
+        status: 'pass',
+      });
+
+      if (existingReports && existingReports.length > 0) {
+        // Dossier already passed QA — proceed to Develop
+        stage = 'develop_planning';
+      } else {
+        // Run QA on the dossier via dispatchWorker
+        const dossier = await base44.asServiceRole.entities.ResearchDossier.get(topic.dossier_id);
+        if (!dossier) {
+          // Dossier missing — skip QA
+          stage = 'develop_planning';
+        } else {
+          const dossierContent = dossier.executive_summary || dossier.research_query || JSON.stringify(dossier);
+          try {
+            await base44.asServiceRole.functions.invoke('dispatchWorker', {
+              worker_id: 'dossier_organizer',
+              department: 'dossier',
+              pre_generated_content: dossierContent,
+              asset_id: topic.dossier_id,
+              asset_type: 'ResearchDossier',
+              production_id: topic_id,
+              quality_mode: 'standard',
+            });
+          } catch (qaErr) {
+            console.error('Dossier QA failed:', qaErr.message);
+          }
+
+          // Pause — onQualityReportPass will resume from develop_planning
+          return Response.json({
+            success: true,
+            topic_id,
+            stage: 'dossier_qa',
+            message: 'Dossier QA submitted. Pipeline will auto-advance to Develop when Controller passes it.',
+          });
+        }
+      }
+    }
+
+    // ═══ Stage 3: Develop Planning + Package Building + Per-package QA ═══
+    if (stage === 'develop_planning' || stage === 'building' || stage === 'qa') {
+      await base44.asServiceRole.entities.ResearchTopic.update(topic_id, { pipeline_stage: 'building' });
+
       const buildConfig = {
         tone: config?.tone || 'educational',
         reading_style: config?.reading_style || 'documentary',
@@ -67,67 +123,73 @@ Deno.serve(async (req) => {
         target_runtime: config?.total_show_runtime ? `${config.total_show_runtime} minutes` : '1 Minute',
       };
 
+      // ── Run developPlanningWorker to create presentation structure ──
+      let presentationPlan = null;
+      if (topic.dossier_id) {
+        try {
+          const dossier = await base44.asServiceRole.entities.ResearchDossier.get(topic.dossier_id);
+          const planRes = await base44.asServiceRole.functions.invoke('developPlanningWorker', {
+            dossier: JSON.stringify({
+              executive_summary: dossier?.executive_summary,
+              key_facts: dossier?.key_facts,
+              context_and_background: dossier?.context_and_background,
+              timeline: dossier?.timeline,
+              coverage_angles: dossier?.coverage_angles,
+            }),
+            configuration_id: topic.configuration_id,
+            target_slide_count: 10,
+          });
+          presentationPlan = planRes?.data?.presentation_points || planRes?.presentation_points || null;
+        } catch (err) {
+          console.error('developPlanningWorker failed:', err.message);
+        }
+      }
+
+      // ── Build packages for each point + run QA ──
       const allPoints = await base44.asServiceRole.entities.ResearchPoint.filter(
         { topic_id }, 'order'
       );
 
-      // Points that still need packages built
       const pointsToBuild = allPoints.filter(p =>
         p.status === 'approved' || (p.status === 'used' && !p.package_id)
       );
 
-      if (pointsToBuild.length > 0) {
-        await base44.asServiceRole.entities.ResearchTopic.update(topic_id, { pipeline_stage: 'building' });
+      for (const point of pointsToBuild) {
+        try {
+          const buildRes = await base44.asServiceRole.functions.invoke('buildResearchProduction', {
+            research_point_id: point.id,
+            tone: buildConfig.tone,
+            reading_style: buildConfig.reading_style,
+            audience: buildConfig.audience,
+            target_runtime: buildConfig.target_runtime,
+          });
+          const pkg = buildRes?.data?.package || buildRes?.package;
+          if (!pkg) continue;
 
-        for (const point of pointsToBuild) {
+          // Run QA on the package via dispatchWorker
+          await base44.asServiceRole.entities.ResearchTopic.update(topic_id, { pipeline_stage: 'qa' });
           try {
-            // Build production package (multi-model synthesis)
-            const buildRes = await base44.asServiceRole.functions.invoke('buildResearchProduction', {
-              research_point_id: point.id,
-              tone: buildConfig.tone,
-              reading_style: buildConfig.reading_style,
-              audience: buildConfig.audience,
-              target_runtime: buildConfig.target_runtime,
+            await base44.asServiceRole.functions.invoke('dispatchWorker', {
+              worker_id: 'develop_script',
+              department: 'develop',
+              pre_generated_content: pkg.teleprompter_script || pkg.story_summary || JSON.stringify(pkg),
+              asset_id: point.id,
+              asset_type: 'ProductionPackage',
+              production_id: topic_id,
+              quality_mode: 'standard',
             });
-            const pkg = buildRes?.data?.package || buildRes?.package;
-            if (!pkg) continue;
-
-            // ── Run QA via dispatchWorker (#1) ──
-            // Pass the generated script as pre_generated_content to skip the
-            // Generation Worker stage and go straight to Review → QA → QualityReport → Controller.
-            // This creates a QualityReport and ControllerLog for every package.
-            await base44.asServiceRole.entities.ResearchTopic.update(topic_id, { pipeline_stage: 'qa' });
-            try {
-              await base44.asServiceRole.functions.invoke('dispatchWorker', {
-                worker_id: 'develop_script',
-                department: 'develop',
-                pre_generated_content: pkg.teleprompter_script || pkg.story_summary || JSON.stringify(pkg),
-                asset_id: point.id,
-                asset_type: 'ProductionPackage',
-                production_id: topic_id,
-                quality_mode: 'standard',
-              });
-            } catch (qaErr) {
-              // QA failure doesn't block — Controller may have routed to revision.
-              // The point still has a package; the assembling stage checks QA status.
-              console.error('QA failed for point', point.id, qaErr.message);
-            }
-          } catch (err) {
-            console.error('Build failed for point', point.id, err.message);
+          } catch (qaErr) {
+            console.error('Package QA failed for point', point.id, qaErr.message);
           }
+        } catch (err) {
+          console.error('Build failed for point', point.id, err.message);
         }
       }
 
-      stage = 'assembling';
-    }
-
-    // ═══ Stage 3: Verify QA status before assembling ═══
-    if (stage === 'assembling') {
       // Check if all used points have QA-passed packages
       const usedPoints = await base44.asServiceRole.entities.ResearchPoint.filter(
         { topic_id, status: 'used' }, 'order'
       );
-
       const pointIds = usedPoints.map(p => p.id);
       const passedReports = await base44.asServiceRole.entities.QualityReport.filter({
         production_id: topic_id,
@@ -138,9 +200,7 @@ Deno.serve(async (req) => {
       const allQA = pointIds.length > 0 && pointIds.every(id => passedIds.has(id));
 
       if (!allQA) {
-        // Not all QA passed — pause here.
-        // The entity automation (#2) will resume the pipeline via onQualityReportPass
-        // when the last QualityReport status changes to 'pass'.
+        // Pause — onQualityReportPass will resume from assembling
         await base44.asServiceRole.entities.ResearchTopic.update(topic_id, {
           pipeline_stage: 'qa',
           status: 'in_review',
@@ -151,16 +211,23 @@ Deno.serve(async (req) => {
           stage: 'qa_pending',
           qa_passed: passedIds.size,
           qa_total: pointIds.length,
-          message: 'Waiting for QA. Assembly auto-triggers when all reports pass.',
+          message: 'Develop Department: packages built, waiting for QA. Packet assembly auto-triggers when all pass.',
         });
       }
 
+      stage = 'assembling';
+    }
+
+    // ═══ Stage 4: Packet Assembly ═══
+    if (stage === 'assembling') {
       await base44.asServiceRole.entities.ResearchTopic.update(topic_id, { pipeline_stage: 'assembling' });
 
-      // ── Run packetAssemblyWorker (#3) ──
-      // Creates the assembly map: which assets go on which slide.
+      // ── Run packetAssemblyWorker ──
       let assemblyMap = null;
       try {
+        const usedPoints = await base44.asServiceRole.entities.ResearchPoint.filter(
+          { topic_id, status: 'used' }, 'order'
+        );
         const packages = [];
         for (const pt of usedPoints) {
           if (pt.package_id) {
@@ -188,7 +255,6 @@ Deno.serve(async (req) => {
         });
         assemblyMap = assemblyRes?.data?.assembly_map || assemblyRes?.assembly_map || null;
       } catch (err) {
-        // Assembly worker is optional — buildResearchPacket can assemble without it
         console.error('packetAssemblyWorker failed:', err.message);
       }
 

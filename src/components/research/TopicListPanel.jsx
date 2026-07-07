@@ -8,10 +8,11 @@ import {
 
 const PIPELINE_STAGE_LABELS = {
   idle: null,
-  approving: 'Approving',
-  building: 'Building',
-  qa: 'QA Pending',
-  assembling: 'Assembling',
+  approving: 'Approving Points',
+  dossier_qa: 'Dossier QA',
+  building: 'Building Packages',
+  qa: 'Develop QA',
+  assembling: 'Packet Assembly',
   complete: 'Packet Ready',
   failed: 'Failed',
 };
