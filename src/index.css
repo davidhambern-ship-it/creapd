@@ -856,7 +856,8 @@
   position: relative;
   z-index: 1;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 @keyframes rpp-dept-enter {
@@ -866,7 +867,7 @@
 .rpp-workspace-content {
   animation: rpp-dept-enter 0.5s ease-out both;
   height: 100%;
-  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .rpp-lobby {

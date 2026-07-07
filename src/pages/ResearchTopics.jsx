@@ -79,7 +79,7 @@ export default function ResearchTopics() {
   };
 
   return (
-    <div className="flex h-full overflow-hidden relative flex-col">
+    <div className="flex h-full overflow-hidden relative flex-col w-full max-w-full">
       <TopicsRoomHeader topicCount={topics.length} />
       <div className="flex flex-1 min-h-0 overflow-hidden relative flex-col">
         {/* Main: CREAP conversation */}
