@@ -212,36 +212,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const showLoading = loadingGreeting && !thinking;
 
   return (
-    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} flex flex-col bg-background overflow-hidden`}>
-      {/* Ambient gradient blobs — matching home theme */}
-      <motion.div
-        className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-berna-purple/15 blur-[120px] pointer-events-none"
-        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-berna-orange/15 blur-[100px] pointer-events-none"
-        animate={{ x: [0, -50, 0], y: [0, 40, 0] }}
-        transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute top-1/2 right-1/3 w-64 h-64 rounded-full bg-berna-emerald/10 blur-[90px] pointer-events-none"
-        animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-      />
-
-      {/* Particle dots */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 16 }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-white/20"
-            style={{ left: `${(i * 37) % 100}%`, top: `${(i * 53) % 100}%` }}
-            animate={{ opacity: [0.1, 0.4, 0.1], scale: [0.5, 1, 0.5] }}
-            transition={{ duration: 3 + (i % 4), repeat: Infinity, delay: i * 0.2 }}
-          />
-        ))}
-      </div>
+    <div className={`${embedded ? 'h-full w-full' : 'fixed inset-0 z-50'} flex flex-col bg-transparent overflow-hidden`}>
 
       {/* Header — CREAPr identity */}
       <div className="relative z-10 flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
