@@ -9,6 +9,7 @@ import LibraryWings from './LibraryWings';
 import LibraryResearchTable from './LibraryResearchTable';
 import LibraryInput from './LibraryInput';
 import LibraryGuidedTour from './LibraryGuidedTour';
+import LibraryReadingDesk from './LibraryReadingDesk';
 import { X, Loader2, BookOpen, Compass } from 'lucide-react';
 
 const TOUR_STEPS = [
@@ -325,6 +326,11 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         >
           <X className="w-5 h-5" style={{ color: 'hsl(35 12% 58%)' }} />
         </button>
+      )}
+
+      {/* Central reading desk — idle/overview state */}
+      {view === 'overview' && !wings && !showLoading && (
+        <LibraryReadingDesk thinking={thinking} greeting={!loadingGreeting} />
       )}
 
       {/* Wings — spatial category browsing */}
