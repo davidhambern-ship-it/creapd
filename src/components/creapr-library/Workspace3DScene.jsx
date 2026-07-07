@@ -1,217 +1,285 @@
-import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 const BOOK_COLORS = [
-  '#5a2a2a', '#2d4a2d', '#2a3550', '#6b4a22',
-  '#3a3a3a', '#4a2d4a', '#2a4545', '#5a3a1a',
-  '#5a5520', '#452a45',
+  0x5a2a2a, 0x2d4a2d, 0x2a3550, 0x6b4a22,
+  0x3a3a3a, 0x4a2d4a, 0x2a4545, 0x5a3a1a,
+  0x5a5520, 0x452a45,
 ];
 
-function Book({ position, height, color, width }) {
-  return (
-    <mesh position={[position[0], height / 2, position[2]]} castShadow>
-      <boxGeometry args={[width, height, 0.4]} />
-      <meshStandardMaterial color={color} roughness={0.85} metalness={0.05} />
-    </mesh>
-  );
-}
-
-function ShelfRow({ y, z, count, startIndex, flip = false }) {
-  const books = useMemo(() => {
-    const arr = [];
-    let x = flip ? 4 : -4;
-    const dir = flip ? -1 : 1;
-    for (let i = 0; i < count; i++) {
-      const ci = (i + startIndex) % BOOK_COLORS.length;
-      const h = 1.2 + ((i * 11 + startIndex * 7) % 9) * 0.12;
-      const w = 0.35 + (i % 4) * 0.12;
-      arr.push({ x: x + dir * w / 2, h, color: BOOK_COLORS[ci], w, key: i });
-      x += dir * (w + 0.02);
-    }
-    return arr;
-  }, [count, startIndex, flip]);
-
-  return (
-    <group position={[0, y, z]}>
-      {books.map((b) => (
-        <Book key={b.key} position={[b.x, 0, 0]} height={b.h} color={b.color} width={b.w} />
-      ))}
-      <mesh position={[0, -0.05, 0]} receiveShadow>
-        <boxGeometry args={[8.5, 0.12, 0.6]} />
-        <meshStandardMaterial color="#3d2e1e" roughness={0.9} />
-      </mesh>
-    </group>
-  );
-}
-
-function BookshelfWall({ side = 'left' }) {
+function createBookshelf(side) {
+  const group = new THREE.Group();
   const isLeft = side === 'left';
   const x = isLeft ? -5.5 : 5.5;
-  const rotY = isLeft ? Math.PI / 2 : -Math.PI / 2;
+  group.position.set(x, 0, 0);
+  group.rotation.y = isLeft ? Math.PI / 2 : -Math.PI / 2;
 
-  return (
-    <group position={[x, 0, 0]} rotation={[0, rotY, 0]}>
-      {[0, 1, 2, 3, 4].map((r) => (
-        <ShelfRow
-          key={r}
-          y={r * 1.5 - 1}
-          z={0}
-          count={12}
-          startIndex={r * 3 + (isLeft ? 0 : 5)}
-          flip={isLeft}
-        />
-      ))}
-      <mesh position={[0, 2.5, 0]}>
-        <boxGeometry args={[8.5, 8, 0.15]} />
-        <meshStandardMaterial color="#2a1f14" roughness={0.95} />
-      </mesh>
-    </group>
+  // Back panel
+  const backPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(8.5, 8, 0.15),
+    new THREE.MeshStandardMaterial({ color: 0x2a1f14, roughness: 0.95 })
   );
-}
+  backPanel.position.set(0, 2.5, 0);
+  backPanel.receiveShadow = true;
+  group.add(backPanel);
 
-function Floor() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.6, 0]} receiveShadow>
-      <planeGeometry args={[40, 40]} />
-      <meshStandardMaterial color="#1a1510" roughness={0.95} metalness={0.05} />
-    </mesh>
-  );
-}
+  // Shelf rows
+  for (let r = 0; r < 5; r++) {
+    const shelfY = r * 1.5 - 1;
 
-function CeilingLight({ position, intensity }) {
-  const ref = useRef();
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      ref.current.intensity = intensity * (0.85 + Math.sin(clock.elapsedTime * 0.5 + position[0]) * 0.15);
+    // Plank
+    const plank = new THREE.Mesh(
+      new THREE.BoxGeometry(8.5, 0.12, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x3d2e1e, roughness: 0.9 })
+    );
+    plank.position.set(0, shelfY - 0.05, 0);
+    plank.receiveShadow = true;
+    plank.castShadow = true;
+    group.add(plank);
+
+    // Books
+    let bx = isLeft ? 4 : -4;
+    const dir = isLeft ? -1 : 1;
+    for (let i = 0; i < 12; i++) {
+      const ci = (i + r * 3 + (isLeft ? 0 : 5)) % BOOK_COLORS.length;
+      const h = 1.2 + ((i * 11 + r * 7) % 9) * 0.12;
+      const w = 0.35 + (i % 4) * 0.12;
+      const book = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, 0.4),
+        new THREE.MeshStandardMaterial({ color: BOOK_COLORS[ci], roughness: 0.85, metalness: 0.05 })
+      );
+      book.position.set(bx + dir * w / 2, shelfY + h / 2, 0);
+      book.castShadow = true;
+      book.receiveShadow = true;
+      group.add(book);
+      bx += dir * (w + 0.02);
     }
+  }
+
+  return group;
+}
+
+function createDustParticles(count) {
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const velocities = [];
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 10;
+    positions[i * 3 + 1] = Math.random() * 6 - 1;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 6;
+    velocities.push({
+      speed: 0.2 + Math.random() * 0.4,
+      offset: Math.random() * 10,
+      baseX: positions[i * 3],
+      baseY: positions[i * 3 + 1],
+    });
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xffc080,
+    size: 0.06,
+    transparent: true,
+    opacity: 0.5,
+    sizeAttenuation: true,
   });
-  return (
-    <>
-      <pointLight ref={ref} position={position} intensity={intensity} color="#ffb060" distance={12} decay={2} />
-      <mesh position={position}>
-        <sphereGeometry args={[0.15, 8, 8]} />
-        <meshStandardMaterial color="#ffc070" emissive="#ffa050" emissiveIntensity={0.8} />
-      </mesh>
-    </>
-  );
-}
-
-function DustParticle({ index }) {
-  const ref = useRef();
-  const data = useMemo(() => ({
-    x: (Math.random() - 0.5) * 10,
-    y: Math.random() * 6 - 1,
-    z: (Math.random() - 0.5) * 6,
-    speed: 0.2 + Math.random() * 0.4,
-    offset: Math.random() * 10,
-    scale: 0.02 + Math.random() * 0.03,
-  }), []);
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const t = clock.elapsedTime;
-    ref.current.position.y = data.y + Math.sin(t * data.speed + data.offset) * 0.5;
-    ref.current.position.x = data.x + Math.cos(t * data.speed * 0.7 + data.offset) * 0.3;
-  });
-  return (
-    <mesh ref={ref} position={[data.x, data.y, data.z]} scale={data.scale}>
-      <sphereGeometry args={[1, 6, 6]} />
-      <meshBasicMaterial color="#ffc080" transparent opacity={0.5} />
-    </mesh>
-  );
-}
-
-function DustParticles({ count }) {
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => <DustParticle key={i} index={i} />)}
-    </>
-  );
-}
-
-function DeskLamp({ intensity }) {
-  return (
-    <group position={[0, -1.4, 2]}>
-      <pointLight position={[0, 1.5, 0]} intensity={intensity * 2} color="#ffc080" distance={6} decay={2} />
-      <mesh position={[0, 1.5, 0]}>
-        <coneGeometry args={[0.3, 0.4, 8]} />
-        <meshStandardMaterial color="#5a4030" roughness={0.7} />
-      </mesh>
-    </group>
-  );
-}
-
-function FloatingOrb({ position, color, emissive, emissiveIntensity, opacity, speed }) {
-  const ref = useRef();
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const t = clock.elapsedTime;
-    ref.current.position.y = position[1] + Math.sin(t * speed) * 0.4;
-    ref.current.position.x = position[0] + Math.cos(t * speed * 0.7) * 0.2;
-  });
-  return (
-    <mesh ref={ref} position={position}>
-      <sphereGeometry args={[position[2] === -2 ? 0.3 : 0.25, 16, 16]} />
-      <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={emissiveIntensity} transparent opacity={opacity} />
-    </mesh>
-  );
-}
-
-function Rig({ children }) {
-  const group = useRef();
-  useFrame(({ pointer }) => {
-    if (group.current) {
-      const targetY = pointer.x * 0.15;
-      const targetX = -pointer.y * 0.08;
-      group.current.rotation.y += (targetY - group.current.rotation.y) * 0.04;
-      group.current.rotation.x += (targetX - group.current.rotation.x) * 0.04;
-    }
-  });
-  return <group ref={group}>{children}</group>;
+  const points = new THREE.Points(geo, mat);
+  points.userData.velocities = velocities;
+  return points;
 }
 
 export default function Workspace3DScene({ intensity = 'calm' }) {
-  const lightIntensity = intensity === 'assembling' ? 1.8 : intensity === 'active' ? 1.4 : 1.0;
-  const lampIntensity = intensity === 'assembling' ? 1.5 : intensity === 'active' ? 1.2 : 0.9;
-  const sparkleCount = intensity === 'assembling' ? 80 : intensity === 'active' ? 50 : 30;
+  const mountRef = useRef(null);
 
-  return (
-    <Canvas
-      shadows
-      dpr={[1, 1.5]}
-      camera={{ position: [0, 0.5, 8], fov: 50 }}
-      gl={{ antialias: true, alpha: true }}
-      style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #0e0a06 0%, #1a1208 50%, #0a0804 100%)' }}
-    >
-      <fog attach="fog" args={['#0a0804', 8, 22]} />
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
 
-      <ambientLight intensity={0.15} color="#4a3520" />
-      <directionalLight position={[3, 6, 4]} intensity={0.3} color="#ffa060" castShadow />
+    const width = mount.clientWidth;
+    const height = mount.clientHeight;
 
-      <Rig>
-        <BookshelfWall side="left" />
-        <BookshelfWall side="right" />
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x0a0804, 8, 22);
 
-        <Floor />
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    camera.position.set(0, 0.5, 8);
 
-        {/* Central desk surface */}
-        <mesh position={[0, -1.45, 2]} receiveShadow castShadow>
-          <boxGeometry args={[3, 0.1, 1.5]} />
-          <meshStandardMaterial color="#3d2e1e" roughness={0.85} />
-        </mesh>
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
 
-        <DeskLamp intensity={lampIntensity} />
+    // Lighting
+    scene.add(new THREE.AmbientLight(0x4a3520, 0.15));
 
-        {/* Floating ambient orbs */}
-        <FloatingOrb position={[-2, 2.5, -2]} color="#ffb060" emissive="#ff9040" emissiveIntensity={0.6} opacity={0.3} speed={1.5} />
-        <FloatingOrb position={[2.5, 2, -1.5]} color="#ffa050" emissive="#ff8030" emissiveIntensity={0.5} opacity={0.25} speed={1.2} />
-      </Rig>
+    const dirLight = new THREE.DirectionalLight(0xffa060, 0.3);
+    dirLight.position.set(3, 6, 4);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
 
-      <CeilingLight position={[-2, 3.5, 0]} intensity={lightIntensity} />
-      <CeilingLight position={[2, 3.5, 0]} intensity={lightIntensity * 0.9} />
-      <CeilingLight position={[0, 3.5, -1]} intensity={lightIntensity * 0.7} />
+    const baseLight = intensity === 'assembling' ? 1.8 : intensity === 'active' ? 1.4 : 1.0;
 
-      <DustParticles count={sparkleCount} />
-    </Canvas>
-  );
+    const ceilingLights = [];
+    const lightPositions = [
+      { pos: [-2, 3.5, 0], mult: 1.0 },
+      { pos: [2, 3.5, 0], mult: 0.9 },
+      { pos: [0, 3.5, -1], mult: 0.7 },
+    ];
+    lightPositions.forEach(({ pos, mult }) => {
+      const light = new THREE.PointLight(0xffb060, baseLight * mult, 12, 2);
+      light.position.set(...pos);
+      scene.add(light);
+      ceilingLights.push({ light, pos, mult });
+
+      // Visible bulb
+      const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xffc070, emissive: 0xffa050, emissiveIntensity: 0.8 })
+      );
+      bulb.position.set(...pos);
+      scene.add(bulb);
+    });
+
+    // Bookshelf walls
+    const leftWall = createBookshelf('left');
+    scene.add(leftWall);
+    const rightWall = createBookshelf('right');
+    scene.add(rightWall);
+
+    // Floor
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshStandardMaterial({ color: 0x1a1510, roughness: 0.95, metalness: 0.05 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -1.6;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Desk surface
+    const desk = new THREE.Mesh(
+      new THREE.BoxGeometry(3, 0.1, 1.5),
+      new THREE.MeshStandardMaterial({ color: 0x3d2e1e, roughness: 0.85 })
+    );
+    desk.position.set(0, -1.45, 2);
+    desk.castShadow = true;
+    desk.receiveShadow = true;
+    scene.add(desk);
+
+    // Desk lamp light
+    const lampIntensity = intensity === 'assembling' ? 1.5 : intensity === 'active' ? 1.2 : 0.9;
+    const lampLight = new THREE.PointLight(0xffc080, lampIntensity * 2, 6, 2);
+    lampLight.position.set(0, 0.1, 2);
+    scene.add(lampLight);
+
+    // Lamp shade
+    const lampShade = new THREE.Mesh(
+      new THREE.ConeGeometry(0.3, 0.4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x5a4030, roughness: 0.7 })
+    );
+    lampShade.position.set(0, 0.1, 2);
+    scene.add(lampShade);
+
+    // Floating ambient orbs
+    const orbs = [];
+    [
+      { pos: [-2, 2.5, -2], color: 0xffb060, emissive: 0xff9040, emissiveIntensity: 0.6, opacity: 0.3, radius: 0.3, speed: 1.5 },
+      { pos: [2.5, 2, -1.5], color: 0xffa050, emissive: 0xff8030, emissiveIntensity: 0.5, opacity: 0.25, radius: 0.25, speed: 1.2 },
+    ].forEach(({ pos, color, emissive, emissiveIntensity, opacity, radius, speed }) => {
+      const orb = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 16, 16),
+        new THREE.MeshStandardMaterial({
+          color, emissive, emissiveIntensity, transparent: true, opacity,
+        })
+      );
+      orb.position.set(...pos);
+      orb.userData = { basePos: [...pos], speed };
+      scene.add(orb);
+      orbs.push(orb);
+    });
+
+    // Dust particles
+    const particleCount = intensity === 'assembling' ? 80 : intensity === 'active' ? 50 : 30;
+    const dust = createDustParticles(particleCount);
+    scene.add(dust);
+
+    // Mouse parallax
+    let targetRotY = 0;
+    let targetRotX = 0;
+    const onMouseMove = (e) => {
+      const rect = mount.getBoundingClientRect();
+      targetRotY = ((e.clientX - rect.left) / rect.width - 0.5) * 0.15;
+      targetRotX = -((e.clientY - rect.top) / rect.height - 0.5) * 0.08;
+    };
+    mount.addEventListener('mousemove', onMouseMove);
+
+    // Resize handler
+    const onResize = () => {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', onResize);
+
+    // Animation loop
+    let raf;
+    const animate = () => {
+      raf = requestAnimationFrame(animate);
+      const t = performance.now() / 1000;
+
+      // Camera parallax
+      camera.rotation.y += (targetRotY - camera.rotation.y) * 0.04;
+      camera.rotation.x += (targetRotX - camera.rotation.x) * 0.04;
+
+      // Ceiling light flicker
+      ceilingLights.forEach(({ light, pos, mult }) => {
+        light.intensity = baseLight * mult * (0.85 + Math.sin(t * 0.5 + pos[0]) * 0.15);
+      });
+
+      // Orbs floating
+      orbs.forEach((orb) => {
+        const { basePos, speed } = orb.userData;
+        orb.position.y = basePos[1] + Math.sin(t * speed) * 0.4;
+        orb.position.x = basePos[0] + Math.cos(t * speed * 0.7) * 0.2;
+      });
+
+      // Dust particles
+      const positions = dust.geometry.attributes.position.array;
+      const velocities = dust.userData.velocities;
+      for (let i = 0; i < velocities.length; i++) {
+        const v = velocities[i];
+        positions[i * 3] = v.baseX + Math.cos(t * v.speed * 0.7 + v.offset) * 0.3;
+        positions[i * 3 + 1] = v.baseY + Math.sin(t * v.speed + v.offset) * 0.5;
+      }
+      dust.geometry.attributes.position.needsUpdate = true;
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      mount.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('resize', onResize);
+      if (renderer.domElement.parentNode === mount) {
+        mount.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+      scene.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+        }
+      });
+    };
+  }, [intensity]);
+
+  return <div ref={mountRef} style={{ position: 'absolute', inset: 0 }} />;
 }
