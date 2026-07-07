@@ -14,10 +14,11 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
   const navigate = useNavigate();
   const statusCfg = STATUS_CONFIG[status] || STATUS_CONFIG.not_started;
 
-  // Build a long scrolling text block for the RSS feed
+  // Build a long scrolling text block for the RSS feed — thorough department description
+  const feedText = dept.detailed_description || dept.description;
   const scrollText = Array.from({ length: 4 }, (_, i) => ({
     key: i,
-    title: dept.description,
+    title: feedText,
     sub: dept.subtitle,
     output: dept.output,
   }));
