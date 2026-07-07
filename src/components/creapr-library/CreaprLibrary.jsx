@@ -44,32 +44,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const processingRef = useRef(false);
 
   const speakLine = useCallback((text) => {
-    return new Promise(async (resolve) => {
-      if (!text || !isMountedRef.current) { resolve(); return; }
-      if (mutedRef.current) { resolve(); return; }
-      if (_audioLock) { resolve(); return; }
-      _audioLock = true;
-      const gen = ++speakGenRef.current;
-      try {
-        const response = await base44.functions.invoke('generateCreapSpeech', {
-          text: text.substring(0, 5000),
-          voice: creapSettingsRef.current.voice_id || 'daniel',
-        });
-        if (gen !== speakGenRef.current || !isMountedRef.current) { _audioLock = false; resolve(); return; }
-        const url = response?.data?.url;
-        if (!url) { _audioLock = false; resolve(); return; }
-        setSpeaking(true);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => { _audioLock = false; setSpeaking(false); resolve(); };
-        audio.onerror = () => { _audioLock = false; setSpeaking(false); resolve(); };
-        audio.play().catch(() => { _audioLock = false; setSpeaking(false); resolve(); });
-      } catch {
-        _audioLock = false;
-        setSpeaking(false);
-        resolve();
-      }
-    });
+    return Promise.resolve();
   }, []);
 
   const stopAudio = useCallback(() => {
@@ -89,20 +64,15 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     if (!lines || lines.length === 0) { onComplete?.(); return; }
     const gen = ++speakLinesGenRef.current;
     setSubtitleLines(lines);
-    for (let i = 0; i < lines.length; i++) {
-      if (!isMountedRef.current) return;
-      if (gen !== speakLinesGenRef.current) return;
-      await speakLine(lines[i]);
-      if (!isMountedRef.current) return;
-      if (gen !== speakLinesGenRef.current) return;
-      await new Promise(r => setTimeout(r, 600));
-    }
-    if (gen !== speakLinesGenRef.current) return;
-    onComplete?.();
-  }, [speakLine]);
+    subtitleDoneRef.current = onComplete;
+  }, []);
 
   const handleSubtitlesDone = useCallback(() => {
-    // Subtitles finished typing — no-op; callback fires after TTS completes
+    if (subtitleDoneRef.current) {
+      const cb = subtitleDoneRef.current;
+      subtitleDoneRef.current = null;
+      cb();
+    }
   }, []);
 
   const handleGenerateGreeting = useCallback(async () => {
