@@ -79,14 +79,14 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
 
   const cardStyle = targetRect
     ? {
-        position: 'absolute',
+        position: 'fixed',
         ...(showBelow
           ? { top: targetRect.top + targetRect.height + 20, left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 420)) }
           : { top: Math.max(16, targetRect.top - 220), left: Math.max(16, Math.min(targetRect.left, window.innerWidth - 420)) }),
         width: 'min(400px, calc(100vw - 32px))',
       }
     : {
-        position: 'absolute',
+        position: 'fixed',
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -105,7 +105,7 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
         {/* Spotlight or dark overlay */}
         {targetRect ? (
           <div
-            className="absolute pointer-events-none"
+            className="fixed pointer-events-none"
             style={{
               top: targetRect.top - 12,
               left: targetRect.left - 12,
@@ -119,7 +119,7 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
             }}
           />
         ) : (
-          <div className="absolute inset-0" style={{ background: 'hsl(220 20% 4% / 0.85)' }} />
+          <div className="fixed inset-0" style={{ background: 'hsl(220 20% 4% / 0.85)' }} />
         )}
 
         {/* Narration card */}
