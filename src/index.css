@@ -79,6 +79,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground font-body;
   }
@@ -857,8 +862,7 @@
   z-index: 1;
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 @keyframes rpp-dept-enter {
@@ -868,6 +872,7 @@
 .rpp-workspace-content {
   animation: rpp-dept-enter 0.5s ease-out both;
   height: 100%;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
