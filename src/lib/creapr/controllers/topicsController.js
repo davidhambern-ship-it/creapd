@@ -47,7 +47,7 @@ WHEN TO OFFER CATEGORIES:
 
 RETURN JSON:
 {
-  "spoken_lines": ["Your response broken into 1-3 short natural lines."],
+  "message": "Your full response as a single text string (NOT an array, NOT an object — just a plain string).",
   "phase": "greeting" | "confirming" | "exploring" | "questioning" | "assembling" | "reveal",
   "categories": [{"name": "...", "description": "...", "icon_hint": "rock|scroll|globe|flask|book|compass|circuit|crown"}],
   "assignment_update": {},
@@ -55,7 +55,8 @@ RETURN JSON:
   "assignment": {}
 }
 
-Always include spoken_lines and completion_confidence. Include categories only when offering choices. Include assignment only in "reveal" phase.`;
+CRITICAL: The "message" field MUST be a plain string. Do NOT put an array or object there.
+Always include message and completion_confidence. Include categories only when offering choices. Include assignment only in "reveal" phase.`;
 
 // ─── Fallbacks ───
 
@@ -126,7 +127,9 @@ The production is configured for: ${config?.production_name || 'a research produ
 Target audience (from config): ${config?.target_audience || 'General Public'}.
 Research depth (from config): ${config?.research_depth || 'standard'}.
 
-Greet the producer naturally and conversationally. Be warm, specific to them, and brief (1-3 sentences). Do NOT repeat your last greeting. Phase should be "greeting".`;
+Greet the producer naturally and conversationally. Be warm, specific to them, and brief (1-3 sentences). Do NOT repeat your last greeting. Phase should be "greeting".
+
+CRITICAL: Return your greeting as a single string in the "message" field. Do NOT use an array.`;
 
   try {
     const result = await base44.integrations.Core.InvokeLLM({
@@ -136,6 +139,7 @@ Greet the producer naturally and conversationally. Be warm, specific to them, an
       response_json_schema: {
         type: 'object',
         properties: {
+          message: { type: 'string', description: 'Your full greeting as a single string' },
           spoken_lines: { type: 'array', items: { type: 'string' } },
           phase: { type: 'string' },
           completion_confidence: { type: 'number' },
@@ -150,13 +154,17 @@ Greet the producer naturally and conversationally. Be warm, specific to them, an
     if (!result || typeof result !== 'object') {
       return FALLBACK_GREETING;
     }
-    if (!Array.isArray(result.spoken_lines) || result.spoken_lines.length === 0) {
-      const salvage = result.message || result.message_to_user || result.response || result.text;
-      result.spoken_lines = salvage ? [String(salvage)] : FALLBACK_GREETING.spoken_lines;
+    const greetMsg = result.message || result.message_to_user || result.response || result.text;
+    if (typeof greetMsg === 'string' && greetMsg.length > 0) {
+      result.spoken_lines = [greetMsg];
+    } else if (Array.isArray(result.spoken_lines) && result.spoken_lines.length > 0) {
+      result.spoken_lines = result.spoken_lines.map(line =>
+        typeof line === 'string' ? line
+        : (typeof line === 'object' && line !== null ? (line.text || line.message || line.content || JSON.stringify(line)) : String(line ?? ''))
+      );
+    } else {
+      result.spoken_lines = FALLBACK_GREETING.spoken_lines;
     }
-    result.spoken_lines = result.spoken_lines.map(line =>
-      typeof line === 'string' ? line : (line?.text || line?.message || JSON.stringify(line))
-    );
 
     if (memory?.id) {
       updateCreaprMemory(memory.id, {
@@ -229,6 +237,7 @@ Return your response as JSON.`;
       response_json_schema: {
         type: 'object',
         properties: {
+          message: { type: 'string', description: 'Your full response to the producer as a single string' },
           spoken_lines: { type: 'array', items: { type: 'string' } },
           phase: { type: 'string' },
           categories: {
@@ -273,22 +282,25 @@ Return your response as JSON.`;
       },
     });
 
-    // Normalize — InvokeLLM may return a string instead of an object,
-    // or an object without spoken_lines. Ensure spoken_lines is always populated.
+    // Normalize — accept either a string, an object with `message`, or an object with `spoken_lines`.
+    // Always produce spoken_lines as an array of plain strings.
     if (typeof result === 'string') {
       return { ...FALLBACK_RESPONSE, spoken_lines: [result] };
     }
     if (!result || typeof result !== 'object') {
       return FALLBACK_RESPONSE;
     }
-    if (!Array.isArray(result.spoken_lines) || result.spoken_lines.length === 0) {
-      const salvage = result.message || result.message_to_user || result.response || result.text;
-      result.spoken_lines = salvage ? [String(salvage)] : FALLBACK_RESPONSE.spoken_lines;
+    const msg = result.message || result.message_to_user || result.response || result.text;
+    if (typeof msg === 'string' && msg.length > 0) {
+      result.spoken_lines = [msg];
+    } else if (Array.isArray(result.spoken_lines) && result.spoken_lines.length > 0) {
+      result.spoken_lines = result.spoken_lines.map(line =>
+        typeof line === 'string' ? line
+        : (typeof line === 'object' && line !== null ? (line.text || line.message || line.content || JSON.stringify(line)) : String(line ?? ''))
+      );
+    } else {
+      result.spoken_lines = FALLBACK_RESPONSE.spoken_lines;
     }
-    // Coerce every element to a string — LLMs sometimes return objects inside the array
-    result.spoken_lines = result.spoken_lines.map(line =>
-      typeof line === 'string' ? line : (line?.text || line?.message || JSON.stringify(line))
-    );
     return result;
   } catch {
     return FALLBACK_RESPONSE;
