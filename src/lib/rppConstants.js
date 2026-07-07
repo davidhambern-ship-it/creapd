@@ -31,7 +31,7 @@ export const RPP_DEPARTMENTS = [
     icon: Archive,
     description: 'Acquire knowledge through deep research',
     subtitle: 'Research Archives',
-    output: 'Raw Research',
+    output: 'Raw Research Dataset',
     detailed_description: 'The Research Archives department executes deep research on your assigned topic. Multiple research specialists work in parallel to discover sources, verify facts, extract key data points, and synthesize findings. This is where raw knowledge is acquired from across the web, books, articles, and databases — producing the raw research material that will be structured in the next stage.',
   },
   {
@@ -41,7 +41,7 @@ export const RPP_DEPARTMENTS = [
     icon: FileText,
     description: 'Transform research into structured knowledge',
     subtitle: 'Briefing Room',
-    output: 'Approved Dossier',
+    output: 'Approved Research Dossier',
     detailed_description: 'The Briefing Room transforms raw research into a structured, approved Dossier. Key findings are organized into categories, verified for accuracy, and formatted into a comprehensive briefing document. This is where scattered research notes become a polished, authoritative knowledge base ready to inform production. The Dossier must be reviewed and approved before development can begin.',
   },
   {
@@ -51,7 +51,7 @@ export const RPP_DEPARTMENTS = [
     icon: Clapperboard,
     description: 'Generate production assets from the dossier',
     subtitle: 'Development Studio',
-    output: 'Production Assets',
+    output: 'Presentation Assets',
     detailed_description: 'The Development Studio takes your approved Dossier and generates production-ready assets. This includes scripts, talking points, visual concepts, image generations, B-roll suggestions, social media content, and lower-thirds graphics. Each asset is derived directly from the structured knowledge in your Dossier and tailored to your production profile and brand standards.',
   },
   {
@@ -68,10 +68,10 @@ export const RPP_DEPARTMENTS = [
 
 export const RPP_PROGRESS_STAGES = [
   { id: 'assignment', label: 'Research Assignment', department: 'topics' },
-  { id: 'research', label: 'Research Complete', department: 'research' },
-  { id: 'dossier', label: 'Dossier Approved', department: 'dossier' },
-  { id: 'assets', label: 'Assets Generated', department: 'develop' },
-  { id: 'packet', label: 'Packet Ready', department: 'packet' },
+  { id: 'research', label: 'Raw Research Dataset', department: 'research' },
+  { id: 'dossier', label: 'Approved Research Dossier', department: 'dossier' },
+  { id: 'assets', label: 'Presentation Assets', department: 'develop' },
+  { id: 'packet', label: 'Production Packet', department: 'packet' },
 ];
 
 export const ICON_MAP = {
