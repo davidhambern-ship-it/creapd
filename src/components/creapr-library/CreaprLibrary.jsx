@@ -262,7 +262,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const canShowInput = view === 'overview' && tablePhase === null;
 
   return (
-    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-hidden`} style={{ background: 'hsl(28 22% 8%)' }}>
+    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-y-auto overflow-x-hidden`} style={{ background: 'hsl(28 22% 8%)' }}>
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <Workspace3DScene intensity={envIntensity} />
       </div>

@@ -104,13 +104,14 @@ export default function Workspace3DScene({ intensity = 'calm' }) {
     camera.position.set(0, 0.5, 8);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(width, height);
+    renderer.setSize(width || 1, height || 1);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.domElement.style.display = 'block';
     mount.appendChild(renderer.domElement);
 
     // Lighting
@@ -217,15 +218,17 @@ export default function Workspace3DScene({ intensity = 'calm' }) {
     };
     mount.addEventListener('mousemove', onMouseMove);
 
-    // Resize handler
+    // Resize handler — use ResizeObserver for flex container changes
     const onResize = () => {
       const w = mount.clientWidth;
       const h = mount.clientHeight;
+      if (w === 0 || h === 0) return;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
-    window.addEventListener('resize', onResize);
+    const resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(mount);
 
     // Animation loop
     let raf;
@@ -266,7 +269,7 @@ export default function Workspace3DScene({ intensity = 'calm' }) {
     return () => {
       cancelAnimationFrame(raf);
       mount.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('resize', onResize);
+      resizeObserver.disconnect();
       if (renderer.domElement.parentNode === mount) {
         mount.removeChild(renderer.domElement);
       }
