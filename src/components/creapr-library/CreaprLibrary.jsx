@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+// LibraryMessage removed — visual library + tour only
 import { base44 } from '@/api/base44Client';
 import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 import { generateGreeting, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
