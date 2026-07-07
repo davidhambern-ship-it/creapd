@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function LibraryMessage({ lines, phase, stopTyping, onComplete }) {
   const [currentLineIdx, setCurrentLineIdx] = useState(0);
   const [typedText, setTypedText] = useState('');
-  const [completedLines, setCompletedLines] = useState([]);
   const [visible, setVisible] = useState(false);
   const [done, setDone] = useState(false);
   const charIdxRef = useRef(0);
   const typeTimerRef = useRef(null);
 
+  // Typography varies by message purpose (Section 9)
   const typography = useMemo(() => {
     const isGreeting = phase === 'greeting' || phase === 'confirming';
     const isDisplay = phase === 'assembling' || phase === 'reveal';
@@ -32,7 +32,6 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
     }
     setCurrentLineIdx(0);
     setTypedText('');
-    setCompletedLines([]);
     setDone(false);
     charIdxRef.current = 0;
     setVisible(true);
@@ -43,10 +42,8 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
     if (!stopTyping || !visible || !lines) return;
     if (typeTimerRef.current) clearInterval(typeTimerRef.current);
 
-    // Show all remaining lines as completed
-    const remaining = lines.slice(currentLineIdx);
-    setCompletedLines(prev => [...prev, ...remaining]);
-    setTypedText('');
+    const remaining = lines.slice(currentLineIdx).join(' ');
+    setTypedText(remaining);
 
     const t = setTimeout(() => {
       setVisible(false);
@@ -75,15 +72,10 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
         const holdTime = Math.max(1400, wordCount * 110 + 500);
         setTimeout(() => {
           if (!lines || currentLineIdx >= lines.length - 1) {
-            // Final line complete — move it to completed, clear typing
-            setCompletedLines(prev => [...prev, line]);
-            setTypedText('');
             setDone(true);
             setVisible(false);
             setTimeout(() => onComplete?.(), 350);
           } else {
-            // Move current line to completed, start next
-            setCompletedLines(prev => [...prev, line]);
             setCurrentLineIdx(prev => prev + 1);
             charIdxRef.current = 0;
             setTypedText('');
@@ -105,29 +97,20 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="absolute top-[11%] left-1/2 -translate-x-1/2 w-[85%] max-w-2xl plib-message-panel px-6 py-4 max-h-[60vh] overflow-y-auto"
+          className="absolute top-[11%] left-1/2 -translate-x-1/2 w-[85%] max-w-2xl plib-message-panel px-6 py-4 max-h-[45vh] overflow-y-auto"
           style={{ zIndex: 20 }}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.4 }}
         >
-          <div className="text-center text-base md:text-lg leading-relaxed space-y-1" style={typography}>
-            {completedLines.map((line, i) => (
-              <p key={i} style={{ minHeight: '1.5em' }}>{line}</p>
-            ))}
-            {typedText && (
-              <p style={{ minHeight: '1.5em' }}>
-                {typedText}
-                <span className={`plib-cursor ${done ? 'plib-cursor-faded' : ''}`} />
-              </p>
-            )}
-            {!typedText && completedLines.length > 0 && !done && (
-              <p style={{ minHeight: '1.5em' }}>
-                <span className="plib-cursor" />
-              </p>
-            )}
-          </div>
+          <p
+            className="text-center text-base md:text-lg leading-relaxed"
+            style={{ ...typography, minHeight: '1.5em' }}
+          >
+            {typedText}
+            <span className={`plib-cursor ${done ? 'plib-cursor-faded' : ''}`} />
+          </p>
         </motion.div>
       )}
     </AnimatePresence>
