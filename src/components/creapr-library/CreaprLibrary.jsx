@@ -5,6 +5,7 @@ import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 import { generateGreeting, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
 import { runCreaprBrain } from '@/lib/creapr/creaprBrain';
 import LibraryEnvironment from './LibraryEnvironment';
+import Workspace3DScene from './Workspace3DScene';
 import LibraryWings from './LibraryWings';
 import LibraryResearchTable from './LibraryResearchTable';
 import LibraryInput from './LibraryInput';
@@ -262,7 +263,9 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
   return (
     <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-hidden`} style={{ background: 'hsl(28 22% 8%)' }}>
-      <LibraryEnvironment intensity={envIntensity} />
+      <div className="absolute inset-0" style={{ zIndex: 0 }}>
+        <Workspace3DScene intensity={envIntensity} />
+      </div>
 
       {/* Loading state */}
       {showLoading && (
