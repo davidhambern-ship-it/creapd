@@ -1,0 +1,72 @@
+{
+  "name": "ResearchDossier",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "ID of the ResearchProject this dossier belongs to"
+    },
+    "executive_summary": {
+      "type": "string",
+      "description": "Executive summary of the research"
+    },
+    "background": {
+      "type": "string",
+      "description": "Background and context"
+    },
+    "timeline": {
+      "type": "string",
+      "description": "JSON array of timeline event objects {date, event}"
+    },
+    "key_facts": {
+      "type": "string",
+      "description": "JSON array of key fact objects"
+    },
+    "important_people": {
+      "type": "string",
+      "description": "JSON array of person objects {name, role, context}"
+    },
+    "organizations": {
+      "type": "string",
+      "description": "JSON array of organization objects"
+    },
+    "statistics": {
+      "type": "string",
+      "description": "JSON array of statistic objects"
+    },
+    "verified_sources": {
+      "type": "string",
+      "description": "JSON array of source objects with citations"
+    },
+    "areas_of_debate": {
+      "type": "string",
+      "description": "JSON array of debate/competing viewpoint strings"
+    },
+    "supporting_documents": {
+      "type": "string",
+      "description": "JSON array of supporting document references"
+    },
+    "related_topics": {
+      "type": "string",
+      "description": "JSON array of related topic strings"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Overall confidence score 0-100"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "drafting",
+        "approved",
+        "revision"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "project_id"
+  ]
+}

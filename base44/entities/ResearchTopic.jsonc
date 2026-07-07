@@ -1,0 +1,44 @@
+{
+  "name": "ResearchTopic",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "ID of the ResearchProject this topic belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Topic title"
+    },
+    "category": {
+      "type": "string",
+      "description": "Category section this topic belongs to"
+    },
+    "description": {
+      "type": "string",
+      "description": "Topic description and scope"
+    },
+    "research_assignment": {
+      "type": "string",
+      "description": "Structured research assignment for this topic"
+    },
+    "key_questions": {
+      "type": "string",
+      "description": "JSON array of key research questions"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "assigned",
+        "researching",
+        "completed"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "project_id",
+    "title"
+  ]
+}

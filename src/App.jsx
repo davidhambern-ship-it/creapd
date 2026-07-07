@@ -96,6 +96,13 @@ import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
 import CosmoLayout from '@/components/layout/CosmoLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
+import ResearchLayout from '@/components/layout/ResearchLayout';
+import ResearchLobby from '@/pages/ResearchLobby';
+import ResearchTopics from '@/pages/ResearchTopics';
+import ResearchDepartment from '@/pages/ResearchDepartment';
+import ResearchDossier from '@/pages/ResearchDossier';
+import ResearchDevelop from '@/pages/ResearchDevelop';
+import ResearchPacket from '@/pages/ResearchPacket';
 import SpiritualConfigure from '@/pages/SpiritualConfigure';
 import SpiritualDashboard from '@/pages/SpiritualDashboard';
 import SpiritualResearch from '@/pages/SpiritualResearch';
@@ -264,6 +271,17 @@ const AuthenticatedApp = () => {
           <Route path="/spiritual/assets" element={<SpiritualAssets />} />
           <Route path="/spiritual/package" element={<SpiritualPackage />} />
           <Route path="/spiritual/export" element={<SpiritualExport />} />
+        </Route>
+
+        {/* Research Production */}
+        <Route path="/research" element={<Navigate to="/research/lobby" replace />} />
+        <Route element={<ResearchLayout />}>
+          <Route path="/research/lobby" element={<ResearchLobby />} />
+          <Route path="/research/topics" element={<ResearchTopics />} />
+          <Route path="/research/research" element={<ResearchDepartment />} />
+          <Route path="/research/dossier" element={<ResearchDossier />} />
+          <Route path="/research/develop" element={<ResearchDevelop />} />
+          <Route path="/research/packet" element={<ResearchPacket />} />
         </Route>
 
         {/* Admin */}

@@ -1,5 +1,5 @@
 import {
-  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush
+  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush, FlaskConical
 } from 'lucide-react';
 
 export const PRODUCTION_PROFILES = [
@@ -148,6 +148,30 @@ export const PRODUCTION_PROFILES = [
     examples: ['Step-by-Step Tutorial', 'Cuisine Exploration', 'Ingredient Spotlight']
   },
 
+  {
+    key: 'research',
+    label: 'Research Production',
+    shortLabel: 'Research',
+    description: 'Deep research investigations, structured dossiers, and complete production packets — everything you need to be production-ready.',
+    icon: FlaskConical,
+    available: true,
+    path: '/research/lobby',
+    gradient: 'from-cyan-500/20 to-blue-500/10',
+    accent: 'text-cyan-400',
+    accentBg: 'bg-cyan-500/10',
+    accentBorder: 'border-cyan-500/20',
+    spotlightFeature: 'Production Packet System',
+    spotlightDescription: 'Transform curiosity into production readiness. Define topics in the CREAPr Library, conduct deep research, build structured dossiers, generate production assets, and assemble a complete Production Packet.',
+    workflow: [
+      'Define your research topic in the CREAPr Library',
+      'Conduct deep research with internet-sourced context',
+      'Build a structured Research Dossier with verified findings',
+      'Generate production assets from the approved dossier',
+      'Assemble a complete Production Packet and export'
+    ],
+    outputs: 'Research dossiers, teleprompter scripts, talking points, fact-check notes, visual prompts, production packets',
+    examples: ['Deep Investigation', 'Expert Briefing', 'Research-Driven Documentary']
+  },
   {
     key: 'cosmo',
     label: 'Cosmo Production',

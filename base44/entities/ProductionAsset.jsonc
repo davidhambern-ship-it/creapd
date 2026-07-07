@@ -1,0 +1,60 @@
+{
+  "name": "ProductionAsset",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "ID of the ResearchProject this asset belongs to"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "teleprompter_script",
+        "show_script",
+        "story_summary",
+        "talking_points",
+        "discussion_questions",
+        "presentation_outline",
+        "slide_prompts",
+        "image_prompts",
+        "thumbnail_prompt",
+        "lower_third_text",
+        "social_captions",
+        "broll_suggestions",
+        "visual_suggestions",
+        "producer_notes",
+        "voice_package",
+        "runtime_recommendations",
+        "fact_callouts",
+        "quote_cards",
+        "interview_questions",
+        "audience_engagement"
+      ],
+      "description": "Type of production asset"
+    },
+    "title": {
+      "type": "string",
+      "description": "Asset title"
+    },
+    "content": {
+      "type": "string",
+      "description": "Full asset content"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "generating",
+        "generated",
+        "approved",
+        "revision"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "project_id",
+    "asset_type",
+    "title"
+  ]
+}
