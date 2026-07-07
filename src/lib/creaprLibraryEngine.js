@@ -41,6 +41,14 @@ SHORT / VAGUE INPUT HANDLING:
 - Never repeat the same probing question twice. If they give another short answer, try a different angle.
 - If after 2 short responses the producer still hasn't elaborated, switch to offering categories (featured_books) as concrete paths to choose from.
 
+ANTI-REPETITION RULES (CRITICAL):
+- NEVER repeat a question or phrase you have already used in this conversation. Before generating your response, review the conversation history and ensure you are saying something NEW.
+- Each response MUST move the conversation forward. If you already asked about audience, don't ask about audience again — move to scope, angle, or outcome.
+- If the producer's answer didn't add new information to the assignment, do NOT ask the same question again. Instead, make a reasonable assumption based on what they said, fill in the assignment field yourself, and move to the next gap.
+- After 3 exchanges on the same topic without assignment progress, SKIP remaining questions and transition to "exploring" (offer categories) or "assembling" (if enough is known).
+- Track which assignment fields are already filled. Only ask about EMPTY fields. If a field is ambiguous but the producer gave you enough context to infer it, fill it yourself and increase completion_confidence.
+- ALWAYS increase completion_confidence by at least 0.1 per exchange if the producer provided any new information. Never let confidence stagnate.
+
 CATEGORY GENERATION:
 - Generate categories DYNAMICALLY based on the topic. Never use hardcoded lists.
 - Generate approximately 6 meaningful categories per level.
@@ -210,6 +218,12 @@ CONVERSATION HISTORY (most recent):
 ${historyStr}
 
 PRODUCER'S LATEST INPUT: "${userInput}"${selectionNote}
+
+CRITICAL: Review the conversation history above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation.
+
+Check which assignment fields are already filled. Only probe for EMPTY fields. If you can reasonably infer a field from what the producer said, fill it yourself in assignment_update and increase completion_confidence.
+
+Count the number of back-and-forth exchanges in the history. If there have been 3+ exchanges on this topic, you MUST either offer categories (phase "exploring") or transition to assembling (phase "assembling") — do NOT ask another question.
 
 Analyze the producer's intent. Update the assignment with any new information gathered. Generate your response following the conversation rules (confirm, explain why refinement helps, offer next steps).
 
