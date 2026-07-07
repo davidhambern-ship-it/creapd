@@ -332,7 +332,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         </div>
       </div>
 
-      <div className="absolute top-4 right-4 flex items-center gap-2" style={{ zIndex: 15 }}>
+      <div className="absolute top-4 right-4 flex items-center gap-2" style={{ zIndex: 20 }}>
         <button
           onClick={() => {
             const next = !mutedRef.current;
@@ -340,23 +340,23 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
             setMuted(next);
             if (next) stopAudio();
           }}
-          className="p-2.5 rounded-lg transition-all hover:bg-white/5"
-          style={{ border: `1px solid ${muted ? 'hsl(0 60% 45% / 0.4)' : 'hsl(190 60% 35% / 0.3)'}` }}
+          className="p-3 rounded-lg transition-all hover:bg-white/10 bg-black/40 backdrop-blur-sm"
+          style={{ border: `1px solid ${muted ? 'hsl(0 60% 55% / 0.6)' : 'hsl(190 60% 50% / 0.5)'}` }}
           title={muted ? 'Unmute' : 'Mute'}
         >
           {muted ? (
-            <VolumeX className="w-5 h-5" style={{ color: 'hsl(0 60% 55%)' }} />
+            <VolumeX className="w-5 h-5" style={{ color: 'hsl(0 60% 60%)' }} />
           ) : (
-            <Volume2 className="w-5 h-5" style={{ color: 'hsl(190 90% 55%)' }} />
+            <Volume2 className="w-5 h-5" style={{ color: 'hsl(190 90% 60%)' }} />
           )}
         </button>
         {!embedded && (
           <button
             onClick={() => { stopAudio(); onClose?.(); }}
-            className="p-2.5 rounded-lg transition-all hover:bg-white/5"
-            style={{ border: '1px solid hsl(190 60% 35% / 0.3)' }}
+            className="p-3 rounded-lg transition-all hover:bg-white/10 bg-black/40 backdrop-blur-sm"
+            style={{ border: '1px solid hsl(190 60% 50% / 0.5)' }}
           >
-            <X className="w-5 h-5" style={{ color: 'hsl(220 10% 55%)' }} />
+            <X className="w-5 h-5" style={{ color: 'hsl(220 10% 65%)' }} />
           </button>
         )}
       </div>
