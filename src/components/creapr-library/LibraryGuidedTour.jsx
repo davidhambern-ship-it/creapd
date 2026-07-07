@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, X } from 'lucide-react';
 
@@ -93,7 +94,7 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
         width: 'min(440px, 90vw)',
       };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         className="fixed inset-0"
@@ -222,6 +223,7 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

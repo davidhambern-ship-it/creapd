@@ -305,7 +305,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       </div>
 
       {/* Knowledge dashboard — confidence indicator */}
-      {completionConfidence > 0 && view === 'overview' && (
+      {view === 'overview' && (
         <div className="absolute top-4 right-4 hidden md:flex plib-dashboard" style={{ zIndex: 15 }} data-tour="understanding-meter">
           <span className="text-[10px] uppercase tracking-wider" style={{ color: 'hsl(40 22% 48%)', fontFamily: '"Oswald", sans-serif' }}>
             Understanding
