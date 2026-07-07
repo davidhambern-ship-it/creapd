@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
-import AuthLayout from "@/components/AuthLayout";
+import AuthImmersiveLayout from "@/components/AuthImmersiveLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 
 export default function Login() {
@@ -33,14 +33,14 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout
+    <AuthImmersiveLayout
       icon={LogIn}
       title="Welcome back"
       subtitle="Log in to your account"
       footer={
         <>
           Don't have an account?{" "}
-          <Link to="/register" className="text-primary font-medium hover:underline">
+          <Link to="/register" className="font-medium hover:underline" style={{ color: "hsl(190 80% 60%)" }}>
             Create one
           </Link>
         </>
@@ -48,7 +48,7 @@ export default function Login() {
     >
       <Button
         variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
+        className="w-full h-12 text-sm font-medium mb-6 bg-white text-black hover:bg-white/90 border-0"
         onClick={handleGoogle}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
@@ -57,10 +57,10 @@ export default function Login() {
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
+          <div className="w-full border-t" style={{ borderColor: "hsl(190 30% 25% / 0.3)" }} />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
+          <span className="px-3" style={{ background: "hsl(220 25% 8% / 0.9)", color: "hsl(220 10% 50%)" }}>or</span>
         </div>
       </div>
 
@@ -72,9 +72,9 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" style={{ color: "hsl(220 10% 65%)" }}>Email</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(190 60% 50%)" }} aria-hidden="true" />
             <Input
               id="email"
               type="email"
@@ -84,19 +84,24 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-10 h-12"
+              style={{
+                background: "hsl(220 25% 6% / 0.6)",
+                borderColor: "hsl(190 30% 25% / 0.3)",
+                color: "hsl(0 0% 95%)",
+              }}
               required
             />
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+            <Label htmlFor="password" style={{ color: "hsl(220 10% 65%)" }}>Password</Label>
+            <Link to="/forgot-password" className="text-xs hover:underline" style={{ color: "hsl(190 70% 55%)" }}>
               Forgot password?
             </Link>
           </div>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "hsl(190 60% 50%)" }} aria-hidden="true" />
             <Input
               id="password"
               type="password"
@@ -105,11 +110,25 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="pl-10 h-12"
+              style={{
+                background: "hsl(220 25% 6% / 0.6)",
+                borderColor: "hsl(190 30% 25% / 0.3)",
+                color: "hsl(0 0% 95%)",
+              }}
               required
             />
           </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full h-12 font-medium"
+          disabled={loading}
+          style={{
+            background: "linear-gradient(135deg, hsl(270 70% 55%), hsl(250 70% 50%))",
+            border: "1px solid hsl(270 60% 60% / 0.4)",
+            boxShadow: "0 0 20px hsl(270 70% 50% / 0.2)",
+          }}
+        >
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -120,6 +139,6 @@ export default function Login() {
           )}
         </Button>
       </form>
-    </AuthLayout>
+    </AuthImmersiveLayout>
   );
 }
