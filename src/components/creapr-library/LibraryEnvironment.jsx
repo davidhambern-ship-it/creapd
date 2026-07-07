@@ -17,17 +17,17 @@ const BG_BOOK_COLORS = [
   'hsl(180 15% 15%)', 'hsl(20 22% 16%)',
 ];
 
-function BackgroundShelfRow({ top, books = 20 }) {
+function BackgroundShelfRow({ books = 12 }) {
   return (
-    <div className="absolute left-0 right-0 flex items-end gap-px px-4" style={{ top, height: '64px', opacity: 0.35 }}>
+    <div className="absolute left-0 right-0 flex items-end gap-px px-4" style={{ height: '64px', opacity: 0.35 }}>
       {[...Array(books)].map((_, i) => (
         <div
           key={i}
           className="flex-shrink-0 rounded-t-sm"
           style={{
             width: `${20 + (i % 5) * 4}px`,
-            height: `${40 + ((i * 7 + top) % 22)}px`,
-            background: `linear-gradient(180deg, ${BG_BOOK_COLORS[(i + Math.floor(top)) % BG_BOOK_COLORS.length]} 0%, hsl(0 0% 0% / 0.3) 100%)`,
+            height: `${40 + ((i * 7) % 22)}px`,
+            background: `linear-gradient(180deg, ${BG_BOOK_COLORS[i % BG_BOOK_COLORS.length]} 0%, hsl(0 0% 0% / 0.3) 100%)`,
             boxShadow: 'inset -1px 0 2px hsl(0 0% 0% / 0.4)',
           }}
         />
@@ -40,8 +40,8 @@ function BackgroundShelf({ top, left, width, rows = 3 }) {
   return (
     <div className="absolute" style={{ top, left, width }}>
       {[...Array(rows)].map((_, r) => (
-        <div key={r} style={{ marginBottom: '4px' }}>
-          <BackgroundShelfRow top={0} books={Math.floor(width / 26)} />
+        <div key={r} style={{ marginBottom: '4px', position: 'relative', height: '70px' }}>
+          <BackgroundShelfRow books={8} />
           <div style={{ height: '6px', background: 'linear-gradient(180deg, hsl(30 22% 14%) 0%, hsl(28 18% 9%) 100%)', borderRadius: '2px', boxShadow: '0 2px 4px hsl(0 0% 0% / 0.4)' }} />
         </div>
       ))}
