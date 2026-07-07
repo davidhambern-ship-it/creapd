@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-// LibraryMessage removed — visual library + tour only
 import { base44 } from '@/api/base44Client';
 import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 import { generateGreeting, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
@@ -254,7 +253,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const canShowInput = view === 'overview' && tablePhase === null;
 
   return (
-    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-hidden`} style={{ background: 'hsl(28 22% 8%)' }}>
+    <div className={`${embedded ? 'absolute inset-0' : 'fixed inset-0 z-50'} overflow-hidden`} style={{ background: 'hsl(28 22% 8%)', border: '3px solid red' }}>
       <LibraryEnvironment intensity={envIntensity} />
 
       {/* Loading state */}
