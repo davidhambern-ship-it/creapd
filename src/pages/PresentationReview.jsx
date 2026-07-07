@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import PresentationPlayer from '@/components/presentation/PresentationPlayer';
 import {
   ArrowLeft, CheckCircle, XCircle, RefreshCw, Clock, FileStack,
-  TrendingUp, AlertTriangle, Share2, Download, Loader2, Check
+  TrendingUp, AlertTriangle, Share2, Download, Loader2, Check, Pencil
 } from 'lucide-react';
 
 function formatTime(ms) {
@@ -162,6 +162,9 @@ export default function PresentationReview() {
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/news/presentations')}>
             <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <Button variant="default" size="sm" className="gap-1.5" onClick={() => navigate(`/news/presentations/${id}/edit`)}>
+            <Pencil className="w-4 h-4" /> Edit
           </Button>
           <div>
             <h1 className="text-2xl font-heading font-bold">{presentation.title}</h1>

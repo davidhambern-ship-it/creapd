@@ -97,6 +97,7 @@ import ResearchExport from '@/pages/ResearchExport';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import Presentations from '@/pages/Presentations';
 import PresentationReview from '@/pages/PresentationReview';
+import PresentationEditor from '@/pages/PresentationEditor';
 import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
@@ -188,6 +189,7 @@ const AuthenticatedApp = () => {
           <Route path="/news/settings" element={<SettingsPage />} />
           <Route path="/news/presentations" element={<Presentations />} />
           <Route path="/news/presentations/:id" element={<PresentationReview />} />
+          <Route path="/news/presentations/:id/edit" element={<PresentationEditor />} />
         </Route>
 
         {/* Onboarding & Production Type Selection */}

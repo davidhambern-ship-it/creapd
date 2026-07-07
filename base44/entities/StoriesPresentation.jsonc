@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Presentation title"
     },
+    "project_id": {
+      "type": "string",
+      "description": "Associated project/production ID"
+    },
     "production_profile": {
       "type": "string",
       "enum": [
@@ -15,13 +19,36 @@
         "music",
         "sports",
         "cooking",
-        "cosmo"
+        "cosmo",
+        "research"
       ],
       "description": "Which Production Profile this presentation was created with"
     },
-    "story_slide_ids": {
+    "packet_id": {
+      "type": "string",
+      "description": "ID of the source production packet"
+    },
+    "theme": {
+      "type": "string",
+      "description": "JSON: theme colors, fonts, spacing"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "16:9",
+        "4:3",
+        "9:16",
+        "1:1"
+      ],
+      "default": "16:9"
+    },
+    "slide_order": {
       "type": "string",
       "description": "JSON array of StorySlide IDs in presentation order"
+    },
+    "story_slide_ids": {
+      "type": "string",
+      "description": "Legacy: JSON array of StorySlide IDs"
     },
     "story_package_ids": {
       "type": "string",
@@ -29,34 +56,40 @@
     },
     "master_timeline": {
       "type": "string",
-      "description": "JSON: master presentation timeline with all timeline events, scene boundaries, and synchronization data"
+      "description": "JSON: master presentation timeline"
     },
     "presentation_metadata": {
       "type": "string",
-      "description": "JSON: title, runtime, story_count, APD version, creator, generation timestamp, presentation version"
+      "description": "JSON: title, runtime, story_count, etc."
     },
     "playback_settings": {
       "type": "string",
-      "description": "JSON: resolution (1920x1080), aspect_ratio (16:9), frame_rate (30), playback_mode, transition_defaults, motion_defaults, export_options, theme_version"
+      "description": "JSON: resolution, aspect_ratio, frame_rate, etc."
     },
     "opening_sequence": {
       "type": "string",
-      "description": "JSON: CREAPD branding, production profile branding, program title, intro animation, theme music"
+      "description": "JSON: CREAPD branding, intro animation"
     },
     "closing_sequence": {
       "type": "string",
-      "description": "JSON: closing branding, credits, outro animation"
+      "description": "JSON: closing branding, credits"
     },
     "presentation_version": {
       "type": "number",
       "default": 1,
       "description": "Version number \u2014 increments on Producer edits"
     },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Editor version \u2014 tracks save iterations"
+    },
     "status": {
       "type": "string",
       "enum": [
         "generating",
         "generated",
+        "editing",
         "reviewing",
         "approved",
         "exported",
@@ -67,24 +100,24 @@
     },
     "producer_id": {
       "type": "string",
-      "description": "User ID of the Producer who requested generation"
+      "description": "User ID of the Producer"
     },
     "producer_metadata": {
       "type": "string",
-      "description": "JSON: review state, approval status, approval timestamp, locked status, approval notes"
+      "description": "JSON: review state, approval, lock status"
     },
     "export_metadata": {
       "type": "string",
-      "description": "JSON: export format, export status, export history, export timestamp"
+      "description": "JSON: export format, status, history"
     },
     "qa_scores": {
       "type": "string",
-      "description": "JSON: story_integrity, timeline, communication, readability, motion, consistency, technical scores (0-100 each)"
+      "description": "JSON: category scores (0-100 each)"
     },
     "confidence_score": {
       "type": "number",
       "default": 0,
-      "description": "Production Confidence Score (0-100) \u2014 derived from all QA category scores"
+      "description": "Production Confidence Score (0-100)"
     },
     "qa_result": {
       "type": "string",
@@ -108,16 +141,14 @@
     },
     "total_runtime_ms": {
       "type": "number",
-      "default": 0,
-      "description": "Total presentation runtime in milliseconds"
+      "default": 0
     },
     "story_count": {
       "type": "number",
       "default": 0
     },
     "generation_error": {
-      "type": "string",
-      "description": "Error message if generation failed"
+      "type": "string"
     },
     "completed_at": {
       "type": "string",

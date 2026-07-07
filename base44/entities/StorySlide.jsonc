@@ -6,67 +6,175 @@
       "type": "string",
       "description": "ID of the parent StoriesPresentation"
     },
+    "presentation_point_id": {
+      "type": "string",
+      "description": "Linked ResearchPoint / Presentation Point ID"
+    },
     "story_package_id": {
       "type": "string",
-      "description": "ID of the source ProductionPackage \u2014 one Story Package always produces one Story Slide"
+      "description": "ID of the source ProductionPackage"
+    },
+    "slide_number": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order within the presentation"
     },
     "story_order": {
       "type": "number",
       "default": 0,
-      "description": "Order index within the Stories Presentation"
+      "description": "Legacy order index"
+    },
+    "slide_type": {
+      "type": "string",
+      "enum": [
+        "title_slide",
+        "content_slide",
+        "image_slide",
+        "video_slide",
+        "lower_third",
+        "full_screen",
+        "split_screen",
+        "section_divider",
+        "closing_slide",
+        "blank"
+      ],
+      "default": "content_slide",
+      "description": "Layout template for this slide"
+    },
+    "title": {
+      "type": "string",
+      "description": "Editable slide title text"
+    },
+    "body_text": {
+      "type": "string",
+      "description": "Editable slide body content"
+    },
+    "speaker_notes": {
+      "type": "string",
+      "description": "Editable speaker notes"
+    },
+    "layout_id": {
+      "type": "string",
+      "description": "Layout template identifier"
+    },
+    "background": {
+      "type": "string",
+      "description": "JSON: background color, gradient, or image URL"
+    },
+    "media_elements": {
+      "type": "string",
+      "description": "JSON array of media element references"
+    },
+    "text_elements": {
+      "type": "string",
+      "description": "JSON array of text element objects"
+    },
+    "shape_elements": {
+      "type": "string",
+      "description": "JSON array of shape element objects"
+    },
+    "icon_elements": {
+      "type": "string",
+      "description": "JSON array of icon element objects"
+    },
+    "video_elements": {
+      "type": "string",
+      "description": "JSON array of video element objects"
+    },
+    "audio_elements": {
+      "type": "string",
+      "description": "JSON array of audio element objects"
+    },
+    "transition": {
+      "type": "string",
+      "enum": [
+        "fade",
+        "slide_left",
+        "slide_right",
+        "zoom",
+        "dissolve",
+        "none"
+      ],
+      "default": "fade"
+    },
+    "animations": {
+      "type": "string",
+      "description": "JSON: element entrance/exit animation configs"
+    },
+    "timing": {
+      "type": "string",
+      "description": "JSON: slide duration, element timing offsets"
+    },
+    "references": {
+      "type": "string",
+      "description": "JSON array of source references / citations"
+    },
+    "qa_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Slide-level QA score (0-100)"
     },
     "voice_package_id": {
       "type": "string",
-      "description": "ID of the VoicePackage \u2014 the master timing source for this slide"
+      "description": "ID of the VoicePackage"
     },
     "scene_graph": {
       "type": "string",
-      "description": "JSON: complete Scene Graph containing presentation_scenes (each with layers, elements, timeline_events), camera_state, motion_state, synchronization_data, playback_instructions"
+      "description": "JSON: complete Scene Graph"
     },
     "slide_timeline": {
       "type": "string",
-      "description": "JSON: local slide timeline with start_time, end_time, scene boundaries, element entrances/exits, animation timing \u2014 derived from Voice Package"
+      "description": "JSON: local slide timeline"
     },
     "slide_metadata": {
       "type": "string",
-      "description": "JSON: headline, story_summary, duration_ms, scene_count, element_count, voice_package_reference"
+      "description": "JSON: headline, story_summary, duration_ms, etc."
     },
     "slide_start_ms": {
       "type": "number",
-      "default": 0,
-      "description": "Start time of this slide within the master presentation timeline (ms)"
+      "default": 0
     },
     "duration_ms": {
       "type": "number",
-      "default": 0,
-      "description": "Duration of this slide in milliseconds (from Voice Package)"
+      "default": 0
     },
     "status": {
       "type": "string",
       "enum": [
         "generating",
         "generated",
+        "editing",
         "reviewing",
         "approved",
+        "not_reviewed",
+        "needs_revision",
+        "passed",
         "failed"
       ],
-      "default": "generating"
+      "default": "generated"
     },
     "is_derived": {
       "type": "boolean",
+      "default": false
+    },
+    "is_outdated": {
+      "type": "boolean",
       "default": false,
-      "description": "True if Producer-created (Derived Story Slide) vs APD-generated"
+      "description": "True if linked Presentation Point changed"
     },
     "version": {
       "type": "number",
       "default": 1
+    },
+    "version_history": {
+      "type": "string",
+      "description": "JSON array of version snapshots"
     },
     "generation_error": {
       "type": "string"
     }
   },
   "required": [
-    "stories_presentation_id",
-    "story_package_id"
+    "stories_presentation_id"
   ]
 }

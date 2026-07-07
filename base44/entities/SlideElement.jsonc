@@ -1,0 +1,112 @@
+{
+  "name": "SlideElement",
+  "type": "object",
+  "properties": {
+    "slide_id": {
+      "type": "string",
+      "description": "ID of the parent StorySlide"
+    },
+    "presentation_id": {
+      "type": "string",
+      "description": "ID of the parent StoriesPresentation"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "image",
+        "icon",
+        "shape",
+        "video",
+        "audio",
+        "chart",
+        "map",
+        "lower_third",
+        "caption",
+        "background"
+      ],
+      "description": "Element type"
+    },
+    "content": {
+      "type": "string",
+      "description": "Element content \u2014 text string, media URL, or JSON data depending on type"
+    },
+    "x": {
+      "type": "number",
+      "default": 0,
+      "description": "X position in pixels (relative to slide canvas)"
+    },
+    "y": {
+      "type": "number",
+      "default": 0,
+      "description": "Y position in pixels"
+    },
+    "width": {
+      "type": "number",
+      "default": 200,
+      "description": "Width in pixels"
+    },
+    "height": {
+      "type": "number",
+      "default": 100,
+      "description": "Height in pixels"
+    },
+    "rotation": {
+      "type": "number",
+      "default": 0,
+      "description": "Rotation in degrees"
+    },
+    "opacity": {
+      "type": "number",
+      "default": 100,
+      "description": "Opacity 0-100"
+    },
+    "z_index": {
+      "type": "number",
+      "default": 0,
+      "description": "Stacking order"
+    },
+    "style": {
+      "type": "string",
+      "description": "JSON: fontSize, fontFamily, color, bold, italic, align, backgroundColor, borderRadius, borderWidth, borderColor, padding"
+    },
+    "animation": {
+      "type": "string",
+      "description": "JSON: entrance animation type, duration, delay"
+    },
+    "timing": {
+      "type": "string",
+      "description": "JSON: start_ms, end_ms for timed element visibility"
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false
+    },
+    "visible": {
+      "type": "boolean",
+      "default": true
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "version_history": {
+      "type": "string",
+      "description": "JSON array of version snapshots"
+    },
+    "qa_status": {
+      "type": "string",
+      "enum": [
+        "not_reviewed",
+        "needs_revision",
+        "passed",
+        "approved"
+      ],
+      "default": "not_reviewed"
+    }
+  },
+  "required": [
+    "slide_id",
+    "type"
+  ]
+}
