@@ -163,7 +163,7 @@ export default function PresentationReview() {
           <Button variant="ghost" size="icon" className="text-berna-orange hover:text-berna-orange/80 hover:bg-berna-orange/10" onClick={() => navigate('/news/presentations')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <Button variant="default" size="sm" className="gap-1.5" onClick={() => navigate(`/presentations/${id}/edit`)}>
+          <Button variant="default" size="sm" className="gap-1.5" onClick={() => navigate(`/news/presentations/${id}/edit`)}>
             <Pencil className="w-4 h-4" /> Edit
           </Button>
           <div>
