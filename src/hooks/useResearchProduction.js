@@ -14,55 +14,71 @@ export function useResearchProduction(configId) {
     let activeId = configId;
     let activeConfig = null;
 
-    if (!activeId) {
-      const configs = await base44.entities.ResearchProductionConfiguration.list('-created_date', 1);
-      if (configs && configs.length > 0) {
-        activeId = configs[0].id;
-        activeConfig = configs[0];
-      } else {
-        setConfig(null);
-        setTopics([]);
-        setPoints([]);
-        setPackages([]);
-        setDossiers([]);
-        setLoading(false);
-        return;
+    try {
+      if (!activeId) {
+        const configs = await base44.entities.ResearchProductionConfiguration.list('-created_date', 1);
+        if (configs && configs.length > 0) {
+          activeId = configs[0].id;
+          activeConfig = configs[0];
+        } else {
+          setConfig(null);
+          setTopics([]);
+          setPoints([]);
+          setPackages([]);
+          setDossiers([]);
+          setLoading(false);
+          return;
+        }
       }
+
+      if (!activeConfig) {
+        activeConfig = await base44.entities.ResearchProductionConfiguration.get(activeId);
+      }
+      setConfig(activeConfig);
+
+      const [t, p] = await Promise.all([
+        base44.entities.ResearchTopic.filter({ configuration_id: activeId }, '-created_date'),
+        base44.entities.ResearchPoint.filter({ configuration_id: activeId }, 'order')
+      ]);
+
+      setTopics(t || []);
+      setPoints(p || []);
+
+      // Fetch packages linked to research points
+      const pointIds = (p || []).map(pt => pt.id).filter(Boolean);
+      let pkgs = [];
+      if (pointIds.length > 0) {
+        try {
+          pkgs = await base44.entities.ProductionPackage.filter({ source_entity_type: 'ResearchPoint' }, '-created_date', 100);
+          pkgs = (pkgs || []).filter(pkg => pointIds.includes(pkg.source_entity_id));
+        } catch {
+          pkgs = [];
+        }
+      }
+      setPackages(pkgs || []);
+
+      // Fetch dossiers for topics that have one
+      const dossierIds = (t || []).map(tp => tp.dossier_id).filter(Boolean);
+      let doss = [];
+      if (dossierIds.length > 0) {
+        try {
+          doss = await base44.entities.ResearchDossier.filter({}, '-created_date', 100);
+          doss = (doss || []).filter(d => dossierIds.includes(d.id));
+        } catch {
+          doss = [];
+        }
+      }
+      setDossiers(doss);
+    } catch (err) {
+      console.error('useResearchProduction load error:', err);
+      setConfig(null);
+      setTopics([]);
+      setPoints([]);
+      setPackages([]);
+      setDossiers([]);
+    } finally {
+      setLoading(false);
     }
-
-    if (!activeConfig) {
-      activeConfig = await base44.entities.ResearchProductionConfiguration.get(activeId);
-    }
-    setConfig(activeConfig);
-
-    const [t, p] = await Promise.all([
-      base44.entities.ResearchTopic.filter({ configuration_id: activeId }, '-created_date'),
-      base44.entities.ResearchPoint.filter({ configuration_id: activeId }, 'order')
-    ]);
-
-    setTopics(t || []);
-    setPoints(p || []);
-
-    // Fetch packages linked to research points
-    const pointIds = (p || []).map(pt => pt.id).filter(Boolean);
-    let pkgs = [];
-    if (pointIds.length > 0) {
-      // ProductionPackage uses source_entity_type + source_entity_id for research points
-      pkgs = await base44.entities.ProductionPackage.filter({ source_entity_type: 'ResearchPoint' }, '-created_date');
-      pkgs = (pkgs || []).filter(pkg => pointIds.includes(pkg.source_entity_id));
-    }
-    setPackages(pkgs || []);
-
-    // Fetch dossiers for topics that have one
-    const dossierIds = (t || []).map(tp => tp.dossier_id).filter(Boolean);
-    let doss = [];
-    if (dossierIds.length > 0) {
-      doss = await base44.entities.ResearchDossier.filter({}, '-created_date');
-      doss = (doss || []).filter(d => dossierIds.includes(d.id));
-    }
-    setDossiers(doss);
-
-    setLoading(false);
   }, [configId]);
 
   useEffect(() => {
