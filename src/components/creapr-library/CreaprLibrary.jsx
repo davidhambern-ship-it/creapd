@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
-import { generateGreeting, processProducerInput, buildResearchTopicData } from '@/lib/creaprLibraryEngine';
+import { generateGreeting, processProducerInput, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
 import LibraryAmbience from './LibraryAmbience';
 import LibrarySubtitle from './LibrarySubtitle';
 import LibraryShelves from './LibraryShelves';
