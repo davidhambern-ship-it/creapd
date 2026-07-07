@@ -5,7 +5,7 @@ import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 import { generateGreeting, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
 import { runCreaprBrain } from '@/lib/creapr/creaprBrain';
 import LibraryEnvironment from './LibraryEnvironment';
-import LibraryChatFeed from './LibraryChatFeed';
+import LibraryMessage from './LibraryMessage';
 import LibraryWings from './LibraryWings';
 import LibraryResearchTable from './LibraryResearchTable';
 import LibraryInput from './LibraryInput';
@@ -15,8 +15,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const navigate = useNavigate();
 
   const [view, setView] = useState('overview');
-  const [messages, setMessages] = useState([]);
-  const messageIdRef = useRef(0);
+  const [messageData, setMessageData] = useState(null);
   const [wings, setWings] = useState(null);
   const [assignment, setAssignment] = useState(null);
   const [tablePhase, setTablePhase] = useState(null);
@@ -39,7 +38,6 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
   const handleMessageComplete = useCallback(() => {
     setStopTyping(false);
-    setMessages(prev => prev.map(m => ({ ...m, isTyping: false })));
     if (pendingActionRef.current) {
       const action = pendingActionRef.current;
       pendingActionRef.current = null;
@@ -63,7 +61,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       setCompletionConfidence(result.completion_confidence || 0);
       pendingActionRef.current = null;
       setStopTyping(false);
-      setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'assistant', lines: result.spoken_lines, content: result.spoken_lines.join(' '), phase: 'greeting', isTyping: true }]);
+      setMessageData({ lines: result.spoken_lines, phase: 'greeting' });
       setInputEnabled(true);
     } catch {
       if (!isMountedRef.current) return;
@@ -73,7 +71,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       conversationHistoryRef.current.push({ role: 'assistant', content: fallback.join(' ') });
       pendingActionRef.current = null;
       setStopTyping(false);
-      setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'assistant', lines: fallback, content: fallback.join(' '), phase: 'greeting', isTyping: true }]);
+      setMessageData({ lines: fallback, phase: 'greeting' });
       setInputEnabled(true);
     }
   }, [config]);
@@ -99,7 +97,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
           const fallback = ["Welcome to the library.", "What are we looking for today?"];
           conversationHistoryRef.current.push({ role: 'assistant', content: fallback.join(' ') });
           setStopTyping(false);
-          setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'assistant', lines: fallback, content: fallback.join(' '), phase: 'greeting', isTyping: true }]);
+          setMessageData({ lines: fallback, phase: 'greeting' });
           setInputEnabled(true);
         }
       }, 12000);
@@ -117,13 +115,12 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     pendingActionRef.current = null;
     setInputEnabled(false);
     setWings(null);
-    setMessages(prev => prev.map(m => ({ ...m, isTyping: false })));
+    setMessageData(null);
     setFocusedWing(null);
     setStopTyping(false);
 
     const userMessage = selectedCategory ? `[Selected: ${selectedCategory}]` : input;
     conversationHistoryRef.current.push({ role: 'user', content: userMessage });
-    setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'user', content: userMessage }]);
 
     setThinking(true);
     const brainResponse = await runCreaprBrain({
@@ -175,7 +172,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
           assignmentRef.current = fullAssignment;
         }, 2500);
       };
-      setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'assistant', lines: spokenLines, content: spokenLines.join(' '), phase: result.phase || 'assembling', isTyping: true }]);
+      setMessageData({ lines: spokenLines, phase: result.phase || 'assembling' });
       setInputEnabled(true);
       processingRef.current = false;
       return;
@@ -194,7 +191,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       }
     };
 
-    setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'assistant', lines: spokenLines, content: spokenLines.join(' '), phase: result.phase || 'questioning', isTyping: true }]);
+    setMessageData({ lines: spokenLines, phase: result.phase || 'questioning' });
     setInputEnabled(true);
     processingRef.current = false;
   }, [config]);
@@ -230,7 +227,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     setView('overview');
     setWings(null);
     setStopTyping(false);
-    setMessages(prev => [...prev, { id: ++messageIdRef.current, role: 'assistant', lines: ["Let's refine this.", "What would you like to change?"], content: "Let's refine this. What would you like to change?", phase: 'questioning', isTyping: true }]);
+    setMessageData({ lines: ["Let's refine this.", "What would you like to change?"], phase: 'questioning' });
     setInputEnabled(true);
   }, []);
 
@@ -243,7 +240,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     assignmentRef.current = {};
     conversationHistoryRef.current = [];
     setCompletionConfidence(0);
-    setMessages([]);
+    setMessageData(null);
     setStopTyping(false);
     loadingGreetingRef.current = true;
     setLoadingGreeting(true);
@@ -251,7 +248,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   }, [handleGenerateGreeting]);
 
   const envIntensity = tablePhase === 'assembling' ? 'assembling' : thinking ? 'active' : 'calm';
-  const showLoading = loadingGreeting && messages.length === 0 && !thinking;
+  const showLoading = loadingGreeting && !messageData && !thinking;
   const canShowInput = view === 'overview' && tablePhase === null;
 
   return (
@@ -343,10 +340,11 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
         />
       )}
 
-      {/* CREAPr chat feed — scrolling conversation */}
-      {messages.length > 0 && (
-        <LibraryChatFeed
-          messages={messages}
+      {/* CREAPr message — typing with typography variation */}
+      {messageData && (
+        <LibraryMessage
+          lines={messageData.lines}
+          phase={messageData.phase}
           stopTyping={stopTyping}
           onComplete={handleMessageComplete}
         />
@@ -356,7 +354,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       {canShowInput && (
         <LibraryInput
           onSend={(text) => handleProducerInput(text)}
-          onStartTyping={() => { if (messages.some(m => m.isTyping) && !stopTyping) setStopTyping(true); }}
+          onStartTyping={() => { if (messageData && !stopTyping) setStopTyping(true); }}
           disabled={!inputEnabled || submitting}
           thinking={thinking}
           placeholder={view === 'overview' && !wings ? "What are we looking for today?" : "Continue exploring..."}
