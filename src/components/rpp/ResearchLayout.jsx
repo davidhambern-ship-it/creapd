@@ -1,22 +1,12 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { useResearchProduction } from '@/hooks/useResearchProduction';
+import { Outlet, Link } from 'react-router-dom';
 import { getDepartmentThemeFromPath } from '@/lib/rppDepartmentThemes';
-import RPPDepartmentNav from './RPPDepartmentNav';
+import { ChevronLeft } from 'lucide-react';
 
 export default function ResearchLayout() {
-  const { config, topics, points, packages, dossiers } = useResearchProduction();
-
   const location = window.location.pathname;
   const activeTheme = getDepartmentThemeFromPath(location);
-
-  const progressStages = {
-    assignment: topics.length > 0,
-    research: points.length > 0 || (dossiers?.length > 0),
-    dossier: dossiers?.some(d => d.status === 'ready') || false,
-    assets: packages.length > 0,
-    packet: packages.some(p => p.status === 'approved' || p.status === 'finalized'),
-  };
+  const isLobby = location === '/research';
 
   return (
     <div
@@ -29,13 +19,19 @@ export default function ResearchLayout() {
     >
       <div className="rpp-ambient-bg" />
 
-      <RPPDepartmentNav
-        config={config}
-        progressStages={progressStages}
-        researchingCount={topics.filter(t => t.status === 'researching').length}
-      />
-
       <main className="rpp-workspace flex flex-col min-w-0">
+        {/* Back-to-lobby link on non-lobby pages */}
+        {!isLobby && (
+          <div className="px-4 md:px-6 pt-3 pb-1 shrink-0">
+            <Link
+              to="/research"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Lobby
+            </Link>
+          </div>
+        )}
         <div className="rpp-workspace-content flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <Outlet />
         </div>
