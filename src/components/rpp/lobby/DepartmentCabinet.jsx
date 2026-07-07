@@ -69,31 +69,34 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
         <h3 className="font-heading font-semibold text-sm text-white">{dept.name}</h3>
       </div>
 
-      {/* RSS feed display */}
+      {/* RSS feed display — vertical scroll */}
       <div
         className="relative mx-4 mb-4 rounded-lg overflow-hidden"
         style={{
-          height: '40px',
+          height: '80px',
           background: 'hsl(190 30% 4% / 0.35)',
           border: '1px solid hsl(190 40% 50% / 0.12)',
           boxShadow: 'inset 0 2px 8px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
           backdropFilter: 'blur(4px)',
         }}
       >
-        <div
-          className="flex items-center h-full"
-          style={{ overflow: 'hidden' }}
-        >
-          <div
-            className="flex items-center gap-4 whitespace-nowrap"
-            style={{ animation: 'nc-ticker-scroll 20s linear infinite' }}
-          >
-            {[...scrollText, ...scrollText].map((block, i) => (
-              <span key={i} className="text-[10px] font-mono px-2" style={{ color: `${statusCfg.color} / 0.8)` }}>
-                {block.title}
-              </span>
-            ))}
-          </div>
+        {/* Fade mask top + bottom */}
+        <div className="absolute top-0 left-0 right-0 h-4 z-10 pointer-events-none"
+          style={{ background: 'linear-gradient(180deg, hsl(190 30% 4% / 0.95), transparent)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-4 z-10 pointer-events-none"
+          style={{ background: 'linear-gradient(0deg, hsl(190 30% 4% / 0.95), transparent)' }} />
+
+        <div className="cabinet-screen-track py-2">
+          {[...scrollText, ...scrollText].map((block, i) => (
+            <div key={i} className="px-3 pb-3">
+              <p className="text-[11px] leading-relaxed text-muted-foreground/80">{block.title}</p>
+              {block.output && (
+                <p className="text-[9px] uppercase tracking-wider mt-1" style={{ color: `${statusCfg.color} / 0.7)` }}>
+                  Output: {block.output}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </button>
