@@ -67,7 +67,7 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
 
       {/* Header — title only */}
       <div className="p-4 pb-2 text-center">
-        <h3 className="font-semibold text-sm text-white" style={{ fontFamily: "'Robotica', sans-serif" }}>{dept.name}</h3>
+        <h3 className="font-semibold text-sm text-white" style={{ fontFamily: "'Ethnocentric', sans-serif" }}>{dept.name}</h3>
       </div>
 
       {/* RSS feed display — vertical scroll */}
