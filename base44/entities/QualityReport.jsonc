@@ -1,0 +1,142 @@
+{
+  "name": "QualityReport",
+  "type": "object",
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "ID of the production asset being evaluated"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": [
+        "PresentationPoint",
+        "StorySlide",
+        "PresentationScript",
+        "ImageAsset",
+        "VoicePackage",
+        "VideoAsset",
+        "Layout",
+        "ProductionPackage"
+      ],
+      "description": "Type of asset evaluated"
+    },
+    "rubric_id": {
+      "type": "string",
+      "enum": [
+        "PA-RUB-001",
+        "PA-RUB-002",
+        "PA-RUB-003",
+        "PA-RUB-004",
+        "PA-RUB-005",
+        "PA-RUB-006",
+        "PA-RUB-007",
+        "PA-RUB-008"
+      ],
+      "description": "Which rubric was used for evaluation"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department that owns this asset (e.g. Packet, Content, Voice)"
+    },
+    "overall_score": {
+      "type": "number",
+      "description": "Aggregate quality score 0-100"
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "standard",
+        "professional",
+        "broadcast_ready",
+        "needs_revision",
+        "failed"
+      ],
+      "description": "Quality classification label"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "escalate",
+        "producer_review"
+      ],
+      "description": "Controller's determined action for this report"
+    },
+    "scores": {
+      "type": "string",
+      "description": "JSON object of category->score (e.g. {accuracy: 95, clarity: 92})"
+    },
+    "recommendations": {
+      "type": "string",
+      "description": "JSON array of recommendation strings from QA Worker"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "QA Worker certainty 0-100"
+    },
+    "revision_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether QA Worker flagged revision as required"
+    },
+    "review_iteration": {
+      "type": "number",
+      "default": 1,
+      "description": "Current revision iteration count"
+    },
+    "maximum_iterations": {
+      "type": "number",
+      "default": 5,
+      "description": "Maximum allowed revision iterations"
+    },
+    "production_profile": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking",
+        "cosmo",
+        "research"
+      ],
+      "description": "Which production profile this asset belongs to"
+    },
+    "quality_mode": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "standard",
+        "professional",
+        "broadcast"
+      ],
+      "default": "standard",
+      "description": "Quality threshold mode applied during evaluation"
+    },
+    "controller_decision": {
+      "type": "string",
+      "description": "JSON object of the Controller's final decision (action, reason, assigned_worker, log_id)"
+    },
+    "assigned_worker": {
+      "type": "string",
+      "description": "Worker assigned for revision if status=revise"
+    },
+    "production_id": {
+      "type": "string",
+      "description": "Associated production/project ID"
+    },
+    "story_slide_id": {
+      "type": "string",
+      "description": "Associated StorySlide ID if applicable"
+    }
+  },
+  "required": [
+    "asset_id",
+    "asset_type",
+    "overall_score",
+    "status"
+  ]
+}

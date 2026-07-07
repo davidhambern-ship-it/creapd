@@ -1,0 +1,72 @@
+{
+  "name": "ControllerLog",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department controller that made the decision"
+    },
+    "asset_id": {
+      "type": "string",
+      "description": "ID of the asset evaluated"
+    },
+    "asset_type": {
+      "type": "string",
+      "description": "Type of asset evaluated"
+    },
+    "quality_report_id": {
+      "type": "string",
+      "description": "ID of the QualityReport that triggered this decision"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "escalate",
+        "producer_review",
+        "invalid_report"
+      ],
+      "description": "Action determined by the Controller"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable explanation of the decision"
+    },
+    "quality_score": {
+      "type": "number",
+      "description": "Overall score from the Quality Report"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Confidence score from the Quality Report"
+    },
+    "revision_count": {
+      "type": "number",
+      "description": "Current revision iteration at time of decision"
+    },
+    "assigned_worker": {
+      "type": "string",
+      "description": "Worker assigned for revision (if decision=revise)"
+    },
+    "result": {
+      "type": "string",
+      "description": "Outcome of the decision (e.g. 'Asset advanced to Packet Department', 'Revision routed to Image Worker')"
+    },
+    "production_id": {
+      "type": "string"
+    },
+    "production_profile": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "department",
+    "asset_id",
+    "decision"
+  ]
+}
