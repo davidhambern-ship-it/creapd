@@ -1,12 +1,11 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import RPPDepartmentNav from './RPPDepartmentNav';
 import RPPCreaprMessage from './RPPCreaprMessage';
 import CommandCenterAmbience from './CommandCenterAmbience';
 
 export default function RPPShell() {
-  const location = useLocation();
   const researchData = useResearchProduction();
   const { config, topics, points, packages, dossiers } = researchData;
 
