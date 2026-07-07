@@ -13,13 +13,13 @@ export default function RPPShell() {
   const [user, setUser] = useState(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [dockOpen, setDockOpen] = useState(false);
   const messageIdRef = useRef(0);
 
   const addMessage = useCallback((text, role = 'assistant') => {
     setMessages(prev => [...prev, { id: ++messageIdRef.current, role, text }]);
   }, []);
 
-  // Greeting on first entry
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
@@ -53,12 +53,11 @@ export default function RPPShell() {
   const handleSendMessage = useCallback((text) => {
     if (!text.trim()) return;
     addMessage(text, 'user');
-    // Simple contextual response
     setTimeout(() => {
       const responses = [
-        "I'm here to help you navigate the library. Try visiting a department from the sidebar.",
+        "I'm here to help you navigate the library. Try visiting a department from the top nav.",
         "Got it. Let me know what you'd like to research or produce.",
-        "Understood. You can explore topics, run research, or assemble packets from the sidebar.",
+        "Understood. You can explore topics, run research, or assemble packets from the nav above.",
       ];
       addMessage(responses[Math.floor(Math.random() * responses.length)]);
     }, 800);
@@ -66,9 +65,9 @@ export default function RPPShell() {
 
   const setCreaprMessage = useCallback((text) => {
     addMessage(text);
+    setDockOpen(true);
   }, [addMessage]);
 
-  // Progress stages based on data
   const progressStages = {
     assignment: topics.length > 0,
     research: points.length > 0 || (dossiers?.length > 0),
@@ -81,26 +80,39 @@ export default function RPPShell() {
     <div className="rpp-shell">
       <div className="rpp-ambient-bg" />
 
-      {/* Left Sidebar — Bookshelf Navigation */}
+      {/* Top Navigation Bar */}
       <RPPDepartmentNav
         config={config}
         progressStages={progressStages}
         researchingCount={topics.filter(t => t.status === 'researching').length}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={toggleVoice}
       />
 
-      {/* Center — Main Workspace */}
+      {/* Main Workspace */}
       <main className="rpp-workspace">
         <Outlet context={{ setCreaprMessage, voiceEnabled }} />
       </main>
 
-      {/* Right — CREAPr Assistant Panel */}
-      <RPPCreaprMessage
-        messages={messages}
-        voiceEnabled={voiceEnabled}
-        onToggleVoice={toggleVoice}
-        onSendMessage={handleSendMessage}
-        onSpeak={handleSpeak}
-      />
+      {/* CREAPr Floating Dock */}
+      {dockOpen ? (
+        <RPPCreaprMessage
+          messages={messages}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoice}
+          onSendMessage={handleSendMessage}
+          onSpeak={handleSpeak}
+          onCollapse={() => setDockOpen(false)}
+        />
+      ) : (
+        <button
+          className="rpp-creapr-fab"
+          onClick={() => setDockOpen(true)}
+          title="Open CREAPr"
+        >
+          <span className="text-sm font-bold font-mono" style={{ color: 'hsl(190 80% 60%)' }}>Cr</span>
+        </button>
+      )}
     </div>
   );
 }
