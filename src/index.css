@@ -1450,15 +1450,61 @@
 /* ═══ CREAPr Library — Premium Digital Library (LIBIS-001) ═══ */
 /* ═════════════════════════════════════════════════════════ */
 
-/* Scene — warm premium library atmosphere */
+/* Scene — warm premium library interior */
 .plib-scene {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 25% 15%, hsl(35 28% 13% / 0.5) 0%, transparent 55%),
-    radial-gradient(ellipse at 75% 85%, hsl(28 22% 11% / 0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, hsl(30 12% 8% / 0.3) 0%, transparent 60%),
-    hsl(30 8% 5%);
+    /* warm ceiling light */
+    radial-gradient(ellipse 80% 50% at 50% 0%, hsl(38 45% 20% / 0.6) 0%, transparent 60%),
+    /* warm floor glow */
+    radial-gradient(ellipse 70% 40% at 50% 100%, hsl(32 35% 16% / 0.5) 0%, transparent 55%),
+    /* side ambient */
+    radial-gradient(ellipse at 15% 50%, hsl(28 30% 12% / 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 50%, hsl(28 30% 12% / 0.4) 0%, transparent 50%),
+    /* base wood tone */
+    linear-gradient(180deg, hsl(28 22% 10%) 0%, hsl(30 18% 7%) 50%, hsl(28 20% 9%) 100%);
+}
+
+/* Wood paneling texture — vertical planks */
+.plib-wood-panels {
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      transparent 120px,
+      hsl(25 20% 6% / 0.5) 120px,
+      hsl(25 20% 6% / 0.5) 122px,
+      transparent 122px,
+      transparent 124px
+    );
+  pointer-events: none;
+}
+
+/* Perspective floor */
+.plib-floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(180deg, transparent 0%, hsl(28 22% 7% / 0.6) 30%, hsl(28 20% 5% / 0.9) 100%);
+  pointer-events: none;
+}
+.plib-floor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, transparent 0px, transparent 60px, hsl(25 15% 4% / 0.3) 60px, hsl(25 15% 4% / 0.3) 62px);
+}
+
+/* Background bookshelf silhouettes */
+.plib-bg-shelves {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.25;
 }
 
 /* Breathing ambient light */
@@ -1531,28 +1577,28 @@
   transition: all 0.3s ease;
 }
 
-/* Wing (bookshelf section) */
+/* Wing (bookshelf section) — looks like a real shelf unit */
 .plib-wing {
   position: relative;
-  border-radius: 0.625rem;
-  padding: 1rem;
+  border-radius: 6px;
+  padding: 0;
   cursor: pointer;
   overflow: hidden;
   transition: all 0.3s ease;
-  background: hsl(30 10% 7% / 0.5);
-  border: 1px solid hsl(35 12% 18% / 0.3);
-  backdrop-filter: blur(8px);
+  background: linear-gradient(180deg, hsl(30 22% 12%) 0%, hsl(28 20% 9%) 100%);
+  border: 1px solid hsl(32 20% 16% / 0.5);
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(35 25% 20% / 0.3);
 }
 .plib-wing:hover {
-  background: hsl(30 14% 10% / 0.6);
-  border-color: hsl(35 22% 28% / 0.4);
-  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.3), 0 0 16px hsl(40 40% 30% / 0.06);
-  transform: translateY(-2px);
+  background: linear-gradient(180deg, hsl(32 28% 15%) 0%, hsl(30 24% 11%) 100%);
+  border-color: hsl(38 35% 25% / 0.6);
+  box-shadow: 0 8px 28px hsl(0 0% 0% / 0.4), 0 0 24px hsl(40 50% 30% / 0.08), inset 0 1px 0 hsl(38 30% 22% / 0.4);
+  transform: translateY(-3px);
 }
 .plib-wing-focused {
-  background: hsl(35 18% 12% / 0.65);
-  border-color: hsl(40 32% 35% / 0.5);
-  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.35), 0 0 24px hsl(40 42% 35% / 0.1);
+  background: linear-gradient(180deg, hsl(35 30% 16%) 0%, hsl(32 26% 12%) 100%);
+  border-color: hsl(42 40% 30% / 0.6);
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.4), 0 0 32px hsl(42 50% 35% / 0.12);
 }
 
 /* Wings container — neighbor dim on hover (lighting guidance) */
@@ -1564,33 +1610,56 @@
   filter: brightness(1.12);
 }
 
-/* Book spine */
+/* Book spine — looks like a real book */
 .plib-book-spine {
   position: relative;
   flex-shrink: 0;
-  border-radius: 2px 2px 0 0;
+  border-radius: 1px 1px 0 0;
   transition: all 180ms ease-out;
-  box-shadow: inset -2px 0 4px hsl(0 0% 0% / 0.3), inset 2px 0 2px hsl(0 0% 100% / 0.05);
+  box-shadow:
+    inset -2px 0 4px hsl(0 0% 0% / 0.35),
+    inset 2px 0 1px hsl(0 0% 100% / 0.08),
+    inset 0 -2px 4px hsl(0 0% 0% / 0.2);
+}
+.plib-book-spine::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 2px;
+  right: 2px;
+  height: 1px;
+  background: hsl(0 0% 100% / 0.1);
+  border-radius: 1px;
+}
+.plib-book-spine::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 2px;
+  right: 2px;
+  height: 1px;
+  background: hsl(0 0% 100% / 0.1);
+  border-radius: 1px;
 }
 .plib-book-spine-interactive {
   cursor: pointer;
 }
 .plib-book-spine-interactive:hover {
-  transform: translateY(-12px);
+  transform: translateY(-14px);
   box-shadow:
     inset -2px 0 4px hsl(0 0% 0% / 0.3),
-    inset 2px 0 2px hsl(0 0% 100% / 0.1),
-    0 0 0 1px hsl(152 50% 50% / 0.3),
-    0 4px 12px hsl(0 0% 0% / 0.3),
-    0 0 12px hsl(152 50% 50% / 0.15);
+    inset 2px 0 1px hsl(0 0% 100% / 0.12),
+    0 0 0 1px hsl(152 45% 50% / 0.35),
+    0 6px 16px hsl(0 0% 0% / 0.4),
+    0 0 16px hsl(152 45% 50% / 0.15);
 }
 
-/* Shelf plank */
+/* Shelf plank — wooden shelf board */
 .plib-shelf-plank {
-  height: 4px;
+  height: 6px;
   border-radius: 2px;
-  background: linear-gradient(180deg, hsl(28 22% 17%) 0%, hsl(28 18% 11%) 100%);
-  box-shadow: 0 2px 4px hsl(0 0% 0% / 0.3);
+  background: linear-gradient(180deg, hsl(30 24% 19%) 0%, hsl(28 20% 14%) 50%, hsl(26 18% 10%) 100%);
+  box-shadow: 0 2px 6px hsl(0 0% 0% / 0.4), inset 0 1px 0 hsl(35 28% 24% / 0.3);
 }
 
 /* Typing cursor */
@@ -1613,13 +1682,13 @@
   opacity: 0;
 }
 
-/* Message panel — glass */
+/* Message panel — warm glass with parchment tint */
 .plib-message-panel {
-  background: hsl(30 10% 7% / 0.7);
+  background: hsl(32 20% 12% / 0.75);
   backdrop-filter: blur(16px);
-  border: 1px solid hsl(35 16% 22% / 0.3);
+  border: 1px solid hsl(35 22% 22% / 0.35);
   border-radius: 0.75rem;
-  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(38 25% 25% / 0.2);
 }
 
 /* Research table surface */
@@ -1656,13 +1725,13 @@
   flex-shrink: 0;
 }
 
-/* Glass input panel */
+/* Glass input panel — warm library tone */
 .plib-input-panel {
-  background: hsl(30 8% 7% / 0.7);
+  background: hsl(32 18% 10% / 0.75);
   backdrop-filter: blur(16px);
-  border: 1px solid hsl(35 15% 22% / 0.3);
+  border: 1px solid hsl(35 20% 22% / 0.35);
   border-radius: 0.75rem;
-  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3);
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(38 22% 25% / 0.15);
 }
 
 /* Knowledge dashboard — confidence indicator */

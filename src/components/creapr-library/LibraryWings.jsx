@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mountain, ScrollText, Globe2, FlaskConical, BookOpen,
   Compass, CircuitBoard, Crown, Cpu, Database, Radio, Network,
-  Sparkles, ArrowRight
+  Sparkles, ArrowRight, BookMarked
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -13,12 +13,14 @@ const ICON_MAP = {
 };
 
 const BOOK_COLORS = [
-  'hsl(350 32% 28%)', 'hsl(140 22% 24%)', 'hsl(210 32% 24%)',
-  'hsl(35 38% 30%)', 'hsl(210 8% 27%)', 'hsl(300 18% 27%)',
-  'hsl(180 22% 24%)', 'hsl(20 32% 27%)',
+  'hsl(350 28% 22%)', 'hsl(140 18% 18%)', 'hsl(210 25% 20%)',
+  'hsl(35 32% 22%)', 'hsl(210 8% 20%)', 'hsl(300 15% 20%)',
+  'hsl(180 18% 18%)', 'hsl(20 25% 20%)',
 ];
 
-function BookSpine({ height, color, width = 28, interactive, label }) {
+const BOOK_HEIGHTS = [58, 64, 52, 68, 56, 62, 50, 66, 54, 60];
+
+function BookSpine({ height, color, width = 24, interactive, label }) {
   return (
     <div
       className={`plib-book-spine ${interactive ? 'plib-book-spine-interactive' : ''}`}
@@ -28,22 +30,53 @@ function BookSpine({ height, color, width = 28, interactive, label }) {
         background: `linear-gradient(180deg, ${color} 0%, hsl(0 0% 0% / 0.25) 100%)`,
       }}
     >
+      {/* Decorative bands on spine */}
+      <div style={{ position: 'absolute', top: '20%', left: '2px', right: '2px', height: '2px', background: 'hsl(0 0% 100% / 0.1)', borderRadius: '1px' }} />
+      <div style={{ position: 'absolute', bottom: '20%', left: '2px', right: '2px', height: '2px', background: 'hsl(0 0% 100% / 0.1)', borderRadius: '1px' }} />
       {label && (
         <span
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[7px] font-mono text-white/50 whitespace-nowrap pointer-events-none"
-          style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: '7px',
+            color: 'hsl(0 0% 90% / 0.6)',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            fontFamily: 'Georgia, serif',
+          }}
         >
-          {label.length > 12 ? label.substring(0, 12) + '…' : label}
+          {label.length > 14 ? label.substring(0, 14) + '…' : label}
         </span>
       )}
     </div>
   );
 }
 
+function BookshelfRow({ books, startIndex, interactiveIdx, label }) {
+  return (
+    <div className="flex items-end gap-px px-2" style={{ height: '70px' }}>
+      {books.map((book, i) => (
+        <BookSpine
+          key={i}
+          height={BOOK_HEIGHTS[(i + startIndex) % BOOK_HEIGHTS.length]}
+          color={BOOK_COLORS[(i + startIndex) % BOOK_COLORS.length]}
+          width={16 + (i % 4) * 4}
+          interactive={i === interactiveIdx}
+          label={i === interactiveIdx ? label : null}
+        />
+      ))}
+    </div>
+  );
+}
+
 function WingShelf({ item, index, focused, onSelect }) {
-  const IconComp = ICON_MAP[item.icon_hint] || Database;
-  const bookCount = 7 + (index % 4);
-  const interactiveIdx = index % 3;
+  const IconComp = ICON_MAP[item.icon_hint] || BookMarked;
+  const rows = 2;
+  const booksPerRow = 8;
 
   return (
     <motion.div
@@ -54,35 +87,67 @@ function WingShelf({ item, index, focused, onSelect }) {
       whileHover={{ y: -3 }}
       onClick={() => onSelect(item)}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <div className="plib-shelf-label">
-          <IconComp className="w-3 h-3" />
+      {/* OLED shelf label header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '0.5rem 0.75rem',
+        borderBottom: '1px solid hsl(32 18% 16% / 0.4)',
+        background: 'hsl(28 20% 7% / 0.5)',
+      }}>
+        <IconComp style={{ width: '14px', height: '14px', color: 'hsl(42 45% 52%)' }} />
+        <span style={{
+          fontSize: '11px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          color: 'hsl(40 28% 62%)',
+          fontFamily: '"Oswald", sans-serif',
+          fontWeight: 500,
+        }}>
           {item.name}
-        </div>
+        </span>
       </div>
 
-      <div className="flex items-end gap-1 mb-1 px-1" style={{ height: '76px' }}>
-        {[...Array(bookCount)].map((_, i) => (
-          <BookSpine
-            key={i}
-            height={44 + ((i * 7 + index * 3) % 30)}
-            color={BOOK_COLORS[(i + index) % BOOK_COLORS.length]}
-            width={18 + (i % 4) * 4}
-            interactive={i === interactiveIdx}
-            label={i === interactiveIdx ? item.name : null}
-          />
+      {/* Bookshelf rows */}
+      <div style={{ padding: '0.5rem 0.5rem 0.25rem', background: 'hsl(28 18% 6% / 0.3)' }}>
+        {[...Array(rows)].map((_, r) => (
+          <div key={r}>
+            <BookshelfRow
+              books={[...Array(booksPerRow)]}
+              startIndex={r * 3 + index * 2}
+              interactiveIdx={r === 0 ? index % booksPerRow : -1}
+              label={item.name}
+            />
+            <div className="plib-shelf-plank" style={{ margin: '2px 0' }} />
+          </div>
         ))}
       </div>
 
-      <div className="plib-shelf-plank" />
-
-      <p className="text-xs leading-relaxed mt-3" style={{ color: 'hsl(35 12% 57%)', fontFamily: 'Georgia, serif' }}>
-        {item.description}
-      </p>
-
-      <div className="flex items-center gap-1 mt-2 text-[10px] uppercase tracking-wider" style={{ color: 'hsl(152 38% 45%)' }}>
-        <span>Enter wing</span>
-        <ArrowRight className="w-3 h-3" />
+      {/* Description */}
+      <div style={{ padding: '0.625rem 0.75rem' }}>
+        <p style={{
+          fontSize: '12px',
+          lineHeight: '1.5',
+          color: 'hsl(35 15% 58%)',
+          fontFamily: 'Georgia, serif',
+        }}>
+          {item.description}
+        </p>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          marginTop: '6px',
+          fontSize: '10px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'hsl(152 35% 45%)',
+          fontFamily: '"Oswald", sans-serif',
+        }}>
+          <span>Enter Wing</span>
+          <ArrowRight style={{ width: '10px', height: '10px' }} />
+        </div>
       </div>
     </motion.div>
   );
@@ -91,31 +156,62 @@ function WingShelf({ item, index, focused, onSelect }) {
 function FeaturedBook({ item, index, onSelect }) {
   const color = BOOK_COLORS[index % BOOK_COLORS.length];
   return (
-    <motion.button
-      className="plib-wing text-left"
+    <motion.div
+      className="plib-wing"
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.5 }}
       whileHover={{ y: -3 }}
       onClick={() => onSelect(item)}
+      style={{ cursor: 'pointer' }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-3 h-3" style={{ color: 'hsl(38 55% 52%)' }} />
-        <div className="plib-shelf-label" style={{ color: 'hsl(38 45% 58%)' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '0.5rem 0.75rem',
+        borderBottom: '1px solid hsl(32 18% 16% / 0.4)',
+        background: 'hsl(28 20% 7% / 0.5)',
+      }}>
+        <Sparkles style={{ width: '14px', height: '14px', color: 'hsl(42 55% 52%)' }} />
+        <span style={{
+          fontSize: '11px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          color: 'hsl(42 45% 58%)',
+          fontFamily: '"Oswald", sans-serif',
+          fontWeight: 500,
+        }}>
           {item.name}
+        </span>
+      </div>
+
+      <div style={{ padding: '0.5rem 0.5rem 0.25rem', background: 'hsl(28 18% 6% / 0.3)' }}>
+        <div className="flex items-end gap-px px-2" style={{ height: '70px' }}>
+          <BookSpine height={66} color={color} width={32} interactive label={item.name} />
+          {[...Array(6)].map((_, i) => (
+            <BookSpine
+              key={i}
+              height={BOOK_HEIGHTS[(i + index) % BOOK_HEIGHTS.length]}
+              color={BOOK_COLORS[(i + index + 1) % BOOK_COLORS.length]}
+              width={16 + (i % 3) * 4}
+            />
+          ))}
         </div>
+        <div className="plib-shelf-plank" style={{ margin: '2px 0' }} />
       </div>
-      <div className="flex items-end gap-1 mb-1 px-1" style={{ height: '76px' }}>
-        <BookSpine height={60} color={color} width={30} interactive label={item.name} />
-        {[...Array(5)].map((_, i) => (
-          <BookSpine key={i} height={36 + (i * 5) % 18} color={BOOK_COLORS[(i + index + 1) % BOOK_COLORS.length]} width={16 + (i % 3) * 3} />
-        ))}
+
+      <div style={{ padding: '0.625rem 0.75rem' }}>
+        <p style={{
+          fontSize: '12px',
+          lineHeight: '1.5',
+          color: 'hsl(35 15% 58%)',
+          fontFamily: 'Georgia, serif',
+        }}>
+          {item.description}
+        </p>
       </div>
-      <div className="plib-shelf-plank" />
-      <p className="text-xs leading-relaxed mt-3" style={{ color: 'hsl(35 12% 57%)', fontFamily: 'Georgia, serif' }}>
-        {item.description}
-      </p>
-    </motion.button>
+    </motion.div>
   );
 }
 
@@ -126,7 +222,7 @@ export default function LibraryWings({ items, variant = 'category', title, focus
     <AnimatePresence mode="wait">
       <motion.div
         key={title || 'wings'}
-        className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-36 pt-24"
+        className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-36 pt-20"
         style={{ zIndex: 10 }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -135,19 +231,25 @@ export default function LibraryWings({ items, variant = 'category', title, focus
       >
         {title && (
           <motion.div
-            className="flex items-center gap-3 mb-6"
+            className="flex items-center gap-3 mb-5"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
-            <div className="w-1 h-1 rounded-full plib-status-dot" style={{ background: 'hsl(38 55% 52%)', color: 'hsl(38 55% 52%)' }} />
-            <p className="text-xs uppercase tracking-[0.3em]" style={{ color: 'hsl(40 28% 52%)', fontFamily: '"Oswald", sans-serif' }}>
+            <div className="w-1.5 h-1.5 rounded-full plib-status-dot" style={{ background: 'hsl(42 55% 52%)', color: 'hsl(42 55% 52%)' }} />
+            <p style={{
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.25em',
+              color: 'hsl(40 28% 55%)',
+              fontFamily: '"Oswald", sans-serif',
+            }}>
               {title}
             </p>
-            <div className="w-1 h-1 rounded-full plib-status-dot" style={{ background: 'hsl(38 55% 52%)', color: 'hsl(38 55% 52%)' }} />
+            <div className="w-1.5 h-1.5 rounded-full plib-status-dot" style={{ background: 'hsl(42 55% 52%)', color: 'hsl(42 55% 52%)' }} />
           </motion.div>
         )}
-        <div className={`plib-wings-grid grid gap-4 w-full max-w-3xl ${
+        <div className={`plib-wings-grid grid gap-3 w-full max-w-3xl ${
           items.length <= 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-3'
         }`}>
           {items.map((item, i) =>
