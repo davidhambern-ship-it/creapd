@@ -1,61 +1,40 @@
-import React, { useMemo } from 'react';
-import NerveCenterPanel from './NerveCenterPanel';
+import React from 'react';
+import { Home } from 'lucide-react';
+import { PRODUCTION_PROFILES } from '@/lib/productionProfiles';
+import ProfileCard from './ProfileCard';
 
-function Gauge({ value = 72 }) {
-  return (
-    <div className="nc-gauge-wrap">
-      <div className="nc-gauge" style={{ '--gauge-val': `${value * 3.6}deg` }}>
-        <div className="nc-gauge-inner">
-          <span className="nc-gauge-value">{value}%</span>
-        </div>
-      </div>
-      <span className="nc-gauge-label">EFFICIENCY</span>
-    </div>
-  );
-}
+const HOME_PROFILE = {
+  key: 'home',
+  shortLabel: 'Home',
+  label: 'CREAPD Home',
+  description: 'Your central hub for all production profiles, tools, and quick-launch actions.',
+  icon: Home,
+  path: '/',
+  workflow: [
+    'Browse all production profiles',
+    'Launch into any production workflow',
+    'Access quick actions and tools',
+    'Review showcase productions',
+    'Manage settings and preferences',
+  ],
+};
+
+const ALL_PROFILES = [HOME_PROFILE, ...PRODUCTION_PROFILES];
 
 export default function NerveCenterBottomConsole() {
-  const bars = useMemo(() => Array.from({ length: 12 }, () => 25 + Math.random() * 75), []);
   const tickerItems = [
-    'SYSTEM: COMMUNICATIONS',
-    'NETWORK: ENCRYPTED',
-    'PIPELINE: ACTIVE',
-    'TRANS METRICS: NOMINAL',
-    'AUTH LOGS: VERIFIED',
-    'PROTOCOL UPDATES: SYNCED',
-    'INTEGRITY: 100%',
+    'PROFILES: 9 ACTIVE',
+    'STATUS: READY',
+    'PIPELINE: ONLINE',
+    'CLICK ANY CARD TO ENTER',
+    'PRODUCTION SUITE: OPERATIONAL',
   ];
   return (
     <div className="nc-bottom">
-      <div className="nc-bottom-modules">
-        <NerveCenterPanel title="THROUGHPUT" accent="cyan">
-          <div className="nc-bar-chart" style={{ height: '36px' }}>
-            {bars.map((h, i) => (
-              <div key={i} className="nc-chart-bar" style={{ height: `${h}%` }} />
-            ))}
-          </div>
-        </NerveCenterPanel>
-        <NerveCenterPanel title="METRICS" accent="purple">
-          <div className="nc-metrics-grid">
-            <span className="nc-metric-val">847</span>
-            <span className="nc-metric-label">total ops</span>
-            <span className="nc-metric-val">12.4k</span>
-            <span className="nc-metric-label">data pts</span>
-            <span className="nc-metric-val">99.9%</span>
-            <span className="nc-metric-label">uptime</span>
-          </div>
-        </NerveCenterPanel>
-        <NerveCenterPanel title="INTEGRITY" accent="emerald">
-          <div className="nc-status-rows">
-            <div className="nc-status-row"><span className="nc-led nc-led-green" /><span className="nc-status-label">core</span><span className="nc-status-value">OK</span></div>
-            <div className="nc-status-row"><span className="nc-led nc-led-green" /><span className="nc-status-label">db</span><span className="nc-status-value">OK</span></div>
-            <div className="nc-status-row"><span className="nc-led nc-led-green" /><span className="nc-status-label">auth</span><span className="nc-status-value">OK</span></div>
-            <div className="nc-status-row"><span className="nc-led nc-led-amber" /><span className="nc-status-label">cache</span><span className="nc-status-value">WARN</span></div>
-          </div>
-        </NerveCenterPanel>
-        <NerveCenterPanel title="GAUGE" accent="amber">
-          <Gauge value={72} />
-        </NerveCenterPanel>
+      <div className="pc-strip">
+        {ALL_PROFILES.map((profile, i) => (
+          <ProfileCard key={profile.key} profile={profile} index={i} />
+        ))}
       </div>
       <div className="nc-ticker">
         <div className="nc-ticker-track">
