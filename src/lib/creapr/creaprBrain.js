@@ -405,7 +405,7 @@ export async function runCreaprBrain({
 
       llmResult = await base44.integrations.Core.InvokeLLM({
         prompt,
-        model: creapSettings?.ai_model || 'gpt_5_mini',
+        model: creapSettings?.ai_model || 'claude-sonnet-5',
         add_context_from_internet: false,
         response_json_schema: INTENT_SCHEMA,
       });

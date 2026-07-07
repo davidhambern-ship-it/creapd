@@ -160,7 +160,7 @@ Generate your greeting. Phase should be "greeting". Do NOT include categories or
   try {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,
-      model: settings?.ai_model || 'gpt_5_mini',
+      model: settings?.ai_model || 'claude-sonnet-5',
       add_context_from_internet: false,
       response_json_schema: {
         type: 'object',
@@ -229,36 +229,16 @@ ${assignmentStr}
 CONVERSATION HISTORY (most recent):
 ${historyStr}
 
-EXCHANGE COUNT: This is exchange #${exchangeCount + 1} in this conversation.
-SESSION TYPE: ${sessionType || 'returning'}
-
 PRODUCER'S LATEST INPUT: "${userInput}"${selectionNote}
 
-CRITICAL — ANTI-REPETITION GUARD:
-Your LAST response to the producer was: "${lastAssistantMsg}"
-The producer just replied: "${lastUserMsg}"
-You MUST NOT repeat that question or any variation of it. Your response must acknowledge what they said and advance to the NEXT step. Do NOT ask the same question again.
+Respond naturally to what the producer just said. If they shared new information about their topic, capture it in assignment_update and increase completion_confidence. If you have enough to build the assignment (confidence >= 0.80), transition to "assembling". Otherwise, just keep the conversation going.
 
-Review the full conversation history AND producer memory above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation. Your opening words must be different from every previous response.
-
-If the producer has common interests or recent topics in memory, use those to make your response specific and personal. If they have an unfinished topic, offer to resume it. If they just completed a packet, acknowledge it.
-
-Check which assignment fields are already filled. Only probe for EMPTY fields. If you can reasonably infer a field from what the producer said, fill it yourself in assignment_update and increase completion_confidence.
-
-Count the number of back-and-forth exchanges in the history. If there have been 3+ exchanges on this topic, you MUST either offer categories (phase "exploring") or transition to assembling (phase "assembling") — do NOT ask another question.
-
-Analyze the producer's intent. Update the assignment with any new information gathered. Generate your response following the conversation rules (confirm, explain why refinement helps, offer next steps).
-
-If the producer's input is vague or "I don't know", become proactive with featured_books.
-If enough information has been gathered (completion_confidence >= 0.80), transition to "assembling".
-If the producer redirected away from suggestions, immediately generate a new category tree.
-
-Return your complete response as JSON.`;
+Return your response as JSON.`;
 
   try {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,
-      model: settings?.ai_model || 'gpt_5_mini',
+      model: settings?.ai_model || 'claude-sonnet-5',
       add_context_from_internet: false,
       response_json_schema: {
         type: 'object',
