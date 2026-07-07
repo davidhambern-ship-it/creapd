@@ -58,7 +58,7 @@ export default function LibrarySubtitle({ lines, onAllLinesShown }) {
 
   return (
     <div
-      className="absolute bottom-[14%] left-1/2 -translate-x-1/2 w-[85%] max-w-2xl"
+      className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[85%] max-w-2xl"
       style={{ zIndex: 20 }}
     >
       <p
