@@ -13,6 +13,12 @@
  */
 
 import { base44 } from '@/api/base44Client';
+import {
+  loadCreaprMemory,
+  deriveSessionType,
+  buildMemoryContextString,
+  updateCreaprMemory,
+} from '@/lib/creapr/creaprMemory';
 
 // ─── System Prompt (preserved from original engine) ───
 
@@ -135,14 +141,6 @@ const FALLBACK_RESPONSE = {
 
 // ─── Original Engine Functions (preserved for backward compat) ───
 
-const OPENING_APPROACHES = [
-  'Start by making an observation about the time of day or day of week.',
-  'Start by referencing something happening in the world right now (news, season, cultural moment).',
-  'Start with a warm, personal welcome that uses their name in an unexpected way.',
-  'Start by posing a thought-provoking question about what curiosity brought them here.',
-  'Start by painting a brief atmospheric image of the library around them.',
-];
-
 function _getTimeContext() {
   const now = new Date();
   const hour = now.getHours();
@@ -153,39 +151,57 @@ function _getTimeContext() {
   else if (hour < 21) timeOfDay = 'evening';
   else timeOfDay = 'night';
   const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
-  return { timeOfDay, dayName, hour };
+  return { timeOfDay, dayName };
 }
 
 export async function generateGreeting(user, settings, config) {
   const firstName = (user?.full_name || 'there').split(' ')[0];
   const greetingStyle = settings?.greeting_style || 'mysterious';
   const { timeOfDay, dayName } = _getTimeContext();
-  const openingApproach = OPENING_APPROACHES[Math.floor(Math.random() * OPENING_APPROACHES.length)];
 
-  let recentTopicStr = '';
-  try {
-    const recentTopics = await base44.entities.ResearchTopic.list('-created_date', 3);
-    if (recentTopics && recentTopics.length > 0) {
-      const topicTitles = recentTopics.map(t => t.title).filter(Boolean);
-      if (topicTitles.length > 0) {
-        recentTopicStr = `\nRECENT TOPICS THE PRODUCER EXPLORED:\n${topicTitles.map(t => `- ${t}`).join('\n')}\nIf it feels natural, you may briefly reference their most recent topic — but do NOT force it. Only mention it if it adds warmth or continuity.`;
-      }
-    }
-  } catch {}
+  const memory = await loadCreaprMemory();
+  const sessionType = deriveSessionType(memory, { topics: [] });
+  const memoryContextString = buildMemoryContextString(memory, sessionType, null, user);
+
+  let sessionGuidance = '';
+  switch (sessionType) {
+    case 'first_visit':
+      sessionGuidance = 'This is the producer FIRST visit. Welcome them warmly by name. Orient them to what CREAPr does. Ask what they want to explore. Do NOT assume prior context.';
+      break;
+    case 'resumed_project':
+      sessionGuidance = 'The producer is RETURNING to an unfinished topic. Reference it directly. Ask if they want to pick up where they left off. Do NOT pretend you do not remember.';
+      break;
+    case 'returning':
+      sessionGuidance = 'The producer is returning after completing previous work. Reference their last completed packet or recent topics. Ask if they want to build on it or start something new.';
+      break;
+    default:
+      sessionGuidance = 'Welcome the producer back. Reference something from memory that makes this feel personal.';
+  }
 
   const prompt = `${LIBRARY_SYSTEM_PROMPT}
 
 You are greeting the producer as they enter the library. Their name is ${firstName}.
 Greeting style: ${greetingStyle}.
 Current time context: It is ${dayName} ${timeOfDay}.
-Opening approach: ${openingApproach}
+
+PRODUCER MEMORY:
+${memoryContextString}
+
+SESSION GUIDANCE: ${sessionGuidance}
+
 The production is configured for: ${config?.production_name || 'a research production'}.
 Target audience (from config): ${config?.target_audience || 'General Public'}.
-Research depth (from config): ${config?.research_depth || 'standard'}.${recentTopicStr}
+Research depth (from config): ${config?.research_depth || 'standard'}.
 
-CRITICAL: Do NOT use a generic "Welcome back" or "What are we looking for today?" opening. Your opening MUST reflect the time context and opening approach above. Be specific and varied — never produce the same greeting twice.
+CRITICAL RULES:
+- Your greeting MUST be grounded in what is TRUE about this producer right now (their memory above).
+- Do NOT repeat the LAST GREETING USED from memory.
+- Do NOT use a generic opening.
+- If they have an unfinished topic, mention it. If they completed a packet, reference it.
+- If this is their first visit, make them feel welcomed and oriented.
+- Be specific, personal, and cinematic.
 
-Generate your greeting. Phase should be "greeting". Do NOT include categories or assignment yet. Just welcome them and ask what they're looking for.`;
+Generate your greeting. Phase should be "greeting". Do NOT include categories or assignment yet.`;
 
   try {
     const result = await base44.integrations.Core.InvokeLLM({
@@ -201,6 +217,13 @@ Generate your greeting. Phase should be "greeting". Do NOT include categories or
         },
       },
     });
+
+    if (result?.spoken_lines && memory?.id) {
+      updateCreaprMemory(memory.id, {
+        last_greeting: result.spoken_lines.join(' ').substring(0, 150),
+      });
+    }
+
     return result || FALLBACK_GREETING;
   } catch {
     return FALLBACK_GREETING;
@@ -213,7 +236,9 @@ export async function processProducerInput(
   currentAssignment,
   settings,
   config,
-  selectedCategory = null
+  selectedCategory = null,
+  memoryContextString = null,
+  sessionType = null
 ) {
   const firstName = (config?._userName || 'there').split(' ')[0];
   const historyStr = conversationHistory
@@ -228,14 +253,6 @@ export async function processProducerInput(
     : '';
 
   const exchangeCount = conversationHistory.filter(m => m.role === 'user').length;
-  const RESPONSE_STYLES = [
-    'Respond with a sharp, direct observation about what the producer said.',
-    'Respond with a slightly unexpected angle or reframe of their input.',
-    'Respond by connecting their input to a broader theme before narrowing down.',
-    'Respond with a vivid metaphor or analogy that illuminates their topic.',
-    'Respond by naming what is NOT yet clear before offering the next step.',
-  ];
-  const responseStyle = RESPONSE_STYLES[exchangeCount % RESPONSE_STYLES.length];
 
   const prompt = `${LIBRARY_SYSTEM_PROMPT}
 
@@ -244,6 +261,9 @@ PRODUCTION CONFIG: ${config?.production_name || 'Research Production'}
 TARGET AUDIENCE (from config): ${config?.target_audience || 'General Public'}
 RESEARCH DEPTH (from config): ${config?.research_depth || 'standard'}
 
+PRODUCER MEMORY:
+${memoryContextString || 'No memory available (first interaction).'}
+
 CURRENT RESEARCH ASSIGNMENT STATE:
 ${assignmentStr}
 
@@ -251,11 +271,13 @@ CONVERSATION HISTORY (most recent):
 ${historyStr}
 
 EXCHANGE COUNT: This is exchange #${exchangeCount + 1} in this conversation.
-RESPONSE STYLE FOR THIS TURN: ${responseStyle}
+SESSION TYPE: ${sessionType || 'returning'}
 
 PRODUCER'S LATEST INPUT: "${userInput}"${selectionNote}
 
-CRITICAL: Review the conversation history above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation. Your opening words must be different from every previous response.
+CRITICAL: Review the conversation history AND the producer memory above. Do NOT repeat any question, phrase, or category you have already used. Your response MUST contain new content that advances the conversation. Your opening words must be different from every previous response.
+
+If the producer has common interests or recent topics in memory, use those to make your response specific and personal. If they have an unfinished topic, offer to resume it. If they just completed a packet, acknowledge it.
 
 Check which assignment fields are already filled. Only probe for EMPTY fields. If you can reasonably infer a field from what the producer said, fill it yourself in assignment_update and increase completion_confidence.
 
@@ -367,6 +389,9 @@ export async function handleDepartmentRequest({
   userMessage,
   intent,
   context,
+  memory,
+  sessionType,
+  memoryContextString,
 }) {
   const config = {
     id: projectState?.configuration_id || projectState?.id,
@@ -385,7 +410,9 @@ export async function handleDepartmentRequest({
       existingAssignment,
       creapSettings,
       config,
-      context?.selectedCategory || null
+      context?.selectedCategory || null,
+      memoryContextString,
+      sessionType
     );
 
     const messageText = (result.spoken_lines || []).join(' ');

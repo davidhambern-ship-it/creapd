@@ -29,6 +29,14 @@ import { base44 } from '@/api/base44Client';
 import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
 import { getController, VALID_DEPARTMENTS } from '@/lib/creapr/controllerRegistry';
 import { deriveResearchPOCStage } from '@/lib/pocStageTracker';
+import {
+  loadCreaprMemory,
+  deriveSessionType,
+  buildMemoryContextString,
+  updateCreaprMemory,
+  computePreferredDepth,
+  extractCommonInterests,
+} from '@/lib/creapr/creaprMemory';
 
 // ─── Identity ───
 
@@ -214,6 +222,8 @@ function _buildBrainPrompt({
   conversationHistory,
   pageContext,
   creapMode,
+  memoryContextString,
+  sessionType,
 }) {
   const firstName = (producer?.full_name || 'there').split(' ')[0];
   const historyStr = (conversationHistory || [])
@@ -238,10 +248,15 @@ RESEARCH DEPTH: ${productionConfig?.research_depth || 'standard'}
 TARGET AUDIENCE: ${productionConfig?.target_audience || 'General Public'}
 ACTIVE DEPARTMENT: ${activeDepartment || 'unknown'}
 CREAP MODE: ${creapMode || 'hybrid'}
+SESSION TYPE: ${sessionType || 'returning'}
 
 CURRENT POC STAGE: ${pocState?.stageInfo?.name || 'Unknown'}
 PENDING ACTION: ${pocState?.pendingAction || 'None'}
 NEXT ROUTE: ${pocState?.nextRoute || 'None'}
+
+═══ PRODUCER MEMORY ═══
+${memoryContextString || 'No memory available.'}
+═══ END MEMORY ═══
 
 PAGE CONTEXT:
 - Route: ${pageContext?.route || 'unknown'}
@@ -251,6 +266,15 @@ CONVERSATION HISTORY (most recent):
 ${historyStr || '(no prior conversation)'}
 
 PRODUCER'S MESSAGE: "${userMessage}"
+
+INTERPRETATION RULES:
+Before responding, ask yourself: "What is true about this producer and this session right now?"
+- If this is a FIRST VISIT, orient them warmly and guide to topic discovery.
+- If this is a RESUMED PROJECT, acknowledge the unfinished topic and pick up where they left off.
+- If this is a RETURNING visit after a completed packet, reference their last win and ask if they want to build on it or start fresh.
+- If the producer has been idle or has no active topic, proactively offer research directions.
+- NEVER repeat a greeting, question, or phrasing from the memory's "last greeting" or recent topics.
+- Vary your response style based on what was used last (see memory).
 
 Interpret the producer's intent and decide the next action. Route to the appropriate department controller. Return your response as JSON.`;
 }
@@ -324,19 +348,24 @@ export async function runCreaprBrain({
   let logData = { timestamp, producerId, activeProductionProfile, activeDepartment };
 
   try {
-    // Steps 1-5: Load context
-    const [creapSettings, producer, showProfile, productionConfig] = await Promise.all([
+    // Steps 1-5: Load context (memory loaded in parallel)
+    const [creapSettings, producer, showProfile, productionConfig, memory] = await Promise.all([
       _loadCreapSettings(),
       _loadProducer(producerId),
       _loadShowProfile(activeShowProfileId),
       _loadProductionConfig(activeProjectId),
+      loadCreaprMemory(),
     ]);
     const projectState = await _loadProjectState(productionConfig);
+    const sessionType = deriveSessionType(memory, projectState);
+    const memoryContextString = buildMemoryContextString(memory, sessionType, projectState, producer);
 
     logData.creapSettings_loaded = !!creapSettings;
     logData.producer_loaded = !!producer;
     logData.showProfile_loaded = !!showProfile;
     logData.config_loaded = !!productionConfig;
+    logData.memory_loaded = !!memory;
+    logData.session_type = sessionType;
 
     // Step 6: Active department already provided
     // Step 7: Interpret intent (skip LLM call if directDelegate)
@@ -370,6 +399,8 @@ export async function runCreaprBrain({
         conversationHistory,
         pageContext,
         creapMode,
+        memoryContextString,
+        sessionType,
       });
 
       llmResult = await base44.integrations.Core.InvokeLLM({
@@ -408,6 +439,9 @@ export async function runCreaprBrain({
             userMessage,
             intent: llmResult.intent,
             context: pageContext,
+            memory,
+            sessionType,
+            memoryContextString,
           });
         } catch (ctrlErr) {
           controllerResult = {
@@ -452,7 +486,10 @@ export async function runCreaprBrain({
       error: null,
     };
 
-    // Step 10: Log
+    // Step 10: Update memory (fire-and-forget, never blocks the response)
+    _updateMemoryAfterInteraction(memory, response, projectState, activeDepartment);
+
+    // Step 10b: Log
     logData.interpreted_intent = response.intent;
     logData.intent_confidence = response.intent_confidence;
     logData.selected_controller = response.department_controller;
@@ -466,6 +503,65 @@ export async function runCreaprBrain({
     _logBrainInteraction(logData);
     return _fallbackResponse(userMessage, error, activeDepartment);
   }
+}
+
+// ─── Memory Update ───
+
+async function _updateMemoryAfterInteraction(memory, response, projectState, activeDepartment) {
+  if (!memory?.id) return;
+  const updates = {};
+  const now = new Date().toISOString();
+
+  // Increment visit count on every interaction
+  updates.visit_count = (memory.visit_count || 0) + 1;
+  updates.last_visit_date = now;
+  updates.last_session_department = activeDepartment || null;
+
+  // Store last greeting used (first 150 chars)
+  if (response.message_to_user) {
+    updates.last_greeting = response.message_to_user.substring(0, 150);
+  }
+
+  // Track response style from LLM result
+  if (response.typing_style) {
+    updates.last_response_style = response.typing_style;
+  }
+
+  // Track preferred depth from project state
+  if (projectState?.research_depth) {
+    updates.preferred_depth = projectState.research_depth;
+  }
+
+  // Update recent topics discussed
+  if (projectState?.topics && projectState.topics.length > 0) {
+    const topicTitles = projectState.topics.slice(0, 5).map(t => t.title).filter(Boolean);
+    if (topicTitles.length > 0) {
+      updates.last_topics_discussed = JSON.stringify(topicTitles);
+
+      // Track common interests
+      const interests = extractCommonInterests(projectState.topics);
+      if (interests.length > 0) {
+        updates.common_topic_interests = JSON.stringify(interests);
+      }
+
+      // Track unfinished topic (most recent that isn't completed)
+      const unfinished = projectState.topics.find(t => t.status && !['completed', 'archived', 'exported'].includes(t.status));
+      if (unfinished) {
+        updates.unfinished_topic_title = unfinished.title;
+        updates.unfinished_topic_stage = unfinished.status;
+      } else {
+        updates.unfinished_topic_title = null;
+        updates.unfinished_topic_stage = null;
+      }
+    }
+  }
+
+  // Track last completed packet from workflow updates
+  if (response.workflow_updates?.export_status === 'success' || response.workflow_updates?.completed_packet) {
+    updates.last_completed_packet = response.workflow_updates.completed_packet || 'Recent export';
+  }
+
+  updateCreaprMemory(memory.id, updates);
 }
 
 export default { runCreaprBrain };

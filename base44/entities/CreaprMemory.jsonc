@@ -1,0 +1,55 @@
+{
+  "name": "CreaprMemory",
+  "type": "object",
+  "properties": {
+    "last_greeting": {
+      "type": "string",
+      "description": "The last greeting CREAPr used (first 120 chars) \u2014 prevents repetition"
+    },
+    "last_topics_discussed": {
+      "type": "string",
+      "description": "JSON array of recent topic titles discussed"
+    },
+    "last_selected_category": {
+      "type": "string"
+    },
+    "last_completed_packet": {
+      "type": "string",
+      "description": "Title of the most recently completed production packet"
+    },
+    "last_response_style": {
+      "type": "string",
+      "description": "The response style used last turn"
+    },
+    "visit_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total number of CREAPr sessions"
+    },
+    "preferred_depth": {
+      "type": "string",
+      "description": "Producer's most commonly used research depth"
+    },
+    "common_topic_interests": {
+      "type": "string",
+      "description": "JSON array of topic categories the producer frequently explores"
+    },
+    "last_visit_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_session_department": {
+      "type": "string",
+      "description": "Department where the last session ended"
+    },
+    "unfinished_topic_title": {
+      "type": "string",
+      "description": "Title of a topic that was started but not completed"
+    },
+    "unfinished_topic_stage": {
+      "type": "string",
+      "description": "Workflow stage where the unfinished topic was left"
+    }
+  },
+  "required": []
+}
