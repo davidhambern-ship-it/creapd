@@ -62,7 +62,7 @@ export default function LibraryInput({ onSend, onStartTyping, disabled, listenin
   return (
     <AnimatePresence>
       <motion.div
-        className="absolute bottom-12 left-0 right-0 p-4 md:p-6"
+        className="absolute bottom-3 left-0 right-0 p-3 md:p-4"
         style={{ zIndex: 25 }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: disabled ? 0.4 : 1, y: 0 }}

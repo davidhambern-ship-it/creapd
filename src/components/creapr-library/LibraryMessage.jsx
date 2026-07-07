@@ -97,7 +97,7 @@ export default function LibraryMessage({ lines, phase, stopTyping, onComplete })
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="absolute top-[11%] left-1/2 -translate-x-1/2 w-[85%] max-w-2xl plib-message-panel px-6 py-4"
+          className="absolute top-20 left-1/2 -translate-x-1/2 w-[85%] max-w-2xl plib-message-panel px-6 py-4 max-h-[40vh] overflow-y-auto"
           style={{ zIndex: 20 }}
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
