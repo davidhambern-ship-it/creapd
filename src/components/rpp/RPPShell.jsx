@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import RPPDepartmentNav from './RPPDepartmentNav';
-import RPPProgressIndicator from './RPPProgressIndicator';
 import RPPCreaprMessage from './RPPCreaprMessage';
-import { Search, Bell, Volume2, VolumeX, ChevronLeft } from 'lucide-react';
 
 export default function RPPShell() {
   const location = useLocation();
@@ -14,23 +12,27 @@ export default function RPPShell() {
 
   const [user, setUser] = useState(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [creaprMessage, setCreaprMessage] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const messageIdRef = useRef(0);
 
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+  const addMessage = useCallback((text, role = 'assistant') => {
+    setMessages(prev => [...prev, { id: ++messageIdRef.current, role, text }]);
   }, []);
 
   // Greeting on first entry
   useEffect(() => {
-    if (location.pathname === '/research' && !creaprMessage) {
+    base44.auth.me().then(setUser).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname === '/research' && messages.length === 0 && config !== undefined) {
       const firstName = user?.full_name?.split(' ')[0] || 'there';
-      setCreaprMessage(config
-        ? `Welcome back, ${firstName}. Your production "${config.production_name}" is ${researchData.topics.length > 0 ? 'in progress' : 'ready to begin'}. Where would you like to work?`
-        : `Welcome to the Research Production Profile, ${firstName}. Visit the Configuration department to set up your production, or explore the building.`
-      );
+      const greeting = config
+        ? `Welcome back, ${firstName}. Your production "${config.production_name}" is ${topics.length > 0 ? 'in progress' : 'ready to begin'}. Where would you like to work?`
+        : `Welcome to the Research Production Profile, ${firstName}. Visit the Configuration department to set up your production, or explore the library.`;
+      addMessage(greeting);
     }
-  }, [location.pathname, user, config]);
+  }, [location.pathname, user, config, topics.length, messages.length, addMessage]);
 
   const handleSpeak = useCallback((text) => {
     if (!voiceEnabled) return;
@@ -48,6 +50,24 @@ export default function RPPShell() {
 
   const toggleVoice = useCallback(() => setVoiceEnabled(v => !v), []);
 
+  const handleSendMessage = useCallback((text) => {
+    if (!text.trim()) return;
+    addMessage(text, 'user');
+    // Simple contextual response
+    setTimeout(() => {
+      const responses = [
+        "I'm here to help you navigate the library. Try visiting a department from the sidebar.",
+        "Got it. Let me know what you'd like to research or produce.",
+        "Understood. You can explore topics, run research, or assemble packets from the sidebar.",
+      ];
+      addMessage(responses[Math.floor(Math.random() * responses.length)]);
+    }, 800);
+  }, [addMessage]);
+
+  const setCreaprMessage = useCallback((text) => {
+    addMessage(text);
+  }, [addMessage]);
+
   // Progress stages based on data
   const progressStages = {
     assignment: topics.length > 0,
@@ -59,94 +79,27 @@ export default function RPPShell() {
 
   return (
     <div className="rpp-shell">
-      {/* Ambient living environment background */}
       <div className="rpp-ambient-bg" />
 
-      {/* Top Bar — persistent shell */}
-      <header className="rpp-topbar">
-        <div className="flex items-center gap-3 shrink-0">
-          <Link to="/home" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ChevronLeft className="w-4 h-4" />
-            <span className="text-xs hidden md:inline">CREAPD</span>
-          </Link>
-          <div className="w-px h-6 bg-border/50" />
-          <div>
-            <h1 className="text-sm font-heading font-semibold tracking-wide">
-              Research Production Profile
-            </h1>
-            {config && (
-              <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
-                {config.production_name}
-              </p>
-            )}
-          </div>
-        </div>
+      {/* Left Sidebar — Bookshelf Navigation */}
+      <RPPDepartmentNav
+        config={config}
+        progressStages={progressStages}
+        researchingCount={topics.filter(t => t.status === 'researching').length}
+      />
 
-        {/* Department Navigator */}
-        <div className="flex-1 flex justify-center overflow-x-auto">
-          <RPPDepartmentNav />
-        </div>
-
-        {/* Right controls */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => setSearchOpen(s => !s)}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-            title="Search"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-          <button
-            onClick={toggleVoice}
-            className={`p-2 rounded-lg transition-colors ${
-              voiceEnabled
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-            }`}
-            title={voiceEnabled ? 'Voice on' : 'Voice off'}
-          >
-            {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-          <button
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors relative"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            {researchData.topics.filter(t => t.status === 'researching').length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            )}
-          </button>
-          {user && (
-            <div className="hidden md:flex items-center gap-2 ml-1 pl-2 border-l border-border/50">
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-xs font-semibold text-primary">
-                  {user.full_name?.charAt(0) || '?'}
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground max-w-[100px] truncate">
-                {user.full_name || 'Producer'}
-              </span>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Progress Indicator Bar */}
-      <div className="rpp-progress-bar">
-        <RPPProgressIndicator stages={progressStages} />
-      </div>
-
-      {/* Main Workspace — departments replace only this area */}
+      {/* Center — Main Workspace */}
       <main className="rpp-workspace">
         <Outlet context={{ setCreaprMessage, voiceEnabled }} />
       </main>
 
-      {/* CREAPr Message Area — floating, text typing, no auto-voice */}
+      {/* Right — CREAPr Assistant Panel */}
       <RPPCreaprMessage
-        message={creaprMessage}
-        onSpeak={handleSpeak}
+        messages={messages}
         voiceEnabled={voiceEnabled}
         onToggleVoice={toggleVoice}
+        onSendMessage={handleSendMessage}
+        onSpeak={handleSpeak}
       />
     </div>
   );

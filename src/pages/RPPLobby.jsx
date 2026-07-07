@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { useOutletContext } from 'react-router-dom';
-import { RPP_DEPARTMENTS, RPP_PROGRESS_STAGES } from '@/lib/rppConstants';
+import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
 import {
   ChevronRight, ArrowRight, Clock, Calendar, CheckCircle2,
-  Circle, Loader2, RefreshCw, Settings, TrendingUp
+  Circle, Loader2, RefreshCw, Settings, TrendingUp, BookOpen, Rss
 } from 'lucide-react';
 
 export default function RPPLobby() {
@@ -27,12 +26,12 @@ export default function RPPLobby() {
   const approvedPoints = points.filter(p => p.status === 'approved' || p.status === 'used');
 
   const checklist = [
-    { label: 'Configuration Saved', done: !!config?.production_name, stage: null },
-    { label: 'Research Assignment', done: topics.length > 0, stage: 'assignment' },
-    { label: 'Research Complete', done: researchedTopics.length > 0, stage: 'research' },
-    { label: 'Points Extracted', done: points.length > 0, stage: 'research' },
-    { label: 'Points Approved', done: approvedPoints.length > 0, stage: 'research' },
-    { label: 'Packages Generated', done: packages.length > 0, stage: 'assets' },
+    { label: 'Configuration Saved', done: !!config?.production_name },
+    { label: 'Research Assignment', done: topics.length > 0 },
+    { label: 'Research Complete', done: researchedTopics.length > 0 },
+    { label: 'Points Extracted', done: points.length > 0 },
+    { label: 'Points Approved', done: approvedPoints.length > 0 },
+    { label: 'Packages Generated', done: packages.length > 0 },
   ];
   const checklistDone = checklist.filter(c => c.done).length;
   const readinessPercent = Math.round((checklistDone / checklist.length) * 100);
@@ -50,19 +49,31 @@ export default function RPPLobby() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
       </div>
     );
   }
 
+  // RSS feed items — use topics or fallback to generic knowledge items
+  const rssItems = topics.length > 0
+    ? topics.slice(0, 8).map(t => ({ title: t.title, subtitle: t.category || 'Research Topic', status: t.status }))
+    : [
+        { title: 'No active research topics yet', subtitle: 'Visit the Topics department', status: 'pending' },
+        { title: 'CREAPr Library ready for assignments', subtitle: 'Define your research scope', status: 'ready' },
+      ];
+  const rssDoubled = [...rssItems, ...rssItems];
+
   return (
     <div className="rpp-lobby">
       {/* Header */}
-      <div className="px-6 md:px-10 pt-8 pb-6">
+      <div className="px-6 md:px-8 pt-6 pb-5 border-b border-border/30">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Lobby</p>
-            <h1 className="text-3xl font-heading font-bold">
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="w-4 h-4 text-amber-400/70" />
+              <p className="text-xs uppercase tracking-widest text-amber-400/60">Lobby · Research Library</p>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-heading font-bold">
               {config ? config.production_name : 'Research Production Profile'}
             </h1>
             {config && (
@@ -92,33 +103,37 @@ export default function RPPLobby() {
         </div>
       </div>
 
-      {/* Continue previous work */}
+      {/* Reading Desk — Continue previous work */}
       {nextDept && (
-        <div className="px-6 md:px-10 mb-6">
+        <div className="px-6 md:px-8 py-5">
           <button
             onClick={() => navigate(nextDept.path)}
-            className="rpp-continue-card w-full text-left"
+            className="reading-desk-card w-full text-left p-5"
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                  <nextDept.icon className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0 border border-amber-500/20">
+                  <nextDept.icon className="w-6 h-6 text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-0.5">Continue your work</p>
-                  <p className="text-lg font-heading font-semibold">{nextDept.name} Department</p>
+                  <p className="text-xs uppercase tracking-wider text-amber-400/60 mb-0.5">Reading Desk · Continue your work</p>
+                  <p className="text-lg font-heading font-semibold">{nextDept.name}</p>
                   <p className="text-sm text-muted-foreground">{nextDept.description}</p>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-primary shrink-0" />
+              <ArrowRight className="w-5 h-5 text-amber-400 shrink-0" />
             </div>
           </button>
         </div>
       )}
 
-      {/* Department Directory */}
-      <div className="px-6 md:px-10 mb-8">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Department Directory</h2>
+      {/* Library Section Cards — Department Directory */}
+      <div className="px-6 md:px-8 pb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="book-spine-deco w-8" />
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Library Sections</h2>
+          <div className="book-spine-deco flex-1" />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map(dept => {
             const Icon = dept.icon;
@@ -134,27 +149,34 @@ export default function RPPLobby() {
               <button
                 key={dept.id}
                 onClick={() => navigate(dept.path)}
-                className="rpp-dept-card group text-left"
+                className="dept-section-card group text-left p-5"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                    <Icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/8 flex items-center justify-center group-hover:bg-amber-500/15 transition-colors">
+                    <Icon className="w-5 h-5 text-amber-400/60 group-hover:text-amber-400 transition-colors" />
                   </div>
                   {count > 0 && (
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-white/5 text-muted-foreground">
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-500/10 text-amber-400/80">
                       {count}
                     </span>
                   )}
                 </div>
-                <h3 className="font-heading font-semibold text-base mb-1 group-hover:text-primary transition-colors">
-                  {dept.name}
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">{dept.subtitle}</p>
-                <p className="text-sm text-muted-foreground/80 leading-relaxed">{dept.description}</p>
+                <div className="mb-1 flex items-center gap-2">
+                  <h3 className="font-heading font-semibold text-base group-hover:text-amber-400 transition-colors">
+                    {dept.name}
+                  </h3>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 px-1.5 py-0.5 rounded bg-white/5">
+                    {dept.subtitle}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground/80 leading-relaxed mb-3">{dept.description}</p>
                 {dept.output && (
-                  <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60">Output</p>
-                    <p className="text-xs font-medium text-foreground/80">{dept.output}</p>
+                  <div className="pt-3 border-t border-border/30 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50">Output</p>
+                      <p className="text-xs font-medium text-foreground/70">{dept.output}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
                   </div>
                 )}
               </button>
@@ -164,15 +186,18 @@ export default function RPPLobby() {
       </div>
 
       {/* Bottom Grid: Status + Recent Packets */}
-      <div className="px-6 md:px-10 pb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="px-6 md:px-8 pb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Production Status */}
-        <div className="rpp-panel p-5">
-          <h3 className="font-heading font-semibold mb-4">Production Status</h3>
+        <div className="lib-glass-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="book-spine-deco w-6" />
+            <h3 className="font-heading font-semibold">Production Status</h3>
+          </div>
           <div className="space-y-2">
             {checklist.map((item, i) => (
               <div key={i} className="flex items-center gap-2.5 text-sm">
                 {item.done ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
                 ) : (
                   <Circle className="w-4 h-4 text-muted-foreground/30 shrink-0" />
                 )}
@@ -180,17 +205,17 @@ export default function RPPLobby() {
               </div>
             ))}
           </div>
-          <div className="mt-4 pt-4 border-t border-border/50">
+          <div className="mt-4 pt-4 border-t border-border/30">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs uppercase tracking-wider text-muted-foreground">Production Readiness</span>
-              <span className="text-sm font-bold text-primary">{readinessPercent}%</span>
+              <span className="text-sm font-bold text-amber-400">{readinessPercent}%</span>
             </div>
             <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${readinessPercent}%`,
-                  background: 'linear-gradient(90deg, hsl(270 80% 60%), hsl(152 60% 45%))',
+                  background: 'linear-gradient(90deg, hsl(35 70% 50%), hsl(25 80% 55%))',
                 }}
               />
             </div>
@@ -198,10 +223,13 @@ export default function RPPLobby() {
         </div>
 
         {/* Recent Production Packets */}
-        <div className="rpp-panel p-5">
+        <div className="lib-glass-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold">Recent Production Packets</h3>
-            <Link to="/research/export" className="text-xs text-primary hover:underline">View all</Link>
+            <div className="flex items-center gap-2">
+              <div className="book-spine-deco w-6" />
+              <h3 className="font-heading font-semibold">Recent Packets</h3>
+            </div>
+            <Link to="/research/export" className="text-xs text-amber-400 hover:underline">View all</Link>
           </div>
           {recentPackets.length > 0 ? (
             <div className="space-y-2">
@@ -229,28 +257,48 @@ export default function RPPLobby() {
 
       {/* Active research indicator */}
       {researchingTopics.length > 0 && (
-        <div className="px-6 md:px-10 pb-8">
-          <div className="rpp-panel p-4 flex items-center gap-3">
-            <div className="relative">
-              <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
-            </div>
-            <div>
+        <div className="px-6 md:px-8 pb-4">
+          <div className="lib-glass-card p-4 flex items-center gap-3 border-amber-500/20">
+            <Loader2 className="w-5 h-5 text-amber-400 animate-spin shrink-0" />
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-amber-400">
                 {researchingTopics.length} topic{researchingTopics.length > 1 ? 's' : ''} currently being researched
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground truncate">
                 {researchingTopics.map(t => t.title).join(', ')}
               </p>
             </div>
             <button
               onClick={() => navigate('/research/manager')}
-              className="ml-auto text-xs text-primary hover:underline shrink-0"
+              className="text-xs text-amber-400 hover:underline shrink-0"
             >
               View progress
             </button>
           </div>
         </div>
       )}
+
+      {/* RSS Knowledge Feed Shelf */}
+      <div className="px-6 md:px-8 pb-8">
+        <div className="flex items-center gap-2 mb-3">
+          <Rss className="w-4 h-4 text-amber-400/60" />
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Live Knowledge Feed</h2>
+          <div className="book-spine-deco flex-1" />
+        </div>
+        <div className="rss-shelf p-1">
+          <div className="rss-feed-track py-2 px-1">
+            {rssDoubled.map((item, idx) => (
+              <div key={idx} className="rss-feed-item">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'researching' ? 'bg-amber-400 animate-pulse' : item.status === 'researched' ? 'bg-emerald-400' : 'bg-muted-foreground/30'}`} />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{item.subtitle}</span>
+                </div>
+                <p className="text-xs font-medium text-foreground/80 truncate">{item.title}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

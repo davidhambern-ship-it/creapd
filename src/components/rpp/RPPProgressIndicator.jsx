@@ -19,18 +19,18 @@ export default function RPPProgressIndicator({ stages = {} }) {
               title={stage.label}
             >
               {done ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-amber-400" />
               ) : (
                 <Circle className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
               )}
               <span className={`hidden xl:inline text-xs font-medium transition-colors ${
-                done ? 'text-emerald-400' : 'text-muted-foreground/60 group-hover:text-muted-foreground'
+                done ? 'text-amber-400' : 'text-muted-foreground/60 group-hover:text-muted-foreground'
               }`}>
                 {stage.label}
               </span>
             </button>
             {idx < RPP_PROGRESS_STAGES.length - 1 && (
-              <div className={`hidden xl:block w-6 h-px ${done ? 'bg-emerald-400/40' : 'bg-border/50'}`} />
+              <div className={`hidden xl:block w-6 h-px ${done ? 'bg-amber-400/40' : 'bg-border/50'}`} />
             )}
           </React.Fragment>
         );
