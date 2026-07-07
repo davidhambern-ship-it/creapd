@@ -42,6 +42,7 @@ export default function LibraryResearchTable({ assignment, phase, onApprove, onE
       <motion.div
         className="absolute inset-0 flex items-center justify-center p-6 overflow-y-auto"
         style={{ zIndex: 30 }}
+        data-tour="research-table"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

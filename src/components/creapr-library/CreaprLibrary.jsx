@@ -9,7 +9,46 @@ import LibraryMessage from './LibraryMessage';
 import LibraryWings from './LibraryWings';
 import LibraryResearchTable from './LibraryResearchTable';
 import LibraryInput from './LibraryInput';
-import { X, Loader2, BookOpen } from 'lucide-react';
+import LibraryGuidedTour from './LibraryGuidedTour';
+import { X, Loader2, BookOpen, Compass } from 'lucide-react';
+
+const TOUR_STEPS = [
+  {
+    title: 'The CREAPr Library',
+    narration: 'Welcome to the CREAPr Library — a guided research experience. Let me walk you through how this works.',
+    target: null,
+  },
+  {
+    title: 'Your Research Companion',
+    narration: 'This is CREAPr, your AI research librarian. The status indicator pulses while CREAPr searches the stacks for you.',
+    target: 'creapr-header',
+  },
+  {
+    title: 'Understanding Meter',
+    narration: 'This bar shows how well CREAPr understands your request. As it fills toward green, the library is getting closer to assembling your research assignment.',
+    target: 'understanding-meter',
+  },
+  {
+    title: 'The Bookshelves',
+    narration: 'When you start exploring, bookshelf wings appear here — each shelf is a category of knowledge. Click any wing to dive into that topic.',
+    target: 'library-wings',
+  },
+  {
+    title: 'The Research Table',
+    narration: 'Once CREAPr has enough understanding, a research table assembles here. Your compiled assignment appears as an open book — ready to approve and send to deep research.',
+    target: 'research-table',
+  },
+  {
+    title: 'Speak or Type',
+    narration: 'Type your request here, or tap the microphone to speak. CREAPr will guide you toward a complete research assignment at any time.',
+    target: 'library-input',
+  },
+  {
+    title: 'Ready to Begin',
+    narration: "That's the tour. Tell CREAPr what you'd like to research, and the library will come alive.",
+    target: null,
+  },
+];
 
 export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const navigate = useNavigate();
@@ -26,6 +65,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
   const [focusedWing, setFocusedWing] = useState(null);
   const [stopTyping, setStopTyping] = useState(false);
   const [completionConfidence, setCompletionConfidence] = useState(0);
+  const [tourActive, setTourActive] = useState(false);
 
   const isMountedRef = useRef(true);
   const conversationHistoryRef = useRef([]);
@@ -274,7 +314,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       )}
 
       {/* Header — CREAPr identity */}
-      <div className="absolute top-4 left-4 flex items-center gap-3" style={{ zIndex: 15 }}>
+      <div className="absolute top-4 left-4 flex items-center gap-3" style={{ zIndex: 15 }} data-tour="creapr-header">
         <div
           className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${thinking ? 'animate-pulse' : ''}`}
           style={{
@@ -290,11 +330,19 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
             {thinking ? 'Searching the stacks...' : 'Library Online'}
           </p>
         </div>
+        <button
+          onClick={() => setTourActive(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:bg-white/5"
+          style={{ background: 'hsl(30 10% 8% / 0.5)', border: '1px solid hsl(35 18% 24% / 0.3)', color: 'hsl(38 45% 52%)' }}
+        >
+          <Compass className="w-3.5 h-3.5" />
+          Tour
+        </button>
       </div>
 
       {/* Knowledge dashboard — confidence indicator */}
       {completionConfidence > 0 && view === 'overview' && (
-        <div className="absolute top-4 right-4 hidden md:flex plib-dashboard" style={{ zIndex: 15 }}>
+        <div className="absolute top-4 right-4 hidden md:flex plib-dashboard" style={{ zIndex: 15 }} data-tour="understanding-meter">
           <span className="text-[10px] uppercase tracking-wider" style={{ color: 'hsl(40 22% 48%)', fontFamily: '"Oswald", sans-serif' }}>
             Understanding
           </span>
@@ -358,6 +406,15 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
           disabled={!inputEnabled || submitting}
           thinking={thinking}
           placeholder={view === 'overview' && !wings ? "What are we looking for today?" : "Continue exploring..."}
+        />
+      )}
+
+      {/* Guided tour overlay */}
+      {tourActive && (
+        <LibraryGuidedTour
+          steps={TOUR_STEPS}
+          onClose={() => setTourActive(false)}
+          onComplete={() => setTourActive(false)}
         />
       )}
     </div>

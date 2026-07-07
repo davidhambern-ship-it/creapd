@@ -64,6 +64,7 @@ export default function LibraryInput({ onSend, onStartTyping, disabled, listenin
       <motion.div
         className="absolute bottom-12 left-0 right-0 p-4 md:p-6"
         style={{ zIndex: 25 }}
+        data-tour="library-input"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: disabled ? 0.4 : 1, y: 0 }}
         transition={{ duration: 0.4 }}

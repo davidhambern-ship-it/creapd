@@ -224,6 +224,7 @@ export default function LibraryWings({ items, variant = 'category', title, focus
         key={title || 'wings'}
         className="absolute inset-0 flex flex-col items-center justify-center px-6 pb-36 pt-20"
         style={{ zIndex: 10 }}
+        data-tour="library-wings"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
