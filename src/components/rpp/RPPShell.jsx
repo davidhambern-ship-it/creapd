@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { runCreaprBrain } from '@/lib/creapr/creaprBrain';
@@ -7,6 +7,7 @@ import { useCREAPMode } from '@/context/CREAPModeContext';
 import RPPDepartmentNav from './RPPDepartmentNav';
 import RPPCreaprMessage from './RPPCreaprMessage';
 import CommandCenterAmbience from './CommandCenterAmbience';
+import { getDepartmentThemeFromPath } from '@/lib/rppDepartmentThemes';
 
 function _departmentFromRoute(pathname) {
   if (pathname.includes('/research/topics')) return 'Topics';
@@ -28,10 +29,27 @@ export default function RPPShell() {
   const [dockOpen, setDockOpen] = useState(false);
   const [brainLoading, setBrainLoading] = useState(false);
   const messageIdRef = useRef(0);
+  const prevDeptRef = useRef(null);
+
+  const activeTheme = getDepartmentThemeFromPath(location.pathname);
 
   const addMessage = useCallback((text, role = 'assistant') => {
     setMessages(prev => [...prev, { id: ++messageIdRef.current, role, text }]);
   }, []);
+
+  // CREAPr greets when entering a new department "room"
+  useEffect(() => {
+    const deptId = activeTheme.id;
+    if (prevDeptRef.current === null) {
+      prevDeptRef.current = deptId;
+      return;
+    }
+    if (prevDeptRef.current !== deptId) {
+      prevDeptRef.current = deptId;
+      addMessage(activeTheme.creaprGreeting, 'assistant');
+      setDockOpen(true);
+    }
+  }, [activeTheme.id, activeTheme.creaprGreeting, addMessage]);
 
   const handleSendMessage = useCallback(async (text) => {
     if (!text.trim() || brainLoading) return;
@@ -86,20 +104,29 @@ export default function RPPShell() {
   };
 
   return (
-    <div className="rpp-shell">
+    <div
+      className="rpp-shell"
+      style={{
+        '--dept-accent': activeTheme.accentHsl,
+        '--dept-ambient': activeTheme.ambientHsl,
+        '--dept-glow': activeTheme.glowHsl,
+      }}
+    >
       <div className="rpp-ambient-bg" />
       <CommandCenterAmbience />
 
-      {/* Top Navigation Bar */}
+      {/* Department Sidebar */}
       <RPPDepartmentNav
         config={config}
         progressStages={progressStages}
         researchingCount={topics.filter(t => t.status === 'researching').length}
       />
 
-      {/* Main Workspace */}
-      <main className="rpp-workspace">
-        <Outlet context={{ setCreaprMessage }} />
+      {/* Main Workspace — reconfigures per department */}
+      <main className="rpp-workspace" key={activeTheme.id}>
+        <div className="rpp-workspace-content">
+          <Outlet context={{ setCreaprMessage }} />
+        </div>
       </main>
 
       {/* CREAPr Floating Dock */}

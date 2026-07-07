@@ -651,15 +651,22 @@
   overflow: hidden;
 }
 
+@media (min-width: 768px) {
+  .rpp-shell {
+    flex-direction: row;
+  }
+}
+
 .rpp-ambient-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse at 50% 0%, hsl(190 50% 15% / 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse at 85% 100%, hsl(25 80% 30% / 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 0%, hsl(var(--dept-ambient, 190 50% 15%) / 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 100%, hsl(var(--dept-ambient, 25 80% 30%) / 0.05) 0%, transparent 50%),
     #05080c;
+  transition: background 0.8s ease;
 }
 
 .rpp-ambient-bg::before {
@@ -683,6 +690,100 @@
   background: radial-gradient(circle, hsl(190 60% 35% / 0.04) 0%, transparent 70%);
   animation: orb-drift-3 25s ease-in-out infinite;
   filter: blur(60px);
+}
+
+/* ═══ Department Sidebar ═══ */
+
+.rpp-sidebar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  flex-shrink: 0;
+  background: hsl(210 40% 5% / 0.9);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid hsl(190 40% 20% / 0.25);
+}
+
+.rpp-sidebar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem 1rem;
+  border-bottom: 1px solid hsl(190 30% 14% / 0.3);
+  flex-shrink: 0;
+}
+
+.rpp-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem 0.625rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.rpp-sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+}
+
+.rpp-sidebar-tab:hover {
+  background: hsl(190 30% 12% / 0.3);
+  color: hsl(190 60% 60%);
+}
+
+.rpp-sidebar-tab.active {
+  background: linear-gradient(135deg, hsl(var(--dept-accent, 190 80% 55%) / 0.15), hsl(var(--dept-accent, 190 80% 55%) / 0.05));
+  border-color: hsl(var(--dept-accent, 190 80% 55%) / 0.4);
+  color: hsl(var(--dept-accent, 190 80% 55%));
+  box-shadow: 0 0 12px hsl(var(--dept-accent, 190 80% 55%) / 0.1), inset 0 1px 0 hsl(var(--dept-accent, 190 80% 55%) / 0.1);
+}
+
+.rpp-sidebar-footer {
+  padding: 0.75rem;
+  border-top: 1px solid hsl(190 30% 14% / 0.3);
+  flex-shrink: 0;
+}
+
+.rpp-mobile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: hsl(210 40% 5% / 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid hsl(190 40% 20% / 0.25);
+  flex-shrink: 0;
+}
+
+.rpp-sidebar-mobile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  box-shadow: 8px 0 32px hsl(190 50% 3% / 0.5);
+  animation: rpp-sidebar-slide 0.3s ease-out;
+}
+
+@keyframes rpp-sidebar-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
 /* ═══ Top Nav Bar ═══ */
@@ -757,6 +858,15 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+@keyframes rpp-dept-enter {
+  0% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.rpp-workspace-content {
+  animation: rpp-dept-enter 0.5s ease-out both;
+  min-height: 100%;
 }
 
 .rpp-lobby {
@@ -1008,8 +1118,7 @@
   background: hsl(220 10% 35%);
 }
 
-@media (max-width: 768px) {
-  .rpp-topbar-nav { display: none; }
+@media (max-width: 767px) {
   .rpp-creapr-dock { width: calc(100vw - 2rem); right: 0.5rem; bottom: 0.5rem; }
   .rpp-creapr-fab { right: 1rem; bottom: 1rem; }
 }
