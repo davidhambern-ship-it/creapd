@@ -46,17 +46,19 @@ export default function ResearchManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'hsl(190 80% 55%)' }} />
       </div>
     );
   }
 
   if (!config) {
     return (
-      <div className="flex items-center justify-center h-screen p-6">
-        <div className="max-w-md text-center">
-          <FlaskConical className="w-12 h-12 text-primary mx-auto mb-4" />
+      <div className="flex items-center justify-center h-full p-6">
+        <div className="max-w-md text-center cc-animate-fade-up">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'hsl(190 50% 15% / 0.3)', border: '1px solid hsl(190 40% 28% / 0.4)' }}>
+            <FlaskConical className="w-8 h-8" style={{ color: 'hsl(190 80% 55%)' }} />
+          </div>
           <p className="text-muted-foreground">No production configured.</p>
         </div>
       </div>
@@ -152,242 +154,281 @@ export default function ResearchManager() {
 
   const selectedTopic = topicFilter ? topics.find(t => t.id === topicFilter) : null;
 
+  const stats = [
+    { label: 'TOTAL', value: points.length },
+    { label: 'PENDING', value: points.filter(p => p.status === 'pending').length },
+    { label: 'APPROVED', value: points.filter(p => p.status === 'approved').length },
+    { label: 'PACKAGES', value: packages.length },
+  ];
+
   return (
-    <div className="h-full overflow-y-auto p-6 md:p-8 space-y-6">
+    <div className="h-full overflow-y-auto">
       <CreaprFocusBar researchData={researchData} />
 
-      <div>
-        <h1 className="text-2xl font-heading font-bold !flex items-center gap-2">
-          <Layers className="w-5 h-5 text-primary" />
-          Point Manager
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {selectedTopic
-            ? `Points for: ${selectedTopic.title}`
-            : 'Review, approve, and generate packages from research Point Cards'
-          }
-        </p>
+      {/* Header */}
+      <div className="px-4 md:px-6 pt-4 pb-3 cc-animate-fade-up">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'hsl(190 50% 15% / 0.3)', border: '1px solid hsl(190 40% 28% / 0.4)' }}>
+            <Layers className="w-5 h-5" style={{ color: 'hsl(190 80% 55%)' }} />
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-heading font-bold">Point Manager</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {selectedTopic ? `Points for: ${selectedTopic.title}` : 'Review, approve, and generate packages from research Point Cards'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div className="px-4 md:px-6 pb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        {stats.map((s, i) => (
+          <div key={s.label} className={`cc-metric-card cc-animate-scale-in cc-stagger-${Math.min(i + 1, 6)}`}>
+            <p className="text-2xl md:text-3xl font-bold font-mono cc-number-pop" style={{ color: 'hsl(35 90% 60%)', animationDelay: `${0.15 + i * 0.05}s` }}>{s.value}</p>
+            <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: 'hsl(152 40% 55% / 0.7)' }}>{s.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
-      <div className="!flex flex-wrap items-center gap-2">
-        <div className="!flex items-center gap-1.5">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Status:</span>
-        </div>
-        {STATUS_FILTERS.map(f => (
-          <button
-            key={f.value}
-            onClick={() => setStatusFilter(f.value)}
-            className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
-              statusFilter === f.value ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-        {pointTypes.length > 0 && (
-          <>
-            <span className="text-xs text-muted-foreground ml-2">Type:</span>
+      <div className="px-4 md:px-6 pb-4">
+        <div className="cc-glass-card p-3 flex flex-wrap items-center gap-2 cc-animate-fade-up">
+          <div className="flex items-center gap-1.5">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Status:</span>
+          </div>
+          {STATUS_FILTERS.map(f => (
             <button
-              onClick={() => setTypeFilter('all')}
-              className={`text-xs px-2.5 py-1 rounded-md ${typeFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+              key={f.value}
+              onClick={() => setStatusFilter(f.value)}
+              className="text-xs px-2.5 py-1 rounded-md transition-all"
+              style={statusFilter === f.value
+                ? { background: 'hsl(190 50% 15% / 0.4)', color: 'hsl(190 80% 55%)', border: '1px solid hsl(190 50% 28% / 0.5)' }
+                : { background: 'hsl(190 20% 12% / 0.2)', color: 'hsl(220 10% 55%)', border: '1px solid transparent' }
+              }
             >
-              All
+              {f.label}
             </button>
-            {pointTypes.map(type => (
+          ))}
+          {pointTypes.length > 0 && (
+            <>
+              <span className="text-xs text-muted-foreground ml-2">Type:</span>
               <button
-                key={type}
-                onClick={() => setTypeFilter(type)}
-                className={`text-xs px-2.5 py-1 rounded-md ${typeFilter === type ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setTypeFilter('all')}
+                className="text-xs px-2.5 py-1 rounded-md transition-all"
+                style={typeFilter === 'all'
+                  ? { background: 'hsl(190 50% 15% / 0.4)', color: 'hsl(190 80% 55%)' }
+                  : { background: 'hsl(190 20% 12% / 0.2)', color: 'hsl(220 10% 55%)' }
+                }
               >
-                {POINT_TYPE_LABELS[type] || type}
+                All
               </button>
-            ))}
-          </>
-        )}
-        <span className="text-xs text-muted-foreground ml-auto">{filteredPoints.length} points</span>
+              {pointTypes.map(type => (
+                <button
+                  key={type}
+                  onClick={() => setTypeFilter(type)}
+                  className="text-xs px-2.5 py-1 rounded-md transition-all"
+                  style={typeFilter === type
+                    ? { background: 'hsl(190 50% 15% / 0.4)', color: 'hsl(190 80% 55%)' }
+                    : { background: 'hsl(190 20% 12% / 0.2)', color: 'hsl(220 10% 55%)' }
+                  }
+                >
+                  {POINT_TYPE_LABELS[type] || type}
+                </button>
+              ))}
+            </>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">{filteredPoints.length} points</span>
+        </div>
       </div>
 
-      {filteredPoints.length === 0 ? (
-        <div className="glass-panel p-8 text-center">
-          <Layers className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
-          <p className="text-muted-foreground">
-            {points.length === 0
-              ? 'No Point Cards yet. Run research on a topic to extract points.'
-              : 'No points match the current filters.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredPoints.map(point => {
-            const isExpanded = expanded === point.id;
-            const keyFacts = safeParse(point.key_facts, []);
-            const sources = safeParse(point.sources, []);
-            const content = point.content || '';
-            const isLong = content.length > 300;
-            return (
-              <div key={point.id} className="glass-panel p-4">
-                <div className="!flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="!flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${POINT_TYPE_COLORS[point.point_type] || 'bg-muted text-muted-foreground'}`}>
-                        {POINT_TYPE_LABELS[point.point_type] || point.point_type}
-                      </span>
-                      {point.priority_score > 0 && (
-                        <span className="text-xs text-muted-foreground">Score: {point.priority_score?.toFixed(1)}</span>
-                      )}
-                      {point.suggested_segment && (
-                        <span className="text-xs text-muted-foreground">{point.suggested_segment}</span>
+      {/* Point Cards */}
+      <div className="px-4 md:px-6 pb-6">
+        {filteredPoints.length === 0 ? (
+          <div className="cc-glass-card p-8 text-center cc-animate-fade-up">
+            <Layers className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-muted-foreground">
+              {points.length === 0
+                ? 'No Point Cards yet. Run research on a topic to extract points.'
+                : 'No points match the current filters.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {filteredPoints.map((point, pIdx) => {
+              const isExpanded = expanded === point.id;
+              const keyFacts = safeParse(point.key_facts, []);
+              const sources = safeParse(point.sources, []);
+              const content = point.content || '';
+              const isLong = content.length > 300;
+              return (
+                <div key={point.id} className={`cc-glass-card p-4 cc-animate-fade-up cc-stagger-${Math.min((pIdx % 6) + 1, 6)}`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${POINT_TYPE_COLORS[point.point_type] || 'bg-muted text-muted-foreground'}`}>
+                          {POINT_TYPE_LABELS[point.point_type] || point.point_type}
+                        </span>
+                        {point.priority_score > 0 && (
+                          <span className="text-xs text-muted-foreground">Score: {point.priority_score?.toFixed(1)}</span>
+                        )}
+                        {point.suggested_segment && (
+                          <span className="text-xs text-muted-foreground">{point.suggested_segment}</span>
+                        )}
+                      </div>
+                      <h3 className="font-medium text-sm">{point.title}</h3>
+                      {point.topic_title && (
+                        <p className="text-xs text-muted-foreground mt-0.5">Topic: {point.topic_title}</p>
                       )}
                     </div>
-                    <h3 className="font-medium text-sm">{point.title}</h3>
-                    {point.topic_title && (
-                      <p className="text-xs text-muted-foreground mt-0.5">Topic: {point.topic_title}</p>
-                    )}
+                    <span className="text-xs px-2 py-0.5 rounded-full shrink-0" style={
+                      point.status === 'approved' ? { background: 'hsl(152 50% 15% / 0.3)', color: 'hsl(152 60% 50%)' } :
+                      point.status === 'rejected' ? { background: 'hsl(0 50% 15% / 0.3)', color: 'hsl(0 72% 60%)' } :
+                      point.status === 'used' ? { background: 'hsl(190 50% 15% / 0.3)', color: 'hsl(190 70% 55%)' } :
+                      { background: 'hsl(220 15% 18% / 0.3)', color: 'hsl(220 10% 55%)' }
+                    }>
+                      {point.status}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
-                    point.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
-                    point.status === 'rejected' ? 'bg-red-500/15 text-red-400' :
-                    point.status === 'used' ? 'bg-blue-500/15 text-blue-400' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
-                    {point.status}
-                  </span>
-                </div>
 
-                <p className="text-sm text-muted-foreground">
-                  {isExpanded || !isLong ? content : content.substring(0, 300) + '...'}
-                </p>
+                  <p className="text-sm text-muted-foreground">
+                    {isExpanded || !isLong ? content : content.substring(0, 300) + '...'}
+                  </p>
 
-                {isExpanded && (
-                  <div className="mt-3 space-y-3">
-                    {point.significance && (
-                      <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                        <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">Why It Matters</p>
-                        <p className="text-sm">{point.significance}</p>
-                      </div>
-                    )}
-                    {point.suggested_angle && (
-                      <div className="p-3 rounded-lg bg-primary/5">
-                        <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">Suggested Angle</p>
-                        <p className="text-sm">{point.suggested_angle}</p>
-                      </div>
-                    )}
-                    {keyFacts.length > 0 && (
-                      <div className="p-3 rounded-lg bg-secondary/30">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Key Facts</p>
-                        <ul className="space-y-1">
-                          {keyFacts.map((f, i) => (
-                            <li key={i} className="text-sm !flex items-start gap-2">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-400 mt-0.5 shrink-0" />
-                              <span>{f.fact} <span className="text-xs text-muted-foreground">({f.source})</span></span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {sources.length > 0 && (
-                      <div className="p-3 rounded-lg bg-secondary/30">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Sources</p>
-                        <ul className="space-y-1">
-                          {sources.map((s, i) => (
-                            <li key={i} className="text-xs text-muted-foreground">
-                              <span className="text-foreground/80">{s.name}</span> — {s.source_type}
-                              {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">↗</a>}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  {isExpanded && (
+                    <div className="mt-3 space-y-3">
+                      {point.significance && (
+                        <div className="p-3 rounded-lg" style={{ background: 'hsl(35 60% 12% / 0.15)', border: '1px solid hsl(35 60% 25% / 0.2)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'hsl(35 90% 60%)' }}>Why It Matters</p>
+                          <p className="text-sm">{point.significance}</p>
+                        </div>
+                      )}
+                      {point.suggested_angle && (
+                        <div className="p-3 rounded-lg" style={{ background: 'hsl(190 40% 12% / 0.15)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'hsl(190 70% 55%)' }}>Suggested Angle</p>
+                          <p className="text-sm">{point.suggested_angle}</p>
+                        </div>
+                      )}
+                      {keyFacts.length > 0 && (
+                        <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Key Facts</p>
+                          <ul className="space-y-1">
+                            {keyFacts.map((f, i) => (
+                              <li key={i} className="text-sm flex items-start gap-2">
+                                <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0" style={{ color: 'hsl(152 60% 50%)' }} />
+                                <span>{f.fact} <span className="text-xs text-muted-foreground">({f.source})</span></span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {sources.length > 0 && (
+                        <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Sources</p>
+                          <ul className="space-y-1">
+                            {sources.map((s, i) => (
+                              <li key={i} className="text-xs text-muted-foreground">
+                                <span className="text-foreground/80">{s.name}</span> — {s.source_type}
+                                {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:underline ml-1" style={{ color: 'hsl(190 80% 55%)' }}>↗</a>}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                <div className="!flex items-center justify-between mt-3">
-                  <div className="!flex items-center gap-1">
-                    {isLong && (
-                      <button
-                        onClick={() => setExpanded(isExpanded ? null : point.id)}
-                        className="text-xs text-primary hover:underline !flex items-center gap-0.5"
-                      >
-                        {isExpanded ? <><ChevronUp className="w-3 h-3" /> Less</> : <><ChevronDown className="w-3 h-3" /> More</>}
-                      </button>
-                    )}
-                  </div>
-                  <div className="!flex items-center gap-2">
-                    {point.status === 'pending' && (
-                      <>
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center gap-1">
+                      {isLong && (
                         <button
-                          onClick={() => handleStatusChange(point, 'approved')}
-                          disabled={approving === point.id}
-                          className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors !flex items-center gap-1 disabled:opacity-50"
+                          onClick={() => setExpanded(isExpanded ? null : point.id)}
+                          className="text-xs hover:underline flex items-center gap-0.5"
+                          style={{ color: 'hsl(190 80% 55%)' }}
                         >
-                          {approving === point.id
-                            ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</>
-                            : <><CheckCircle2 className="w-3 h-3" /> Approve</>}
+                          {isExpanded ? <><ChevronUp className="w-3 h-3" /> Less</> : <><ChevronDown className="w-3 h-3" /> More</>}
                         </button>
-                        <button
-                          onClick={() => handleStatusChange(point, 'rejected')}
-                          className="text-xs px-2 py-0.5 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors !flex items-center gap-1"
-                        >
-                          <XCircle className="w-3 h-3" /> Reject
-                        </button>
-                      </>
-                    )}
-                    {point.status === 'approved' && (
-                      <>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {point.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleStatusChange(point, 'approved')}
+                            disabled={approving === point.id}
+                            className="text-xs px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 disabled:opacity-50"
+                            style={{ background: 'hsl(152 50% 15% / 0.2)', color: 'hsl(152 60% 50%)' }}
+                          >
+                            {approving === point.id
+                              ? <><Loader2 className="w-3 h-3 animate-spin" /> Generating...</>
+                              : <><CheckCircle2 className="w-3 h-3" /> Approve</>}
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(point, 'rejected')}
+                            className="text-xs px-2 py-0.5 rounded-md transition-colors flex items-center gap-1"
+                            style={{ background: 'hsl(0 50% 15% / 0.2)', color: 'hsl(0 72% 60%)' }}
+                          >
+                            <XCircle className="w-3 h-3" /> Reject
+                          </button>
+                        </>
+                      )}
+                      {point.status === 'approved' && (
+                        <>
+                          <button
+                            onClick={() => handleStatusChange(point, 'pending')}
+                            className="text-xs px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                            style={{ background: 'hsl(220 15% 18% / 0.3)' }}
+                          >
+                            Unapprove
+                          </button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleGeneratePackage(point)}
+                            disabled={generating === point.id}
+                          >
+                            {generating === point.id
+                              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Generating...</>
+                              : <><Sparkles className="w-3 h-3 mr-1" /> Generate Package</>
+                            }
+                          </Button>
+                        </>
+                      )}
+                      {point.status === 'used' && point.package_id && (
+                        <span className="text-xs flex items-center gap-1" style={{ color: 'hsl(190 70% 55%)' }}>
+                          <Package className="w-3 h-3" /> Package Ready
+                        </span>
+                      )}
+                      {point.status === 'rejected' && (
                         <button
                           onClick={() => handleStatusChange(point, 'pending')}
-                          className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-xs px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                          style={{ background: 'hsl(220 15% 18% / 0.3)' }}
                         >
-                          Unapprove
+                          Restore
                         </button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleGeneratePackage(point)}
-                          disabled={generating === point.id}
-                        >
-                          {generating === point.id
-                            ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Generating...</>
-                            : <><Sparkles className="w-3 h-3 mr-1" /> Generate Package</>
-                          }
-                        </Button>
-                      </>
-                    )}
-                    {point.status === 'used' && point.package_id && (
-                      <span className="text-xs !flex items-center gap-1 text-blue-400">
-                        <Package className="w-3 h-3" /> Package Ready
-                      </span>
-                    )}
-                    {point.status === 'rejected' && (
-                      <button
-                        onClick={() => handleStatusChange(point, 'pending')}
-                        className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        Restore
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
+
+                  {approving === point.id && (
+                    <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'hsl(152 50% 15% / 0.1)' }}>
+                      <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(152 60% 50%)' }} />
+                      <p className="text-sm" style={{ color: 'hsl(152 60% 50%)' }}>Sending to Gemini for Story Summary & Fact Check...</p>
+                    </div>
+                  )}
+
+                  {generating === point.id && (
+                    <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'hsl(190 50% 15% / 0.1)' }}>
+                      <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(190 80% 55%)' }} />
+                      <p className="text-sm" style={{ color: 'hsl(190 80% 55%)' }}>Running multi-model synthesis (3 models → Chief Editor)...</p>
+                    </div>
+                  )}
                 </div>
-
-                {approving === point.id && (
-                  <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 !flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                    <p className="text-sm text-emerald-400">Sending to Gemini for Story Summary & Fact Check...</p>
-                  </div>
-                )}
-
-                {generating === point.id && (
-                  <div className="mt-3 p-3 rounded-lg bg-primary/10 !flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <p className="text-sm text-primary">Running multi-model synthesis (3 models → Chief Editor)...</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
