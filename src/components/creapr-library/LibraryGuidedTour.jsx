@@ -107,14 +107,15 @@ export default function LibraryGuidedTour({ steps, onClose, onComplete }) {
           <div
             className="absolute pointer-events-none"
             style={{
-              top: targetRect.top - 8,
-              left: targetRect.left - 8,
-              width: targetRect.width + 16,
-              height: targetRect.height + 16,
-              borderRadius: 14,
-              boxShadow: '0 0 0 9999px hsl(220 20% 4% / 0.85)',
-              border: '2px solid hsl(270 80% 60% / 0.5)',
+              top: targetRect.top - 12,
+              left: targetRect.left - 12,
+              width: targetRect.width + 24,
+              height: targetRect.height + 24,
+              borderRadius: 16,
+              boxShadow: '0 0 0 9999px hsl(220 20% 4% / 0.88), 0 0 24px hsl(270 80% 60% / 0.4), 0 0 48px hsl(270 80% 60% / 0.15)',
+              border: '3px solid hsl(270 80% 65%)',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              animation: 'pulse-glow 2s ease-in-out infinite',
             }}
           />
         ) : (

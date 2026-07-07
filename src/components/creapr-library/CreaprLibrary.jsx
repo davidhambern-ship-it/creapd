@@ -276,19 +276,21 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
       )}
 
       {/* Header — CREAPr identity */}
-      <div className="absolute top-4 left-4 flex items-center gap-3" style={{ zIndex: 15 }} data-tour="creapr-header">
+      <div className="absolute top-4 left-4 flex items-center gap-3 p-3 rounded-xl" style={{ zIndex: 15, background: 'hsl(28 20% 10% / 0.7)', backdropFilter: 'blur(12px)', border: '1px solid hsl(35 22% 22% / 0.4)', boxShadow: '0 4px 16px hsl(0 0% 0% / 0.3)' }} data-tour="creapr-header">
         <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${thinking ? 'animate-pulse' : ''}`}
+          className={`w-11 h-11 rounded-lg flex items-center justify-center transition-all ${thinking ? 'animate-pulse' : ''}`}
           style={{
-            background: thinking ? 'hsl(38 45% 38% / 0.2)' : 'hsl(35 22% 12% / 0.5)',
-            border: `1px solid ${thinking ? 'hsl(38 45% 42% / 0.4)' : 'hsl(35 18% 24% / 0.3)'}`,
+            background: thinking ? 'hsl(38 45% 38% / 0.25)' : 'hsl(35 25% 15% / 0.6)',
+            border: `1px solid ${thinking ? 'hsl(38 45% 45% / 0.5)' : 'hsl(35 22% 28% / 0.4)'}`,
+            boxShadow: thinking ? '0 0 16px hsl(38 50% 45% / 0.2)' : 'none',
           }}
         >
-          <span className="text-sm font-mono font-bold" style={{ color: 'hsl(38 50% 55%)' }}>Cr</span>
+          <span className="text-base font-mono font-bold" style={{ color: 'hsl(38 55% 58%)' }}>Cr</span>
         </div>
         <div>
-          <h3 className="font-heading font-semibold text-sm" style={{ color: 'hsl(35 18% 88%)' }}>CREAPr</h3>
-          <p className="text-xs" style={{ color: 'hsl(40 22% 50%)', fontFamily: 'Georgia, serif' }}>
+          <h3 className="font-heading font-semibold text-base" style={{ color: 'hsl(35 20% 90%)' }}>CREAPr</h3>
+          <p className="text-xs flex items-center gap-1.5" style={{ color: 'hsl(40 25% 52%)', fontFamily: 'Georgia, serif' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: thinking ? 'hsl(38 55% 52%)' : 'hsl(152 45% 50%)', boxShadow: '0 0 6px currentColor' }} />
             {thinking ? 'Searching the stacks...' : 'Library Online'}
           </p>
         </div>
