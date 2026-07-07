@@ -73,7 +73,7 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
       <div
         className="relative mx-4 mb-4 rounded-lg overflow-hidden"
         style={{
-          height: '80px',
+          height: '160px',
           background: 'hsl(190 30% 4% / 0.35)',
           border: '1px solid hsl(190 40% 50% / 0.12)',
           boxShadow: 'inset 0 2px 8px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
