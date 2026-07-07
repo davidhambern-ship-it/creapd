@@ -1415,7 +1415,7 @@
   100% { transform: translateY(-50%); }
 }
 .cabinet-screen-track {
-  animation: cabinet-screen-scroll 12s linear infinite;
+  animation: cabinet-screen-scroll 45s linear infinite;
 }
 .cabinet-screen-container:hover .cabinet-screen-track {
   animation-play-state: paused;
