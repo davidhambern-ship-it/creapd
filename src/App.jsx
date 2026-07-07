@@ -126,6 +126,7 @@ import FoundationSeeder from '@/pages/admin/FoundationSeeder';
 import SourceManagementCenter from '@/pages/admin/SourceManagementCenter';
 import HandlerRegistry from '@/pages/admin/HandlerRegistry';
 import CreapSettings from '@/pages/admin/CreapSettings';
+import ControllerDashboard from '@/components/creapd/ControllerDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -294,6 +295,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/source-management-center" element={<SourceManagementCenter />} />
         <Route path="/admin/handler-registry" element={<HandlerRegistry />} />
         <Route path="/admin/creap-settings" element={<CreapSettings />} />
+        <Route path="/admin/controller-dashboard" element={<ControllerDashboard />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
