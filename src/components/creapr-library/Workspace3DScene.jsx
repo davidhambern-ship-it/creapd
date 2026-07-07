@@ -1,6 +1,5 @@
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 const BOOK_COLORS = [
@@ -38,7 +37,6 @@ function ShelfRow({ y, z, count, startIndex, flip = false }) {
       {books.map((b) => (
         <Book key={b.key} position={[b.x, 0, 0]} height={b.h} color={b.color} width={b.w} />
       ))}
-      {/* Shelf plank */}
       <mesh position={[0, -0.05, 0]} receiveShadow>
         <boxGeometry args={[8.5, 0.12, 0.6]} />
         <meshStandardMaterial color="#3d2e1e" roughness={0.9} />
@@ -64,7 +62,6 @@ function BookshelfWall({ side = 'left' }) {
           flip={isLeft}
         />
       ))}
-      {/* Vertical side panel */}
       <mesh position={[0, 2.5, 0]}>
         <boxGeometry args={[8.5, 8, 0.15]} />
         <meshStandardMaterial color="#2a1f14" roughness={0.95} />
@@ -144,6 +141,22 @@ function DeskLamp({ intensity }) {
   );
 }
 
+function FloatingOrb({ position, color, emissive, emissiveIntensity, opacity, speed }) {
+  const ref = useRef();
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const t = clock.elapsedTime;
+    ref.current.position.y = position[1] + Math.sin(t * speed) * 0.4;
+    ref.current.position.x = position[0] + Math.cos(t * speed * 0.7) * 0.2;
+  });
+  return (
+    <mesh ref={ref} position={position}>
+      <sphereGeometry args={[position[2] === -2 ? 0.3 : 0.25, 16, 16]} />
+      <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={emissiveIntensity} transparent opacity={opacity} />
+    </mesh>
+  );
+}
+
 function Rig({ children }) {
   const group = useRef();
   useFrame(({ pointer }) => {
@@ -166,11 +179,10 @@ export default function Workspace3DScene({ intensity = 'calm' }) {
     <Canvas
       shadows
       dpr={[1, 1.5]}
+      camera={{ position: [0, 0.5, 8], fov: 50 }}
       gl={{ antialias: true, alpha: true }}
       style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #0e0a06 0%, #1a1208 50%, #0a0804 100%)' }}
     >
-      <PerspectiveCamera makeDefault position={[0, 0.5, 8]} fov={50} />
-
       <fog attach="fog" args={['#0a0804', 8, 22]} />
 
       <ambientLight intensity={0.15} color="#4a3520" />
@@ -191,18 +203,8 @@ export default function Workspace3DScene({ intensity = 'calm' }) {
         <DeskLamp intensity={lampIntensity} />
 
         {/* Floating ambient orbs */}
-        <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.8}>
-          <mesh position={[-2, 2.5, -2]}>
-            <sphereGeometry args={[0.3, 16, 16]} />
-            <meshStandardMaterial color="#ffb060" emissive="#ff9040" emissiveIntensity={0.6} transparent opacity={0.3} />
-          </mesh>
-        </Float>
-        <Float speed={1.2} rotationIntensity={0.2} floatIntensity={0.6}>
-          <mesh position={[2.5, 2, -1.5]}>
-            <sphereGeometry args={[0.25, 16, 16]} />
-            <meshStandardMaterial color="#ffa050" emissive="#ff8030" emissiveIntensity={0.5} transparent opacity={0.25} />
-          </mesh>
-        </Float>
+        <FloatingOrb position={[-2, 2.5, -2]} color="#ffb060" emissive="#ff9040" emissiveIntensity={0.6} opacity={0.3} speed={1.5} />
+        <FloatingOrb position={[2.5, 2, -1.5]} color="#ffa050" emissive="#ff8030" emissiveIntensity={0.5} opacity={0.25} speed={1.2} />
       </Rig>
 
       <CeilingLight position={[-2, 3.5, 0]} intensity={lightIntensity} />
