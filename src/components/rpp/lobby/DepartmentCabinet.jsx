@@ -66,7 +66,7 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
       )}
 
       {/* Header — title only */}
-      <div className="p-4 pb-2">
+      <div className="p-4 pb-2 text-center">
         <h3 className="font-heading font-semibold text-sm text-white">{dept.name}</h3>
       </div>
 
@@ -86,7 +86,7 @@ export default function DepartmentCabinet({ dept, status, count, recommended, in
         <div className="absolute bottom-0 left-0 right-0 h-4 z-10 pointer-events-none"
           style={{ background: 'linear-gradient(0deg, transparent, transparent)' }} />
 
-        <div className="cabinet-screen-track py-2">
+        <div className="cabinet-screen-track py-2 text-center">
           {[...scrollText, ...scrollText].map((block, i) => (
             <div key={i} className="px-3 pb-3">
               <p className="text-[11px] leading-relaxed text-muted-foreground/80">{block.title}</p>
