@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
 import { base44 } from '@/api/base44Client';
@@ -48,9 +48,7 @@ export default function RPPLobby() {
   const navigate = useNavigate();
   const researchData = useResearchProduction();
   const { config, topics, points, packages, dossiers, loading, refresh } = researchData;
-  const { setCreaprMessage } = useOutletContext() || {};
   const [userName, setUserName] = useState('');
-  const greetingSentRef = useRef(false);
 
   const researchingTopics = topics.filter(t => t.status === 'researching');
   const researchedTopics = topics.filter(t => t.status === 'researched' || t.status === 'in_review');
@@ -112,12 +110,6 @@ export default function RPPLobby() {
   useEffect(() => {
     base44.auth.me().then(u => { if (u?.full_name) setUserName(u.full_name.split(' ')[0]); }).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (greetingSentRef.current || !setCreaprMessage || loading) return;
-    greetingSentRef.current = true;
-    setCreaprMessage(recommendation);
-  }, [setCreaprMessage, loading, recommendation]);
 
   if (loading) {
     return (
