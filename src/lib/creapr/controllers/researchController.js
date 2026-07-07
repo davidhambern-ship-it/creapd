@@ -38,8 +38,26 @@ export async function handleDepartmentRequest({
 
   const researchDepth = projectState?.research_depth || 'standard';
 
+  // Fire the deep research pipeline (fire-and-forget — runs in background)
+  try {
+    await base44.functions.invoke('deepResearchV2', {
+      topic_id: topicId,
+      research_depth: researchDepth,
+    });
+  } catch (err) {
+    return {
+      message_to_user: `I tried to launch the research pipeline but something went wrong: ${err.message}. You can retry from the Research Manager.`,
+      department_result: { topic_id: topicId, status: 'failed', error: err.message },
+      workflow_updates: {},
+      ui_commands: [{ type: 'navigate_department', target: 'Research' }],
+      events: [{ type: 'research_failed', topic_id: topicId, error: err.message, timestamp: new Date().toISOString() }],
+      next_recommended_department: 'Research',
+      requires_user_approval: false,
+    };
+  }
+
   return {
-    message_to_user: `Researching now. I'll coordinate discovery, organization, and critical analysis on this topic. Check the Research Manager for live progress.`,
+    message_to_user: `Researching now. I've kicked off the deep research pipeline — discovery, organization, and critical analysis are running. Check the Research Manager for live progress.`,
     department_result: {
       topic_id: topicId,
       research_depth: researchDepth,

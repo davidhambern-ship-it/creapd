@@ -324,7 +324,7 @@ export async function handleDepartmentRequest({
     _userName: producer?.full_name,
   };
 
-  const existingAssignment = projectState?.assignment || {};
+  const existingAssignment = context?.assignment || projectState?.assignment || {};
 
   try {
     const result = await processProducerInput(
@@ -347,6 +347,8 @@ export async function handleDepartmentRequest({
         featured_books: result.featured_books,
         next_question: result.next_question,
         assignment: result.assignment,
+        completion_confidence: result.completion_confidence,
+        assignment_update: result.assignment_update,
       },
       workflow_updates: result.assignment_update
         ? { assignment: { ...existingAssignment, ...result.assignment_update } }

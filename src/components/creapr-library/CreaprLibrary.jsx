@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
-import { generateGreeting, processProducerInput, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
+import { generateGreeting, buildResearchTopicData } from '@/lib/creapr/controllers/topicsController';
+import { runCreaprBrain } from '@/lib/creapr/creaprBrain';
 import LibraryAmbience from './LibraryAmbience';
 import LibrarySubtitle from './LibrarySubtitle';
 import LibraryShelves from './LibraryShelves';
@@ -155,20 +156,28 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     conversationHistoryRef.current.push({ role: 'user', content: userMessage });
 
     setThinking(true);
-    const enhancedConfig = { ...config, _userName: userNameRef.current };
-    const result = await processProducerInput(
-      input,
-      conversationHistoryRef.current,
-      assignmentRef.current,
-      creapSettingsRef.current,
-      enhancedConfig,
-      selectedCategory
-    );
+    const brainResponse = await runCreaprBrain({
+      userMessage: selectedCategory || input,
+      activeProductionProfile: 'Research',
+      activeDepartment: 'Topics',
+      activeProjectId: config?.id,
+      conversationHistory: conversationHistoryRef.current,
+      pageContext: {
+        route: '/research/topics',
+        assignment: assignmentRef.current,
+        selectedCategory,
+      },
+      creapMode: 'hybrid',
+      directDelegate: true,
+    });
     setThinking(false);
 
     if (!isMountedRef.current) return;
 
-    conversationHistoryRef.current.push({ role: 'assistant', content: result.spoken_lines.join(' ') });
+    const result = brainResponse.department_result || {};
+    const spokenLines = result.spoken_lines || (brainResponse.message_to_user ? [brainResponse.message_to_user] : ["Let me try that again."]);
+
+    conversationHistoryRef.current.push({ role: 'assistant', content: spokenLines.join(' ') });
 
     if (result.assignment_update) {
       assignmentRef.current = { ...assignmentRef.current, ...result.assignment_update };
@@ -177,7 +186,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
     completionRef.current = result.completion_confidence || completionRef.current;
 
     if (result.phase === 'assembling' || result.phase === 'reveal' || (result.completion_confidence >= 0.8 && result.assignment)) {
-      speakLines(result.spoken_lines, () => {
+      speakLines(spokenLines, () => {
         if (!isMountedRef.current) return;
         setStage('reveal');
         setDeskPhase('assembling');
@@ -200,7 +209,7 @@ export default function CreaprLibrary({ config, onClose, embedded = false }) {
 
     const hasShelves = (result.categories?.length > 0) || (result.featured_books?.length > 0);
 
-    speakLines(result.spoken_lines, () => {
+    speakLines(spokenLines, () => {
       if (!isMountedRef.current) return;
       if (hasShelves) {
         if (result.categories) {

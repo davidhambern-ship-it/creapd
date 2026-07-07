@@ -3,10 +3,10 @@
  *
  * Handles requests to create scripts, prompts, media concepts,
  * and production assets from approved dossier content.
- *
- * Future-ready placeholder: production package generation and
- * media synthesis will be orchestrated here.
+ * Invokes the generateProductionPackage backend function.
  */
+
+import { base44 } from '@/api/base44Client';
 
 export async function handleDepartmentRequest({
   producer,
@@ -36,15 +36,44 @@ export async function handleDepartmentRequest({
     };
   }
 
+  // Generate production packages for approved points (fire-and-forget)
+  let generatedCount = 0;
+  let errors = [];
+
+  for (const point of approvedPoints.slice(0, 10)) {
+    try {
+      await base44.functions.invoke('generateProductionPackage', {
+        source_entity_type: 'ResearchPoint',
+        source_entity_id: point.id,
+      });
+      generatedCount++;
+    } catch (err) {
+      errors.push({ point_id: point.id, error: err.message });
+    }
+  }
+
+  const message = errors.length > 0
+    ? `Generated ${generatedCount} of ${approvedPoints.length} packages. ${errors.length} failed. Check the Development Studio for details.`
+    : `${approvedPoints.length} approved points ready. I've generated ${generatedCount} production packages — scripts, talking points, and visual concepts. Head to the Development Studio to review.`;
+
   return {
-    message_to_user: `${approvedPoints.length} approved points ready for development. I can generate production packages — scripts, talking points, and visual concepts. Head to the Development Studio.`,
+    message_to_user: message,
     department_result: {
       approved_points_count: approvedPoints.length,
-      status: 'ready',
+      packages_generated: generatedCount,
+      errors: errors,
+      status: errors.length > 0 ? 'partial' : 'ready',
     },
-    workflow_updates: {},
+    workflow_updates: { packages_generated: generatedCount },
     ui_commands: [{ type: 'navigate_department', target: 'Develop' }],
-    events: [],
+    events: [
+      {
+        type: 'packages_generated',
+        count: generatedCount,
+        errors: errors.length,
+        timestamp: new Date().toISOString(),
+      },
+    ],
     next_recommended_department: 'Develop',
     requires_user_approval: false,
   };

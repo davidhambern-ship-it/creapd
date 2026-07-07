@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, ChevronDown, BookOpen } from 'lucide-react';
 
-export default function RPPCreaprMessage({ messages = [], onSendMessage, onCollapse }) {
+export default function RPPCreaprMessage({ messages = [], onSendMessage, onCollapse, loading = false }) {
   const [input, setInput] = useState('');
   const [displayedText, setDisplayedText] = useState('');
   const messagesEndRef = useRef(null);
@@ -83,6 +83,19 @@ export default function RPPCreaprMessage({ messages = [], onSendMessage, onColla
             </div>
             <p className="text-sm text-muted-foreground">CREAPr is ready to assist.</p>
             <p className="text-xs text-muted-foreground/50 mt-1">Ask about your research or production.</p>
+          </div>
+        )}
+
+        {loading && messages[messages.length - 1]?.role === 'user' && (
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'hsl(190 60% 50% / 0.5)' }}>CREAPr</span>
+            <p className="text-sm leading-relaxed text-foreground/60">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground/40 animate-pulse" style={{ animationDelay: '0.4s' }} />
+              </span>
+            </p>
           </div>
         )}
 

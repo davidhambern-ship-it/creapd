@@ -318,6 +318,7 @@ export async function runCreaprBrain({
   conversationHistory = [],
   pageContext = {},
   creapMode = 'hybrid',
+  directDelegate = false,
 }) {
   const timestamp = new Date().toISOString();
   let logData = { timestamp, producerId, activeProductionProfile, activeDepartment };
@@ -338,31 +339,52 @@ export async function runCreaprBrain({
     logData.config_loaded = !!productionConfig;
 
     // Step 6: Active department already provided
-    // Step 7: Interpret intent
-    const prompt = _buildBrainPrompt({
-      userMessage,
-      producer,
-      showProfile,
-      productionConfig,
-      projectState,
-      activeDepartment,
-      conversationHistory,
-      pageContext,
-      creapMode,
-    });
+    // Step 7: Interpret intent (skip LLM call if directDelegate)
+    let llmResult;
 
-    const llmResult = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      model: creapSettings?.ai_model || 'gpt_5_mini',
-      add_context_from_internet: false,
-      response_json_schema: INTENT_SCHEMA,
-    });
+    if (directDelegate) {
+      // Skip intent interpretation — delegate directly to the active department's controller.
+      // This avoids an extra LLM call when the caller already knows which department should handle the request.
+      llmResult = {
+        message_to_user: '',
+        typing_style: 'normal',
+        intent: 'direct_delegate',
+        intent_confidence: 1.0,
+        active_department: activeDepartment,
+        next_action: 'delegate',
+        department_controller: activeDepartment,
+        requires_user_approval: false,
+        workflow_updates: {},
+        ui_commands: [],
+        events: [],
+        memory_updates: [],
+      };
+    } else {
+      const prompt = _buildBrainPrompt({
+        userMessage,
+        producer,
+        showProfile,
+        productionConfig,
+        projectState,
+        activeDepartment,
+        conversationHistory,
+        pageContext,
+        creapMode,
+      });
 
-    if (!llmResult) {
-      const fallback = _fallbackResponse(userMessage, new Error('No LLM response'), activeDepartment);
-      logData.error = 'no_llm_response';
-      _logBrainInteraction(logData);
-      return fallback;
+      llmResult = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        model: creapSettings?.ai_model || 'gpt_5_mini',
+        add_context_from_internet: false,
+        response_json_schema: INTENT_SCHEMA,
+      });
+
+      if (!llmResult) {
+        const fallback = _fallbackResponse(userMessage, new Error('No LLM response'), activeDepartment);
+        logData.error = 'no_llm_response';
+        _logBrainInteraction(logData);
+        return fallback;
+      }
     }
 
     // Step 8: Route to Department Controller if delegation is needed

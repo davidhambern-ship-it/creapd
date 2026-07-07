@@ -3,10 +3,10 @@
  *
  * Handles requests to assemble, export, review, or finalize
  * the complete production deliverable.
- *
- * Future-ready placeholder: final packet assembly and export
- * will be orchestrated here.
+ * Invokes the createExportJob backend function.
  */
+
+import { base44 } from '@/api/base44Client';
 
 export async function handleDepartmentRequest({
   producer,
@@ -49,15 +49,43 @@ export async function handleDepartmentRequest({
     };
   }
 
+  // Kick off the export job (fire-and-forget)
+  const packageIds = approvedPackages.map(p => p.id);
+  let exportStatus = 'initiated';
+  let exportError = null;
+
+  try {
+    await base44.functions.invoke('createExportJob', {
+      package_ids: packageIds,
+      format: 'json',
+    });
+  } catch (err) {
+    exportStatus = 'failed';
+    exportError = err.message;
+  }
+
+  const message = exportStatus === 'failed'
+    ? `I tried to assemble the final packet but something went wrong: ${exportError}. You can retry from the Assembly Office.`
+    : `${approvedPackages.length} approved package${approvedPackages.length > 1 ? 's' : ''} ready. I've kicked off the export job — the final Production Packet is being assembled. Head to the Assembly Office to download it.`;
+
   return {
-    message_to_user: `${approvedPackages.length} approved package${approvedPackages.length > 1 ? 's' : ''} ready. I can assemble the final Production Packet and prepare it for export. Head to the Assembly Office.`,
+    message_to_user: message,
     department_result: {
       approved_packages_count: approvedPackages.length,
-      status: 'ready',
+      export_status: exportStatus,
+      export_error: exportError,
+      status: exportStatus === 'failed' ? 'failed' : 'ready',
     },
-    workflow_updates: {},
+    workflow_updates: { export_status: exportStatus },
     ui_commands: [{ type: 'navigate_department', target: 'Packet' }],
-    events: [],
+    events: [
+      {
+        type: 'export_initiated',
+        package_count: approvedPackages.length,
+        status: exportStatus,
+        timestamp: new Date().toISOString(),
+      },
+    ],
     next_recommended_department: 'Packet',
     requires_user_approval: true,
   };
