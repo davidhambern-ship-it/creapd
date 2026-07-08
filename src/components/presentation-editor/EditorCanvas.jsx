@@ -5,6 +5,14 @@ import CanvasItem from './CanvasItem';
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
 
+function parseFonts(slide) {
+  try {
+    const meta = JSON.parse(slide?.slide_metadata || '{}');
+    return meta.fonts || {};
+  } catch {}
+  return {};
+}
+
 function parseBG(slide) {
   try {
     const bg = JSON.parse(slide?.background || '{}');
@@ -21,6 +29,7 @@ export default function EditorCanvas({
 }) {
   const previewMode = mode === 'preview';
   const sorted = [...(elements || [])].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
+  const fonts = parseFonts(slide);
 
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden">
@@ -56,7 +65,12 @@ export default function EditorCanvas({
             <div
               style={{
                 position: 'absolute', top: 40, left: 60, right: 60, zIndex: 1,
-                fontSize: '36px', fontWeight: 'bold', color: '#fff',
+                fontFamily: fonts.titleFont || 'Poppins, sans-serif',
+                fontSize: `${fonts.titleSize || 48}px`,
+                fontWeight: fonts.titleBold === false ? 'normal' : 'bold',
+                fontStyle: fonts.titleItalic ? 'italic' : 'normal',
+                color: fonts.titleColor || '#fff',
+                textAlign: fonts.titleAlign || 'left',
                 textShadow: '0 2px 8px rgba(0,0,0,0.5)',
                 cursor: previewMode ? 'default' : 'pointer',
               }}
@@ -70,7 +84,13 @@ export default function EditorCanvas({
             <div
               style={{
                 position: 'absolute', top: 120, left: 60, right: 60, zIndex: 1,
-                fontSize: '20px', color: '#e0e0e0', lineHeight: '1.5',
+                fontFamily: fonts.bodyFont || 'Inter, sans-serif',
+                fontSize: `${fonts.bodySize || 24}px`,
+                fontWeight: fonts.bodyBold ? 'bold' : 'normal',
+                fontStyle: fonts.bodyItalic ? 'italic' : 'normal',
+                color: fonts.bodyColor || '#e0e0e0',
+                textAlign: fonts.bodyAlign || 'left',
+                lineHeight: '1.5',
                 cursor: previewMode ? 'default' : 'pointer',
               }}
               onClick={() => !previewMode && onSelect('__body__')}

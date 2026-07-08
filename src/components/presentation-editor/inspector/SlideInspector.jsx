@@ -1,12 +1,60 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { InspectorShell, Group, Field, ColorField, SelectField, NumField, pj, IconBtn } from './shared';
+import { InspectorShell, Group, Field, ColorField, SelectField, NumField, SliderField, pj, IconBtn } from './shared';
+import { Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import {
   Trash2, Lock, Unlock, Copy, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const TRANSITIONS = ['fade', 'slide_left', 'slide_right', 'zoom', 'dissolve', 'none'];
 const SLIDE_TYPES = ['title_slide', 'content_slide', 'image_slide', 'video_slide', 'lower_third', 'full_screen', 'split_screen', 'section_divider', 'closing_slide', 'blank'];
+const FONTS = ['Inter', 'Poppins', 'Oswald', 'JetBrains Mono', 'Bebas Neue', 'Public Sans'];
+
+const ALIGN_OPTS = [
+  { value: 'left', icon: AlignLeft },
+  { value: 'center', icon: AlignCenter },
+  { value: 'right', icon: AlignRight },
+];
+
+function TextTypeControls({ label, prefix, font, setFont }) {
+  return (
+    <>
+      <div className="flex items-center gap-1 mt-1.5 mb-0.5">
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+        <div className="ml-auto flex gap-0.5">
+          <Button variant={font[`${prefix}Bold`] ? 'default' : 'outline'} size="icon"
+            className="w-6 h-6" onClick={() => setFont({ [`${prefix}Bold`]: !font[`${prefix}Bold`] })}>
+            <Bold className="w-3 h-3" />
+          </Button>
+          <Button variant={font[`${prefix}Italic`] ? 'default' : 'outline'} size="icon"
+            className="w-6 h-6" onClick={() => setFont({ [`${prefix}Italic`]: !font[`${prefix}Italic`] })}>
+            <Italic className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+      <Field label="Font Family">
+        <SelectField value={font[`${prefix}Font`] || 'Poppins'} options={FONTS}
+          onChange={(v) => setFont({ [`${prefix}Font`]: v })} />
+      </Field>
+      <SliderField label="Font Size" value={font[`${prefix}Size`] || (prefix === 'title' ? 48 : 24)}
+        min={8} max={120} onChange={(v) => setFont({ [`${prefix}Size`]: v })} />
+      <Field label="Text Color">
+        <ColorField value={font[`${prefix}Color`] || '#ffffff'}
+          onChange={(v) => setFont({ [`${prefix}Color`]: v })} />
+      </Field>
+      <Field label="Alignment">
+        <div className="flex gap-1">
+          {ALIGN_OPTS.map(o => (
+            <Button key={o.value} variant={(font[`${prefix}Align`] || 'left') === o.value ? 'default' : 'outline'}
+              size="sm" className="flex-1 h-7" onClick={() => setFont({ [`${prefix}Align`]: o.value })}>
+              <o.icon className="w-3.5 h-3.5" />
+            </Button>
+          ))}
+        </div>
+      </Field>
+    </>
+  );
+}
 
 export default function SlideInspector({
   slide, selectedId, onUpdate, onDuplicate, onDelete, onMoveForward, onMoveBackward,
@@ -20,6 +68,11 @@ export default function SlideInspector({
   const bg = pj(slide.background, {});
   const timing = pj(slide.timing, {});
   const refs = pj(slide.references, []);
+  const fonts = pj(slide.slide_metadata, {}).fonts || {};
+
+  const setFonts = (patch) => onUpdate({
+    slide_metadata: JSON.stringify({ ...pj(slide.slide_metadata, {}), fonts: { ...fonts, ...patch } }),
+  });
 
   return (
     <InspectorShell
@@ -45,6 +98,12 @@ export default function SlideInspector({
             onChange={(e) => onUpdate({ body_text: e.target.value })}
             className={`w-full text-xs bg-background border rounded-md px-2 py-1.5 ${selectedId === '__body__' ? 'border-primary ring-1 ring-primary' : 'border-border'}`} />
         </Field>
+      </Group>
+
+      <Group value="typography" title="Typography">
+        <TextTypeControls label="Title" prefix="title" font={fonts} setFont={setFonts} />
+        <div className="border-t border-border/50 my-2" />
+        <TextTypeControls label="Body" prefix="body" font={fonts} setFont={setFonts} />
       </Group>
 
       <Group value="layout" title="Layout">
