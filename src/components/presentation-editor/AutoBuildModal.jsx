@@ -8,6 +8,7 @@ import {
   RotateCcw, ArrowRight, Wand2, Gamepad2, X,
 } from 'lucide-react';
 import WordSearch from '@/components/games/WordSearch';
+import Solitaire from '@/components/games/Solitaire';
 
 export default function AutoBuildModal({
   isOpen, onClose,
@@ -27,6 +28,7 @@ export default function AutoBuildModal({
   // ── CREAPr Game Invitation ──
   const [showGameInvite, setShowGameInvite] = useState(false);
   const [showGame, setShowGame] = useState(false);
+  const [selectedGame, setSelectedGame] = useState(null);
 
   // Show the invitation after ~5 seconds of running (during research/develop stages)
   useEffect(() => {
@@ -42,6 +44,7 @@ export default function AutoBuildModal({
     if (!running) {
       setShowGame(false);
       setShowGameInvite(false);
+      setSelectedGame(null);
     }
   }, [running]);
 
@@ -250,13 +253,20 @@ export default function AutoBuildModal({
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Want to play a word search while CREAPr cooks your presentation?
                   </p>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <Button
                       size="sm"
                       className="gap-1.5 text-xs h-7"
-                      onClick={() => { setShowGame(true); setShowGameInvite(false); }}
+                      onClick={() => { setSelectedGame('wordsearch'); setShowGame(true); setShowGameInvite(false); }}
                     >
-                      <Gamepad2 className="w-3.5 h-3.5" /> Let's Play!
+                      🧩 Word Search
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="gap-1.5 text-xs h-7"
+                      onClick={() => { setSelectedGame('solitaire'); setShowGame(true); setShowGameInvite(false); }}
+                    >
+                      ♠ Solitaire
                     </Button>
                     <Button
                       size="sm"
@@ -271,21 +281,37 @@ export default function AutoBuildModal({
               </div>
             )}
 
-            {/* Word Search Game */}
+            {/* Game Panel */}
             {running && !error && showGame && (
               <div className="rounded-lg border border-berna-purple/20 bg-background/50 overflow-hidden animate-scale-in">
                 <div className="flex items-center justify-between px-3 py-1.5 bg-muted/20 border-b border-border">
                   <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                     CREAPr Arcade · Building in background...
                   </span>
-                  <button
-                    onClick={() => setShowGame(false)}
-                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setSelectedGame('wordsearch')}
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${selectedGame === 'wordsearch' ? 'bg-berna-purple/20 text-berna-purple' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      🧩
+                    </button>
+                    <button
+                      onClick={() => setSelectedGame('solitaire')}
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${selectedGame === 'solitaire' ? 'bg-berna-purple/20 text-berna-purple' : 'text-muted-foreground hover:text-foreground'}`}
+                    >
+                      ♠
+                    </button>
+                    <button
+                      onClick={() => setShowGame(false)}
+                      className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ml-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
-                <WordSearch onClose={() => setShowGame(false)} />
+                {selectedGame === 'solitaire'
+                  ? <Solitaire onClose={() => setShowGame(false)} />
+                  : <WordSearch onClose={() => setShowGame(false)} />}
               </div>
             )}
           </div>
