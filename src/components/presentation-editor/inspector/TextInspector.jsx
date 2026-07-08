@@ -6,7 +6,14 @@ import {
   Copy, Scissors, Clipboard, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Wand2,
 } from 'lucide-react';
 
-const FONTS = ['Inter', 'Poppins', 'Oswald', 'JetBrains Mono', 'Bebas Neue'];
+const FONTS = [
+  'Inter', 'Poppins', 'Oswald', 'Bebas Neue', 'Public Sans', 'JetBrains Mono',
+  'Roboto', 'Montserrat', 'Lato', 'Open Sans', 'Noto Sans', 'DM Sans',
+  'Playfair Display', 'Merriweather', 'Raleway',
+  'Anton', 'Archivo Black', 'Righteous', 'Russo One',
+  'Teko', 'Saira', 'Archivo',
+  'CreapdCustom', 'Robotica', 'CreapConvFont', 'HollywoodDrive',
+];
 const AI_ACTIONS = [
   { label: 'Rewrite', action: 'rewrite' },
   { label: 'Summarize', action: 'summarize' },

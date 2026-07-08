@@ -8,7 +8,14 @@ import {
 
 const TRANSITIONS = ['fade', 'slide_left', 'slide_right', 'zoom', 'dissolve', 'none'];
 const SLIDE_TYPES = ['title_slide', 'content_slide', 'image_slide', 'video_slide', 'lower_third', 'full_screen', 'split_screen', 'section_divider', 'closing_slide', 'blank'];
-const FONTS = ['Inter', 'Poppins', 'Oswald', 'JetBrains Mono', 'Bebas Neue', 'Public Sans'];
+const FONTS = [
+  'Inter', 'Poppins', 'Oswald', 'Bebas Neue', 'Public Sans', 'JetBrains Mono',
+  'Roboto', 'Montserrat', 'Lato', 'Open Sans', 'Noto Sans', 'DM Sans',
+  'Playfair Display', 'Merriweather', 'Raleway',
+  'Anton', 'Archivo Black', 'Righteous', 'Russo One',
+  'Teko', 'Saira', 'Archivo',
+  'CreapdCustom', 'Robotica', 'CreapConvFont', 'HollywoodDrive',
+];
 
 const ALIGN_OPTS = [
   { value: 'left', icon: AlignLeft },
