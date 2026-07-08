@@ -1,15 +1,18 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { usePresentationEditor } from '@/hooks/usePresentationEditor';
+import { useAutoBuild } from '@/hooks/useAutoBuild';
 import EditorTopBar from '@/components/presentation-editor/EditorTopBar';
 import SlideRail from '@/components/presentation-editor/SlideRail';
 import EditorCanvas from '@/components/presentation-editor/EditorCanvas';
 import PropertiesPanel from '@/components/presentation-editor/PropertiesPanel';
 import TransportBar from '@/components/presentation-editor/TransportBar';
+import AutoBuildModal from '@/components/presentation-editor/AutoBuildModal';
 
 export default function PresentationEditor() {
   const { id } = useParams();
   const ed = usePresentationEditor(id);
+  const autoBuild = useAutoBuild();
 
   const handleZoom = (action) => {
     if (action === 'in') ed.setZoom(z => Math.min(z + 0.1, 2));
@@ -65,6 +68,7 @@ export default function PresentationEditor() {
         onRegenerateElement={ed.regenerateElement}
         onRunQA={ed.runQA}
         onAddElement={ed.addElement}
+        onAutoBuild={autoBuild.open}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -136,6 +140,25 @@ export default function PresentationEditor() {
           onZoom={ed.setZoom}
         />
       </div>
+
+      <AutoBuildModal
+        isOpen={autoBuild.isOpen}
+        onClose={autoBuild.close}
+        prompt={autoBuild.prompt}
+        onPromptChange={autoBuild.setPrompt}
+        stages={autoBuild.stages}
+        stageStatuses={autoBuild.stageStatuses}
+        detail={autoBuild.detail}
+        error={autoBuild.error}
+        failedStage={autoBuild.failedStage}
+        onRetry={autoBuild.retry}
+        running={autoBuild.running}
+        needsConfirmation={autoBuild.needsConfirmation}
+        clarificationQuestion={autoBuild.clarificationQuestion}
+        inferredParams={autoBuild.inferredParams}
+        onStart={autoBuild.start}
+        onConfirmProceed={autoBuild.confirmAndProceed}
+      />
     </div>
   );
 }

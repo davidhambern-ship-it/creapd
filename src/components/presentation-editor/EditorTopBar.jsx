@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown, Edit3, Eye,
-  AlignLeft, Captions,
+  AlignLeft, Captions, Wand2,
 } from 'lucide-react';
 
 const ADD_OPTIONS = [
@@ -20,6 +20,7 @@ export default function EditorTopBar({
   saving, dirty, canUndo, canRedo, hasSelection, title, mode,
   onSave, onUndo, onRedo, onToggleMode, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
+  onAutoBuild,
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -84,6 +85,17 @@ export default function EditorTopBar({
       )}
 
       <div className="flex-1" />
+
+      {onAutoBuild && (
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onAutoBuild}
+          className="gap-1.5 bg-gradient-to-r from-berna-purple to-berna-orange text-white hover:opacity-90"
+        >
+          <Wand2 className="w-4 h-4" /> Auto-Build
+        </Button>
+      )}
 
       <div className="relative">
         <Button variant="ghost" size="sm" onClick={() => setExportOpen(!exportOpen)} className="gap-1.5">
