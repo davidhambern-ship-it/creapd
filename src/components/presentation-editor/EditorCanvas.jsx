@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import CanvasItem from './CanvasItem';
 
@@ -30,6 +30,25 @@ export default function EditorCanvas({
   const previewMode = mode === 'preview';
   const sorted = [...(elements || [])].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
   const fonts = parseFonts(slide);
+  const scrollRef = useRef(null);
+
+  // Auto-fit canvas to container on mount and resize
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const fit = () => {
+      const pad = 64;
+      const availW = el.clientWidth - pad;
+      const availH = el.clientHeight - pad;
+      if (availW <= 0 || availH <= 0) return;
+      const fitZoom = Math.min(availW / CANVAS_W, availH / CANVAS_H, 1);
+      onZoom(fitZoom);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []); // eslint-disable-line
 
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden">
@@ -47,77 +66,84 @@ export default function EditorCanvas({
       </div>
 
       <div
-        className="flex-1 overflow-auto flex items-start justify-center p-8"
+        ref={scrollRef}
+        className="flex-1 overflow-auto flex items-center justify-center p-8"
         onClick={() => !previewMode && onSelect(null)}
       >
+        {/* Wrapper matches scaled dimensions so layout box is correct */}
         <div
-          className="relative flex-shrink-0 shadow-2xl rounded-sm overflow-hidden"
-          style={{
-            width: CANVAS_W, height: CANVAS_H,
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top center',
-            ...parseBG(slide),
-          }}
+          style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom }}
+          className="flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Built-in title/body */}
-          {slide?.title && (
-            <div
-              style={{
-                position: 'absolute', top: 40, left: 60, right: 60, zIndex: 1,
-                fontFamily: fonts.titleFont || 'Poppins, sans-serif',
-                fontSize: `${fonts.titleSize || 48}px`,
-                fontWeight: fonts.titleBold === false ? 'normal' : 'bold',
-                fontStyle: fonts.titleItalic ? 'italic' : 'normal',
-                color: fonts.titleColor || '#fff',
-                textAlign: fonts.titleAlign || 'left',
-                textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                cursor: previewMode ? 'default' : 'pointer',
-              }}
-              onClick={() => !previewMode && onSelect('__title__')}
-              className={selectedId === '__title__' ? 'ring-2 ring-primary' : ''}
-            >
-              {slide.title}
-            </div>
-          )}
-          {slide?.body_text && (
-            <div
-              style={{
-                position: 'absolute', top: 120, left: 60, right: 60, zIndex: 1,
-                fontFamily: fonts.bodyFont || 'Inter, sans-serif',
-                fontSize: `${fonts.bodySize || 24}px`,
-                fontWeight: fonts.bodyBold ? 'bold' : 'normal',
-                fontStyle: fonts.bodyItalic ? 'italic' : 'normal',
-                color: fonts.bodyColor || '#e0e0e0',
-                textAlign: fonts.bodyAlign || 'left',
-                lineHeight: '1.5',
-                cursor: previewMode ? 'default' : 'pointer',
-              }}
-              onClick={() => !previewMode && onSelect('__body__')}
-              className={`whitespace-pre-wrap ${selectedId === '__body__' ? 'ring-2 ring-primary' : ''}`}
-            >
-              {slide.body_text}
-            </div>
-          )}
+          <div
+            className="relative shadow-2xl rounded-sm overflow-hidden"
+            style={{
+              width: CANVAS_W, height: CANVAS_H,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
+              ...parseBG(slide),
+            }}
+          >
+            {/* Built-in title/body */}
+            {slide?.title && (
+              <div
+                style={{
+                  position: 'absolute', top: 40, left: 60, right: 60, zIndex: 1,
+                  fontFamily: fonts.titleFont || 'Poppins, sans-serif',
+                  fontSize: `${fonts.titleSize || 48}px`,
+                  fontWeight: fonts.titleBold === false ? 'normal' : 'bold',
+                  fontStyle: fonts.titleItalic ? 'italic' : 'normal',
+                  color: fonts.titleColor || '#fff',
+                  textAlign: fonts.titleAlign || 'left',
+                  textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                  cursor: previewMode ? 'default' : 'pointer',
+                }}
+                onClick={() => !previewMode && onSelect('__title__')}
+                className={selectedId === '__title__' ? 'ring-2 ring-primary' : ''}
+              >
+                {slide.title}
+              </div>
+            )}
+            {slide?.body_text && (
+              <div
+                style={{
+                  position: 'absolute', top: 120, left: 60, right: 60, zIndex: 1,
+                  fontFamily: fonts.bodyFont || 'Inter, sans-serif',
+                  fontSize: `${fonts.bodySize || 24}px`,
+                  fontWeight: fonts.bodyBold ? 'bold' : 'normal',
+                  fontStyle: fonts.bodyItalic ? 'italic' : 'normal',
+                  color: fonts.bodyColor || '#e0e0e0',
+                  textAlign: fonts.bodyAlign || 'left',
+                  lineHeight: '1.5',
+                  cursor: previewMode ? 'default' : 'pointer',
+                }}
+                onClick={() => !previewMode && onSelect('__body__')}
+                className={`whitespace-pre-wrap ${selectedId === '__body__' ? 'ring-2 ring-primary' : ''}`}
+              >
+                {slide.body_text}
+              </div>
+            )}
 
-          {sorted.map(el => (
-            <CanvasItem
-              key={el.id}
-              element={el}
-              isSelected={selectedId === el.id}
-              zoom={zoom}
-              previewMode={previewMode}
-              onSelect={onSelect}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-            />
-          ))}
+            {sorted.map(el => (
+              <CanvasItem
+                key={el.id}
+                element={el}
+                isSelected={selectedId === el.id}
+                zoom={zoom}
+                previewMode={previewMode}
+                onSelect={onSelect}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+              />
+            ))}
 
-          {!slide?.title && !slide?.body_text && sorted.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm">
-              {previewMode ? 'No content' : 'Use "Add" in the toolbar to insert elements'}
-            </div>
-          )}
+            {!slide?.title && !slide?.body_text && sorted.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm">
+                {previewMode ? 'No content' : 'Use "Add" in the toolbar to insert elements'}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ export default function PresentationEditor() {
   const autoBuild = useAutoBuild();
 
   const handleZoom = (action) => {
+    if (typeof action === 'number') { ed.setZoom(action); return; }
     if (action === 'in') ed.setZoom(z => Math.min(z + 0.1, 2));
     if (action === 'out') ed.setZoom(z => Math.max(z - 0.1, 0.2));
     if (action === 'fit') ed.setZoom(0.5);
