@@ -4,8 +4,31 @@ import { Trash2, Lock, Unlock } from 'lucide-react';
 const HANDLES = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
 const TEXT_TYPES = ['text', 'lower_third', 'caption'];
 
+const ANIM_CLASS_MAP = {
+  fade_in: 'animate-fade-in',
+  fade: 'animate-fade-in',
+  slide_in: 'animate-slide-in',
+  slide_left: 'animate-slide-in',
+  slide: 'animate-slide-in',
+  zoom_in: 'animate-zoom-in',
+  zoom: 'animate-zoom-in',
+  dissolve_in: 'animate-dissolve-in',
+  dissolve: 'animate-dissolve-in',
+};
+
 function parseStyle(el) {
   try { return JSON.parse(el.style || '{}'); } catch { return {}; }
+}
+
+function getAnimStyle(el) {
+  try {
+    const anim = JSON.parse(el.animation || '{}');
+    if (!anim.type) return null;
+    const cls = ANIM_CLASS_MAP[anim.type] || ANIM_CLASS_MAP[anim.type.toLowerCase()];
+    if (!cls) return null;
+    const delay = anim.delay_ms ? `${anim.delay_ms}ms` : '0ms';
+    return { cls, delay };
+  } catch { return null; }
 }
 
 export default function CanvasItem({ element, isSelected, zoom, previewMode, onSelect, onUpdate, onDelete }) {
@@ -15,6 +38,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, onS
   if (!element.visible && !isSelected) return null;
 
   const style = parseStyle(element);
+  const anim = getAnimStyle(element);
 
   const startDrag = (e, action, handle) => {
     if (element.locked || editing || previewMode) return;
@@ -109,12 +133,12 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, onS
 
   return (
     <div
-      style={elStyle}
+      style={anim ? { ...elStyle, animationDelay: anim.delay } : elStyle}
       onMouseDown={(e) => startDrag(e, 'drag')}
       onDoubleClick={() => {
         if (TEXT_TYPES.includes(element.type) && !element.locked && !previewMode) setEditing(true);
       }}
-      className={isSelected && !previewMode ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/40'}
+      className={`${isSelected && !previewMode ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/40'} ${anim?.cls || ''}`}
     >
       {editing ? (
         <textarea
