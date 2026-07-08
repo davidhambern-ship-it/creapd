@@ -4,7 +4,7 @@ import { Field } from './shared';
 import { Wand2, Loader2, FileCode } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-export default function SvgGenerator({ onInsert }) {
+export default function SvgGenerator({ colorScheme, onInsert }) {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -15,8 +15,12 @@ export default function SvgGenerator({ onInsert }) {
     setLoading(true);
     setError(null);
     try {
+      const colors = colorScheme
+        ? ` Color scheme to match: background ${colorScheme.background || '#0a0a0a'}, primary accent ${colorScheme.titleColor || '#ffffff'}, secondary text ${colorScheme.bodyColor || '#e0e0e0'}. Use these colors for the illustration so it blends with the slide.`
+        : '';
+
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `Generate a clean, scalable SVG illustration for the following request. Output ONLY valid SVG markup — no markdown, no code fences, no explanation. Use proper viewBox, semantic groups, and clean paths. Keep it self-contained (inline styles or attributes, no external refs). Request: "${prompt.trim()}"`,
+        prompt: `Generate a clean, scalable SVG illustration for the following request. Output ONLY valid SVG markup — no markdown, no code fences, no explanation. Use proper viewBox, semantic groups, and clean paths. Keep it self-contained (inline styles or attributes, no external refs).${colors} Request: "${prompt.trim()}"`,
         response_json_schema: {
           type: 'object',
           properties: {

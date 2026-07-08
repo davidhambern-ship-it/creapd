@@ -40,7 +40,7 @@ export default function PropertiesPanel({
         onDuplicate={onDuplicateElement} onCopy={onCopy} onCut={onCut} onPaste={onPaste} />;
     }
     if (selectedElement.type === 'image') {
-      return <ImageInspector {...props} onRegenerate={onRegenerateElement} />;
+      return <ImageInspector {...props} slide={slide} onRegenerate={onRegenerateElement} />;
     }
     if (selectedElement.type === 'shape') {
       return <ShapeInspector {...props} />;

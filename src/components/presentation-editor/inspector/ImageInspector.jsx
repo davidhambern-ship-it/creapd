@@ -6,9 +6,17 @@ import {
   Trash2, Lock, Unlock, ArrowUp, ArrowDown, ImagePlus,
 } from 'lucide-react';
 
-export default function ImageInspector({ element, onUpdate, onDelete, onRegenerate, onBringForward, onSendBackward }) {
+export default function ImageInspector({ element, slide, onUpdate, onDelete, onRegenerate, onBringForward, onSendBackward }) {
   const style = pj(element.style, {});
   const setStyle = (patch) => onUpdate(element.id, { style: JSON.stringify({ ...style, ...patch }) });
+
+  const bg = pj(slide?.background, {});
+  const fonts = pj(slide?.slide_metadata, {}).fonts || {};
+  const colorScheme = {
+    background: bg.color || '#0a0a0a',
+    titleColor: fonts.titleColor,
+    bodyColor: fonts.bodyColor,
+  };
 
   return (
     <InspectorShell title="Image" badge="IMG" defaultValues={['source']}
@@ -33,7 +41,7 @@ export default function ImageInspector({ element, onUpdate, onDelete, onRegenera
       </Group>
 
       <Group value="ai-svg" title="AI Vector Art (SVG)">
-        <SvgGenerator onInsert={(url) => onUpdate(element.id, { content: url })} />
+        <SvgGenerator colorScheme={colorScheme} onInsert={(url) => onUpdate(element.id, { content: url })} />
       </Group>
 
       <Group value="adjust" title="Adjustments">
