@@ -63,20 +63,71 @@ Rules:
       },
     });
 
-    // Optionally generate images using the GenerateImage integration
+    // KAAE-008 Prime Directive: Check Asset Registry before AI generation
     let generated_images = [];
+    let kaae_stats = { reused: 0, generated: 0, skipped: 0 };
     if (generate_images && result.image_assets) {
       for (const asset of result.image_assets.slice(0, 5)) {
         try {
+          // Priority 1-5: Ask KAAE if a suitable resource already exists
+          const kaaeResponse = await base44.functions.invoke('kaaeAcquire', {
+            resource_type: 'image',
+            query: `${asset.point_title} ${asset.visual_concept || ''}`,
+            production_profile: 'research',
+            allow_ai_generation: false,
+            max_cost: 0,
+          });
+
+          if (kaaeResponse.data?.status === 'found' && kaaeResponse.data.asset?.cached_file_url) {
+            // Reuse existing asset — zero cost, zero licensing risk
+            generated_images.push({
+              point_title: asset.point_title,
+              image_url: kaaeResponse.data.asset.cached_file_url,
+              kaae_reused: true,
+              kaae_asset_id: kaaeResponse.data.asset.id,
+            });
+            kaae_stats.reused++;
+            continue;
+          }
+
+          // Priority 6: AI generation (last resort per KAAE-008)
           const imgRes = await base44.integrations.Core.GenerateImage({
             prompt: asset.image_prompt,
           });
           generated_images.push({
             point_title: asset.point_title,
             image_url: imgRes.url,
+            kaae_reused: false,
           });
+          kaae_stats.generated++;
+
+          // Register the AI-generated asset in the KAAE for future reuse
+          try {
+            await base44.functions.invoke('kaaeRegisterAsset', {
+              title: `AI: ${asset.point_title}`,
+              resource_type: 'image',
+              format: 'png',
+              source_url: imgRes.url,
+              provider: 'ai_generation',
+              provider_resource_id: imgRes.url,
+              license: 'commercial_license',
+              commercial_use: true,
+              modification_allowed: true,
+              confidence: 60,
+              qa_status: 'not_reviewed',
+              acquisition_method: 'ai_generation',
+              keywords: JSON.stringify([asset.point_title, asset.visual_type]),
+              tags: JSON.stringify(['ai_generated', asset.visual_type]),
+              cached: true,
+              cached_file_url: imgRes.url,
+              cached_at: new Date().toISOString(),
+              download_status: 'downloaded',
+            });
+          } catch (regErr) {
+            // Registration is best-effort
+          }
         } catch (imgErr) {
-          // Continue if individual image generation fails
+          kaae_stats.skipped++;
         }
       }
     }
@@ -87,6 +138,7 @@ Rules:
       configuration_id,
       image_assets: result.image_assets || [],
       generated_images,
+      kaae_stats,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
