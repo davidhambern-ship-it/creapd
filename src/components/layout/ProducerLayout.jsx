@@ -6,6 +6,7 @@ import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
+import MobilePageShell from '@/components/mobile/MobilePageShell';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ProducerLayout() {
@@ -23,7 +24,9 @@ export default function ProducerLayout() {
       <div className="flex flex-1 overflow-hidden">
         <ProducerSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
-          <Outlet />
+          <MobilePageShell>
+            <Outlet />
+          </MobilePageShell>
         </main>
       </div>
       <ProductionFooter variant="news" />

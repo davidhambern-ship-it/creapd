@@ -3,6 +3,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { getDepartmentThemeFromPath } from '@/lib/rppDepartmentThemes';
 import { ChevronLeft } from 'lucide-react';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
+import MobilePageShell from '@/components/mobile/MobilePageShell';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ResearchLayout() {
@@ -36,7 +37,9 @@ export default function ResearchLayout() {
           </div>
         )}
         <div className="rpp-workspace-content flex-1 flex flex-col min-w-0 overflow-x-hidden">
-          <Outlet />
+          <MobilePageShell>
+            <Outlet />
+          </MobilePageShell>
         </div>
       </main>
     </div>
