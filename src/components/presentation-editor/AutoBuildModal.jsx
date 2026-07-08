@@ -50,10 +50,10 @@ export default function AutoBuildModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !running) onClose(); }}>
-      <DialogContent className="max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto cpe-shell">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-berna-purple to-berna-orange flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(152 60% 40%), hsl(168 55% 38%))' }}>
               <Wand2 className="w-4 h-4 text-white" />
             </div>
             <div>

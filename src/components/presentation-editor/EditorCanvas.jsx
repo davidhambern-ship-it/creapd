@@ -32,7 +32,6 @@ export default function EditorCanvas({
   const fonts = parseFonts(slide);
   const scrollRef = useRef(null);
 
-  // Auto-fit canvas to container on mount and resize
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -51,17 +50,17 @@ export default function EditorCanvas({
   }, []); // eslint-disable-line
 
   return (
-    <div className="flex-1 flex flex-col bg-background overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card">
-        <span className="text-xs text-muted-foreground truncate">
+    <div className="cpe-canvas-area flex-1 flex flex-col overflow-hidden">
+      <div className="cpe-canvas-toolbar flex items-center justify-between px-3 py-1.5">
+        <span className="cpe-canvas-info truncate">
           {slide?.title || 'Untitled'} · {slide?.slide_type?.replace(/_/g, ' ') || 'content slide'}
-          {previewMode && <span className="ml-2 text-primary font-medium">Preview</span>}
+          {previewMode && <span className="badge ml-2">Preview</span>}
         </span>
         <div className="flex items-center gap-1">
-          <ZoomBtn onClick={() => onZoom('out')}><ZoomOut className="w-4 h-4" /></ZoomBtn>
-          <span className="text-xs font-mono w-10 text-center">{Math.round(zoom * 100)}%</span>
-          <ZoomBtn onClick={() => onZoom('in')}><ZoomIn className="w-4 h-4" /></ZoomBtn>
-          <ZoomBtn onClick={() => onZoom('fit')}><Maximize2 className="w-4 h-4" /></ZoomBtn>
+          <button className="cpe-icon-btn" onClick={() => onZoom('out')} title="Zoom Out"><ZoomOut className="w-4 h-4" /></button>
+          <span className="cpe-zoom-display">{Math.round(zoom * 100)}%</span>
+          <button className="cpe-icon-btn" onClick={() => onZoom('in')} title="Zoom In"><ZoomIn className="w-4 h-4" /></button>
+          <button className="cpe-icon-btn" onClick={() => onZoom('fit')} title="Fit"><Maximize2 className="w-4 h-4" /></button>
         </div>
       </div>
 
@@ -70,14 +69,13 @@ export default function EditorCanvas({
         className="flex-1 overflow-auto flex items-center justify-center p-8"
         onClick={() => !previewMode && onSelect(null)}
       >
-        {/* Wrapper matches scaled dimensions so layout box is correct */}
         <div
           style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom }}
           className="flex-shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           <div
-            className="relative shadow-2xl rounded-sm overflow-hidden"
+            className="cpe-slide-frame relative overflow-hidden"
             style={{
               width: CANVAS_W, height: CANVAS_H,
               transform: `scale(${zoom})`,
@@ -85,7 +83,6 @@ export default function EditorCanvas({
               ...parseBG(slide),
             }}
           >
-            {/* Built-in title/body */}
             {slide?.title && (
               <div
                 style={{
@@ -100,7 +97,7 @@ export default function EditorCanvas({
                   cursor: previewMode ? 'default' : 'pointer',
                 }}
                 onClick={() => !previewMode && onSelect('__title__')}
-                className={selectedId === '__title__' ? 'ring-2 ring-primary' : ''}
+                className={selectedId === '__title__' ? 'ring-2 ring-emerald-400' : ''}
               >
                 {slide.title}
               </div>
@@ -119,7 +116,7 @@ export default function EditorCanvas({
                   cursor: previewMode ? 'default' : 'pointer',
                 }}
                 onClick={() => !previewMode && onSelect('__body__')}
-                className={`whitespace-pre-wrap ${selectedId === '__body__' ? 'ring-2 ring-primary' : ''}`}
+                className={`whitespace-pre-wrap ${selectedId === '__body__' ? 'ring-2 ring-emerald-400' : ''}`}
               >
                 {slide.body_text}
               </div>
@@ -141,7 +138,7 @@ export default function EditorCanvas({
             ))}
 
             {!slide?.title && !slide?.body_text && sorted.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm">
+              <div className="absolute inset-0 flex items-center justify-center text-white/20 text-sm">
                 {previewMode ? 'No content' : 'Use "Add" in the toolbar to insert elements'}
               </div>
             )}
@@ -149,11 +146,5 @@ export default function EditorCanvas({
         </div>
       </div>
     </div>
-  );
-}
-
-function ZoomBtn({ children, onClick }) {
-  return (
-    <button onClick={onClick} className="p-1 hover:bg-muted rounded transition-colors">{children}</button>
   );
 }

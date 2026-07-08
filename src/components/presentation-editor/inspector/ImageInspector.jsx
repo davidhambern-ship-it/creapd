@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { InspectorShell, Group, Field, ColorField, SliderField, NumField, pj, IconBtn } from './shared';
 import SvgGenerator from './SvgGenerator';
 import IconifyIconPicker from './IconifyIconPicker';
@@ -37,12 +36,12 @@ export default function ImageInspector({ element, slide, presentation, onUpdate,
       }
     >
       <Group value="source" title="Image Source" defaultOpen>
-        {element.content && <img src={element.content} alt="" className="w-full rounded-lg border border-border mb-2" />}
+        {element.content && <img src={element.content} alt="" className="w-full rounded-lg border border-white/[0.06] mb-2" />}
         <input value={element.content || ''} placeholder="Image URL..." onChange={(e) => onUpdate(element.id, { content: e.target.value })}
-          className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" />
-        <Button variant="outline" size="sm" className="w-full h-7 text-[10px]" onClick={onRegenerate}>
+          className="cpe-input" />
+        <button className="cpe-mini-btn w-full" onClick={onRegenerate}>
           <ImagePlus className="w-3 h-3" /> Replace Using AI
-        </Button>
+        </button>
       </Group>
 
       <Group value="ai-svg" title="AI Vector Art (SVG)">
@@ -83,7 +82,7 @@ export default function ImageInspector({ element, slide, presentation, onUpdate,
 
       <Group value="alt" title="Alt Text">
         <input value={style.altText || ''} placeholder="Describe image..." onChange={(e) => setStyle({ altText: e.target.value })}
-          className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" />
+          className="cpe-input" />
       </Group>
     </InspectorShell>
   );

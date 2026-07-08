@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown, Edit3, Eye,
@@ -27,94 +26,86 @@ export default function EditorTopBar({
   const [exportOpen, setExportOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-card border-b border-border">
-      <div className="flex items-center gap-2 mr-2">
-        <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-berna-purple hidden sm:inline">CREAPD</span>
-        <span className="text-sm font-heading font-semibold truncate max-w-[180px]">{title || 'Presentation Editor'}</span>
+    <div className="cpe-topbar flex items-center gap-1 px-3 py-2">
+      <div className="flex items-center gap-2 mr-2 min-w-0">
+        <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD</span>
+        <span className="cpe-title-text text-sm truncate max-w-[180px]">{title || 'Presentation Editor'}</span>
       </div>
-      {dirty && <span className="w-2 h-2 rounded-full bg-amber-400" title="Unsaved changes" />}
+      {dirty && <span className="cpe-dirty-dot" title="Unsaved changes" />}
 
-      <Sep />
+      <div className="cpe-sep" />
 
-      <Button variant="ghost" size="sm" onClick={onSave} disabled={saving} className="gap-1.5">
-        {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
-      </Button>
-      <IconBtn onClick={onUndo} disabled={!canUndo}><Undo2 className="w-4 h-4" /></IconBtn>
-      <IconBtn onClick={onRedo} disabled={!canRedo}><Redo2 className="w-4 h-4" /></IconBtn>
+      <button className="cpe-tool-btn" onClick={onSave} disabled={saving}>
+        {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        Save
+      </button>
+      <button className="cpe-icon-btn" onClick={onUndo} disabled={!canUndo} title="Undo"><Undo2 className="w-4 h-4" /></button>
+      <button className="cpe-icon-btn" onClick={onRedo} disabled={!canRedo} title="Redo"><Redo2 className="w-4 h-4" /></button>
 
-      <Sep />
-
-      <Sep />
+      <div className="cpe-sep" />
 
       <Link to="/news/presentations">
-        <Button variant="ghost" size="sm" className="gap-1.5">
-          <FolderOpen className="w-4 h-4" /> Open
-        </Button>
+        <button className="cpe-tool-btn"><FolderOpen className="w-4 h-4" /> Open</button>
       </Link>
 
-      <Button variant={mode === 'edit' ? 'default' : 'ghost'} size="sm" onClick={() => onToggleMode('edit')} className="gap-1.5">
+      <button className={`cpe-tool-btn ${mode === 'edit' ? 'active' : ''}`} onClick={() => onToggleMode('edit')}>
         <Edit3 className="w-4 h-4" /> Edit
-      </Button>
-      <Button variant={mode === 'preview' ? 'default' : 'ghost'} size="sm" onClick={() => onToggleMode('preview')} className="gap-1.5">
+      </button>
+      <button className={`cpe-tool-btn ${mode === 'preview' ? 'active' : ''}`} onClick={() => onToggleMode('preview')}>
         <Eye className="w-4 h-4" /> Preview
-      </Button>
+      </button>
 
       {mode === 'edit' && (
         <>
-          <Sep />
+          <div className="cpe-sep" />
 
           <div className="relative">
-            <Button variant="ghost" size="sm" onClick={() => setAddOpen(!addOpen)} className="gap-1.5">
+            <button className="cpe-tool-btn" onClick={() => setAddOpen(!addOpen)}>
               <Plus className="w-4 h-4" /> Add <ChevronDown className="w-3 h-3" />
-            </Button>
+            </button>
             {addOpen && (
               <Dropdown onClose={() => setAddOpen(false)}>
                 {ADD_OPTIONS.map(({ type, label, icon: Icon }) => (
                   <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted">
-                    <Icon className="w-4 h-4 text-muted-foreground" /> {label}
+                    className="cpe-dropdown-item">
+                    <Icon className="w-4 h-4" /> {label}
                   </button>
                 ))}
               </Dropdown>
             )}
           </div>
 
-          <Button variant="ghost" size="sm" onClick={onRegenerateSlide} className="gap-1.5">
+          <button className="cpe-tool-btn" onClick={onRegenerateSlide}>
             <RefreshCw className="w-4 h-4" /> Regenerate
-          </Button>
+          </button>
           {hasSelection && (
-            <Button variant="ghost" size="sm" onClick={onRegenerateElement} className="gap-1.5">
+            <button className="cpe-tool-btn" onClick={onRegenerateElement}>
               <RefreshCw className="w-3.5 h-3.5" /> Element
-            </Button>
+            </button>
           )}
-          <Button variant="ghost" size="sm" onClick={onRunQA} className="gap-1.5">
+          <button className="cpe-tool-btn" onClick={onRunQA}>
             <ShieldCheck className="w-4 h-4" /> QA
-          </Button>
+          </button>
         </>
       )}
 
       <div className="flex-1" />
 
       {onAutoBuild && (
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onAutoBuild}
-          className="gap-1.5 bg-gradient-to-r from-berna-purple to-berna-orange text-white hover:opacity-90"
-        >
+        <button className="cpe-autobuild-btn" onClick={onAutoBuild}>
           <Wand2 className="w-4 h-4" /> Auto-Build
-        </Button>
+        </button>
       )}
 
       <div className="relative">
-        <Button variant="ghost" size="sm" onClick={() => setExportOpen(!exportOpen)} className="gap-1.5">
+        <button className="cpe-tool-btn" onClick={() => setExportOpen(!exportOpen)}>
           <Download className="w-4 h-4" /> Export <ChevronDown className="w-3 h-3" />
-        </Button>
+        </button>
         {exportOpen && (
           <Dropdown onClose={() => setExportOpen(false)} align="right">
             {EXPORT_OPTIONS.map(fmt => (
               <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted">{fmt}</button>
+                className="cpe-dropdown-item">{fmt}</button>
             ))}
           </Dropdown>
         )}
@@ -123,16 +114,11 @@ export default function EditorTopBar({
   );
 }
 
-function Sep() { return <div className="w-px h-6 bg-border mx-1" />; }
-function IconBtn({ children, ...props }) {
-  return <Button variant="ghost" size="icon" className="w-9 h-9" {...props}>{children}</Button>;
-}
-
 function Dropdown({ children, onClose, align = 'left' }) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className={`absolute top-full ${align === 'right' ? 'right-0' : 'left-0'} mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl py-1 w-40`}>
+      <div className={`cpe-dropdown ${align === 'right' ? 'right-0' : 'left-0'}`}>
         {children}
       </div>
     </>

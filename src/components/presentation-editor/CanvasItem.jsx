@@ -138,7 +138,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
       onDoubleClick={() => {
         if (TEXT_TYPES.includes(element.type) && !element.locked && !previewMode) setEditing(true);
       }}
-      className={`${isSelected && !previewMode ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/40'} ${anim?.cls || ''}`}
+      className={`${isSelected && !previewMode ? 'ring-2 ring-emerald-400' : 'hover:ring-1 hover:ring-emerald-400/40'} ${anim?.cls || ''}`}
     >
       {editing ? (
         <textarea
@@ -158,7 +158,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
           {HANDLES.map(h => (
             <div key={h}
               onMouseDown={(e) => startDrag(e, 'resize', h)}
-              className="absolute w-2.5 h-2.5 bg-primary border border-white rounded-sm"
+              className="absolute w-2.5 h-2.5 bg-emerald-400 border border-white rounded-sm"
               style={{
                 ...(h.includes('n') ? { top: '-5px' } : {}),
                 ...(h.includes('s') ? { bottom: '-5px' } : {}),
@@ -170,7 +170,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
           ))}
           <button
             onClick={(e) => { e.stopPropagation(); onUpdate(element.id, { locked: !element.locked }); }}
-            className="absolute -top-7 left-0 p-0.5 bg-primary text-primary-foreground rounded text-[10px]"
+            className="absolute -top-7 left-0 p-0.5 bg-emerald-500 text-white rounded text-[10px]"
           >
             {element.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
           </button>

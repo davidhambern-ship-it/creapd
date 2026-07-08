@@ -14,11 +14,11 @@ export function pj(str, fallback) {
 
 export function InspectorShell({ title, badge, children, actions, defaultValues = [] }) {
   return (
-    <div className="w-72 flex-shrink-0 bg-card border-l border-border overflow-y-auto flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+    <div className="cpe-inspector">
+      <div className="cpe-inspector-header flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-sm font-heading font-semibold truncate">{title}</h3>
-          {badge && <span className="text-[10px] text-muted-foreground font-mono">{badge}</span>}
+          <h3 className="cpe-inspector-title truncate">{title}</h3>
+          {badge && <span className="cpe-inspector-badge">{badge}</span>}
         </div>
         {actions && <div className="flex gap-0.5">{actions}</div>}
       </div>
@@ -31,8 +31,8 @@ export function InspectorShell({ title, badge, children, actions, defaultValues 
 
 export function Group({ value, title, children }) {
   return (
-    <AccordionItem value={value} className="border-b border-border/50">
-      <AccordionTrigger className="text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground hover:no-underline py-2.5">
+    <AccordionItem value={value} className="cpe-group border-b border-white/[0.04]">
+      <AccordionTrigger className="cpe-group-trigger hover:no-underline py-2.5">
         {title}
       </AccordionTrigger>
       <AccordionContent>
@@ -45,7 +45,7 @@ export function Group({ value, title, children }) {
 export function Field({ label, children }) {
   return (
     <div className="space-y-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Label className="cpe-field-label">{label}</Label>
       {children}
     </div>
   );
@@ -53,11 +53,13 @@ export function Field({ label, children }) {
 
 export function ColorField({ value, onChange }) {
   return (
-    <div className="flex gap-1.5">
-      <Input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)}
-        className="w-9 h-8 p-1 border-border" />
+    <div className="flex gap-1.5 items-center">
+      <div className="cpe-color-swatch">
+        <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)}
+          className="cpe-color-input" />
+      </div>
       <Input value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)}
-        className="flex-1 text-xs font-mono h-8" />
+        className="cpe-color-hex flex-1 h-8" />
     </div>
   );
 }
@@ -65,7 +67,7 @@ export function ColorField({ value, onChange }) {
 export function SelectField({ value, onChange, options, styleFont = false }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8"
+      className="cpe-select"
       style={styleFont ? { fontFamily: value } : undefined}>
       {options.map(o => (
         <option key={o} value={o} style={styleFont ? { fontFamily: o } : undefined}>
@@ -80,8 +82,8 @@ export function SliderField({ label, value, min = 0, max = 100, step = 1, onChan
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <Label className="text-[11px] text-muted-foreground">{label}</Label>
-        <span className="text-[10px] font-mono text-muted-foreground">{value}</span>
+        <Label className="cpe-field-label">{label}</Label>
+        <span className="cpe-slider-value">{value}</span>
       </div>
       <Slider value={[value]} min={min} max={max} step={step}
         onValueChange={(v) => onChange(v[0])} className="h-4" />
@@ -93,18 +95,17 @@ export function ToggleGroup({ value, options, onChange }) {
   return (
     <div className="flex gap-1">
       {options.map(o => (
-        <Button key={o.value} variant={value === o.value ? 'default' : 'outline'} size="sm"
-          className="flex-1 h-7 text-[10px] px-1"
+        <button key={o.value} className={`cpe-mini-btn flex-1 ${value === o.value ? 'active' : ''}`}
           onClick={() => onChange(o.value)}>
           {o.icon ? <o.icon className="w-3 h-3" /> : o.label}
-        </Button>
+        </button>
       ))}
     </div>
   );
 }
 
 export function IconBtn({ children, className = '', ...props }) {
-  return <Button variant="ghost" size="icon" className={`w-7 h-7 ${className}`} {...props}>{children}</Button>;
+  return <button className={`cpe-icon-btn w-7 h-7 ${className}`} {...props}>{children}</button>;
 }
 
 export function NumField({ label, value, onChange, min, max, step }) {
@@ -112,7 +113,7 @@ export function NumField({ label, value, onChange, min, max, step }) {
     <Field label={label}>
       <Input type="number" value={value || 0} min={min} max={max} step={step}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="h-8 text-xs" />
+        className="cpe-input h-8" />
     </Field>
   );
 }

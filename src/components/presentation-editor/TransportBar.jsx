@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Play, Pause, Square, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
 
 function fmt(ms) {
@@ -8,11 +7,11 @@ function fmt(ms) {
 }
 
 const TRACKS = [
-  { key: 'slide', label: 'Slide', color: 'bg-primary' },
-  { key: 'text', label: 'Text', color: 'bg-blue-500' },
-  { key: 'image', label: 'Image', color: 'bg-emerald-500' },
-  { key: 'video', label: 'Video', color: 'bg-orange-500' },
-  { key: 'transition', label: 'Transition', color: 'bg-red-500' },
+  { key: 'slide', label: 'Slide', cls: 'cpe-track-clip-slide' },
+  { key: 'text', label: 'Text', cls: 'cpe-track-clip-text' },
+  { key: 'image', label: 'Image', cls: 'cpe-track-clip-image' },
+  { key: 'video', label: 'Video', cls: 'cpe-track-clip-video' },
+  { key: 'transition', label: 'Trans', cls: 'cpe-track-clip-transition' },
 ];
 
 export default function TransportBar({
@@ -44,25 +43,25 @@ export default function TransportBar({
   }).filter(t => t.items.length > 0);
 
   return (
-    <div className="bg-card border-t border-border">
+    <div className="cpe-transport">
       {/* Timeline */}
-      <div className="px-3 py-1.5 border-b border-border">
+      <div className="cpe-timeline-section px-3 py-1.5">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground">Timeline</span>
-          <span className="text-[10px] text-muted-foreground">{tracks.length} tracks</span>
+          <span className="cpe-timeline-label">Timeline</span>
+          <span className="cpe-time-display">{tracks.length} tracks</span>
         </div>
         <div className="space-y-0.5 max-h-24 overflow-y-auto">
-          {tracks.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-2">No timeline data</p>}
+          {tracks.length === 0 && <p className="cpe-empty-text text-center py-2">No timeline data</p>}
           {tracks.map(track => (
-            <div key={track.key} className="flex items-center gap-2">
-              <span className="text-[9px] text-muted-foreground w-14 flex-shrink-0 truncate">{track.label}</span>
-              <div className="flex-1 relative h-4 bg-muted/30 rounded">
+            <div key={track.key} className="cpe-track-row">
+              <span className="cpe-track-name">{track.label}</span>
+              <div className="cpe-track-lane">
                 {track.items.map((item, i) => {
                   const left = (item.start / duration) * 100;
                   const width = ((item.end - item.start) / duration) * 100;
                   return (
                     <div key={i}
-                      className={`absolute top-0.5 bottom-0.5 ${track.color} rounded text-[7px] text-white px-1 flex items-center overflow-hidden whitespace-nowrap`}
+                      className={`cpe-track-clip ${track.cls}`}
                       style={{ left: `${left}%`, width: `${Math.max(width, 2)}%` }}
                       title={item.label}>{item.label}</div>
                   );
@@ -73,34 +72,32 @@ export default function TransportBar({
         </div>
       </div>
 
-      {/* Transport */}
+      {/* Transport Controls */}
       <div className="flex items-center gap-2 px-3 py-2">
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onPrev} title="Previous"><SkipBack className="w-4 h-4" /></Button>
+          <button className="cpe-icon-btn" onClick={onPrev} title="Previous"><SkipBack className="w-4 h-4" /></button>
           {isPlaying ? (
-            <Button variant="ghost" size="icon" className="w-9 h-9" onClick={onPause} title="Pause"><Pause className="w-5 h-5" /></Button>
+            <button className="cpe-play-btn" onClick={onPause} title="Pause"><Pause className="w-5 h-5" /></button>
           ) : (
-            <Button variant="ghost" size="icon" className="w-9 h-9" onClick={onPlay} title="Play"><Play className="w-5 h-5" /></Button>
+            <button className="cpe-play-btn" onClick={onPlay} title="Play"><Play className="w-5 h-5" /></button>
           )}
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onStop} title="Stop"><Square className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onRestart} title="Restart"><RotateCcw className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8" onClick={onNext} title="Next"><SkipForward className="w-4 h-4" /></Button>
+          <button className="cpe-icon-btn" onClick={onStop} title="Stop"><Square className="w-4 h-4" /></button>
+          <button className="cpe-icon-btn" onClick={onRestart} title="Restart"><RotateCcw className="w-4 h-4" /></button>
+          <button className="cpe-icon-btn" onClick={onNext} title="Next"><SkipForward className="w-4 h-4" /></button>
         </div>
 
-        <span className="text-xs font-mono text-muted-foreground w-10 text-right">{fmt(currentTime)}</span>
-        <div className="flex-1 relative h-5 flex items-center">
-          <div className="absolute inset-x-0 h-1.5 bg-muted rounded-full" />
-          <div className="absolute h-1.5 bg-primary rounded-full" style={{ width: `${progress}%` }} />
+        <span className="cpe-time-display w-10 text-right">{fmt(currentTime)}</span>
+        <div className="cpe-scrub-bar flex-1">
+          <div className="cpe-scrub-track" />
+          <div className="cpe-scrub-fill" style={{ width: `${progress}%` }} />
           <input type="range" min={0} max={totalTime || 1} value={currentTime}
             onChange={(e) => onScrub(parseInt(e.target.value))}
             className="absolute inset-0 w-full opacity-0 cursor-pointer" />
-          <div className="absolute w-3 h-3 bg-primary border-2 border-white rounded-full shadow"
-            style={{ left: `calc(${progress}% - 6px)` }} />
+          <div className="cpe-scrub-handle" style={{ left: `calc(${progress}% - 6px)` }} />
         </div>
-        <span className="text-xs font-mono text-muted-foreground w-10">{fmt(totalTime)}</span>
+        <span className="cpe-time-display w-10">{fmt(totalTime)}</span>
 
-        <select value={scope} onChange={(e) => onScopeChange(e.target.value)}
-          className="text-xs bg-background border border-border rounded px-2 py-1">
+        <select value={scope} onChange={(e) => onScopeChange(e.target.value)} className="cpe-scope-select">
           <option value="slide">This Slide</option>
           <option value="full">Full Presentation</option>
         </select>

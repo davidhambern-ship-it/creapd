@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { InspectorShell, Group } from './shared';
 import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
@@ -13,30 +12,30 @@ export default function MultiSelectInspector({ count, onAlign, onDistribute, onD
     <InspectorShell title="Multiple" badge={`${count} selected`} defaultValues={['align']}>
       <Group value="align" title="Align" defaultOpen>
         <div className="grid grid-cols-3 gap-1">
-          <Button variant="outline" size="sm" className="h-8" onClick={() => onAlign('left')} title="Align Left"><AlignStartVertical className="w-3.5 h-3.5" /></Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => onAlign('center_h')} title="Align Center"><AlignCenterVertical className="w-3.5 h-3.5" /></Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => onAlign('right')} title="Align Right"><AlignEndVertical className="w-3.5 h-3.5" /></Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => onAlign('top')} title="Align Top"><AlignStartHorizontal className="w-3.5 h-3.5" /></Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => onAlign('center_v')} title="Align Middle"><AlignCenterHorizontal className="w-3.5 h-3.5" /></Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => onAlign('bottom')} title="Align Bottom"><AlignEndHorizontal className="w-3.5 h-3.5" /></Button>
+          <button className="cpe-mini-btn h-8 justify-center" onClick={() => onAlign('left')} title="Align Left"><AlignStartVertical className="w-3.5 h-3.5" /></button>
+          <button className="cpe-mini-btn h-8 justify-center" onClick={() => onAlign('center_h')} title="Align Center"><AlignCenterVertical className="w-3.5 h-3.5" /></button>
+          <button className="cpe-mini-btn h-8 justify-center" onClick={() => onAlign('right')} title="Align Right"><AlignEndVertical className="w-3.5 h-3.5" /></button>
+          <button className="cpe-mini-btn h-8 justify-center" onClick={() => onAlign('top')} title="Align Top"><AlignStartHorizontal className="w-3.5 h-3.5" /></button>
+          <button className="cpe-mini-btn h-8 justify-center" onClick={() => onAlign('center_v')} title="Align Middle"><AlignCenterHorizontal className="w-3.5 h-3.5" /></button>
+          <button className="cpe-mini-btn h-8 justify-center" onClick={() => onAlign('bottom')} title="Align Bottom"><AlignEndHorizontal className="w-3.5 h-3.5" /></button>
         </div>
       </Group>
 
       <Group value="distribute" title="Distribute">
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px]" onClick={() => onDistribute('h')}>
+          <button className="cpe-mini-btn flex-1" onClick={() => onDistribute('h')}>
             <Columns2 className="w-3.5 h-3.5" /> Horizontal
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px]" onClick={() => onDistribute('v')}>
+          </button>
+          <button className="cpe-mini-btn flex-1" onClick={() => onDistribute('v')}>
             <Rows2 className="w-3.5 h-3.5" /> Vertical
-          </Button>
+          </button>
         </div>
       </Group>
 
       <Group value="actions" title="Actions">
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px]" onClick={onDuplicate}><Copy className="w-3.5 h-3.5" /> Duplicate</Button>
-          <Button variant="outline" size="sm" className="flex-1 h-8 text-[10px] text-destructive" onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /> Delete</Button>
+          <button className="cpe-mini-btn flex-1" onClick={onDuplicate}><Copy className="w-3.5 h-3.5" /> Duplicate</button>
+          <button className="cpe-mini-btn flex-1" style={{ color: 'hsl(0 60% 52%)' }} onClick={onDelete}><Trash2 className="w-3.5 h-3.5" /> Delete</button>
         </div>
       </Group>
     </InspectorShell>

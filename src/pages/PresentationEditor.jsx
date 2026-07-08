@@ -8,6 +8,7 @@ import EditorCanvas from '@/components/presentation-editor/EditorCanvas';
 import PropertiesPanel from '@/components/presentation-editor/PropertiesPanel';
 import TransportBar from '@/components/presentation-editor/TransportBar';
 import AutoBuildModal from '@/components/presentation-editor/AutoBuildModal';
+import '@/components/presentation-editor/cpe.css';
 
 export default function PresentationEditor() {
   const { id } = useParams();
@@ -24,10 +25,10 @@ export default function PresentationEditor() {
   // Present mode overlay
   if (ed.presenting && ed.activeSlide) {
     return (
-      <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center"
+      <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center cpe-shell"
         onClick={() => ed.setPresenting(false)}>
         <button className="absolute top-4 right-4 text-white/60 hover:text-white text-sm z-10">Exit</button>
-        <div className="w-[80vw] aspect-video rounded-lg overflow-hidden"
+        <div className="w-[80vw] aspect-video rounded-lg overflow-hidden cpe-slide-frame"
           style={{ background: (() => { try { return JSON.parse(ed.activeSlide.background || '{}').color || '#0a0a0a'; } catch { return '#0a0a0a'; } })() }}>
           <div className="p-12">
             <h1 className="text-4xl font-bold text-white mb-4">{ed.activeSlide.title}</h1>
@@ -40,18 +41,25 @@ export default function PresentationEditor() {
 
   if (ed.loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div className="cpe-loading-overlay">
+        <div className="cpe-loading-spinner" />
+        <p className="cpe-loading-text">Loading presentation studio…</p>
       </div>
     );
   }
 
   if (!ed.presentation) {
-    return <div className="flex items-center justify-center h-screen text-muted-foreground">Presentation not found</div>;
+    return (
+      <div className="cpe-loading-overlay">
+        <div className="cpe-empty">
+          <p className="cpe-empty-text">Presentation not found</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="cpe-shell flex flex-col h-screen">
       <EditorTopBar
         saving={ed.saving}
         dirty={ed.dirty}

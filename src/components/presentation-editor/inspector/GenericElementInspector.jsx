@@ -23,9 +23,9 @@ export default function GenericElementInspector({ element, onUpdate, onDelete, o
         <Group value="content" title="Content" defaultOpen>
           <input value={element.content || ''} placeholder={`${element.type} content...`}
             onChange={(e) => onUpdate(element.id, { content: e.target.value })}
-            className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" />
+            className="cpe-input" />
           {onRegenerate && (
-            <button onClick={onRegenerate} className="w-full flex items-center justify-center gap-1 text-[10px] text-primary hover:underline">
+            <button onClick={onRegenerate} className="cpe-mini-btn w-full" style={{ color: 'hsl(152 60% 45%)' }}>
               <RefreshCw className="w-2.5 h-2.5" /> Regenerate
             </button>
           )}

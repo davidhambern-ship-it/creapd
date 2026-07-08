@@ -23,9 +23,9 @@ export default function PresentationInspector({ presentation, onUpdate, zoom, on
         <div className="grid grid-cols-2 gap-1.5">
           {THEMES.map(t => (
             <button key={t.name} onClick={() => setTheme(t)}
-              className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-primary/50 transition-colors text-left">
-              <div className="w-full h-8 rounded" style={{ background: t.bg, boxShadow: `inset 0 -3px 0 ${t.primary}` }} />
-              <span className="text-[9px] text-muted-foreground truncate w-full">{t.name}</span>
+              className="cpe-theme-card">
+              <div className="cpe-theme-swatch" style={{ background: t.bg, boxShadow: `inset 0 -3px 0 ${t.primary}` }} />
+              <span className="cpe-theme-name">{t.name}</span>
             </button>
           ))}
         </div>

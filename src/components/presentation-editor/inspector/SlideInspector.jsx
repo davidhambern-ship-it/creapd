@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { InspectorShell, Group, Field, ColorField, SelectField, NumField, SliderField, pj, IconBtn } from './shared';
 import FontPicker from './FontPicker';
 import { Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
@@ -23,14 +22,14 @@ function TextTypeControls({ label, prefix, font, setFont, allFonts, onUpload, up
       <div className="flex items-center gap-1 mt-1.5 mb-0.5">
         <span className="text-[10px] text-muted-foreground">{label}</span>
         <div className="ml-auto flex gap-0.5">
-          <Button variant={font[`${prefix}Bold`] ? 'default' : 'outline'} size="icon"
-            className="w-6 h-6" onClick={() => setFont({ [`${prefix}Bold`]: !font[`${prefix}Bold`] })}>
+          <button className={`cpe-mini-btn w-6 h-6 px-0 ${font[`${prefix}Bold`] ? 'active' : ''}`}
+            onClick={() => setFont({ [`${prefix}Bold`]: !font[`${prefix}Bold`] })}>
             <Bold className="w-3 h-3" />
-          </Button>
-          <Button variant={font[`${prefix}Italic`] ? 'default' : 'outline'} size="icon"
-            className="w-6 h-6" onClick={() => setFont({ [`${prefix}Italic`]: !font[`${prefix}Italic`] })}>
+          </button>
+          <button className={`cpe-mini-btn w-6 h-6 px-0 ${font[`${prefix}Italic`] ? 'active' : ''}`}
+            onClick={() => setFont({ [`${prefix}Italic`]: !font[`${prefix}Italic`] })}>
             <Italic className="w-3 h-3" />
-          </Button>
+          </button>
         </div>
       </div>
       <Field label="Font Family">
@@ -47,10 +46,10 @@ function TextTypeControls({ label, prefix, font, setFont, allFonts, onUpload, up
       <Field label="Alignment">
         <div className="flex gap-1">
           {ALIGN_OPTS.map(o => (
-            <Button key={o.value} variant={(font[`${prefix}Align`] || 'left') === o.value ? 'default' : 'outline'}
-              size="sm" className="flex-1 h-7" onClick={() => setFont({ [`${prefix}Align`]: o.value })}>
+            <button key={o.value} className={`cpe-mini-btn flex-1 ${(font[`${prefix}Align`] || 'left') === o.value ? 'active' : ''}`}
+              onClick={() => setFont({ [`${prefix}Align`]: o.value })}>
               <o.icon className="w-3.5 h-3.5" />
-            </Button>
+            </button>
           ))}
         </div>
       </Field>
@@ -95,18 +94,18 @@ export default function SlideInspector({
       <Group value="content" title="Content" defaultOpen>
         <Field label="Title">
           <input value={slide.title || ''} onChange={(e) => onUpdate({ title: e.target.value })}
-            className={`w-full text-xs bg-background border rounded-md px-2 py-1.5 h-8 ${selectedId === '__title__' ? 'border-primary ring-1 ring-primary' : 'border-border'}`} />
+            className={`cpe-input ${selectedId === '__title__' ? 'selected' : ''}`} />
         </Field>
         <Field label="Body Text">
           <textarea value={slide.body_text || ''} rows={4}
             onChange={(e) => onUpdate({ body_text: e.target.value })}
-            className={`w-full text-xs bg-background border rounded-md px-2 py-1.5 ${selectedId === '__body__' ? 'border-primary ring-1 ring-primary' : 'border-border'}`} />
+            className={`cpe-textarea ${selectedId === '__body__' ? 'selected' : ''}`} />
         </Field>
       </Group>
 
       <Group value="typography" title="Typography">
         <TextTypeControls label="Title" prefix="title" font={fonts} setFont={setFonts} allFonts={allFonts} onUpload={uploadFont} uploading={uploading} />
-        <div className="border-t border-border/50 my-2" />
+        <div className="my-2" style={{ borderTop: '1px solid hsl(220 8% 15% / 0.5)' }} />
         <TextTypeControls label="Body" prefix="body" font={fonts} setFont={setFonts} allFonts={allFonts} onUpload={uploadFont} uploading={uploading} />
       </Group>
 
@@ -116,12 +115,12 @@ export default function SlideInspector({
             onChange={(v) => onUpdate({ slide_type: v })} />
         </Field>
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px]" onClick={onMoveBackward}>
+          <button className="cpe-mini-btn flex-1" onClick={onMoveBackward}>
             <ChevronLeft className="w-3 h-3" /> Back
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px]" onClick={onMoveForward}>
+          </button>
+          <button className="cpe-mini-btn flex-1" onClick={onMoveForward}>
             Forward <ChevronRight className="w-3 h-3" />
-          </Button>
+          </button>
         </div>
       </Group>
 
@@ -129,7 +128,7 @@ export default function SlideInspector({
         <Field label="Color"><ColorField value={bg.color || '#0a0a0a'} onChange={(v) => onUpdate({ background: JSON.stringify({ ...bg, color: v }) })} /></Field>
         <Field label="Image URL">
           <input value={bg.image_url || ''} placeholder="https://..." onChange={(e) => onUpdate({ background: JSON.stringify({ ...bg, image_url: e.target.value }) })}
-            className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" />
+            className="cpe-input" />
         </Field>
       </Group>
 
@@ -147,20 +146,20 @@ export default function SlideInspector({
       <Group value="notes" title="Speaker Notes">
         <textarea value={slide.speaker_notes || ''} rows={3} placeholder="Add notes..."
           onChange={(e) => onUpdate({ speaker_notes: e.target.value })}
-          className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5" />
+          className="cpe-textarea" />
       </Group>
 
       <Group value="refs" title="References">
         {refs.length > 0 && (
           <div className="space-y-1 mb-1">
             {refs.map((ref, i) => (
-              <div key={i} className="text-[10px] text-muted-foreground p-1.5 bg-muted/50 rounded">
+              <div key={i} className="text-[10px] text-muted-foreground p-1.5 rounded" style={{ background: 'hsl(220 14% 10% / 0.5)' }}>
                 {typeof ref === 'string' ? ref : ref.name || ref.citation || JSON.stringify(ref)}
               </div>
             ))}
           </div>
         )}
-        <input placeholder="Add reference..." className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8"
+        <input placeholder="Add reference..." className="cpe-input"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && e.target.value.trim()) {
               onUpdate({ references: JSON.stringify([...refs, e.target.value.trim()]) });
@@ -171,10 +170,10 @@ export default function SlideInspector({
 
       <Group value="qa" title="QA Status">
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-1 rounded text-[10px] font-medium ${
-            slide.status === 'approved' || slide.status === 'passed' ? 'bg-emerald-500/20 text-emerald-400' :
-            slide.status === 'needs_revision' ? 'bg-yellow-500/20 text-yellow-400' :
-            slide.status === 'failed' ? 'bg-red-500/20 text-red-400' : 'bg-muted text-muted-foreground'
+          <span className={`cpe-qa-badge ${
+            slide.status === 'approved' || slide.status === 'passed' ? 'cpe-qa-pass' :
+            slide.status === 'needs_revision' ? 'cpe-qa-revise' :
+            slide.status === 'failed' ? 'cpe-qa-fail' : 'cpe-qa-neutral'
           }`}>{(slide.status || 'not_reviewed').replace(/_/g, ' ')}</span>
           {slide.qa_score > 0 && <span className="text-[10px] font-mono">{slide.qa_score}/100</span>}
         </div>

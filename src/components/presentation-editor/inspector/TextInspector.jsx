@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { InspectorShell, Group, Field, ColorField, SelectField, SliderField, ToggleGroup, pj, IconBtn } from './shared';
 import FontPicker from './FontPicker';
 import {
@@ -43,14 +42,14 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
       <Group value="content" title="Content" defaultOpen>
         <textarea value={element.content || ''} rows={3}
           onChange={(e) => onUpdate(element.id, { content: e.target.value })}
-          className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5" />
+          className="cpe-textarea" />
       </Group>
 
       <Group value="clipboard" title="Clipboard">
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px]" onClick={() => onCut(element.id)}><Scissors className="w-3 h-3" /> Cut</Button>
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px]" onClick={() => onCopy(element.id)}><Copy className="w-3 h-3" /> Copy</Button>
-          <Button variant="outline" size="sm" className="flex-1 h-7 text-[10px]" onClick={onPaste}><Clipboard className="w-3 h-3" /> Paste</Button>
+          <button className="cpe-mini-btn flex-1" onClick={() => onCut(element.id)}><Scissors className="w-3 h-3" /> Cut</button>
+          <button className="cpe-mini-btn flex-1" onClick={() => onCopy(element.id)}><Copy className="w-3 h-3" /> Copy</button>
+          <button className="cpe-mini-btn flex-1" onClick={onPaste}><Clipboard className="w-3 h-3" /> Paste</button>
         </div>
       </Group>
 
@@ -58,9 +57,9 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
         <Field label="Font Family"><FontPicker value={style.fontFamily || 'Inter'} options={allFonts} onUpload={uploadFont} uploading={uploading} onChange={(v) => setStyle({ fontFamily: v })} /></Field>
         <SliderField label="Font Size" value={style.fontSize || 16} min={8} max={120} onChange={(v) => setStyle({ fontSize: v })} />
         <div className="flex gap-1">
-          <Button variant={style.bold ? 'default' : 'outline'} size="sm" className="flex-1 h-7" onClick={() => setStyle({ bold: !style.bold })}><Bold className="w-3.5 h-3.5" /></Button>
-          <Button variant={style.italic ? 'default' : 'outline'} size="sm" className="flex-1 h-7" onClick={() => setStyle({ italic: !style.italic })}><Italic className="w-3.5 h-3.5" /></Button>
-          <Button variant={style.underline ? 'default' : 'outline'} size="sm" className="flex-1 h-7" onClick={() => setStyle({ underline: !style.underline })}><Underline className="w-3.5 h-3.5" /></Button>
+          <button className={`cpe-mini-btn flex-1 ${style.bold ? 'active' : ''}`} onClick={() => setStyle({ bold: !style.bold })}><Bold className="w-3.5 h-3.5" /></button>
+          <button className={`cpe-mini-btn flex-1 ${style.italic ? 'active' : ''}`} onClick={() => setStyle({ italic: !style.italic })}><Italic className="w-3.5 h-3.5" /></button>
+          <button className={`cpe-mini-btn flex-1 ${style.underline ? 'active' : ''}`} onClick={() => setStyle({ underline: !style.underline })}><Underline className="w-3.5 h-3.5" /></button>
         </div>
       </Group>
 
@@ -80,10 +79,10 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
 
       <Group value="position" title="Position & Size">
         <div className="grid grid-cols-2 gap-2">
-          <Field label="X"><input type="number" value={element.x || 0} onChange={(e) => onUpdate(element.id, { x: parseInt(e.target.value) || 0 })} className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" /></Field>
-          <Field label="Y"><input type="number" value={element.y || 0} onChange={(e) => onUpdate(element.id, { y: parseInt(e.target.value) || 0 })} className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" /></Field>
-          <Field label="W"><input type="number" value={element.width || 200} onChange={(e) => onUpdate(element.id, { width: parseInt(e.target.value) || 200 })} className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" /></Field>
-          <Field label="H"><input type="number" value={element.height || 60} onChange={(e) => onUpdate(element.id, { height: parseInt(e.target.value) || 60 })} className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" /></Field>
+          <Field label="X"><input type="number" value={element.x || 0} onChange={(e) => onUpdate(element.id, { x: parseInt(e.target.value) || 0 })} className="cpe-input" /></Field>
+          <Field label="Y"><input type="number" value={element.y || 0} onChange={(e) => onUpdate(element.id, { y: parseInt(e.target.value) || 0 })} className="cpe-input" /></Field>
+          <Field label="W"><input type="number" value={element.width || 200} onChange={(e) => onUpdate(element.id, { width: parseInt(e.target.value) || 200 })} className="cpe-input" /></Field>
+          <Field label="H"><input type="number" value={element.height || 60} onChange={(e) => onUpdate(element.id, { height: parseInt(e.target.value) || 60 })} className="cpe-input" /></Field>
         </div>
         <SliderField label="Rotation°" value={element.rotation || 0} min={-180} max={180} onChange={(v) => onUpdate(element.id, { rotation: v })} />
       </Group>
@@ -95,10 +94,10 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
       <Group value="ai" title="AI Actions">
         <div className="grid grid-cols-2 gap-1">
           {AI_ACTIONS.map(a => (
-            <Button key={a.action} variant="outline" size="sm" className="h-7 text-[10px]" disabled={aiAction === a.action}
+            <button key={a.action} className="cpe-mini-btn" disabled={aiAction === a.action}
               onClick={() => { setAiAction(a.action); onRegenerate(); }}>
               <Wand2 className="w-2.5 h-2.5" /> {a.label}
-            </Button>
+            </button>
           ))}
         </div>
       </Group>
