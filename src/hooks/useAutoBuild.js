@@ -8,6 +8,7 @@ const STAGES = [
   { id: 'dossier', label: 'Dossier', description: 'Organizing research into Approved Research Dossier' },
   { id: 'develop', label: 'Develop', description: 'Generating Presentation Points, scripts, image prompts, media assets, voiceovers with synchronized timing, layout recommendations' },
   { id: 'packet', label: 'Packet', description: 'Creating StorySlides, assembling StoriesPresentation, attaching SlideElements, applying layouts, transitions, and timing' },
+  { id: 'direct', label: 'APD Direct', description: 'AI Presentation Director analyzing stories, generating scene graphs, camera behavior, motion strategy, and voice-synchronized timelines' },
   { id: 'editor', label: 'Editor', description: 'Opening result in Presentation Editor' },
 ];
 
@@ -64,7 +65,7 @@ export function useAutoBuild() {
   }, []);
 
   const runPipeline = useCallback(async (startStage = 'topics', overridePrompt = null) => {
-    const stageOrder = ['topics', 'research', 'dossier', 'develop', 'packet', 'editor'];
+    const stageOrder = ['topics', 'research', 'dossier', 'develop', 'packet', 'direct', 'editor'];
     const startIdx = stageOrder.indexOf(startStage);
     if (startIdx < 0) return;
 
@@ -208,6 +209,15 @@ export function useAutoBuild() {
           throw new Error('Packet assembly did not produce a presentation');
         }
         markStage('packet', 'done', `${data.slide_count} slides assembled`);
+
+        // ═══ APD Direct ═══
+        currentStage = 'direct';
+        markStage('direct', 'running', 'APD analyzing stories and directing scene graphs...');
+        const apdRes = await base44.functions.invoke('directPresentation', {
+          presentation_id: data.presentation_id,
+        });
+        const apdData = apdRes.data || apdRes;
+        markStage('direct', 'done', `Directed ${apdData.directed_slides} slides · Confidence: ${apdData.confidence_score}%`);
 
         // ═══ Editor ═══
         currentStage = 'editor';
