@@ -1,0 +1,169 @@
+{
+  "name": "ProductionDepartment",
+  "type": "object",
+  "properties": {
+    "production_profile": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking",
+        "research",
+        "cosmo"
+      ],
+      "description": "Which Production Profile this department pipeline belongs to (PP-ARCH-001)"
+    },
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the profile-specific production configuration this pipeline tracks"
+    },
+    "production_name": {
+      "type": "string",
+      "description": "Display name of the production being tracked"
+    },
+    "current_department": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "knowledge",
+        "blueprint",
+        "production",
+        "assembly"
+      ],
+      "default": "discovery",
+      "description": "The department currently active or next to be run (PP-ARCH-001 \u00a7 Universal Workflow)"
+    },
+    "discovery_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "approved",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Discovery Department status \u2014 defines the Production Assignment"
+    },
+    "discovery_output": {
+      "type": "string",
+      "description": "JSON: the approved Production Assignment (what, why, audience, tone, deliverable, scope, objectives, constraints, success criteria)"
+    },
+    "discovery_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "knowledge_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "approved",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Knowledge Department status \u2014 acquires all required information and assets"
+    },
+    "knowledge_output": {
+      "type": "string",
+      "description": "JSON: the Knowledge Dataset summary (sources, assets, references acquired)"
+    },
+    "knowledge_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "blueprint_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "approved",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Blueprint Department status \u2014 organizes knowledge into production blueprint"
+    },
+    "blueprint_output": {
+      "type": "string",
+      "description": "JSON: the approved Production Blueprint (executive summary, story structure, presentation points, timeline, references)"
+    },
+    "blueprint_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "production_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "approved",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Production Department status \u2014 creates all production assets"
+    },
+    "production_output": {
+      "type": "string",
+      "description": "JSON: the approved Production Assets summary (scripts, images, voiceovers, videos created)"
+    },
+    "production_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "assembly_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "approved",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Assembly Department status \u2014 constructs the final editable production"
+    },
+    "assembly_output": {
+      "type": "string",
+      "description": "JSON: the final Production Packet (slides, presentations, exports)"
+    },
+    "assembly_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pipeline_status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed",
+        "failed"
+      ],
+      "default": "not_started",
+      "description": "Overall pipeline status across all 5 departments"
+    },
+    "pipeline_progress": {
+      "type": "number",
+      "default": 0,
+      "description": "Percentage 0-100 of departments approved"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Last error message if a department failed"
+    },
+    "last_error_department": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "knowledge",
+        "blueprint",
+        "production",
+        "assembly"
+      ]
+    }
+  },
+  "required": [
+    "production_profile",
+    "configuration_id"
+  ]
+}

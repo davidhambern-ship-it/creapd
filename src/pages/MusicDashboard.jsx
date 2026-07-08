@@ -3,8 +3,11 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
+import { useProductionDepartments } from '@/hooks/useProductionDepartments';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
+import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
+import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
@@ -193,6 +196,19 @@ function ReadinessRing({ percent, done, total }) {
 export default function MusicDashboard() {
   const { config, playlist, topics, research, rundown, assets, loading, refresh } = useMusicProduction();
   const [refreshing, setRefreshing] = useState(false);
+  const [detailDept, setDetailDept] = useState(null);
+
+  const {
+    pipeline, loading: pipelineLoading, actionLoading: deptActionLoading,
+    initPipeline, setDepartmentStatus, refresh: refreshPipeline,
+  } = useProductionDepartments('music', config?.id);
+
+  // Auto-init pipeline when config loads
+  useEffect(() => {
+    if (config?.id && !pipeline && !pipelineLoading) {
+      initPipeline(config.production_name || 'Music Production');
+    }
+  }, [config?.id, pipeline, pipelineLoading, initPipeline]);
 
   useEffect(() => {
     if (config?.status === 'building') {
@@ -404,6 +420,15 @@ export default function MusicDashboard() {
             </div>
           </div>
         </motion.div>
+
+        {/* PP-ARCH-001: Universal Department Pipeline */}
+        <DepartmentWorkflowBar
+          profileKey="music"
+          pipeline={pipeline}
+          loading={pipelineLoading}
+          actionLoading={deptActionLoading}
+          onAdvance={(dept) => setDetailDept(dept)}
+        />
 
         {/* Metrics + Readiness Row */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -689,6 +714,19 @@ export default function MusicDashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* Department Detail Panel */}
+      <DepartmentDetailPanel
+        department={detailDept}
+        profileKey="music"
+        pipeline={pipeline}
+        onClose={() => setDetailDept(null)}
+        onSetStatus={async (dept, status) => {
+          await setDepartmentStatus(dept, status);
+          refreshPipeline();
+        }}
+        actionLoading={deptActionLoading}
+      />
     </div>
   );
 }

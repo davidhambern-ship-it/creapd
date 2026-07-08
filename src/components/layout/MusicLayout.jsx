@@ -3,7 +3,8 @@ import { Outlet, useLocation, Link } from 'react-router-dom';
 import { MUSIC_NAV_ITEMS } from '@/lib/musicConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Music, Mic,
-  List, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle
+  List, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle,
+  Compass, ListMusic, ClipboardList, Database, Package
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -14,16 +15,16 @@ import MobileBottomNav from './MobileBottomNav';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard' },
-  { icon: Search, label: 'Research', path: '/music/research' },
-  { icon: Music, label: 'Playlist', path: '/music/playlist' },
-  { icon: List, label: 'Rundown', path: '/music/rundown' },
-  { icon: Sparkles, label: 'Assets', path: '/music/assets' },
+  { icon: Compass, label: 'Discovery', path: '/music/configure' },
+  { icon: Search, label: 'Knowledge', path: '/music/research' },
+  { icon: ListMusic, label: 'Blueprint', path: '/music/playlist' },
+  { icon: Sparkles, label: 'Production', path: '/music/assets' },
 ];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, ListMusic: Music,
   Mic, ClipboardList: List, Sparkles, Download, Settings,
-  X, Menu, LayoutGrid, Circle, Music
+  X, Menu, LayoutGrid, Circle, Music, Compass, Database, Package
 };
 
 export default function MusicLayout() {
