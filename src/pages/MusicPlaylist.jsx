@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRuntime } from '@/lib/musicConstants';
-import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Disc3, GripVertical } from 'lucide-react';
+import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Disc3, Play, ShieldCheck, ShieldAlert } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import MusicPlayer from '@/components/music/MusicPlayer';
+import { formatLicenseLabel, isPlayableLicense } from '@/lib/musicPlaybackEngine';
 
 export default function MusicPlaylist() {
   const { config, playlist, loading, refresh } = useMusicProduction();
@@ -53,6 +55,23 @@ export default function MusicPlaylist() {
     } finally {
       setRegenerating(false);
     }
+  };
+
+  // Fetch AssetRegistry record for KAAE validation
+  const getAssetRecord = useCallback(async (assetId) => {
+    if (!assetId) return null;
+    try {
+      return await base44.entities.AssetRegistry.get(assetId);
+    } catch (err) {
+      console.error('Failed to fetch asset record:', err);
+      return null;
+    }
+  }, []);
+
+  const [playbackTrackIndex, setPlaybackTrackIndex] = useState(null);
+
+  const handlePlayTrack = (index) => {
+    setPlaybackTrackIndex(index);
   };
 
   if (loading) {
@@ -149,6 +168,15 @@ export default function MusicPlaylist() {
           </div>
         </motion.div>
 
+        {/* Music Playback Engine — KAAE-licensed playback */}
+        {activePlaylist.length > 0 && (
+          <MusicPlayer
+            tracks={activePlaylist}
+            getAssetRecord={getAssetRecord}
+            startIndex={playbackTrackIndex}
+          />
+        )}
+
         {/* Track list — vinyl record row style */}
         {activePlaylist.length > 0 ? (
           <div className="space-y-2">
@@ -167,17 +195,21 @@ export default function MusicPlaylist() {
                 <div className="absolute left-0 top-0 bottom-0 w-1"
                   style={{ background: song.status === 'locked' ? '#FF00FF' : '#00FFFF', opacity: 0.6 }} />
                 <div className="flex items-center gap-3 p-3 pl-5">
-                  {/* Track number disc */}
-                  <div className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)' }}>
-                    <span className="text-sm font-bold" style={{ color: '#FF00FF' }}>{i + 1}</span>
+                  {/* Play button + track number disc */}
+                  <button
+                    onClick={() => handlePlayTrack(i)}
+                    className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center group/play transition-all"
+                    style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)' }}
+                  >
+                    <span className="text-sm font-bold group-hover/play:hidden" style={{ color: '#FF00FF' }}>{i + 1}</span>
+                    <Play className="w-4 h-4 hidden group-hover/play:block text-white fill-white" />
                     {song.status === 'locked' && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
                         style={{ background: '#FF00FF' }}>
                         <Lock className="w-2.5 h-2.5 text-white" />
                       </div>
                     )}
-                  </div>
+                  </button>
 
                   {/* Song info */}
                   <div className="flex-1 min-w-0">
@@ -185,7 +217,7 @@ export default function MusicPlaylist() {
                     <p className="text-xs text-gray-400 truncate">{song.artist}</p>
                   </div>
 
-                  {/* Tags */}
+                  {/* Tags + KAAE badge */}
                   <div className="hidden md:flex items-center gap-1.5">
                     {song.genre && (
                       <span className="text-xs px-2 py-0.5 rounded-full border"
@@ -196,6 +228,23 @@ export default function MusicPlaylist() {
                     {song.mood && (
                       <span className="text-xs px-2 py-0.5 rounded-full border border-white/10 text-gray-400">
                         {song.mood}
+                      </span>
+                    )}
+                    {song.kaae_validated ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full border flex items-center gap-1"
+                        style={{ background: 'rgba(0,255,136,0.08)', color: '#00FF88', borderColor: 'rgba(0,255,136,0.25)' }}>
+                        <ShieldCheck className="w-2.5 h-2.5" />
+                        {formatLicenseLabel(song.audio_license)}
+                      </span>
+                    ) : song.audio_asset_id ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full border flex items-center gap-1"
+                        style={{ background: 'rgba(255,107,0,0.08)', color: '#FF6B00', borderColor: 'rgba(255,107,0,0.25)' }}>
+                        <ShieldAlert className="w-2.5 h-2.5" />
+                        Pending
+                      </span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded-full border border-white/10 text-gray-500">
+                        No Audio
                       </span>
                     )}
                   </div>
