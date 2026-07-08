@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, FileStack, TrendingUp, Plus, Film, Loader2, Search, Pencil } from 'lucide-react';
+import { Clock, FileStack, TrendingUp, Plus, Film, Loader2, Search, Pencil, Trash2, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
@@ -28,6 +28,7 @@ export default function Presentations() {
   const [selectedProfile, setSelectedProfile] = useState('news');
   const [presentationTitle, setPresentationTitle] = useState('');
   const [loadingPackages, setLoadingPackages] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     loadPresentations();
@@ -89,6 +90,42 @@ export default function Presentations() {
   const openGenerateDialog = () => {
     setShowGenerate(true);
     loadAvailablePackages();
+  };
+
+  const handleDelete = async (presId) => {
+    if (!confirm('Delete this presentation? This will also delete all slides and elements. This cannot be undone.')) return;
+    setDeletingId(presId);
+    try {
+      // Delete all slide elements for this presentation
+      const slides = await base44.entities.StorySlide.filter({ stories_presentation_id: presId }, 'slide_number', 200);
+      if (slides && slides.length > 0) {
+        await base44.entities.SlideElement.deleteMany({ presentation_id: presId });
+        for (const slide of slides) {
+          await base44.entities.StorySlide.delete(slide.id);
+        }
+      }
+      // Delete the presentation
+      await base44.entities.StoriesPresentation.delete(presId);
+      setPresentations(prev => prev.filter(p => p.id !== presId));
+    } catch (error) {
+      console.error('Delete failed:', error);
+      alert('Delete failed: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleExportPptx = async (presId) => {
+    try {
+      const res = await base44.functions.invoke('exportToPptx', { presentation_id: presId });
+      const url = res.data?.signed_url || res.signed_url;
+      if (url) {
+        window.open(url, '_blank');
+      }
+    } catch (error) {
+      console.error('PPTX export failed:', error);
+      alert('Export failed: ' + (error.response?.data?.error || error.message));
+    }
   };
 
   const filtered = presentations.filter(p =>
@@ -161,14 +198,37 @@ export default function Presentations() {
                   <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {pres.confidence_score}</span>
                 </div>
               </Link>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-3 gap-1.5"
-                onClick={() => navigate(`/editor/${pres.id}`)}
-              >
-                <Pencil className="w-3.5 h-3.5" /> Edit Presentation
-              </Button>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 gap-1.5"
+                  onClick={() => navigate(`/editor/${pres.id}`)}
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => handleExportPptx(pres.id)}
+                  title="Export as PPTX (Google Slides compatible)"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 hover:border-destructive hover:text-destructive"
+                  onClick={() => handleDelete(pres.id)}
+                  disabled={deletingId === pres.id}
+                  title="Delete presentation"
+                >
+                  {deletingId === pres.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Trash2 className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
             </div>
           ))}
         </div>

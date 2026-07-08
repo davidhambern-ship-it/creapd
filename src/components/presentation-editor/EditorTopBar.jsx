@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown, Edit3, Eye,
-  AlignLeft, Captions, Wand2,
+  AlignLeft, Captions, Wand2, FolderOpen,
 } from 'lucide-react';
 
 const ADD_OPTIONS = [
@@ -14,7 +15,7 @@ const ADD_OPTIONS = [
   { type: 'caption', label: 'Caption', icon: Captions },
 ];
 
-const EXPORT_OPTIONS = ['PDF', 'PowerPoint', 'Video', 'Present Mode'];
+const EXPORT_OPTIONS = ['Google Slides (PPTX)', 'PDF', 'PowerPoint', 'Video', 'Present Mode'];
 
 export default function EditorTopBar({
   saving, dirty, canUndo, canRedo, hasSelection, title, mode,
@@ -42,6 +43,14 @@ export default function EditorTopBar({
       <IconBtn onClick={onRedo} disabled={!canRedo}><Redo2 className="w-4 h-4" /></IconBtn>
 
       <Sep />
+
+      <Sep />
+
+      <Link to="/news/presentations">
+        <Button variant="ghost" size="sm" className="gap-1.5">
+          <FolderOpen className="w-4 h-4" /> Open
+        </Button>
+      </Link>
 
       <Button variant={mode === 'edit' ? 'default' : 'ghost'} size="sm" onClick={() => onToggleMode('edit')} className="gap-1.5">
         <Edit3 className="w-4 h-4" /> Edit

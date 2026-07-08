@@ -656,6 +656,23 @@ export function usePresentationEditor(presentationId) {
     if (dirty) await saveAll();
     if (format === 'Present Mode') { setPresenting(true); return; }
     if (isTransient) { toast.error('Save the presentation before exporting'); return; }
+
+    // PPTX export — returns a binary file download
+    if (format === 'Google Slides (PPTX)' || format === 'PPTX') {
+      toast.loading('Generating PPTX file...', { id: 'export' });
+      try {
+        const res = await base44.functions.invoke('exportToPptx', { presentation_id: presentationId });
+        const url = res.data?.signed_url || res.signed_url;
+        if (url) {
+          window.open(url, '_blank');
+          toast.success('PPTX downloaded — upload to Google Slides', { id: 'export' });
+        } else {
+          toast.success('PPTX export complete', { id: 'export' });
+        }
+      } catch { toast.error('PPTX export failed', { id: 'export' }); }
+      return;
+    }
+
     toast.loading(`Exporting ${format}...`, { id: 'export' });
     try {
       await base44.functions.invoke('createExportJob', { presentation_id: presentationId, format: format.toLowerCase().replace(/\s/g, '_') });
