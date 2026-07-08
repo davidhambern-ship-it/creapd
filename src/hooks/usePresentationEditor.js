@@ -120,6 +120,11 @@ export function usePresentationEditor(presentationId) {
                 : elem.element_type === 'quote' ? 24
                 : 18;
 
+              const animType = elem.entrance_animation?.type || 'fade_in';
+              const tlEvents = elem.timeline_events || [];
+              const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
+              const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
+
               merged.push({
                 id: `sg-${tempZ}`,
                 slide_id: slideId,
@@ -141,6 +146,8 @@ export function usePresentationEditor(presentationId) {
                   borderRadius: elem.element_type === 'talking_point_card' ? 12 : 0,
                   padding: elem.element_type === 'talking_point_card' ? 16 : 4,
                 }),
+                animation: JSON.stringify({ type: animType, duration_ms: 500, delay_ms: startMs }),
+                timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
                 locked: false,
                 visible: true,
               });
