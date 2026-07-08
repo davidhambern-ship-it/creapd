@@ -110,9 +110,13 @@ export default function PresentationEditor() {
         </div>
 
         <PropertiesPanel
+          presentation={ed.presentation}
           slide={ed.activeSlide}
-          selectedElement={ed.selectedElement}
           selectedId={ed.selectedId}
+          selectedElement={ed.selectedElement}
+          selectedElements={ed.selectedElements}
+          zoom={ed.zoom}
+          onUpdatePresentation={ed.updatePresentation}
           onUpdateSlide={ed.updateSlide}
           onUpdateElement={ed.updateElement}
           onDeleteElement={ed.deleteElement}
@@ -120,6 +124,16 @@ export default function PresentationEditor() {
           onDuplicateElement={ed.duplicateElement}
           onBringForward={ed.bringForward}
           onSendBackward={ed.sendBackward}
+          onDuplicateSlide={ed.duplicateSlide}
+          onDeleteSlide={ed.deleteSlide}
+          onMoveSlideForward={() => ed.selectSlide(Math.min(ed.activeIndex + 1, ed.slides.length - 1))}
+          onMoveSlideBackward={() => ed.selectSlide(Math.max(ed.activeIndex - 1, 0))}
+          onCopy={ed.copyElement}
+          onCut={ed.cutElement}
+          onPaste={ed.pasteElement}
+          onAlign={ed.alignElements}
+          onDistribute={ed.distributeElements}
+          onZoom={ed.setZoom}
         />
       </div>
     </div>
