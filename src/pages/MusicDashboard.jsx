@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import CursorGlow from '@/components/creap/CursorGlow';
+import MusicWorkspace3D from '@/components/music/MusicWorkspace3D';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import {
@@ -189,7 +190,7 @@ export default function MusicDashboard() {
 
   return (
     <div className="relative min-h-screen overflow-hidden creapd-bg-gradient">
-      <AmbientBackground />
+      <MusicWorkspace3D />
       <CursorGlow />
 
       <div className="relative z-10 p-6 md:p-8 space-y-6">
