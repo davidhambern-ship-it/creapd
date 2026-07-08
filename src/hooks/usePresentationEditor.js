@@ -68,36 +68,27 @@ export function usePresentationEditor(presentationId) {
       const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
       const dbElements = els || [];
 
-      // Parse scene_graph and merge in any elements that don't exist as SlideElement records
+      // DB SlideElement records are the source of truth — the scene_graph is
+      // just a "direction" that autoBuildPacket used to create them. Merging
+      // both onto the canvas causes content duplication. Only fall back to
+      // scene_graph parsing when no DB elements exist yet.
+      if (dbElements.length > 0) {
+        setElements(dbElements);
+        setSavedElements(dbElements);
+        return;
+      }
+
       const slideObj = typeof slide === 'object' ? slide : null;
       const sceneGraph = slideObj ? parseJSON(slideObj.scene_graph, null) : null;
-      const merged = [...dbElements];
+      const merged = [];
 
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
-        // Build a set of existing element content strings for deduplication.
-        // The APD regenerates headlines, body text, images, and lower thirds
-        // that already exist as SlideElement records — only merge in truly
-        // NEW content (statistics, quotes, talking_point_cards, etc.)
-        const existingContent = new Set(
-          dbElements.map(e => (e.content || '').trim().toLowerCase()).filter(Boolean)
-        );
-        const isDuplicate = (text) => {
-          const t = (text || '').trim().toLowerCase();
-          if (!t) return true;
-          // Exact match or one is a substring of the other (APD may trim/truncate)
-          for (const existing of existingContent) {
-            if (t === existing) return true;
-            if (t.length > 20 && existing.length > 20 && (t.includes(existing) || existing.includes(t))) return true;
-          }
-          return false;
-        };
-
         let tempZ = 100;
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
               const elemContent = elem.asset_reference || elem.content || '';
-              if (isDuplicate(elemContent)) continue;
+              if (!elemContent) continue;
 
               const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
               const py = Math.round((elem.position?.y ?? 0.5) * CANVAS_H);
@@ -157,7 +148,7 @@ export function usePresentationEditor(presentationId) {
       }
 
       setElements(merged);
-      setSavedElements(dbElements); // Only DB elements are "saved" — scene_graph temp elements will be created on save
+      setSavedElements([]); // Scene graph temp elements — will be created on save
     } catch {
       setElements([]);
       setSavedElements([]);
