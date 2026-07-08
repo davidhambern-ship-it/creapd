@@ -189,8 +189,10 @@ const AuthenticatedApp = () => {
           <Route path="/news/settings" element={<SettingsPage />} />
           <Route path="/news/presentations" element={<Presentations />} />
           <Route path="/news/presentations/:id" element={<PresentationReview />} />
-          <Route path="/news/presentations/:id/edit" element={<PresentationEditor />} />
         </Route>
+
+        {/* Presentation Editor — standalone full-screen, not wrapped in ProducerLayout */}
+        <Route path="/news/presentations/:id/edit" element={<PresentationEditor />} />
 
         {/* Onboarding & Production Type Selection */}
         <Route path="/onboarding" element={<Onboarding />} />
