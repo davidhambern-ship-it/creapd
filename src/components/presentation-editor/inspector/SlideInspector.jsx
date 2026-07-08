@@ -40,7 +40,7 @@ function TextTypeControls({ label, prefix, font, setFont }) {
         </div>
       </div>
       <Field label="Font Family">
-        <SelectField value={font[`${prefix}Font`] || 'Poppins'} options={FONTS}
+        <SelectField value={font[`${prefix}Font`] || 'Poppins'} options={FONTS} styleFont
           onChange={(v) => setFont({ [`${prefix}Font`]: v })} />
       </Field>
       <SliderField label="Font Size" value={font[`${prefix}Size`] || (prefix === 'title' ? 48 : 24)}

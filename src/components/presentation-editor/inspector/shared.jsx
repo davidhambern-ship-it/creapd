@@ -62,11 +62,16 @@ export function ColorField({ value, onChange }) {
   );
 }
 
-export function SelectField({ value, onChange, options }) {
+export function SelectField({ value, onChange, options, styleFont = false }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8">
-      {options.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
+      className="w-full text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8"
+      style={styleFont ? { fontFamily: value } : undefined}>
+      {options.map(o => (
+        <option key={o} value={o} style={styleFont ? { fontFamily: o } : undefined}>
+          {o.replace(/_/g, ' ')}
+        </option>
+      ))}
     </select>
   );
 }

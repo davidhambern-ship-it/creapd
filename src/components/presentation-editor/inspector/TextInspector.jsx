@@ -61,7 +61,7 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
       </Group>
 
       <Group value="typography" title="Typography">
-        <Field label="Font Family"><SelectField value={style.fontFamily || 'Inter'} options={FONTS} onChange={(v) => setStyle({ fontFamily: v })} /></Field>
+        <Field label="Font Family"><SelectField value={style.fontFamily || 'Inter'} options={FONTS} styleFont onChange={(v) => setStyle({ fontFamily: v })} /></Field>
         <SliderField label="Font Size" value={style.fontSize || 16} min={8} max={120} onChange={(v) => setStyle({ fontSize: v })} />
         <div className="flex gap-1">
           <Button variant={style.bold ? 'default' : 'outline'} size="sm" className="flex-1 h-7" onClick={() => setStyle({ bold: !style.bold })}><Bold className="w-3.5 h-3.5" /></Button>
