@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
 
@@ -11,7 +12,16 @@ function parseJSON(str, fallback) {
 
 function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
+function generatePpId() {
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `PP-${ts}-${rand}`;
+}
+
 export function usePresentationEditor(presentationId) {
+  const navigate = useNavigate();
+  const isTransient = !presentationId;
+
   const [presentation, setPresentation] = useState(null);
   const [slides, setSlides] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -24,6 +34,9 @@ export function usePresentationEditor(presentationId) {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [presenting, setPresenting] = useState(false);
+
+  // Transient mode: per-slide element cache (slide temp-id → elements[])
+  const [transientElements, setTransientElements] = useState({});
 
   // Playback
   const [isPlaying, setIsPlaying] = useState(false);
@@ -50,7 +63,41 @@ export function usePresentationEditor(presentationId) {
   }, []);
 
   const loadPresentation = useCallback(async () => {
-    if (!presentationId) return;
+    if (!presentationId) {
+      // ── Transient / blank editor ──
+      const ppId = generatePpId();
+      const blankSlide = {
+        id: `temp-slide-${Date.now()}`,
+        stories_presentation_id: null,
+        pp_id: ppId,
+        slide_number: 1,
+        slide_type: 'blank',
+        title: 'New Slide',
+        body_text: '',
+        speaker_notes: '',
+        transition: 'fade',
+        status: 'editing',
+        background: JSON.stringify({ color: '#0a0a0a' }),
+        version: 1,
+      };
+      setPresentation({
+        title: 'Untitled Presentation',
+        production_profile: 'news',
+        pp_id: ppId,
+        slide_order: '[]',
+        story_slide_ids: '[]',
+        presentation_version: 1,
+        status: 'editing',
+      });
+      setSlides([blankSlide]);
+      setActiveIndex(0);
+      setElements([]);
+      setSavedElements([]);
+      setTransientElements({});
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const pres = await base44.entities.StoriesPresentation.get(presentationId);
@@ -90,13 +137,30 @@ export function usePresentationEditor(presentationId) {
 
   // ═══ Select slide ═══
   const selectSlide = useCallback((index) => {
+    if (isTransient) {
+      // Stash current slide's elements before switching
+      if (activeSlide) {
+        setTransientElements(prev => ({ ...prev, [activeSlide.id]: elements }));
+      }
+      setActiveIndex(index);
+      setSelectedId(null);
+      setCurrentTime(0);
+      setIsPlaying(false);
+      const newSlide = slides[index];
+      if (newSlide) {
+        setElements(transientElements[newSlide.id] || []);
+        setSavedElements([]);
+      }
+      return;
+    }
+
     if (dirty) saveAll();
     setActiveIndex(index);
     setSelectedId(null);
     setCurrentTime(0);
     setIsPlaying(false);
     if (slides[index]) loadElements(slides[index].id);
-  }, [dirty, slides, loadElements]);
+  }, [isTransient, activeSlide, elements, slides, dirty, loadElements, transientElements]);
 
   // ═══ Element ops ═══
   const updateElement = useCallback((elId, updates) => {
@@ -140,6 +204,7 @@ export function usePresentationEditor(presentationId) {
       id: `temp-${Date.now()}`,
       slide_id: activeSlide.id,
       presentation_id: presentationId,
+      pp_id: presentation?.pp_id,
       type,
       content: def.content || '',
       x: def.x ?? 100, y: def.y ?? 100,
@@ -151,7 +216,7 @@ export function usePresentationEditor(presentationId) {
     };
     setElements(prev => [...prev, newEl]);
     setSelectedId(newEl.id);
-  }, [activeSlide, elements, presentationId, pushUndo]);
+  }, [activeSlide, elements, presentationId, presentation, pushUndo]);
 
   const bringForward = useCallback((elId) => {
     pushUndo();
@@ -180,9 +245,38 @@ export function usePresentationEditor(presentationId) {
   }, [activeIndex, pushUndo]);
 
   const addSlide = useCallback(async () => {
+    if (isTransient) {
+      const newSlide = {
+        id: `temp-slide-${Date.now()}`,
+        stories_presentation_id: null,
+        pp_id: presentation?.pp_id,
+        slide_number: slides.length + 1,
+        slide_type: 'blank',
+        title: 'New Slide',
+        body_text: '',
+        speaker_notes: '',
+        transition: 'fade',
+        status: 'editing',
+        background: JSON.stringify({ color: '#0a0a0a' }),
+        version: 1,
+      };
+      // Stash current slide's elements
+      if (activeSlide) {
+        setTransientElements(prev => ({ ...prev, [activeSlide.id]: elements }));
+      }
+      setSlides(prev => [...prev, newSlide]);
+      setActiveIndex(slides.length);
+      setSelectedId(null);
+      setElements([]);
+      setSavedElements([]);
+      setDirty(true);
+      return;
+    }
+
     try {
       const newSlide = await base44.entities.StorySlide.create({
         stories_presentation_id: presentationId,
+        pp_id: presentation?.pp_id,
         slide_number: slides.length + 1,
         slide_type: 'blank',
         title: 'New Slide',
@@ -199,14 +293,28 @@ export function usePresentationEditor(presentationId) {
       setSavedElements([]);
       setDirty(true);
     } catch { toast.error('Failed to add slide'); }
-  }, [presentationId, slides.length]);
+  }, [isTransient, presentation, presentationId, slides.length, activeSlide, elements]);
 
   const duplicateSlide = useCallback(async (index) => {
     const src = slides[index];
     if (!src) return;
+
+    if (isTransient) {
+      const dup = {
+        ...clone(src),
+        id: `temp-slide-${Date.now()}`,
+        title: `${src.title || 'Slide'} (Copy)`,
+        slide_number: index + 2,
+      };
+      setSlides(prev => [...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)]);
+      setDirty(true);
+      return;
+    }
+
     try {
       const dup = await base44.entities.StorySlide.create({
         stories_presentation_id: presentationId,
+        pp_id: presentation?.pp_id,
         slide_number: index + 2,
         slide_type: src.slide_type,
         title: `${src.title || 'Slide'} (Copy)`,
@@ -219,12 +327,26 @@ export function usePresentationEditor(presentationId) {
       setSlides(prev => [...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)]);
       setDirty(true);
     } catch { toast.error('Failed to duplicate slide'); }
-  }, [slides, presentationId]);
+  }, [slides, isTransient, presentation, presentationId]);
 
   const deleteSlide = useCallback(async (index) => {
     if (slides.length <= 1) { toast.error('Cannot delete the last slide'); return; }
     const slide = slides[index];
     if (!slide) return;
+
+    if (isTransient) {
+      setTransientElements(prev => {
+        const next = { ...prev };
+        delete next[slide.id];
+        return next;
+      });
+      const remaining = slides.filter((_, i) => i !== index);
+      setSlides(remaining);
+      if (activeIndex >= remaining.length) setActiveIndex(remaining.length - 1);
+      setDirty(true);
+      return;
+    }
+
     try {
       await base44.entities.StorySlide.delete(slide.id);
       const remaining = slides.filter((_, i) => i !== index);
@@ -232,7 +354,7 @@ export function usePresentationEditor(presentationId) {
       if (activeIndex >= remaining.length) setActiveIndex(remaining.length - 1);
       setDirty(true);
     } catch { toast.error('Failed to delete slide'); }
-  }, [slides, activeIndex]);
+  }, [slides, activeIndex, isTransient]);
 
   const reorderSlides = useCallback((fromIndex, toIndex) => {
     if (fromIndex === toIndex) return;
@@ -290,6 +412,64 @@ export function usePresentationEditor(presentationId) {
     if (!activeSlide) return;
     setSaving(true);
     try {
+      if (isTransient) {
+        // ── Commit transient workspace to DB ──
+        const created = await base44.entities.StoriesPresentation.create({
+          title: presentation.title || 'Untitled Presentation',
+          production_profile: presentation.production_profile || 'news',
+          pp_id: presentation.pp_id,
+          status: 'editing',
+          presentation_version: 1,
+          aspect_ratio: '16:9',
+        });
+
+        // Gather all elements: active slide from state + others from transient cache
+        const allElements = { ...transientElements };
+        allElements[activeSlide.id] = elements;
+
+        const slideIds = [];
+        for (const slide of slides) {
+          const createdSlide = await base44.entities.StorySlide.create({
+            stories_presentation_id: created.id,
+            pp_id: presentation.pp_id,
+            slide_number: slideIds.length + 1,
+            slide_type: slide.slide_type || 'blank',
+            title: slide.title || 'New Slide',
+            body_text: slide.body_text || '',
+            speaker_notes: slide.speaker_notes || '',
+            transition: slide.transition || 'fade',
+            status: 'editing',
+            background: slide.background || JSON.stringify({ color: '#0a0a0a' }),
+            version: 1,
+          });
+          slideIds.push(createdSlide.id);
+
+          // Create elements for this slide
+          const slideEls = allElements[slide.id] || [];
+          for (const el of slideEls) {
+            const { id: _id, ...rest } = el;
+            await base44.entities.SlideElement.create({
+              ...rest,
+              slide_id: createdSlide.id,
+              presentation_id: created.id,
+              pp_id: presentation.pp_id,
+            });
+          }
+        }
+
+        // Update presentation with slide order + count
+        await base44.entities.StoriesPresentation.update(created.id, {
+          slide_order: JSON.stringify(slideIds),
+          story_slide_ids: JSON.stringify(slideIds),
+          story_count: slideIds.length,
+        });
+
+        toast.success('Presentation created');
+        navigate(`/editor/${created.id}`, { replace: true });
+        return;
+      }
+
+      // ── Existing save logic (persistent mode) ──
       await base44.entities.StorySlide.update(activeSlide.id, {
         title: activeSlide.title, body_text: activeSlide.body_text,
         speaker_notes: activeSlide.speaker_notes, slide_type: activeSlide.slide_type,
@@ -310,7 +490,7 @@ export function usePresentationEditor(presentationId) {
       }
       for (const el of toCreate) {
         const { id: _id, ...rest } = el;
-        await base44.entities.SlideElement.create({ ...rest, slide_id: activeSlide.id, presentation_id: presentationId });
+        await base44.entities.SlideElement.create({ ...rest, slide_id: activeSlide.id, presentation_id: presentationId, pp_id: presentation?.pp_id });
       }
       for (const el of toUpdate) {
         const { id: _id, ...rest } = el;
@@ -334,7 +514,7 @@ export function usePresentationEditor(presentationId) {
     } finally {
       setSaving(false);
     }
-  }, [activeSlide, elements, savedElements, slides, presentationId, presentation, loadElements]);
+  }, [isTransient, activeSlide, elements, savedElements, slides, presentationId, presentation, loadElements, transientElements, navigate]);
 
   // ═══ AI Regenerate ═══
   const regenerateSlide = useCallback(async () => {
@@ -367,6 +547,7 @@ export function usePresentationEditor(presentationId) {
   // ═══ QA ═══
   const runQA = useCallback(async () => {
     if (!activeSlide) return;
+    if (isTransient) { toast.error('Save the presentation before running QA'); return; }
     toast.loading('Running QA...', { id: 'qa' });
     try {
       await base44.functions.invoke('dispatchWorker', {
@@ -377,18 +558,19 @@ export function usePresentationEditor(presentationId) {
       });
       toast.success('QA complete', { id: 'qa' });
     } catch { toast.error('QA failed', { id: 'qa' }); }
-  }, [activeSlide, presentationId]);
+  }, [activeSlide, presentationId, isTransient]);
 
   // ═══ Export ═══
   const exportPresentation = useCallback(async (format) => {
     if (dirty) await saveAll();
     if (format === 'Present Mode') { setPresenting(true); return; }
+    if (isTransient) { toast.error('Save the presentation before exporting'); return; }
     toast.loading(`Exporting ${format}...`, { id: 'export' });
     try {
       await base44.functions.invoke('createExportJob', { presentation_id: presentationId, format: format.toLowerCase().replace(/\s/g, '_') });
       toast.success(`${format} export started`, { id: 'export' });
     } catch { toast.error('Export failed', { id: 'export' }); }
-  }, [dirty, saveAll, presentationId]);
+  }, [dirty, saveAll, presentationId, isTransient]);
 
   // ═══ Playback ═══
   const slideDuration = activeSlide

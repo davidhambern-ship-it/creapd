@@ -2,6 +2,10 @@
   "name": "StorySlide",
   "type": "object",
   "properties": {
+    "pp_id": {
+      "type": "string",
+      "description": "Production Package unique identifier \u2014 shared by every asset in this PP"
+    },
     "stories_presentation_id": {
       "type": "string",
       "description": "ID of the parent StoriesPresentation"

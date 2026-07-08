@@ -2,6 +2,10 @@
   "name": "SlideElement",
   "type": "object",
   "properties": {
+    "pp_id": {
+      "type": "string",
+      "description": "Production Package unique identifier \u2014 shared by every asset in this PP"
+    },
     "slide_id": {
       "type": "string",
       "description": "ID of the parent StorySlide"
