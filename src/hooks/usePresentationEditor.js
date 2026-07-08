@@ -27,7 +27,14 @@ export function usePresentationEditor(presentationId) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [elements, setElements] = useState([]);
   const [savedElements, setSavedElements] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const selectedId = selectedIds[0] || null;
+  const setSelectedId = useCallback((id) => setSelectedIds(id ? [id] : []), []);
+  const toggleSelection = useCallback((id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  }, []);
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
+  const [clipboard, setClipboard] = useState(null);
   const [zoom, setZoom] = useState(0.5);
   const [mode, setMode] = useState('edit');
   const [loading, setLoading] = useState(true);
@@ -196,6 +203,11 @@ export function usePresentationEditor(presentationId) {
       text: { width: 400, height: 60, content: 'New text box' },
       image: { width: 400, height: 300, content: '' },
       shape: { width: 200, height: 150, content: '' },
+      icon: { width: 64, height: 64, content: 'star' },
+      video: { width: 480, height: 270, content: '' },
+      audio: { width: 300, height: 48, content: '' },
+      chart: { width: 400, height: 300, content: JSON.stringify({ type: 'bar', data: [] }) },
+      table: { width: 500, height: 200, content: JSON.stringify({ rows: 3, cols: 3 }) },
       lower_third: { width: 800, height: 80, content: 'Lower third text', x: 240, y: 600 },
       caption: { width: 600, height: 40, content: 'Caption text', x: 340, y: 660 },
     };
@@ -238,11 +250,88 @@ export function usePresentationEditor(presentationId) {
     });
   }, [pushUndo]);
 
+  // ═══ Clipboard ═══
+  const copyElement = useCallback((elId) => {
+    const el = elements.find(e => e.id === elId);
+    if (el) setClipboard(clone(el));
+  }, [elements]);
+
+  const cutElement = useCallback((elId) => {
+    const el = elements.find(e => e.id === elId);
+    if (el) { setClipboard(clone(el)); deleteElement(elId); }
+  }, [elements, deleteElement]);
+
+  const pasteElement = useCallback(() => {
+    if (!clipboard || !activeSlide) return;
+    pushUndo();
+    const pasted = {
+      ...clone(clipboard), id: `temp-${Date.now()}`,
+      slide_id: activeSlide.id,
+      x: (clipboard.x || 0) + 30, y: (clipboard.y || 0) + 30,
+      z_index: (elements?.length || 0) + 1,
+    };
+    setElements(prev => [...prev, pasted]);
+    setSelectedId(pasted.id);
+  }, [clipboard, activeSlide, elements, pushUndo]);
+
+  // ═══ Multi-element alignment & distribution ═══
+  const alignElements = useCallback((type) => {
+    if (selectedIds.length < 2) return;
+    pushUndo();
+    const selected = elements.filter(e => selectedIds.includes(e.id));
+    if (selected.length < 2) return;
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.includes(el.id)) return el;
+      switch (type) {
+        case 'left': return { ...el, x: Math.min(...selected.map(s => s.x || 0)) };
+        case 'right': return { ...el, x: Math.max(...selected.map(s => (s.x || 0) + (s.width || 0))) - (el.width || 0) };
+        case 'center_h': {
+          const minLeft = Math.min(...selected.map(s => s.x || 0));
+          const maxRight = Math.max(...selected.map(s => (s.x || 0) + (s.width || 0)));
+          return { ...el, x: (minLeft + maxRight) / 2 - (el.width || 0) / 2 };
+        }
+        case 'top': return { ...el, y: Math.min(...selected.map(s => s.y || 0)) };
+        case 'bottom': return { ...el, y: Math.max(...selected.map(s => (s.y || 0) + (s.height || 0))) - (el.height || 0) };
+        case 'center_v': {
+          const minTop = Math.min(...selected.map(s => s.y || 0));
+          const maxBottom = Math.max(...selected.map(s => (s.y || 0) + (s.height || 0)));
+          return { ...el, y: (minTop + maxBottom) / 2 - (el.height || 0) / 2 };
+        }
+        default: return el;
+      }
+    }));
+  }, [selectedIds, elements, pushUndo]);
+
+  const distributeElements = useCallback((axis) => {
+    if (selectedIds.length < 3) return;
+    pushUndo();
+    const selected = elements.filter(e => selectedIds.includes(e.id))
+      .sort((a, b) => axis === 'h' ? (a.x || 0) - (b.x || 0) : (a.y || 0) - (b.y || 0));
+    if (selected.length < 3) return;
+    const first = selected[0], last = selected[selected.length - 1];
+    const step = axis === 'h'
+      ? ((last.x || 0) + (last.width || 0) - (first.x || 0)) / (selected.length - 1)
+      : ((last.y || 0) + (last.height || 0) - (first.y || 0)) / (selected.length - 1);
+    setElements(prev => prev.map(el => {
+      const idx = selected.findIndex(s => s.id === el.id);
+      if (idx === -1 || idx === 0 || idx === selected.length - 1) return el;
+      return axis === 'h'
+        ? { ...el, x: (first.x || 0) + step * idx }
+        : { ...el, y: (first.y || 0) + step * idx };
+    }));
+  }, [selectedIds, elements, pushUndo]);
+
   // ═══ Slide ops ═══
   const updateSlide = useCallback((updates) => {
     pushUndo();
     setSlides(prev => prev.map((s, i) => i === activeIndex ? { ...s, ...updates } : s));
   }, [activeIndex, pushUndo]);
+
+  // ═══ Presentation-level update ═══
+  const updatePresentation = useCallback((updates) => {
+    setPresentation(prev => prev ? { ...prev, ...updates } : prev);
+    setDirty(true);
+  }, []);
 
   const addSlide = useCallback(async () => {
     if (isTransient) {
@@ -606,6 +695,8 @@ export function usePresentationEditor(presentationId) {
 
   const selectedElement = selectedId && !selectedId.startsWith('__')
     ? elements.find(e => e.id === selectedId) : null;
+  const selectedElements = selectedIds.filter(id => !id.startsWith('__'))
+    .map(id => elements.find(e => e.id === id)).filter(Boolean);
 
   return {
     CANVAS_W, CANVAS_H,
@@ -613,10 +704,12 @@ export function usePresentationEditor(presentationId) {
     zoom, setZoom, mode, setMode, loading, saving, dirty, presenting, setPresenting,
     isPlaying, currentTime, scope, setScope, totalTime, slideDuration,
     selectSlide, updateElement, deleteElement, duplicateElement, addElement, bringForward, sendBackward,
-    updateSlide, addSlide, duplicateSlide, deleteSlide, reorderSlides,
+    updateSlide, updatePresentation, addSlide, duplicateSlide, deleteSlide, reorderSlides,
     undo, redo, undoStack, redoStack, saveAll,
     regenerateSlide, regenerateElement, runQA, exportPresentation,
-    setSelectedId,
+    selectedId, setSelectedId, selectedIds, setSelectedIds, toggleSelection, clearSelection,
+    selectedElements, copyElement, cutElement, pasteElement,
+    alignElements, distributeElements,
     play: () => setIsPlaying(true), pause: () => setIsPlaying(false),
     stop: () => { setIsPlaying(false); setCurrentTime(0); },
     restart: () => { setCurrentTime(0); setIsPlaying(true); },
