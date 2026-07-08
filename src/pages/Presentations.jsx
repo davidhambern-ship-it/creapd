@@ -165,7 +165,7 @@ export default function Presentations() {
                 size="sm"
                 variant="outline"
                 className="w-full mt-3 gap-1.5"
-                onClick={() => navigate(`/news/presentations/${pres.id}/edit`)}
+                onClick={() => navigate(`/editor/${pres.id}`)}
               >
                 <Pencil className="w-3.5 h-3.5" /> Edit Presentation
               </Button>

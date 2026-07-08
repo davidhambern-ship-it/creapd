@@ -26,7 +26,10 @@ export default function EditorTopBar({
 
   return (
     <div className="flex items-center gap-1 px-3 py-2 bg-card border-b border-border">
-      <span className="text-sm font-heading font-semibold mr-2 truncate max-w-[180px]">{title || 'Editor'}</span>
+      <div className="flex items-center gap-2 mr-2">
+        <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-berna-purple hidden sm:inline">CREAPD</span>
+        <span className="text-sm font-heading font-semibold truncate max-w-[180px]">{title || 'Presentation Editor'}</span>
+      </div>
       {dirty && <span className="w-2 h-2 rounded-full bg-amber-400" title="Unsaved changes" />}
 
       <Sep />

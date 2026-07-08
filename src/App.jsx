@@ -191,8 +191,9 @@ const AuthenticatedApp = () => {
           <Route path="/news/presentations/:id" element={<PresentationReview />} />
         </Route>
 
-        {/* Presentation Editor — standalone full-screen, not wrapped in ProducerLayout */}
-        <Route path="/news/presentations/:id/edit" element={<PresentationEditor />} />
+        {/* CREAPD Presentation Editor — standalone full-screen */}
+        <Route path="/editor" element={<PresentationEditor />} />
+        <Route path="/editor/:id" element={<PresentationEditor />} />
 
         {/* Onboarding & Production Type Selection */}
         <Route path="/onboarding" element={<Onboarding />} />
