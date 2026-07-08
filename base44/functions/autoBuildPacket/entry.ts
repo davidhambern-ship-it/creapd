@@ -53,6 +53,17 @@ Deno.serve(async (req) => {
     // ── Fetch config ──
     const config = await base44.asServiceRole.entities.ResearchProductionConfiguration.get(configuration_id);
 
+    // ── Fetch VoicePackages for all packages ──
+    const allVPs = await base44.asServiceRole.entities.VoicePackage.filter(
+      { source_type: 'production_package' }, '-created_date', 200
+    );
+    const vpMap = {};
+    for (const vp of (allVPs || [])) {
+      if (vp.source_id && !vpMap[vp.source_id]) {
+        vpMap[vp.source_id] = vp;
+      }
+    }
+
     // ── Fetch topics for dossier metadata ──
     const topics = await base44.asServiceRole.entities.ResearchTopic.filter(
       { configuration_id }, '-created_date'
@@ -122,12 +133,16 @@ Deno.serve(async (req) => {
     for (let i = 0; i < packages.length; i++) {
       const pkg = packages[i];
       const point = points.find(p => p.id === pkg.source_entity_id);
+      const vp = vpMap[pkg.id] || null;
 
       const slideTitle = point?.title || pkg.headline_suggestions || `Slide ${i + 1}`;
       const slideBody = pkg.teleprompter_script || pkg.story_summary || point?.content || '';
       const speakerNotes = pkg.talking_points || pkg.producer_notes || '';
       const lowerThird = pkg.lower_third_text || '';
       const imageUrl = pkg.generated_image_url || '';
+
+      // Use real VP duration if available, otherwise fallback to default
+      const slideDurationMs = vp ? Math.round((vp.total_duration_seconds || 0) * 1000) : SLIDE_DURATION_MS;
 
       // Determine slide type
       let slideType = 'content_slide';
@@ -148,17 +163,27 @@ Deno.serve(async (req) => {
         background: JSON.stringify({ color: colors.bg, type: 'solid' }),
         transition: i === 0 ? 'fade' : (config?.tone === 'energetic' ? 'slide_left' : 'fade'),
         animations: JSON.stringify({ entrance: 'fade_in', exit: 'fade_out' }),
-        timing: JSON.stringify({ start_ms: currentTimeMs, duration_ms: SLIDE_DURATION_MS }),
+        timing: JSON.stringify({ start_ms: currentTimeMs, duration_ms: slideDurationMs }),
         slide_metadata: JSON.stringify({
           headline: slideTitle,
           story_summary: pkg.story_summary || '',
           source_point_id: point?.id,
           source_point_type: point?.point_type,
           auto_built: true,
-          duration_ms: SLIDE_DURATION_MS,
+          duration_ms: slideDurationMs,
+          has_voiceover: !!vp,
         }),
         slide_start_ms: currentTimeMs,
-        duration_ms: SLIDE_DURATION_MS,
+        duration_ms: slideDurationMs,
+        voice_package_id: vp?.id || null,
+        slide_timeline: vp ? JSON.stringify({
+          voice_audio_url: vp.voice_audio_url,
+          sentence_timeline: vp.sentence_timeline,
+          word_timeline: vp.word_timeline,
+          paragraph_timeline: vp.paragraph_timeline,
+          pause_timeline: vp.pause_timeline,
+          total_duration_seconds: vp.total_duration_seconds,
+        }) : null,
         status: 'generated',
         version: 1,
       });
@@ -168,9 +193,9 @@ Deno.serve(async (req) => {
         event_type: 'slide_start',
         slide_id: slide.id,
         start_time: currentTimeMs,
-        end_time: currentTimeMs + SLIDE_DURATION_MS,
+        end_time: currentTimeMs + slideDurationMs,
       });
-      currentTimeMs += SLIDE_DURATION_MS;
+      currentTimeMs += slideDurationMs;
 
       // ── Create SlideElements (fully editable) ──
       let zIndex = 1;

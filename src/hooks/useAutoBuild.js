@@ -6,7 +6,7 @@ const STAGES = [
   { id: 'topics', label: 'Topics', description: 'Interpreting prompt & creating Research Assignment' },
   { id: 'research', label: 'Research', description: 'Gathering facts, sources, references, visual references, areas of debate, timeline, statistics' },
   { id: 'dossier', label: 'Dossier', description: 'Organizing research into Approved Research Dossier' },
-  { id: 'develop', label: 'Develop', description: 'Generating Presentation Points, scripts, image prompts, media assets, voice package, layout recommendations' },
+  { id: 'develop', label: 'Develop', description: 'Generating Presentation Points, scripts, image prompts, media assets, voiceovers with synchronized timing, layout recommendations' },
   { id: 'packet', label: 'Packet', description: 'Creating StorySlides, assembling StoriesPresentation, attaching SlideElements, applying layouts, transitions, and timing' },
   { id: 'editor', label: 'Editor', description: 'Opening result in Presentation Editor' },
 ];
@@ -154,20 +154,42 @@ export function useAutoBuild() {
 
         for (let i = 0; i < points.length; i++) {
           setDetail(`Generating assets for slide ${i + 1} of ${points.length}: ${(points[i].title || '').substring(0, 50)}...`);
+          let pkg = null;
           try {
-            await base44.functions.invoke('buildResearchProduction', {
+            const res = await base44.functions.invoke('buildResearchProduction', {
               research_point_id: points[i].id,
               tone: params?.tone || 'educational',
               reading_style: params?.reading_style || 'documentary',
               audience: params?.target_audience || 'General Public',
               target_runtime: '1 Minute',
             });
+            pkg = res.data || res;
           } catch (err) {
             console.error(`Failed to build package for point ${i + 1}:`, err.message);
           }
+
+          // Generate VoicePackage with synchronized narration timing
+          if (pkg?.package_id || pkg?.id) {
+            const pkgId = pkg.package_id || pkg.id;
+            setDetail(`Generating voiceover for slide ${i + 1} of ${points.length}...`);
+            try {
+              const fullPkg = await base44.entities.ProductionPackage.get(pkgId);
+              const script = fullPkg?.teleprompter_script || fullPkg?.story_summary || '';
+              if (script) {
+                await base44.functions.invoke('generateVoicePackage', {
+                  script_text: script,
+                  voice: params?.voice || 'river',
+                  source_type: 'production_package',
+                  source_id: pkgId,
+                });
+              }
+            } catch (err) {
+              console.error(`Failed to generate voice for point ${i + 1}:`, err.message);
+            }
+          }
         }
 
-        markStage('develop', 'done', `${points.length} slides generated with scripts, media, and assets`);
+        markStage('develop', 'done', `${points.length} slides generated with scripts, media, voiceovers, and assets`);
       }
 
       // ═══ Packet Department ═══
