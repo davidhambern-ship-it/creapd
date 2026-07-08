@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const CANVAS_W = 1280;
@@ -16,6 +16,20 @@ function parseBG(slide) {
     if (bg.color) return { background: bg.color };
   } catch {}
   return { background: '#0a0a0a' };
+}
+
+function useElementSize(ref) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return size;
 }
 
 function ElementRenderer({ element }) {
@@ -71,6 +85,8 @@ function ElementRenderer({ element }) {
 export default function SlideElementCanvas({ slide }) {
   const [elements, setElements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef(null);
+  const { width: containerWidth } = useElementSize(containerRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,41 +106,53 @@ export default function SlideElementCanvas({ slide }) {
     return () => { cancelled = true; };
   }, [slide?.id]);
 
+  const scale = containerWidth > 0 ? containerWidth / CANVAS_W : 1;
   const sorted = [...elements].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center">
+    <div ref={containerRef} className="absolute inset-0 flex items-center justify-center">
       <div
         className="relative shadow-2xl overflow-hidden"
         style={{
-          width: '100%',
-          aspectRatio: '16 / 9',
+          width: containerWidth || '100%',
+          height: (containerWidth || CANVAS_W) * (CANVAS_H / CANVAS_W),
           ...parseBG(slide),
         }}
       >
-        {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-          </div>
-        ) : sorted.length > 0 ? (
-          sorted.map(el => <ElementRenderer key={el.id} element={el} />)
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-            {slide?.title && (
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-                {slide.title}
-              </h2>
-            )}
-            {slide?.body_text && (
-              <p className="text-sm md:text-base text-white/80 whitespace-pre-wrap max-w-2xl">
-                {slide.body_text}
-              </p>
-            )}
-            {!slide?.title && !slide?.body_text && (
-              <p className="text-white/30 text-sm">No content on this slide</p>
-            )}
-          </div>
-        )}
+        {/* Fixed 1280×720 canvas scaled to fit */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0, left: 0,
+            width: CANVAS_W, height: CANVAS_H,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {loading ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            </div>
+          ) : sorted.length > 0 ? (
+            sorted.map(el => <ElementRenderer key={el.id} element={el} />)
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+              {slide?.title && (
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-3" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+                  {slide.title}
+                </h2>
+              )}
+              {slide?.body_text && (
+                <p className="text-sm md:text-base text-white/80 whitespace-pre-wrap max-w-2xl">
+                  {slide.body_text}
+                </p>
+              )}
+              {!slide?.title && !slide?.body_text && (
+                <p className="text-white/30 text-sm">No content on this slide</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
