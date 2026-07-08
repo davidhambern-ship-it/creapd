@@ -16,7 +16,7 @@ export default function SvgGenerator({ colorScheme, onInsert }) {
     setError(null);
     try {
       const colors = colorScheme
-        ? ` Color scheme to match: background ${colorScheme.background || '#0a0a0a'}, primary accent ${colorScheme.titleColor || '#ffffff'}, secondary text ${colorScheme.bodyColor || '#e0e0e0'}. Use these colors for the illustration so it blends with the slide.`
+        ? ` You MUST use these exact presentation colors in the SVG: primary color ${colorScheme.primary || '#7c3aed'} (use for the main icon/focal elements), accent color ${colorScheme.accent || '#ffffff'} (use for highlights, outlines, and secondary details), background color ${colorScheme.background || '#0a0a0a'} (the slide background the icon will sit on — do not fill the SVG with this, but ensure the icon contrasts well against it). Apply the primary color to the dominant shapes and the accent color to supporting elements so the icon looks native to this presentation's palette.`
         : '';
 
       const result = await base44.integrations.Core.InvokeLLM({

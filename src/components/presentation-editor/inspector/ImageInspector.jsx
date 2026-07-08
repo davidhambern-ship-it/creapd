@@ -8,16 +8,19 @@ import {
   Trash2, Lock, Unlock, ArrowUp, ArrowDown, ImagePlus,
 } from 'lucide-react';
 
-export default function ImageInspector({ element, slide, onUpdate, onDelete, onRegenerate, onBringForward, onSendBackward }) {
+export default function ImageInspector({ element, slide, presentation, onUpdate, onDelete, onRegenerate, onBringForward, onSendBackward }) {
   const style = pj(element.style, {});
   const setStyle = (patch) => onUpdate(element.id, { style: JSON.stringify({ ...style, ...patch }) });
 
+  const theme = pj(presentation?.theme, {});
   const bg = pj(slide?.background, {});
   const fonts = pj(slide?.slide_metadata, {}).fonts || {};
   const colorScheme = {
-    background: bg.color || '#0a0a0a',
-    titleColor: fonts.titleColor,
-    bodyColor: fonts.bodyColor,
+    background: bg.color || theme.bg || '#0a0a0a',
+    primary: theme.primary || '#7c3aed',
+    accent: theme.text || fonts.titleColor || '#ffffff',
+    titleColor: fonts.titleColor || theme.text,
+    bodyColor: fonts.bodyColor || theme.text,
   };
 
   return (
