@@ -15,6 +15,7 @@ import WaveSurfer from 'wavesurfer.js';
 export default function WaveformDisplay({ audioUrl, isPlaying, progressFraction, onSeek }) {
   const containerRef = useRef(null);
   const wavesurferRef = useRef(null);
+  const isInteractingRef = useRef(false);
 
   // Initialize WaveSurfer once
   useEffect(() => {
@@ -37,10 +38,12 @@ export default function WaveformDisplay({ audioUrl, isPlaying, progressFraction,
     wavesurferRef.current = ws;
 
     ws.on('interaction', (newTime) => {
+      isInteractingRef.current = true;
       const duration = ws.getDuration();
       if (duration > 0 && onSeek) {
         onSeek(newTime / duration);
       }
+      setTimeout(() => { isInteractingRef.current = false; }, 150);
     });
 
     return () => {
@@ -65,9 +68,11 @@ export default function WaveformDisplay({ audioUrl, isPlaying, progressFraction,
     }
   }, [isPlaying]);
 
-  // Sync progress from Howler (one-way: Howler -> WaveSurfer)
+  // Sync progress from Howler (one-way: Howler -> WaveSurfer).
+  // Skip while user is dragging/clicking the waveform to avoid fighting the seek.
   useEffect(() => {
     if (!wavesurferRef.current) return;
+    if (isInteractingRef.current) return;
     const duration = wavesurferRef.current.getDuration();
     if (duration > 0) {
       wavesurferRef.current.seekTo(progressFraction);

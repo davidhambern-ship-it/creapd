@@ -1,13 +1,12 @@
-import React, { useMemo, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
+import { Volume2, VolumeX, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { formatLicenseLabel } from '@/lib/musicPlaybackEngine';
-import { formatRuntime } from '@/lib/musicConstants';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { useMusicPlayer } from '@/hooks/useMusicPlayer';
-import WaveformDisplay from './WaveformDisplay';
 import EqualizerBars from './EqualizerBars';
+import TransportControls from './TransportControls';
 
 /**
  * MusicPlayer — The main playback component for the Music PP.
@@ -53,9 +52,7 @@ export default function MusicPlayer({ tracks, getAssetRecord, startIndex }) {
     seek(fraction);
   }, [seek]);
 
-  const elapsedSeconds = useMemo(() => {
-    return (progress || 0) * (duration || 0);
-  }, [progress, duration]);
+  const noTracks = !tracks || tracks.length === 0;
 
   return (
     <motion.div
@@ -112,73 +109,34 @@ export default function MusicPlayer({ tracks, getAssetRecord, startIndex }) {
         </div>
       )}
 
-      {/* Waveform */}
-      <div className="mb-3">
-        <WaveformDisplay
-          audioUrl={playableUrl}
-          isPlaying={isPlaying}
-          progressFraction={progress}
-          onSeek={handleSeek}
-        />
-      </div>
+      {/* Transport controls — waveform is the scrubber */}
+      <TransportControls
+        isPlaying={isPlaying}
+        isLoading={isLoading}
+        progress={progress}
+        duration={duration}
+        audioUrl={playableUrl}
+        onSeek={handleSeek}
+        onTogglePlay={togglePlayPause}
+        onPrevious={previous}
+        onNext={next}
+        canSkipBack={currentTrackIndex !== null && currentTrackIndex > 0}
+        canSkipForward={currentTrackIndex !== null && currentTrackIndex < tracks.length - 1}
+        disabled={noTracks}
+      />
 
-      {/* Progress Bar */}
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs text-gray-400 font-mono w-10 text-right">{formatRuntime(elapsedSeconds)}</span>
+      {/* Volume */}
+      <div className="flex items-center gap-2 w-32 mt-3 ml-auto">
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setVolume(volume > 0 ? 0 : 0.8)}>
+          {volume > 0 ? <Volume2 className="w-4 h-4 text-gray-400" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
+        </Button>
         <Slider
-          value={[Math.round((progress || 0) * 100)]}
+          value={[Math.round(volume * 100)]}
           max={100}
           step={1}
-          onValueChange={(val) => seek(val[0] / 100)}
+          onValueChange={(val) => setVolume(val[0] / 100)}
           className="flex-1"
         />
-        <span className="text-xs text-gray-400 font-mono w-10">{formatRuntime(duration)}</span>
-      </div>
-
-      {/* Controls + Volume */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button size="icon" variant="ghost" className="h-9 w-9 hover:bg-white/10" onClick={previous} disabled={currentTrackIndex === null || currentTrackIndex === 0}>
-            <SkipBack className="w-4 h-4 text-white" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-12 w-12 rounded-full"
-            onClick={togglePlayPause}
-            disabled={isLoading || (currentTrackIndex === null && tracks.length === 0)}
-            style={{
-              background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
-              boxShadow: '0 0 16px rgba(255,0,255,0.35)',
-            }}
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 text-white animate-spin" />
-            ) : isPlaying ? (
-              <Pause className="w-5 h-5 text-white" />
-            ) : (
-              <Play className="w-5 h-5 text-white ml-0.5" />
-            )}
-          </Button>
-          <Button size="icon" variant="ghost" className="h-9 w-9 hover:bg-white/10" onClick={next}
-            disabled={currentTrackIndex === null || currentTrackIndex >= tracks.length - 1}>
-            <SkipForward className="w-4 h-4 text-white" />
-          </Button>
-        </div>
-
-        {/* Volume */}
-        <div className="flex items-center gap-2 w-32">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setVolume(volume > 0 ? 0 : 0.8)}>
-            {volume > 0 ? <Volume2 className="w-4 h-4 text-gray-400" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
-          </Button>
-          <Slider
-            value={[Math.round(volume * 100)]}
-            max={100}
-            step={1}
-            onValueChange={(val) => setVolume(val[0] / 100)}
-            className="flex-1"
-          />
-        </div>
       </div>
     </motion.div>
   );
