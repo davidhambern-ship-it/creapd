@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { InspectorShell, Group, Field, ColorField, SelectField, NumField, SliderField, pj, IconBtn } from './shared';
+import FontPicker from './FontPicker';
 import { Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import {
   Trash2, Lock, Unlock, Copy, ChevronLeft, ChevronRight,
@@ -40,7 +41,7 @@ function TextTypeControls({ label, prefix, font, setFont }) {
         </div>
       </div>
       <Field label="Font Family">
-        <SelectField value={font[`${prefix}Font`] || 'Poppins'} options={FONTS} styleFont
+        <FontPicker value={font[`${prefix}Font`] || 'Poppins'} options={FONTS}
           onChange={(v) => setFont({ [`${prefix}Font`]: v })} />
       </Field>
       <SliderField label="Font Size" value={font[`${prefix}Size`] || (prefix === 'title' ? 48 : 24)}
