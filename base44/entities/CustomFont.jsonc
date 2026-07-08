@@ -1,0 +1,22 @@
+{
+  "name": "CustomFont",
+  "type": "object",
+  "properties": {
+    "font_name": {
+      "type": "string",
+      "description": "Display name of the font as it appears in the picker"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Persistent URL of the uploaded font file (.ttf, .otf, .woff2)"
+    },
+    "file_format": {
+      "type": "string",
+      "description": "Original file extension \u2014 used for FontFace src format detection"
+    }
+  },
+  "required": [
+    "font_name",
+    "file_url"
+  ]
+}

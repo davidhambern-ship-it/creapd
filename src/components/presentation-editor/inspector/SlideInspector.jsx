@@ -6,17 +6,10 @@ import { Bold, Italic, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import {
   Trash2, Lock, Unlock, Copy, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { useCustomFonts } from '@/hooks/useCustomFonts';
 
 const TRANSITIONS = ['fade', 'slide_left', 'slide_right', 'zoom', 'dissolve', 'none'];
 const SLIDE_TYPES = ['title_slide', 'content_slide', 'image_slide', 'video_slide', 'lower_third', 'full_screen', 'split_screen', 'section_divider', 'closing_slide', 'blank'];
-const FONTS = [
-  'Inter', 'Poppins', 'Oswald', 'Bebas Neue', 'Public Sans', 'JetBrains Mono',
-  'Roboto', 'Montserrat', 'Lato', 'Open Sans', 'Noto Sans', 'DM Sans',
-  'Playfair Display', 'Merriweather', 'Raleway',
-  'Anton', 'Archivo Black', 'Righteous', 'Russo One',
-  'Teko', 'Saira', 'Archivo',
-  'CreapdCustom', 'Robotica', 'CreapConvFont', 'HollywoodDrive',
-];
 
 const ALIGN_OPTS = [
   { value: 'left', icon: AlignLeft },
@@ -24,7 +17,7 @@ const ALIGN_OPTS = [
   { value: 'right', icon: AlignRight },
 ];
 
-function TextTypeControls({ label, prefix, font, setFont }) {
+function TextTypeControls({ label, prefix, font, setFont, allFonts, onUpload, uploading }) {
   return (
     <>
       <div className="flex items-center gap-1 mt-1.5 mb-0.5">
@@ -41,7 +34,8 @@ function TextTypeControls({ label, prefix, font, setFont }) {
         </div>
       </div>
       <Field label="Font Family">
-        <FontPicker value={font[`${prefix}Font`] || 'Poppins'} options={FONTS}
+        <FontPicker value={font[`${prefix}Font`] || 'Poppins'} options={allFonts}
+          onUpload={onUpload} uploading={uploading}
           onChange={(v) => setFont({ [`${prefix}Font`]: v })} />
       </Field>
       <SliderField label="Font Size" value={font[`${prefix}Size`] || (prefix === 'title' ? 48 : 24)}
@@ -67,6 +61,8 @@ function TextTypeControls({ label, prefix, font, setFont }) {
 export default function SlideInspector({
   slide, selectedId, onUpdate, onDuplicate, onDelete, onMoveForward, onMoveBackward,
 }) {
+  const { allFonts, uploadFont, uploading } = useCustomFonts();
+
   if (!slide) return (
     <InspectorShell title="Slide">
       <div className="p-4 text-sm text-muted-foreground">No slide selected</div>
@@ -109,9 +105,9 @@ export default function SlideInspector({
       </Group>
 
       <Group value="typography" title="Typography">
-        <TextTypeControls label="Title" prefix="title" font={fonts} setFont={setFonts} />
+        <TextTypeControls label="Title" prefix="title" font={fonts} setFont={setFonts} allFonts={allFonts} onUpload={uploadFont} uploading={uploading} />
         <div className="border-t border-border/50 my-2" />
-        <TextTypeControls label="Body" prefix="body" font={fonts} setFont={setFonts} />
+        <TextTypeControls label="Body" prefix="body" font={fonts} setFont={setFonts} allFonts={allFonts} onUpload={uploadFont} uploading={uploading} />
       </Group>
 
       <Group value="layout" title="Layout">

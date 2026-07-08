@@ -6,15 +6,7 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Copy, Scissors, Clipboard, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Wand2,
 } from 'lucide-react';
-
-const FONTS = [
-  'Inter', 'Poppins', 'Oswald', 'Bebas Neue', 'Public Sans', 'JetBrains Mono',
-  'Roboto', 'Montserrat', 'Lato', 'Open Sans', 'Noto Sans', 'DM Sans',
-  'Playfair Display', 'Merriweather', 'Raleway',
-  'Anton', 'Archivo Black', 'Righteous', 'Russo One',
-  'Teko', 'Saira', 'Archivo',
-  'CreapdCustom', 'Robotica', 'CreapConvFont', 'HollywoodDrive',
-];
+import { useCustomFonts } from '@/hooks/useCustomFonts';
 const AI_ACTIONS = [
   { label: 'Rewrite', action: 'rewrite' },
   { label: 'Summarize', action: 'summarize' },
@@ -25,6 +17,7 @@ const AI_ACTIONS = [
 ];
 
 export default function TextInspector({ element, onUpdate, onDelete, onRegenerate, onDuplicate, onCopy, onCut, onPaste, onBringForward, onSendBackward }) {
+  const { allFonts, uploadFont, uploading } = useCustomFonts();
   const style = pj(element.style, {});
   const [aiAction, setAiAction] = useState(null);
 
@@ -62,7 +55,7 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
       </Group>
 
       <Group value="typography" title="Typography">
-        <Field label="Font Family"><FontPicker value={style.fontFamily || 'Inter'} options={FONTS} onChange={(v) => setStyle({ fontFamily: v })} /></Field>
+        <Field label="Font Family"><FontPicker value={style.fontFamily || 'Inter'} options={allFonts} onUpload={uploadFont} uploading={uploading} onChange={(v) => setStyle({ fontFamily: v })} /></Field>
         <SliderField label="Font Size" value={style.fontSize || 16} min={8} max={120} onChange={(v) => setStyle({ fontSize: v })} />
         <div className="flex gap-1">
           <Button variant={style.bold ? 'default' : 'outline'} size="sm" className="flex-1 h-7" onClick={() => setStyle({ bold: !style.bold })}><Bold className="w-3.5 h-3.5" /></Button>
