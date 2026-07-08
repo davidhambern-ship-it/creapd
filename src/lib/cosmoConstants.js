@@ -82,13 +82,13 @@ export const RUNTIME_DEFAULTS = {
 
 export const COSMO_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/cosmo/dashboard', section: null },
-  { icon: 'Settings2', label: 'Configuration', path: '/cosmo/configure', section: 'Workflow' },
-  { icon: 'Search', label: 'Research', path: '/cosmo/research', section: 'Workflow' },
-  { icon: 'Sparkles', label: 'Topics', path: '/cosmo/topics', section: 'Workflow' },
-  { icon: 'Users', label: 'Guests', path: '/cosmo/guests', section: 'Workflow' },
-  { icon: 'ClipboardList', label: 'Show Rundown', path: '/cosmo/rundown', section: 'Workflow' },
-  { icon: 'Wand2', label: 'AI Assets', path: '/cosmo/assets', section: 'Output' },
-  { icon: 'Download', label: 'Export', path: '/cosmo/export', section: 'Output' },
+  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/cosmo/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge — Research', path: '/cosmo/research', section: 'Knowledge' },
+  { icon: 'Sparkles', label: 'Blueprint — Topics', path: '/cosmo/topics', section: 'Blueprint' },
+  { icon: 'Users', label: 'Blueprint — Guests', path: '/cosmo/guests', section: 'Blueprint' },
+  { icon: 'Wand2', label: 'Production — AI Assets', path: '/cosmo/assets', section: 'Production' },
+  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/cosmo/rundown', section: 'Assembly' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/cosmo/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 

@@ -82,13 +82,13 @@ export const RUNTIME_DEFAULTS = {
 
 export const TALK_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/talk/dashboard', section: null },
-  { icon: 'Settings2', label: 'Configuration', path: '/talk/configure', section: 'Workflow' },
-  { icon: 'Search', label: 'Research', path: '/talk/research', section: 'Workflow' },
-  { icon: 'Lightbulb', label: 'Topics', path: '/talk/topics', section: 'Workflow' },
-  { icon: 'Users', label: 'Guests', path: '/talk/guests', section: 'Workflow' },
-  { icon: 'ClipboardList', label: 'Show Rundown', path: '/talk/rundown', section: 'Workflow' },
-  { icon: 'Sparkles', label: 'AI Assets', path: '/talk/assets', section: 'Output' },
-  { icon: 'Download', label: 'Export', path: '/talk/export', section: 'Output' },
+  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/talk/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge — Research', path: '/talk/research', section: 'Knowledge' },
+  { icon: 'Lightbulb', label: 'Blueprint — Topics', path: '/talk/topics', section: 'Blueprint' },
+  { icon: 'Users', label: 'Blueprint — Guests', path: '/talk/guests', section: 'Blueprint' },
+  { icon: 'Sparkles', label: 'Production — AI Assets', path: '/talk/assets', section: 'Production' },
+  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/talk/rundown', section: 'Assembly' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/talk/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 

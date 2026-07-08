@@ -3,7 +3,8 @@ import { Outlet, useLocation, Link } from 'react-router-dom';
 import { SPORTS_NAV_ITEMS } from '@/lib/sportsConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Trophy, Users,
-  ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle
+  ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle,
+  Compass
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -14,16 +15,16 @@ import MobileBottomNav from './MobileBottomNav';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/sports/dashboard' },
-  { icon: Search, label: 'Research', path: '/sports/research' },
-  { icon: Trophy, label: 'Games', path: '/sports/games' },
-  { icon: Users, label: 'Athletes', path: '/sports/athletes' },
-  { icon: ClipboardList, label: 'Rundown', path: '/sports/rundown' },
+  { icon: Compass, label: 'Discovery', path: '/sports/configure' },
+  { icon: Search, label: 'Knowledge', path: '/sports/research' },
+  { icon: Trophy, label: 'Blueprint', path: '/sports/games' },
+  { icon: Sparkles, label: 'Production', path: '/sports/assets' },
 ];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, Trophy, Users,
   ClipboardList, Sparkles, Download, Settings,
-  X, Menu, LayoutGrid, Circle
+  X, Menu, LayoutGrid, Circle, Compass
 };
 
 export default function SportsLayout() {

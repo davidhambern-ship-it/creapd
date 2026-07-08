@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings
+  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings, Compass
 } from 'lucide-react';
 
 export const RESEARCH_DEPTH_OPTIONS = [
@@ -42,20 +42,20 @@ export const PREFERRED_MODEL_OPTIONS = [
 
 export const RESEARCH_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/research/dashboard', section: null },
-  { icon: 'Settings2', label: 'Configuration', path: '/research/configure', section: 'Workflow' },
-  { icon: 'Lightbulb', label: 'Topics', path: '/research/topics', section: 'Workflow' },
-  { icon: 'Layers', label: 'Point Manager', path: '/research/manager', section: 'Workflow' },
-  { icon: 'Sparkles', label: 'Packages', path: '/research/assets', section: 'Output' },
-  { icon: 'Download', label: 'Export', path: '/research/export', section: 'Output' },
+  { icon: 'Compass', label: 'Discovery — Setup', path: '/research/configure', section: 'Discovery' },
+  { icon: 'Lightbulb', label: 'Discovery — Topics', path: '/research/topics', section: 'Discovery' },
+  { icon: 'Layers', label: 'Blueprint — Point Manager', path: '/research/manager', section: 'Blueprint' },
+  { icon: 'Sparkles', label: 'Production — Packages', path: '/research/assets', section: 'Production' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/research/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 
 export const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/research/dashboard' },
+  { icon: Compass, label: 'Discovery', path: '/research/configure' },
   { icon: Lightbulb, label: 'Topics', path: '/research/topics' },
-  { icon: Layers, label: 'Points', path: '/research/manager' },
-  { icon: Sparkles, label: 'Packages', path: '/research/assets' },
-  { icon: Download, label: 'Export', path: '/research/export' }
+  { icon: Sparkles, label: 'Production', path: '/research/assets' },
+  { icon: Download, label: 'Assembly', path: '/research/export' }
 ];
 
 export const POINT_TYPE_LABELS = {
@@ -96,7 +96,7 @@ export const TOPIC_STATUS_LABELS = {
 };
 
 export const ICON_MAP = {
-  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings
+  LayoutDashboard, Settings2, Lightbulb, Layers, Sparkles, Download, Settings, Compass
 };
 
 export const RUNTIME_DEFAULTS = {

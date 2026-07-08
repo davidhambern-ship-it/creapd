@@ -3,7 +3,8 @@ import { Outlet, useLocation, Link } from 'react-router-dom';
 import { COSMO_NAV_ITEMS } from '@/lib/cosmoConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Sparkles, Users,
-  ClipboardList, Wand2, Download, Settings, X, Menu, LayoutGrid, Circle
+  ClipboardList, Wand2, Download, Settings, X, Menu, LayoutGrid, Circle,
+  Compass
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -14,16 +15,16 @@ import MobileBottomNav from './MobileBottomNav';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/cosmo/dashboard' },
-  { icon: Search, label: 'Research', path: '/cosmo/research' },
-  { icon: Sparkles, label: 'Topics', path: '/cosmo/topics' },
-  { icon: Users, label: 'Guests', path: '/cosmo/guests' },
-  { icon: ClipboardList, label: 'Rundown', path: '/cosmo/rundown' },
+  { icon: Compass, label: 'Discovery', path: '/cosmo/configure' },
+  { icon: Search, label: 'Knowledge', path: '/cosmo/research' },
+  { icon: Sparkles, label: 'Blueprint', path: '/cosmo/topics' },
+  { icon: Wand2, label: 'Production', path: '/cosmo/assets' },
 ];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, Sparkles, Users,
   ClipboardList, Wand2, Download, Settings,
-  X, Menu, LayoutGrid, Circle
+  X, Menu, LayoutGrid, Circle, Compass
 };
 
 export default function CosmoLayout() {

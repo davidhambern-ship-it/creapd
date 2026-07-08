@@ -4,7 +4,7 @@ import { SPIRITUAL_NAV_ITEMS } from '@/lib/spiritualConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, BookOpen, GraduationCap,
   PenTool, Sparkles, Package, Download, Settings, X, Menu, LayoutGrid, Circle, Church,
-  Library, Languages, Columns2, Star, Clock3
+  Library, Languages, Columns2, Star, Clock3, Compass
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -15,17 +15,17 @@ import MobileBottomNav from './MobileBottomNav';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/spiritual/dashboard' },
-  { icon: Search, label: 'Research', path: '/spiritual/research' },
-  { icon: GraduationCap, label: 'Study', path: '/spiritual/study' },
-  { icon: PenTool, label: 'Message', path: '/spiritual/message' },
-  { icon: Library, label: 'Library', path: '/spiritual/library' },
+  { icon: Compass, label: 'Discovery', path: '/spiritual/configure' },
+  { icon: Search, label: 'Knowledge', path: '/spiritual/research' },
+  { icon: GraduationCap, label: 'Blueprint', path: '/spiritual/study' },
+  { icon: Sparkles, label: 'Production', path: '/spiritual/assets' },
 ];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, BookOpen,
   GraduationCap, PenTool, Sparkles, Package, Download, Settings,
   X, Menu, LayoutGrid, Circle, Church, Library, Languages, Columns2,
-  Star, Clock3
+  Star, Clock3, Compass
 };
 
 export default function SpiritualLayout() {

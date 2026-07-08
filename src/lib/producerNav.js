@@ -10,60 +10,60 @@ export const PRODUCER_NAV_SECTIONS = [
   {
     label: null,
     items: [
-      { icon: FileText, label: "Today's Brief", path: '/news/brief' },
+      { icon: FileText, label: "Discovery — Today's Brief", path: '/news/brief' },
       { icon: LayoutDashboard, label: 'Dashboard', path: '/news/dashboard' },
     ]
   },
   {
-    label: 'Content',
+    label: 'Discovery',
     items: [
-      { icon: Layers, label: 'Story Queue', path: '/news/queue' },
-      { icon: Bookmark, label: 'Story Package Library', path: '/news/library' },
-      { icon: ClipboardList, label: 'Story Manager', path: '/news/workspace' },
+      { icon: Layers, label: 'Discovery — Story Queue', path: '/news/queue' },
+      { icon: Palette, label: 'Discovery — Brand Profiles', path: '/news/brands' },
+      { icon: Tv, label: 'Discovery — Show Profiles', path: '/news/shows' },
+    ]
+  },
+  {
+    label: 'Knowledge',
+    items: [
+      { icon: Search, label: 'Knowledge — Research Desk', path: '/news/research' },
+      { icon: Radio, label: 'Knowledge — Sources', path: '/news/sources' },
+      { icon: FileInput, label: 'Knowledge — Import URL', path: '/news/import' },
+      { icon: Bookmark, label: 'Knowledge — Story Library', path: '/news/library' },
+      { icon: ImageIcon, label: 'Knowledge — Media Library', path: '/news/images' },
+    ]
+  },
+  {
+    label: 'Blueprint',
+    items: [
+      { icon: ClipboardList, label: 'Blueprint — Story Manager', path: '/news/workspace' },
+      { icon: LayoutTemplate, label: 'Blueprint — Templates', path: '/news/templates' },
+      { icon: ImageIcon, label: 'Blueprint — Graphics Templates', path: '/news/graphics-templates' },
+      { icon: MessageSquareCode, label: 'Blueprint — Prompt Templates', path: '/news/prompt-templates' },
     ]
   },
   {
     label: 'Production',
     items: [
-      { icon: Package, label: 'Production', path: '/news/production' },
-      { icon: Palette, label: 'Brand Profiles', path: '/news/brands' },
-      { icon: Tv, label: 'Show Profiles', path: '/news/shows' },
-      { icon: ImageIcon, label: 'Image/Video Library', path: '/news/images' },
+      { icon: Package, label: 'Production — Packages', path: '/news/production' },
     ]
   },
   {
-    label: 'Output',
+    label: 'Assembly',
     items: [
-      { icon: Film, label: 'Presentations', path: '/news/presentations' },
-      { icon: Download, label: 'Export Center', path: '/news/export' },
-    ]
-  },
-  {
-    label: 'Research & Sources',
-    items: [
-      { icon: Search, label: 'Research Desk', path: '/news/research' },
-      { icon: Radio, label: 'Sources', path: '/news/sources' },
-      { icon: FileInput, label: 'Import URL', path: '/news/import' },
-    ]
-  },
-  {
-    label: 'Templates',
-    items: [
-      { icon: LayoutTemplate, label: 'Templates', path: '/news/templates' },
-      { icon: ImageIcon, label: 'Graphics Templates', path: '/news/graphics-templates' },
-      { icon: MessageSquareCode, label: 'Prompt Templates', path: '/news/prompt-templates' },
+      { icon: Film, label: 'Assembly — Presentations', path: '/news/presentations' },
+      { icon: Download, label: 'Assembly — Export Center', path: '/news/export' },
     ]
   },
   {
     label: 'System',
     items: [
-      { icon: Archive, label: 'Archive', path: '/news/archive' },
-      { icon: ShieldCheck, label: 'Security & Privacy', path: '/news/security' },
-      { icon: Activity, label: 'Automation', path: '/news/automation' },
-      { icon: Building2, label: 'Organizations', path: '/news/organizations' },
-      { icon: Bell, label: 'Activity Center', path: '/news/activity' },
-      { icon: UserCircle, label: 'My Profile', path: '/news/profile' },
-      { icon: Settings, label: 'Settings', path: '/news/settings' },
+      { icon: Archive, label: 'System — Archive', path: '/news/archive' },
+      { icon: ShieldCheck, label: 'System — Security & Privacy', path: '/news/security' },
+      { icon: Activity, label: 'System — Automation', path: '/news/automation' },
+      { icon: Building2, label: 'System — Organizations', path: '/news/organizations' },
+      { icon: Bell, label: 'System — Activity Center', path: '/news/activity' },
+      { icon: UserCircle, label: 'System — My Profile', path: '/news/profile' },
+      { icon: Settings, label: 'System — Settings', path: '/news/settings' },
     ]
   },
 ];

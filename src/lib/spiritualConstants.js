@@ -141,17 +141,17 @@ export const RUNTIME_OPTIONS = ['10 Minutes', '15 Minutes', '20 Minutes', '30 Mi
 
 export const SPIRITUAL_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/spiritual/dashboard', section: null },
-  { icon: 'Settings2', label: 'Configuration', path: '/spiritual/configure', section: 'Workflow' },
-  { icon: 'Search', label: 'Research', path: '/spiritual/research', section: 'Workflow' },
-  { icon: 'GraduationCap', label: 'Study Workspace', path: '/spiritual/study', section: 'Workflow' },
-  { icon: 'PenTool', label: 'Message Builder', path: '/spiritual/message', section: 'Workflow' },
-  { icon: 'Library', label: 'Library Home', path: '/spiritual/library', section: 'World Scripture Library' },
-  { icon: 'BookOpen', label: 'Sacred Texts', path: '/spiritual/library?browse=collection', section: 'World Scripture Library' },
-  { icon: 'Languages', label: 'Languages', path: '/spiritual/library/languages', section: 'World Scripture Library' },
-  { icon: 'Columns2', label: 'Comparisons', path: '/spiritual/library/compare', section: 'World Scripture Library' },
-  { icon: 'Sparkles', label: 'AI Assets', path: '/spiritual/assets', section: 'Output' },
-  { icon: 'Package', label: 'Production Package', path: '/spiritual/package', section: 'Output' },
-  { icon: 'Download', label: 'Export', path: '/spiritual/export', section: 'Output' },
+  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/spiritual/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge — Research', path: '/spiritual/research', section: 'Knowledge' },
+  { icon: 'Library', label: 'Knowledge — Library', path: '/spiritual/library', section: 'Knowledge' },
+  { icon: 'BookOpen', label: 'Knowledge — Sacred Texts', path: '/spiritual/library?browse=collection', section: 'Knowledge' },
+  { icon: 'Languages', label: 'Knowledge — Languages', path: '/spiritual/library/languages', section: 'Knowledge' },
+  { icon: 'Columns2', label: 'Knowledge — Comparisons', path: '/spiritual/library/compare', section: 'Knowledge' },
+  { icon: 'GraduationCap', label: 'Blueprint — Study Workspace', path: '/spiritual/study', section: 'Blueprint' },
+  { icon: 'PenTool', label: 'Blueprint — Message Builder', path: '/spiritual/message', section: 'Blueprint' },
+  { icon: 'Sparkles', label: 'Production — AI Assets', path: '/spiritual/assets', section: 'Production' },
+  { icon: 'Package', label: 'Assembly — Production Package', path: '/spiritual/package', section: 'Assembly' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/spiritual/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 

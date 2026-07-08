@@ -3,7 +3,8 @@ import { Outlet, useLocation, Link } from 'react-router-dom';
 import { COOKING_NAV_ITEMS } from '@/lib/cookingConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, ChefHat, Carrot,
-  ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle
+  ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle,
+  Compass
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -14,16 +15,16 @@ import MobileBottomNav from './MobileBottomNav';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/cooking/dashboard' },
-  { icon: Search, label: 'Research', path: '/cooking/research' },
-  { icon: ChefHat, label: 'Recipes', path: '/cooking/recipes' },
-  { icon: Carrot, label: 'Ingredients', path: '/cooking/ingredients' },
-  { icon: ClipboardList, label: 'Rundown', path: '/cooking/rundown' },
+  { icon: Compass, label: 'Discovery', path: '/cooking/configure' },
+  { icon: Search, label: 'Knowledge', path: '/cooking/research' },
+  { icon: ChefHat, label: 'Blueprint', path: '/cooking/recipes' },
+  { icon: Sparkles, label: 'Production', path: '/cooking/assets' },
 ];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, ChefHat, Carrot,
   ClipboardList, Sparkles, Download, Settings,
-  X, Menu, LayoutGrid, Circle
+  X, Menu, LayoutGrid, Circle, Compass
 };
 
 export default function CookingLayout() {

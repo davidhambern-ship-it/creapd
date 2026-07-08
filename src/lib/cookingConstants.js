@@ -78,13 +78,13 @@ export const RUNTIME_DEFAULTS = {
 
 export const COOKING_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/cooking/dashboard', section: null },
-  { icon: 'Settings2', label: 'Configuration', path: '/cooking/configure', section: 'Workflow' },
-  { icon: 'Search', label: 'Research', path: '/cooking/research', section: 'Workflow' },
-  { icon: 'ChefHat', label: 'Recipes', path: '/cooking/recipes', section: 'Workflow' },
-  { icon: 'Carrot', label: 'Ingredients', path: '/cooking/ingredients', section: 'Workflow' },
-  { icon: 'ClipboardList', label: 'Show Rundown', path: '/cooking/rundown', section: 'Workflow' },
-  { icon: 'Sparkles', label: 'AI Assets', path: '/cooking/assets', section: 'Output' },
-  { icon: 'Download', label: 'Export', path: '/cooking/export', section: 'Output' },
+  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/cooking/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge — Research', path: '/cooking/research', section: 'Knowledge' },
+  { icon: 'ChefHat', label: 'Blueprint — Recipes', path: '/cooking/recipes', section: 'Blueprint' },
+  { icon: 'Carrot', label: 'Blueprint — Ingredients', path: '/cooking/ingredients', section: 'Blueprint' },
+  { icon: 'Sparkles', label: 'Production — AI Assets', path: '/cooking/assets', section: 'Production' },
+  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/cooking/rundown', section: 'Assembly' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/cooking/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 

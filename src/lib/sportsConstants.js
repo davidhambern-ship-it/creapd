@@ -83,13 +83,13 @@ export const RUNTIME_DEFAULTS = {
 
 export const SPORTS_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/sports/dashboard', section: null },
-  { icon: 'Settings2', label: 'Configuration', path: '/sports/configure', section: 'Workflow' },
-  { icon: 'Search', label: 'Research', path: '/sports/research', section: 'Workflow' },
-  { icon: 'Trophy', label: 'Games', path: '/sports/games', section: 'Workflow' },
-  { icon: 'Users', label: 'Athletes', path: '/sports/athletes', section: 'Workflow' },
-  { icon: 'ClipboardList', label: 'Show Rundown', path: '/sports/rundown', section: 'Workflow' },
-  { icon: 'Sparkles', label: 'AI Assets', path: '/sports/assets', section: 'Output' },
-  { icon: 'Download', label: 'Export', path: '/sports/export', section: 'Output' },
+  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/sports/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge — Research', path: '/sports/research', section: 'Knowledge' },
+  { icon: 'Trophy', label: 'Blueprint — Games', path: '/sports/games', section: 'Blueprint' },
+  { icon: 'Users', label: 'Blueprint — Athletes', path: '/sports/athletes', section: 'Blueprint' },
+  { icon: 'Sparkles', label: 'Production — AI Assets', path: '/sports/assets', section: 'Production' },
+  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/sports/rundown', section: 'Assembly' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/sports/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 

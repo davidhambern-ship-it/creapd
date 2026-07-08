@@ -3,7 +3,8 @@ import { Outlet, useLocation, Link } from 'react-router-dom';
 import { TALK_NAV_ITEMS } from '@/lib/talkConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Lightbulb, Users,
-  ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle, Mic2
+  ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle, Mic2,
+  Compass
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -14,16 +15,16 @@ import MobileBottomNav from './MobileBottomNav';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/talk/dashboard' },
-  { icon: Search, label: 'Research', path: '/talk/research' },
-  { icon: Lightbulb, label: 'Topics', path: '/talk/topics' },
-  { icon: Users, label: 'Guests', path: '/talk/guests' },
-  { icon: ClipboardList, label: 'Rundown', path: '/talk/rundown' },
+  { icon: Compass, label: 'Discovery', path: '/talk/configure' },
+  { icon: Search, label: 'Knowledge', path: '/talk/research' },
+  { icon: Lightbulb, label: 'Blueprint', path: '/talk/topics' },
+  { icon: Sparkles, label: 'Production', path: '/talk/assets' },
 ];
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, Lightbulb, Users,
   ClipboardList, Sparkles, Download, Settings,
-  X, Menu, LayoutGrid, Circle, Mic2
+  X, Menu, LayoutGrid, Circle, Mic2, Compass
 };
 
 export default function TalkLayout() {
