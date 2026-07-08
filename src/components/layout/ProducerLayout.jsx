@@ -5,13 +5,17 @@ import ProducerSidebar from './ProducerSidebar';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
+import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
+import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ProducerLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="relative h-screen flex flex-col overflow-hidden env-root" style={PRODUCTION_PROFILE_THEMES.news.vars}>
+      <EnvironmentLayer profileKey="news" />
+      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
       <ProducerHeader
         onGenerateBrief={() => {}}
         onOpenNav={() => setNavDrawerOpen(true)}
@@ -23,6 +27,7 @@ export default function ProducerLayout() {
         </main>
       </div>
       <ProductionFooter variant="news" />
+      </div>
       <MobileNavDrawer
         open={navDrawerOpen}
         onClose={() => setNavDrawerOpen(false)}

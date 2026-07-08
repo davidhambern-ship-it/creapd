@@ -12,6 +12,8 @@ import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
+import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
+import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/cooking/dashboard' },
@@ -32,11 +34,13 @@ export default function CookingLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden flex-col">
+    <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.cooking.vars}>
+      <EnvironmentLayer profileKey="cooking" />
+      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
       <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden md:flex w-60 flex-col border-r border-border bg-sidebar">
+        <aside className="hidden md:flex w-60 flex-col env-glass-sidebar">
           <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
             <SidebarNavSections items={COOKING_NAV_ITEMS} iconMap={ICON_MAP} />
             <AdminSidebarSection variant="cooking" onNavigate={() => {}} />
@@ -55,6 +59,7 @@ export default function CookingLayout() {
       </div>
 
       <ProductionFooter variant="cooking" />
+      </div>
       <MobileBottomNav items={MOBILE_NAV_ITEMS} />
 
       <MobileNavDrawer

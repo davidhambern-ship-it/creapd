@@ -2,6 +2,8 @@ import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { getDepartmentThemeFromPath } from '@/lib/rppDepartmentThemes';
 import { ChevronLeft } from 'lucide-react';
+import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
+import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ResearchLayout() {
   const location = window.location.pathname;
@@ -12,12 +14,13 @@ export default function ResearchLayout() {
     <div
       className="rpp-shell"
       style={{
+        ...PRODUCTION_PROFILE_THEMES.research.vars,
         '--dept-accent': activeTheme.accentHsl,
         '--dept-ambient': activeTheme.ambientHsl,
         '--dept-glow': activeTheme.glowHsl,
       }}
     >
-      <div className="rpp-ambient-bg" />
+      <EnvironmentLayer profileKey="research" />
 
       <main className="rpp-workspace flex flex-col min-w-0">
         {/* Back-to-lobby link on non-lobby pages */}

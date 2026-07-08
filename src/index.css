@@ -2189,3 +2189,32 @@
   font-size: 11px;
   white-space: nowrap;
 }
+
+/* ═══════════════════════════════════════════════════════ */
+/* ═══ PP-THEME-001: Environmental Theme System ══════════ */
+/* ═══════════════════════════════════════════════════════ */
+
+.env-root {
+  position: relative;
+}
+
+.env-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.env-glass-sidebar {
+  background: hsl(var(--env-surface, 220 20% 9%) / 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid hsl(var(--env-border, 220 15% 16%) / 0.4);
+}
+
+.env-glass-header {
+  background: hsl(var(--env-surface, 220 20% 9%) / 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
