@@ -1,0 +1,276 @@
+{
+  "name": "AssetRegistry",
+  "type": "object",
+  "properties": {
+    "asset_id": {
+      "type": "string",
+      "description": "Unique registry identifier (auto-generated if empty)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Resource title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Resource description"
+    },
+    "resource_type": {
+      "type": "string",
+      "enum": [
+        "knowledge",
+        "image",
+        "svg",
+        "icon",
+        "video",
+        "audio",
+        "music",
+        "dataset",
+        "template",
+        "font",
+        "map",
+        "chart",
+        "diagram",
+        "animation",
+        "rss_feed"
+      ],
+      "description": "KAAE resource type classification"
+    },
+    "format": {
+      "type": "string",
+      "description": "File format: json, pdf, png, svg, mp4, mp3, etc."
+    },
+    "category": {
+      "type": "string",
+      "description": "Primary category from KAAE-003 \u00a74 taxonomy"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Secondary category"
+    },
+    "keywords": {
+      "type": "string",
+      "description": "JSON array of searchable keywords"
+    },
+    "tags": {
+      "type": "string",
+      "description": "JSON array of free-form tags"
+    },
+    "provider": {
+      "type": "string",
+      "description": "Provider name that supplied this resource"
+    },
+    "provider_resource_id": {
+      "type": "string",
+      "description": "Provider-native identifier for this resource"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Original URL of the resource"
+    },
+    "connector_id": {
+      "type": "string",
+      "description": "Which Knowledge Connector discovered this asset"
+    },
+    "license": {
+      "type": "string",
+      "enum": [
+        "public_domain",
+        "creative_commons",
+        "mit",
+        "apache",
+        "bsd",
+        "official_free_access",
+        "commercial_license",
+        "premium_subscription",
+        "restricted",
+        "unknown",
+        "rejected"
+      ],
+      "default": "unknown",
+      "description": "License classification per KAAE-004"
+    },
+    "license_url": {
+      "type": "string",
+      "description": "URL to the license text"
+    },
+    "commercial_use": {
+      "type": "boolean",
+      "default": false,
+      "description": "Can be used commercially"
+    },
+    "modification_allowed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Can be modified"
+    },
+    "redistribution_allowed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Can be redistributed"
+    },
+    "attribution_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Attribution required when using this resource"
+    },
+    "attribution_text": {
+      "type": "string",
+      "description": "Formatted attribution string: Title by Author \u2014 License \u2014 Source URL"
+    },
+    "cc_variant": {
+      "type": "string",
+      "enum": [
+        "cc0",
+        "cc-by",
+        "cc-by-sa",
+        "cc-by-nd",
+        "cc-by-nc",
+        "cc-by-nc-sa",
+        "cc-by-nc-nd",
+        "n/a"
+      ],
+      "default": "n/a",
+      "description": "Creative Commons sub-variant (only for license=creative_commons)"
+    },
+    "download_status": {
+      "type": "string",
+      "enum": [
+        "not_downloaded",
+        "downloading",
+        "downloaded",
+        "failed"
+      ],
+      "default": "not_downloaded",
+      "description": "Download progress state"
+    },
+    "cached": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the resource is cached locally"
+    },
+    "cached_file_url": {
+      "type": "string",
+      "description": "Local cached file URL"
+    },
+    "cached_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the resource was cached"
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of file content for duplicate detection (KAAE-003 \u00a75)"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Source has been verified"
+    },
+    "last_verified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last verification timestamp"
+    },
+    "confidence": {
+      "type": "number",
+      "default": 0,
+      "description": "Confidence score 0-100"
+    },
+    "qa_status": {
+      "type": "string",
+      "enum": [
+        "not_reviewed",
+        "needs_revision",
+        "passed",
+        "approved"
+      ],
+      "default": "not_reviewed",
+      "description": "QA evaluation status"
+    },
+    "preview_url": {
+      "type": "string",
+      "description": "Preview URL (page, image thumbnail, audio sample)"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "Thumbnail image URL"
+    },
+    "preview_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether preview was auto-generated"
+    },
+    "health_status": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Health status of this resource's source"
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last health check timestamp"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the resource is currently usable"
+    },
+    "is_deprecated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this resource has been deprecated"
+    },
+    "usage_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times this asset has been used in production"
+    },
+    "last_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last production usage timestamp"
+    },
+    "version_number": {
+      "type": "number",
+      "default": 1,
+      "description": "Version number of this resource"
+    },
+    "production_profiles": {
+      "type": "string",
+      "description": "JSON array of production profiles this asset is relevant to"
+    },
+    "acquisition_method": {
+      "type": "string",
+      "enum": [
+        "library_reuse",
+        "free_api",
+        "public_domain",
+        "open_license",
+        "premium_purchase",
+        "ai_generation",
+        "manual_import",
+        "connector_discovery"
+      ],
+      "description": "How this resource was originally acquired"
+    },
+    "cost": {
+      "type": "number",
+      "default": 0,
+      "description": "Acquisition cost (0 for free)"
+    },
+    "metadata": {
+      "type": "string",
+      "description": "JSON object for provider-specific metadata"
+    }
+  },
+  "required": [
+    "title",
+    "resource_type"
+  ]
+}
