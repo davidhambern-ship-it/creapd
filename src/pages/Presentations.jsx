@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, FileStack, TrendingUp, Plus, Film, Loader2, Search } from 'lucide-react';
+import { Clock, FileStack, TrendingUp, Plus, Film, Loader2, Search, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger
@@ -17,6 +17,7 @@ function formatTime(ms) {
 }
 
 export default function Presentations() {
+  const navigate = useNavigate();
   const [presentations, setPresentations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -137,29 +138,38 @@ export default function Presentations() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((pres) => (
-            <Link
+            <div
               key={pres.id}
-              to={`/news/presentations/${pres.id}`}
               className="group bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
             >
-              <div className="aspect-video bg-gradient-to-br from-berna-navy to-black rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
-                <Film className="w-10 h-10 text-white/20 group-hover:text-primary/40 transition-colors" />
-                <div className="absolute top-2 right-2">
-                  <Badge variant="secondary" className="capitalize text-xs">{pres.production_profile}</Badge>
+              <Link to={`/news/presentations/${pres.id}`}>
+                <div className="aspect-video bg-gradient-to-br from-berna-navy to-black rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
+                  <Film className="w-10 h-10 text-white/20 group-hover:text-primary/40 transition-colors" />
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary" className="capitalize text-xs">{pres.production_profile}</Badge>
+                  </div>
+                  <div className="absolute bottom-2 left-2">
+                    <Badge variant="outline" className="text-xs bg-black/50">{pres.status}</Badge>
+                  </div>
                 </div>
-                <div className="absolute bottom-2 left-2">
-                  <Badge variant="outline" className="text-xs bg-black/50">{pres.status}</Badge>
+                <h3 className="font-heading font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                  {pres.title}
+                </h3>
+                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatTime(pres.total_runtime_ms || 0)}</span>
+                  <span className="flex items-center gap-1"><FileStack className="w-3 h-3" /> {pres.story_count}</span>
+                  <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {pres.confidence_score}</span>
                 </div>
-              </div>
-              <h3 className="font-heading font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                {pres.title}
-              </h3>
-              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatTime(pres.total_runtime_ms || 0)}</span>
-                <span className="flex items-center gap-1"><FileStack className="w-3 h-3" /> {pres.story_count}</span>
-                <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {pres.confidence_score}</span>
-              </div>
-            </Link>
+              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full mt-3 gap-1.5"
+                onClick={() => navigate(`/news/presentations/${pres.id}/edit`)}
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit Presentation
+              </Button>
+            </div>
           ))}
         </div>
       )}
