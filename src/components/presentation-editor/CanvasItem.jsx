@@ -25,21 +25,24 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, onS
       action, handle,
       sx: e.clientX, sy: e.clientY,
       ox: element.x, oy: element.y, ow: element.width, oh: element.height,
+      firstMove: true,
     };
     const move = (ev) => {
       const d = drag.current;
       if (!d) return;
       const dx = (ev.clientX - d.sx) / zoom;
       const dy = (ev.clientY - d.sy) / zoom;
+      const opts = { silent: !d.firstMove };
+      d.firstMove = false;
       if (d.action === 'drag') {
-        onUpdate(element.id, { x: Math.round(d.ox + dx), y: Math.round(d.oy + dy) });
+        onUpdate(element.id, { x: Math.round(d.ox + dx), y: Math.round(d.oy + dy) }, opts);
       } else {
         let { ox: nx, oy: ny, ow: nw, oh: nh } = d;
         if (d.handle.includes('e')) nw = Math.max(30, d.ow + dx);
         if (d.handle.includes('s')) nh = Math.max(20, d.oh + dy);
         if (d.handle.includes('w')) { nw = Math.max(30, d.ow - dx); nx = d.ox + dx; }
         if (d.handle.includes('n')) { nh = Math.max(20, d.oh - dy); ny = d.oy + dy; }
-        onUpdate(element.id, { x: Math.round(nx), y: Math.round(ny), width: Math.round(nw), height: Math.round(nh) });
+        onUpdate(element.id, { x: Math.round(nx), y: Math.round(ny), width: Math.round(nw), height: Math.round(nh) }, opts);
       }
     };
     const up = () => {

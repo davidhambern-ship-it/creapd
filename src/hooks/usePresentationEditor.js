@@ -265,8 +265,8 @@ export function usePresentationEditor(presentationId) {
   }, [isTransient, activeSlide, elements, slides, dirty, loadElements, transientElements]);
 
   // ═══ Element ops ═══
-  const updateElement = useCallback((elId, updates) => {
-    pushUndo();
+  const updateElement = useCallback((elId, updates, opts = {}) => {
+    if (!opts.silent) pushUndo();
     setElements(prev => prev.map(el => el.id === elId ? { ...el, ...updates } : el));
   }, [pushUndo]);
 
