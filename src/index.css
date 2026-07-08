@@ -636,6 +636,74 @@
   animation: digital-ring 6s ease-out infinite;
 }
 
+/* ═══ Cyberpunk Club Aesthetic ═══ */
+
+/* Cyberpunk glass panel */
+.cp-glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+}
+
+/* Neon pink glow */
+.cp-neon-pink {
+  box-shadow: 0 0 12px rgba(255, 0, 255, 0.3), 0 0 24px rgba(255, 0, 255, 0.1);
+}
+.cp-text-pink { color: #FF00FF; }
+.cp-text-cyan { color: #00FFFF; }
+
+/* Neon border glow */
+.cp-border-pink { border-color: rgba(255, 0, 255, 0.4); box-shadow: 0 0 12px rgba(255, 0, 255, 0.15); }
+.cp-border-cyan { border-color: rgba(0, 255, 255, 0.4); box-shadow: 0 0 12px rgba(0, 255, 255, 0.15); }
+
+/* Gradient button glow */
+.cp-btn-gradient {
+  background: linear-gradient(135deg, #FF00FF, #8B00FF);
+  box-shadow: 0 0 16px rgba(255, 0, 255, 0.35), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.cp-btn-gradient:hover {
+  box-shadow: 0 0 24px rgba(255, 0, 255, 0.5), 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Glitch chromatic aberration text */
+@keyframes cp-glitch {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  20% { text-shadow: -2px 0 #FF00FF, 2px 0 #00FFFF; }
+  40% { text-shadow: 2px 0 #FF00FF, -2px 0 #00FFFF; }
+  60% { text-shadow: -1px 0 #FF00FF, 1px 0 #00FFFF; }
+  80% { text-shadow: 1px 0 #FF00FF, -1px 0 #00FFFF; }
+}
+.cp-glitch {
+  animation: cp-glitch 3s ease-in-out infinite;
+}
+
+/* Neon pulse animation */
+@keyframes cp-neon-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.cp-neon-pulse {
+  animation: cp-neon-pulse 2s ease-in-out infinite;
+}
+
+/* Cyberpunk grid floor */
+.cp-grid-floor {
+  background-image:
+    linear-gradient(rgba(255, 0, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Equalizer bar animation */
+@keyframes cp-eq-bar {
+  0%, 100% { height: 20%; }
+  50% { height: 100%; }
+}
+.cp-eq-bar {
+  animation: cp-eq-bar 0.8s ease-in-out infinite;
+}
+
 /* CREAPD themed gradient base */
 .creapd-bg-gradient {
   background:
