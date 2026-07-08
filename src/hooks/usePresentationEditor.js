@@ -83,12 +83,19 @@ export function usePresentationEditor(presentationId) {
       const merged = [];
 
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
+        // Scenes are timeline segments, not simultaneous layers — the same
+        // image/text often appears in multiple scenes. Deduplicate by content
+        // so each unique asset renders only once on the canvas.
+        const seenContent = new Set();
         let tempZ = 100;
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
               const elemContent = elem.asset_reference || elem.content || '';
               if (!elemContent) continue;
+              const contentKey = elemContent.trim().toLowerCase();
+              if (seenContent.has(contentKey)) continue;
+              seenContent.add(contentKey);
 
               const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
               const py = Math.round((elem.position?.y ?? 0.5) * CANVAS_H);
