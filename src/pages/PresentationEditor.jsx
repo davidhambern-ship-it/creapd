@@ -121,6 +121,9 @@ export default function PresentationEditor() {
             onScopeChange={ed.setScope}
             slide={ed.activeSlide}
             elements={ed.elements}
+            onUpdateElement={ed.updateElement}
+            onSelectElement={ed.setSelectedId}
+            selectedId={ed.selectedId}
           />
         </div>
 
