@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { usePresentationEditor } from '@/hooks/usePresentationEditor';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
+import { useCpeAiWorkers } from '@/hooks/useCpeAiWorkers';
 import EditorTopBar from '@/components/presentation-editor/EditorTopBar';
 import SlideRail from '@/components/presentation-editor/SlideRail';
 import EditorCanvas from '@/components/presentation-editor/EditorCanvas';
 import PropertiesPanel from '@/components/presentation-editor/PropertiesPanel';
 import TransportBar from '@/components/presentation-editor/TransportBar';
 import AutoBuildModal from '@/components/presentation-editor/AutoBuildModal';
+import CpeAiPanel from '@/components/presentation-editor/CpeAiPanel';
 import '@/components/presentation-editor/cpe.css';
 
 export default function PresentationEditor() {
   const { id } = useParams();
   const ed = usePresentationEditor(id);
   const autoBuild = useAutoBuild();
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const aiWorkers = useCpeAiWorkers(ed);
 
   const handleZoom = (action) => {
     if (typeof action === 'number') { ed.setZoom(action); return; }
@@ -78,6 +82,8 @@ export default function PresentationEditor() {
         onRunQA={ed.runQA}
         onAddElement={ed.addElement}
         onAutoBuild={autoBuild.open}
+        onToggleAiPanel={() => setAiPanelOpen(v => !v)}
+        aiPanelOpen={aiPanelOpen}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -153,6 +159,10 @@ export default function PresentationEditor() {
           onDistribute={ed.distributeElements}
           onZoom={ed.setZoom}
         />
+
+        {aiPanelOpen && (
+          <CpeAiPanel aiWorkers={aiWorkers} onClose={() => setAiPanelOpen(false)} />
+        )}
       </div>
 
       <AutoBuildModal

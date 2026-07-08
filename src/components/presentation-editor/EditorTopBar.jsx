@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown, Edit3, Eye,
-  AlignLeft, Captions, Wand2, FolderOpen,
+  AlignLeft, Captions, Wand2, FolderOpen, Cpu,
 } from 'lucide-react';
 
 const ADD_OPTIONS = [
@@ -20,7 +20,7 @@ export default function EditorTopBar({
   saving, dirty, canUndo, canRedo, hasSelection, title, mode,
   onSave, onUndo, onRedo, onToggleMode, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
-  onAutoBuild,
+  onAutoBuild, onToggleAiPanel, aiPanelOpen,
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -85,6 +85,9 @@ export default function EditorTopBar({
           )}
           <button className="cpe-tool-btn" onClick={onRunQA}>
             <ShieldCheck className="w-4 h-4" /> QA
+          </button>
+          <button className={`cpe-tool-btn ${aiPanelOpen ? 'active' : ''}`} onClick={onToggleAiPanel}>
+            <Cpu className="w-4 h-4" /> AI Workers
           </button>
         </>
       )}
