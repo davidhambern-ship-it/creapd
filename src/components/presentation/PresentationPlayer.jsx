@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Play, Pause, Square, SkipBack, SkipForward, RotateCcw, AlertCircle } from 'lucide-react';
 import { usePresentationPlayer } from '@/hooks/usePresentationPlayer';
 import SceneCanvas from '@/components/presentation/SceneCanvas';
+import SlideElementCanvas from '@/components/presentation/SlideElementCanvas';
 
 const TRANSITION_CLASSES = {
   fade: 'animate-fade-in',
@@ -60,8 +61,10 @@ export default function PresentationPlayer({ storySlides, aspectRatio }) {
 
         {/* Scene rendering with slide transition */}
         <div key={currentSlideIndex} className={`absolute inset-0 ${transitionClass}`}>
-          {activeScene && (
+          {activeScene ? (
             <SceneCanvas scene={activeScene} slideLocalTime={slideLocalTime} />
+          ) : (
+            <SlideElementCanvas slide={currentSlide} />
           )}
         </div>
 
