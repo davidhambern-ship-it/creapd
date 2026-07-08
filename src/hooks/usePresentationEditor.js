@@ -74,22 +74,34 @@ export function usePresentationEditor(presentationId) {
       const merged = [...dbElements];
 
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
-        const existingIds = new Set(dbElements.map(e => e.id));
-        let tempZ = 100;
+        // Build a set of existing element content strings for deduplication.
+        // The APD regenerates headlines, body text, images, and lower thirds
+        // that already exist as SlideElement records — only merge in truly
+        // NEW content (statistics, quotes, talking_point_cards, etc.)
+        const existingContent = new Set(
+          dbElements.map(e => (e.content || '').trim().toLowerCase()).filter(Boolean)
+        );
+        const isDuplicate = (text) => {
+          const t = (text || '').trim().toLowerCase();
+          if (!t) return true;
+          // Exact match or one is a substring of the other (APD may trim/truncate)
+          for (const existing of existingContent) {
+            if (t === existing) return true;
+            if (t.length > 20 && existing.length > 20 && (t.includes(existing) || existing.includes(t))) return true;
+          }
+          return false;
+        };
 
+        let tempZ = 100;
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
-            const zOrder = layer.z_order || 0;
             for (const elem of (layer.elements || [])) {
-              // Skip if this scene_graph element references an existing SlideElement
-              if (elem.element_id && existingIds.has(elem.element_id)) continue;
+              const elemContent = elem.asset_reference || elem.content || '';
+              if (isDuplicate(elemContent)) continue;
 
-              // Convert normalized position (0-1) to pixel coordinates
               const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
               const py = Math.round((elem.position?.y ?? 0.5) * CANVAS_H);
-              const scale = elem.scale || 1;
 
-              // Map scene_graph element types to SlideElement types
               const typeMap = {
                 headline: 'text', body_text: 'text', image: 'image',
                 talking_point_card: 'text', discussion_response: 'text',
@@ -98,25 +110,21 @@ export function usePresentationEditor(presentationId) {
               };
               const elType = typeMap[elem.element_type] || 'text';
 
-              // Determine dimensions based on type
               let w = 600, h = 100;
               if (elType === 'image') { w = 500; h = 350; }
-              if (elem.element_type === 'headline') { w = 1000; h = 80; }
               if (elem.element_type === 'statistic') { w = 400; h = 120; }
               if (elem.element_type === 'quote') { w = 700; h = 150; }
               if (elType === 'lower_third') { w = 800; h = 50; }
 
-              const fontSize = elem.element_type === 'headline' ? 42
-                : elem.element_type === 'statistic' ? 56
+              const fontSize = elem.element_type === 'statistic' ? 56
                 : elem.element_type === 'quote' ? 24
-                : elem.element_type === 'body_text' ? 20
                 : 18;
 
               merged.push({
-                id: elem.element_id || `sg-${tempZ}`,
+                id: `sg-${tempZ}`,
                 slide_id: slideId,
                 type: elType,
-                content: elem.asset_reference || elem.content || '',
+                content: elemContent,
                 x: px - Math.round(w / 2),
                 y: py - Math.round(h / 2),
                 width: w,
@@ -126,7 +134,7 @@ export function usePresentationEditor(presentationId) {
                 z_index: tempZ++,
                 style: JSON.stringify({
                   fontSize, fontFamily: 'Inter', color: '#ffffff',
-                  bold: elem.element_type === 'headline' || elem.element_type === 'statistic',
+                  bold: elem.element_type === 'statistic',
                   align: 'center',
                   backgroundColor: elem.element_type === 'talking_point_card' || elem.element_type === 'discussion_response'
                     ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -136,7 +144,6 @@ export function usePresentationEditor(presentationId) {
                 locked: false,
                 visible: true,
               });
-              existingIds.add(elem.element_id || `sg-${tempZ}`);
             }
           }
         }
