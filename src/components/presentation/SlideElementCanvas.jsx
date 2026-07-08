@@ -73,9 +73,12 @@ function ElementRenderer({ element }) {
           ? <video src={element.content} className="w-full h-full object-cover" autoPlay muted loop />
           : null;
       case 'audio':
-        return element.content
-          ? <audio src={element.content} controls autoPlay className="w-full" />
-          : null;
+        return (
+          <div className="flex items-center justify-center w-full h-full bg-black/30 text-white/60 text-xs gap-2">
+            <span className="text-lg">♪</span>
+            <span className="truncate">Audio Clip</span>
+          </div>
+        );
       case 'shape':
         return null;
       default:

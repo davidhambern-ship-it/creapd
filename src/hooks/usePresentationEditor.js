@@ -50,6 +50,8 @@ export function usePresentationEditor(presentationId) {
   const [currentTime, setCurrentTime] = useState(0);
   const [scope, setScope] = useState('slide');
   const playRef = useRef(null);
+  const audioObjs = useRef([]);
+  const isPlayingRef = useRef(false);
 
   // Undo / Redo
   const [undoStack, setUndoStack] = useState([]);
@@ -680,6 +682,35 @@ export function usePresentationEditor(presentationId) {
     return () => { if (playRef.current) clearInterval(playRef.current); };
   }, [isPlaying, totalTime]);
 
+  // Keep isPlayingRef in sync
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+  // Load audio objects from current slide's audio elements + timeline
+  useEffect(() => {
+    audioObjs.current.forEach(a => { a.pause(); a.src = ''; });
+    audioObjs.current = [];
+    const audioEls = (elements || []).filter(e => e.type === 'audio' && e.content);
+    audioEls.forEach(el => { audioObjs.current.push(new Audio(el.content)); });
+    if (activeSlide?.slide_timeline) {
+      try {
+        const tl = JSON.parse(activeSlide.slide_timeline);
+        if (tl.voice_audio_url) audioObjs.current.push(new Audio(tl.voice_audio_url));
+      } catch {}
+    }
+    if (isPlayingRef.current) {
+      audioObjs.current.forEach(a => a.play().catch(() => {}));
+    }
+  }, [elements, activeSlide]);
+
+  // Play/pause audio when isPlaying changes
+  useEffect(() => {
+    if (isPlaying) {
+      audioObjs.current.forEach(a => a.play().catch(() => {}));
+    } else {
+      audioObjs.current.forEach(a => a.pause());
+    }
+  }, [isPlaying]);
+
   useEffect(() => {
     if (!isPlaying || scope !== 'full') return;
     let elapsed = 0;
@@ -711,7 +742,7 @@ export function usePresentationEditor(presentationId) {
     selectedElements, copyElement, cutElement, pasteElement,
     alignElements, distributeElements,
     play: () => setIsPlaying(true), pause: () => setIsPlaying(false),
-    stop: () => { setIsPlaying(false); setCurrentTime(0); },
+    stop: () => { audioObjs.current.forEach(a => { a.pause(); a.currentTime = 0; }); setIsPlaying(false); setCurrentTime(0); },
     restart: () => { setCurrentTime(0); setIsPlaying(true); },
     scrub: setCurrentTime,
   };

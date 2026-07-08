@@ -91,9 +91,12 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, onS
           ? <video src={element.content} className="w-full h-full object-cover" controls />
           : <Placeholder label="No video" />;
       case 'audio':
-        return element.content
-          ? <audio src={element.content} controls className="w-full" />
-          : <Placeholder label="No audio" />;
+        return (
+          <div className="flex items-center justify-center w-full h-full bg-black/30 text-white/60 text-xs gap-2">
+            <span className="text-lg">♪</span>
+            <span className="truncate">{element.content ? 'Audio Clip' : 'No audio'}</span>
+          </div>
+        );
       case 'shape':
         return null;
       default:
