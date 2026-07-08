@@ -141,6 +141,13 @@ Deno.serve(async (req) => {
       try { paragraphTimeline = JSON.parse(vp.paragraph_timeline || '[]'); } catch (e) {}
       try { pauseTimeline = JSON.parse(vp.pause_timeline || '[]'); } catch (e) {}
 
+      // Parse image variations (unique image pool with IDs)
+      let imagePool = [];
+      try { imagePool = JSON.parse(pkg.image_variations || '[]'); } catch (e) {}
+      if (imagePool.length === 0 && pkg.generated_image_url) {
+        imagePool = [{ id: `img_fallback_${i}`, url: pkg.generated_image_url }];
+      }
+
       // ==========================================================
       // STEP 4: AI REASONING — Generate Scene Graph
       // ==========================================================
@@ -205,6 +212,7 @@ Deno.serve(async (req) => {
 
       const sceneGraphData = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
 
+      let imgIdx = 0;
       // Build the complete scene graph object
       const sceneGraph = {
         slide_id: `slide_${i + 1}`,
@@ -230,29 +238,67 @@ Deno.serve(async (req) => {
             layer_id: `layer_${i + 1}_${sIdx + 1}_${lIdx}`,
             layer_type: layer.layer_type || 'background',
             z_order: layer.z_order !== undefined ? layer.z_order : lIdx,
-            elements: (layer.elements || []).map((elem, eIdx) => ({
-              element_id: `elem_${i + 1}_${sIdx + 1}_${lIdx}_${eIdx}`,
-              element_type: elem.element_type || 'body_text',
-              content: elem.content || '',
-              position: { x: elem.position_x !== undefined ? elem.position_x : 0.5, y: elem.position_y !== undefined ? elem.position_y : 0.5 },
-              scale: elem.scale !== undefined ? elem.scale : 1.0,
-              rotation: 0,
-              opacity: elem.opacity !== undefined ? elem.opacity : 1.0,
-              visibility: true,
-              entrance_animation: { type: elem.entrance_animation || 'fade', duration_ms: 500 },
-              exit_animation: { type: elem.exit_animation || 'fade', duration_ms: 500 },
-              timeline_events: [{
-                event_type: 'appear',
-                start_time: elem.start_time || 0,
-                end_time: elem.end_time || totalDurationMs
-              }],
-              asset_reference: elem.element_type === 'image' ? (pkg.generated_image_url || '') : null
-            }))
+            elements: (layer.elements || []).map((elem, eIdx) => {
+              let assetRef = null;
+              let assetId = null;
+              if (elem.element_type === 'image') {
+                if (imagePool.length > 0) {
+                  const assigned = imagePool[imgIdx % imagePool.length];
+                  imgIdx++;
+                  assetRef = assigned.url;
+                  assetId = assigned.id;
+                } else {
+                  assetRef = pkg.generated_image_url || '';
+                }
+              }
+              return {
+                element_id: `elem_${i + 1}_${sIdx + 1}_${lIdx}_${eIdx}`,
+                element_type: elem.element_type || 'body_text',
+                content: elem.content || '',
+                position: { x: elem.position_x !== undefined ? elem.position_x : 0.5, y: elem.position_y !== undefined ? elem.position_y : 0.5 },
+                scale: elem.scale !== undefined ? elem.scale : 1.0,
+                rotation: 0,
+                opacity: elem.opacity !== undefined ? elem.opacity : 1.0,
+                visibility: true,
+                entrance_animation: { type: elem.entrance_animation || 'fade', duration_ms: 500 },
+                exit_animation: { type: elem.exit_animation || 'fade', duration_ms: 500 },
+                timeline_events: [{
+                  event_type: 'appear',
+                  start_time: elem.start_time || 0,
+                  end_time: elem.end_time || totalDurationMs
+                }],
+                asset_reference: assetRef,
+                asset_id: assetId,
+              };
+            })
           }))
         })),
         decision_rationale: sceneGraphData.decision_rationale || '',
         confidence_score: sceneGraphData.confidence_score || 80
       };
+
+      // ── Image Asset Validation ──
+      const imageElementCount = (sceneGraph.scenes || []).reduce((acc, scene) =>
+        acc + (scene.layers || []).reduce((la, layer) =>
+          la + (layer.elements || []).filter(e => e.element_type === 'image').length, 0
+        ), 0
+      );
+      const availableImages = imagePool.length;
+      if (imageElementCount > availableImages) {
+        const shortfall = imageElementCount - availableImages;
+        return Response.json({
+          error: `Insufficient images for Slide ${i + 1} — needs ${imageElementCount} but only ${availableImages} available`,
+          error_code: 'INSUFFICIENT_IMAGES',
+          instruction: `Generate ${shortfall} additional unique image(s) for this slide via the Develop Image Worker`,
+          slide_index: i,
+          slide_title: pkg.headline_suggestions || pkg.article_id || `Slide ${i + 1}`,
+          production_package_id: pkg.id,
+          required_image_count: imageElementCount,
+          available_image_count: availableImages,
+          shortfall,
+          existing_image_ids: imagePool.map(img => img.id),
+        }, { status: 422 });
+      }
 
       // Build slide timeline from voice package
       const slideTimeline = {

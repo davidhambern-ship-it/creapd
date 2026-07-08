@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { presentation_points, configuration_id, generate_images } = await req.json();
+    const { presentation_points, configuration_id, generate_images, production_package_id, required_image_count } = await req.json();
     if (!presentation_points) {
       return Response.json({ error: 'presentation_points is required' }, { status: 400 });
     }
@@ -67,7 +67,7 @@ Rules:
     let generated_images = [];
     let kaae_stats = { reused: 0, generated: 0, skipped: 0 };
     if (generate_images && result.image_assets) {
-      for (const asset of result.image_assets.slice(0, 5)) {
+      for (const asset of result.image_assets.slice(0, required_image_count || 5)) {
         try {
           // Priority 1-5: Ask KAAE if a suitable resource already exists
           const kaaeResponse = await base44.functions.invoke('kaaeAcquire', {
@@ -129,6 +129,26 @@ Rules:
         } catch (imgErr) {
           kaae_stats.skipped++;
         }
+      }
+    }
+
+    // Store generated images on the ProductionPackage with unique IDs
+    if (production_package_id && generated_images.length > 0) {
+      const imageVariations = generated_images.map((img, idx) => ({
+        id: `img_${Date.now()}_${idx}`,
+        url: img.image_url,
+        prompt: result.image_assets?.[idx]?.image_prompt || '',
+        point_title: img.point_title || '',
+        kaae_asset_id: img.kaae_asset_id || null,
+        kaae_reused: img.kaae_reused || false,
+      }));
+      try {
+        await base44.entities.ProductionPackage.update(production_package_id, {
+          image_variations: JSON.stringify(imageVariations),
+          generated_image_url: imageVariations[0]?.url || '',
+        });
+      } catch (updateErr) {
+        // Best-effort — don't fail the worker if update fails
       }
     }
 
