@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     const ppId = generatePpId();
     const title = presentation_title || `${config?.production_name || 'Auto-Built'} — Presentation`;
 
-    const presentation = await base44.asServiceRole.entities.StoriesPresentation.create({
+    const presentation = await base44.entities.StoriesPresentation.create({
       title,
       pp_id: ppId,
       production_profile: 'research',
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
       if (i === packages.length - 1) slideType = 'closing_slide';
 
       // ── Create StorySlide ──
-      const slide = await base44.asServiceRole.entities.StorySlide.create({
+      const slide = await base44.entities.StorySlide.create({
         stories_presentation_id: presentation.id,
         pp_id: ppId,
         story_package_id: pkg.id,
@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
 
       // Image element (behind text, if exists)
       if (imageUrl) {
-        await base44.asServiceRole.entities.SlideElement.create({
+        await base44.entities.SlideElement.create({
           slide_id: slide.id,
           presentation_id: presentation.id,
           pp_id: ppId,
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
       }
 
       // Title text element
-      await base44.asServiceRole.entities.SlideElement.create({
+      await base44.entities.SlideElement.create({
         slide_id: slide.id,
         presentation_id: presentation.id,
         pp_id: ppId,
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
       if (slideBody) {
         const bodyY = imageUrl ? 540 : 150;
         const bodyHeight = imageUrl ? 150 : 420;
-        await base44.asServiceRole.entities.SlideElement.create({
+        await base44.entities.SlideElement.create({
           slide_id: slide.id,
           presentation_id: presentation.id,
           pp_id: ppId,
@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
 
       // Lower third element
       if (lowerThird) {
-        await base44.asServiceRole.entities.SlideElement.create({
+        await base44.entities.SlideElement.create({
           slide_id: slide.id,
           presentation_id: presentation.id,
           pp_id: ppId,
@@ -333,7 +333,7 @@ Deno.serve(async (req) => {
 
       // Section badge (for non-title slides)
       if (point?.suggested_segment && i > 0) {
-        await base44.asServiceRole.entities.SlideElement.create({
+        await base44.entities.SlideElement.create({
           slide_id: slide.id,
           presentation_id: presentation.id,
           pp_id: ppId,
@@ -368,7 +368,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Update presentation with slide IDs + timeline ──
-    const updated = await base44.asServiceRole.entities.StoriesPresentation.update(presentation.id, {
+    const updated = await base44.entities.StoriesPresentation.update(presentation.id, {
       story_slide_ids: JSON.stringify(slideIds),
       slide_order: JSON.stringify(slideIds),
       master_timeline: JSON.stringify({

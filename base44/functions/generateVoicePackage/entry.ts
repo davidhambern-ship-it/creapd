@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     };
 
     // ===== STEP 6: Create or update VoicePackage entity =====
-    const existingVPs = await base44.asServiceRole.entities.VoicePackage.filter({
+    const existingVPs = await base44.entities.VoicePackage.filter({
       source_type,
       source_id,
       is_primary: true
@@ -217,10 +217,10 @@ Deno.serve(async (req) => {
 
     let vp;
     if (existingVPs && existingVPs.length > 0) {
-      vp = await base44.asServiceRole.entities.VoicePackage.update(existingVPs[0].id, vpData);
+      vp = await base44.entities.VoicePackage.update(existingVPs[0].id, vpData);
     } else {
       vpData.is_primary = true;
-      vp = await base44.asServiceRole.entities.VoicePackage.create({
+      vp = await base44.entities.VoicePackage.create({
         source_type,
         source_id,
         ...vpData
@@ -229,9 +229,9 @@ Deno.serve(async (req) => {
 
     // ===== STEP 7: Update source entity with voice_package_id =====
     if (source_type === 'production_package') {
-      await base44.asServiceRole.entities.ProductionPackage.update(source_id, { voice_package_id: vp.id });
+      await base44.entities.ProductionPackage.update(source_id, { voice_package_id: vp.id });
     } else if (source_type === 'spiritual_section') {
-      await base44.asServiceRole.entities.SpiritualMessageSection.update(source_id, { voice_package_id: vp.id });
+      await base44.entities.SpiritualMessageSection.update(source_id, { voice_package_id: vp.id });
     }
 
     return Response.json({ voice_package: vp, audio_url: audioUrl });
