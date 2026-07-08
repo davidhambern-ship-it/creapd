@@ -90,6 +90,8 @@ export default function PresentationEditor() {
             selectedId={ed.selectedId}
             zoom={ed.zoom}
             mode={ed.mode}
+            isPlaying={ed.isPlaying}
+            currentTime={ed.currentTime}
             onSelect={ed.setSelectedId}
             onUpdate={ed.updateElement}
             onDelete={ed.deleteElement}

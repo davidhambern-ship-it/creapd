@@ -31,14 +31,14 @@ function getAnimStyle(el) {
   } catch { return null; }
 }
 
-export default function CanvasItem({ element, isSelected, zoom, previewMode, onSelect, onUpdate, onDelete }) {
+export default function CanvasItem({ element, isSelected, zoom, previewMode, isPlaying, currentTime, onSelect, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false);
   const drag = React.useRef(null);
 
   if (!element.visible && !isSelected) return null;
 
   const style = parseStyle(element);
-  const anim = getAnimStyle(element);
+  const anim = isPlaying ? getAnimStyle(element) : null;
 
   const startDrag = (e, action, handle) => {
     if (element.locked || editing || previewMode) return;
@@ -133,7 +133,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, onS
 
   return (
     <div
-      style={anim ? { ...elStyle, animationDelay: anim.delay } : elStyle}
+      style={anim ? { ...elStyle, animationDelay: anim.delay, animationFillMode: 'backwards' } : elStyle}
       onMouseDown={(e) => startDrag(e, 'drag')}
       onDoubleClick={() => {
         if (TEXT_TYPES.includes(element.type) && !element.locked && !previewMode) setEditing(true);

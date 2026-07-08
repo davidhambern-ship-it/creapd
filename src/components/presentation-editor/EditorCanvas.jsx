@@ -24,7 +24,7 @@ function parseBG(slide) {
 }
 
 export default function EditorCanvas({
-  slide, elements, selectedId, zoom, mode,
+  slide, elements, selectedId, zoom, mode, isPlaying, currentTime,
   onSelect, onUpdate, onDelete, onZoom,
 }) {
   const previewMode = mode === 'preview';
@@ -132,6 +132,8 @@ export default function EditorCanvas({
                 isSelected={selectedId === el.id}
                 zoom={zoom}
                 previewMode={previewMode}
+                isPlaying={isPlaying}
+                currentTime={currentTime}
                 onSelect={onSelect}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
