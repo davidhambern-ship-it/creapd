@@ -35,7 +35,7 @@ export default function Presentations() {
 
   const loadPresentations = async () => {
     try {
-      const list = await base44.entities.StoriesPresentation.filter({ production_profile: 'news' }, '-created_date', 50);
+      const list = await base44.entities.StoriesPresentation.filter({}, '-created_date', 50);
       setPresentations(list);
     } catch (error) {
       console.error('Failed to load presentations:', error);
