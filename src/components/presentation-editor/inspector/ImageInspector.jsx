@@ -2,6 +2,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { InspectorShell, Group, Field, ColorField, SliderField, NumField, pj, IconBtn } from './shared';
 import SvgGenerator from './SvgGenerator';
+import IconifyIconPicker from './IconifyIconPicker';
+import SvgApiGallery from './SvgApiGallery';
 import {
   Trash2, Lock, Unlock, ArrowUp, ArrowDown, ImagePlus,
 } from 'lucide-react';
@@ -42,6 +44,14 @@ export default function ImageInspector({ element, slide, onUpdate, onDelete, onR
 
       <Group value="ai-svg" title="AI Vector Art (SVG)">
         <SvgGenerator colorScheme={colorScheme} onInsert={(url) => onUpdate(element.id, { content: url })} />
+      </Group>
+
+      <Group value="iconify" title="Icon Library (200K+)">
+        <IconifyIconPicker colorScheme={colorScheme} onInsert={(url) => onUpdate(element.id, { content: url })} />
+      </Group>
+
+      <Group value="svgapi" title="Stock Vector Gallery">
+        <SvgApiGallery onInsert={(url) => onUpdate(element.id, { content: url })} />
       </Group>
 
       <Group value="adjust" title="Adjustments">
