@@ -60,11 +60,90 @@ export function usePresentationEditor(presentationId) {
   const activeSlide = slides[activeIndex];
 
   // ═══ Load ═══
-  const loadElements = useCallback(async (slideId) => {
+  const loadElements = useCallback(async (slide) => {
+    const slideId = typeof slide === 'string' ? slide : slide?.id;
+    if (!slideId) { setElements([]); setSavedElements([]); return; }
+
     try {
       const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
-      setElements(els || []);
-      setSavedElements(els || []);
+      const dbElements = els || [];
+
+      // Parse scene_graph and merge in any elements that don't exist as SlideElement records
+      const slideObj = typeof slide === 'object' ? slide : null;
+      const sceneGraph = slideObj ? parseJSON(slideObj.scene_graph, null) : null;
+      const merged = [...dbElements];
+
+      if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
+        const existingIds = new Set(dbElements.map(e => e.id));
+        let tempZ = 100;
+
+        for (const scene of sceneGraph.scenes) {
+          for (const layer of (scene.layers || [])) {
+            const zOrder = layer.z_order || 0;
+            for (const elem of (layer.elements || [])) {
+              // Skip if this scene_graph element references an existing SlideElement
+              if (elem.element_id && existingIds.has(elem.element_id)) continue;
+
+              // Convert normalized position (0-1) to pixel coordinates
+              const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
+              const py = Math.round((elem.position?.y ?? 0.5) * CANVAS_H);
+              const scale = elem.scale || 1;
+
+              // Map scene_graph element types to SlideElement types
+              const typeMap = {
+                headline: 'text', body_text: 'text', image: 'image',
+                talking_point_card: 'text', discussion_response: 'text',
+                lower_third: 'lower_third', statistic: 'text', quote: 'text',
+                caption: 'caption',
+              };
+              const elType = typeMap[elem.element_type] || 'text';
+
+              // Determine dimensions based on type
+              let w = 600, h = 100;
+              if (elType === 'image') { w = 500; h = 350; }
+              if (elem.element_type === 'headline') { w = 1000; h = 80; }
+              if (elem.element_type === 'statistic') { w = 400; h = 120; }
+              if (elem.element_type === 'quote') { w = 700; h = 150; }
+              if (elType === 'lower_third') { w = 800; h = 50; }
+
+              const fontSize = elem.element_type === 'headline' ? 42
+                : elem.element_type === 'statistic' ? 56
+                : elem.element_type === 'quote' ? 24
+                : elem.element_type === 'body_text' ? 20
+                : 18;
+
+              merged.push({
+                id: elem.element_id || `sg-${tempZ}`,
+                slide_id: slideId,
+                type: elType,
+                content: elem.asset_reference || elem.content || '',
+                x: px - Math.round(w / 2),
+                y: py - Math.round(h / 2),
+                width: w,
+                height: h,
+                rotation: 0,
+                opacity: Math.round((elem.opacity ?? 1) * 100),
+                z_index: tempZ++,
+                style: JSON.stringify({
+                  fontSize, fontFamily: 'Inter', color: '#ffffff',
+                  bold: elem.element_type === 'headline' || elem.element_type === 'statistic',
+                  align: 'center',
+                  backgroundColor: elem.element_type === 'talking_point_card' || elem.element_type === 'discussion_response'
+                    ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  borderRadius: elem.element_type === 'talking_point_card' ? 12 : 0,
+                  padding: elem.element_type === 'talking_point_card' ? 16 : 4,
+                }),
+                locked: false,
+                visible: true,
+              });
+              existingIds.add(elem.element_id || `sg-${tempZ}`);
+            }
+          }
+        }
+      }
+
+      setElements(merged);
+      setSavedElements(dbElements); // Only DB elements are "saved" — scene_graph temp elements will be created on save
     } catch {
       setElements([]);
       setSavedElements([]);
@@ -119,7 +198,7 @@ export function usePresentationEditor(presentationId) {
       setSlides(loaded);
       if (loaded.length > 0) {
         setActiveIndex(0);
-        await loadElements(loaded[0].id);
+        await loadElements(loaded[0]);
       }
     } catch {
       toast.error('Failed to load presentation');
@@ -168,7 +247,7 @@ export function usePresentationEditor(presentationId) {
     setSelectedId(null);
     setCurrentTime(0);
     setIsPlaying(false);
-    if (slides[index]) loadElements(slides[index].id);
+    if (slides[index]) loadElements(slides[index]);
   }, [isTransient, activeSlide, elements, slides, dirty, loadElements, transientElements]);
 
   // ═══ Element ops ═══
@@ -573,7 +652,7 @@ export function usePresentationEditor(presentationId) {
       const currentIds = new Set(elements.map(e => e.id));
       const savedIds = new Set(savedElements.map(e => e.id));
       const toCreate = elements.filter(e => e.id.startsWith('temp-'));
-      const toUpdate = elements.filter(e => !e.id.startsWith('temp-') && savedIds.has(e.id));
+      const toUpdate = elements.filter(e => !e.id.startsWith('temp-') && !e.id.startsWith('sg-') && savedIds.has(e.id));
       const toDelete = savedElements.filter(e => !currentIds.has(e.id));
 
       if (toDelete.length > 0) {
@@ -595,7 +674,7 @@ export function usePresentationEditor(presentationId) {
         presentation_version: (presentation?.presentation_version || 1) + 1,
       });
 
-      await loadElements(activeSlide.id);
+      await loadElements(activeSlide);
       setUndoStack([]);
       setRedoStack([]);
       setDirty(false);
