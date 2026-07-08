@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
+import CursorGlow from '@/components/creap/CursorGlow';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import {
@@ -34,6 +35,7 @@ function AmbientBackground() {
         animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
         transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
       />
+      <div className="absolute inset-0 creap-grid-bg opacity-40 pointer-events-none" />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
@@ -103,8 +105,9 @@ export default function MusicDashboard() {
 
   if (loading) {
     return (
-      <div className="relative flex items-center justify-center h-screen overflow-hidden">
+      <div className="relative flex items-center justify-center h-screen overflow-hidden creapd-bg-gradient">
         <AmbientBackground />
+        <CursorGlow />
         <Loader2 className="w-8 h-8 animate-spin text-berna-purple relative z-10" />
       </div>
     );
@@ -112,8 +115,9 @@ export default function MusicDashboard() {
 
   if (!config) {
     return (
-      <div className="relative flex items-center justify-center h-screen p-6 overflow-hidden">
+      <div className="relative flex items-center justify-center h-screen p-6 overflow-hidden creapd-bg-gradient">
         <AmbientBackground />
+        <CursorGlow />
         <div className="max-w-md text-center relative z-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-berna-purple/20 mb-6">
             <Music className="w-8 h-8 text-berna-purple" />
@@ -130,8 +134,9 @@ export default function MusicDashboard() {
 
   if (config.status === 'building' || refreshing) {
     return (
-      <div className="relative flex items-center justify-center h-screen p-6 overflow-hidden">
+      <div className="relative flex items-center justify-center h-screen p-6 overflow-hidden creapd-bg-gradient">
         <AmbientBackground />
+        <CursorGlow />
         <div className="max-w-md text-center relative z-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-berna-purple/20 mb-6">
             <Building2 className="w-8 h-8 text-berna-purple animate-pulse" />
@@ -183,8 +188,9 @@ export default function MusicDashboard() {
   const readinessPercent = Math.round((checklistDone / checklist.length) * 100);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden creapd-bg-gradient">
       <AmbientBackground />
+      <CursorGlow />
 
       <div className="relative z-10 p-6 md:p-8 space-y-6">
         {/* Header */}
