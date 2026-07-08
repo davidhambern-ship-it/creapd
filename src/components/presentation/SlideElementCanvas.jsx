@@ -72,6 +72,10 @@ function ElementRenderer({ element }) {
         return element.content
           ? <video src={element.content} className="w-full h-full object-cover" autoPlay muted loop />
           : null;
+      case 'audio':
+        return element.content
+          ? <audio src={element.content} controls autoPlay className="w-full" />
+          : null;
       case 'shape':
         return null;
       default:

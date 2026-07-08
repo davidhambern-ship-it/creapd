@@ -88,8 +88,12 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, onS
           : <Placeholder label="No image" />;
       case 'video':
         return element.content
-          ? <video src={element.content} className="w-full h-full object-cover" />
+          ? <video src={element.content} className="w-full h-full object-cover" controls />
           : <Placeholder label="No video" />;
+      case 'audio':
+        return element.content
+          ? <audio src={element.content} controls className="w-full" />
+          : <Placeholder label="No audio" />;
       case 'shape':
         return null;
       default:
