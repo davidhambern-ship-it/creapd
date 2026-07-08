@@ -2218,3 +2218,219 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
+
+/* ═══════════════════════════════════════════════════════ */
+/* ═══ CREAPD Mobile Experience System (MOBILE-UX-001) ═══ */
+/* ═══════════════════════════════════════════════════════ */
+
+/* ── Mobile Card Base ── */
+.m-card {
+  border-radius: 1rem;
+  background: hsl(220 20% 10% / 0.55);
+  border: 1px solid hsl(220 15% 18% / 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Hero Card ── */
+.m-hero-card {
+  position: relative;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: linear-gradient(135deg,
+    hsl(270 80% 12% / 0.4) 0%,
+    hsl(220 30% 6% / 0.6) 50%,
+    hsl(25 95% 8% / 0.2) 100%);
+  border: 1px solid hsl(270 80% 30% / 0.2);
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.05);
+}
+.m-hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 0%, hsl(270 80% 40% / 0.12), transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Department Card ── */
+.m-dept-card {
+  position: relative;
+  border-radius: 1rem;
+  background: hsl(220 20% 10% / 0.5);
+  border: 1px solid hsl(220 15% 18% / 0.35);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.m-dept-card:active {
+  transform: scale(0.97);
+  border-color: hsl(270 80% 40% / 0.5);
+  box-shadow: 0 0 16px hsl(270 80% 50% / 0.1);
+}
+
+/* ── Action Card ── */
+.m-action-card {
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, hsl(220 20% 12% / 0.6), hsl(220 25% 8% / 0.4));
+  border: 1px solid hsl(220 15% 18% / 0.3);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.m-action-card:active {
+  transform: scale(0.94);
+  border-color: hsl(270 80% 50% / 0.4);
+  box-shadow: 0 0 16px hsl(270 80% 50% / 0.1);
+}
+
+/* ── Mini Tile ── */
+.m-mini-tile {
+  border-radius: 0.875rem;
+  background: hsl(220 20% 10% / 0.45);
+  border: 1px solid hsl(220 15% 16% / 0.3);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.m-mini-tile:active {
+  transform: scale(0.93);
+  background: hsl(220 20% 12% / 0.6);
+}
+
+/* ── Glow Chip ── */
+.m-glow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.m-glow-chip:active { transform: scale(0.95); }
+
+/* ── Status Dot ── */
+.m-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Mobile Carousel ── */
+.m-carousel {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.25rem;
+}
+.m-carousel::-webkit-scrollbar { display: none; }
+.m-carousel > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ── Mobile Sticky Bar ── */
+.m-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  background: hsl(220 20% 6% / 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid hsl(220 15% 15% / 0.4);
+}
+
+/* ── Mobile FAB ── */
+.m-fab {
+  position: fixed;
+  z-index: 40;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4);
+}
+.m-fab:active { transform: scale(0.88); }
+
+/* ── Mobile Animations ── */
+
+@keyframes m-card-enter {
+  0% { opacity: 0; transform: translateY(16px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.m-animate-enter { animation: m-card-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes m-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.m-shimmer {
+  background: linear-gradient(90deg, hsl(220 20% 10%) 0%, hsl(220 20% 14%) 50%, hsl(220 20% 10%) 100%);
+  background-size: 200% 100%;
+  animation: m-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes m-progress-fill {
+  0% { width: 0%; }
+  100% { width: var(--progress, 0%); }
+}
+.m-progress-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: hsl(220 15% 15% / 0.5);
+  overflow: hidden;
+}
+.m-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, hsl(152 60% 45%), hsl(270 80% 60%));
+  animation: m-progress-fill 1s ease-out both;
+  width: var(--progress, 0%);
+}
+
+@keyframes m-icon-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.85; }
+}
+.m-icon-animate { animation: m-icon-pulse 2s ease-in-out infinite; }
+
+@keyframes m-bg-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(20px, -15px); }
+}
+.m-bg-drift { animation: m-bg-drift 20s ease-in-out infinite; }
+
+@keyframes m-fab-pulse {
+  0%, 100% { box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4), 0 0 20px hsl(270 80% 60% / 0.15); }
+  50% { box-shadow: 0 8px 24px hsl(0 0% 0% / 0.4), 0 0 32px hsl(270 80% 60% / 0.3); }
+}
+.m-fab-pulse { animation: m-fab-pulse 3s ease-in-out infinite; }
+
+@keyframes m-nav-glow {
+  0%, 100% { box-shadow: 0 0 12px hsl(270 80% 60% / 0.12); }
+  50% { box-shadow: 0 0 20px hsl(270 80% 60% / 0.2); }
+}
+.m-nav-active { animation: m-nav-glow 3s ease-in-out infinite; }
+
+/* ── Mobile-only visibility ── */
+@media (min-width: 768px) {
+  .m-only { display: none !important; }
+}
+@media (max-width: 767px) {
+  .m-hide { display: none !important; }
+}
+
+.m-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.m-safe-top { padding-top: env(safe-area-inset-top, 0px); }

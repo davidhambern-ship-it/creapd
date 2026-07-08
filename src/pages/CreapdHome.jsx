@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileHome from '@/components/mobile/MobileHome';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
 import ProfileCard from '@/components/home/ProfileCard';
@@ -20,6 +22,7 @@ export default function CreapdHome() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleGetStarted = (profile) => {
     if (profile.path) {
@@ -39,6 +42,21 @@ export default function CreapdHome() {
   const scrollToShowcase = () => {
     document.getElementById('showcase')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  if (isMobile) {
+    return (
+      <div className="h-screen flex bg-background overflow-hidden">
+        <MobileHome
+          onGetStarted={handleGetStarted}
+          onShowDetails={setDetailsProfile}
+          onBuildWithCREAPD={() => setSetupOpen(true)}
+        />
+        <ProductionDetailsModal profile={detailsProfile} onClose={() => setDetailsProfile(null)} />
+        <ShowSetupChat open={setupOpen} onClose={() => setSetupOpen(false)} onCreated={() => { window.location.href = '/news/shows'; }} />
+        <IdlePersonalityToast />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">

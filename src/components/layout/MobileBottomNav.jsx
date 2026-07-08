@@ -13,19 +13,28 @@ export default function MobileBottomNav({ items }) {
           <Link
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg min-w-0 ${
-              isActive ? 'text-berna-purple' : 'text-muted-foreground'
+            className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-0 transition-all duration-200 ${
+              isActive
+                ? 'bg-primary/15 text-primary m-nav-active scale-105'
+                : 'text-muted-foreground active:scale-90'
             }`}
           >
-            <item.icon className="w-4 h-4" />
-            <span className="text-[9px] truncate">{item.mobileLabel || item.label}</span>
+            <item.icon className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} />
+            <span className="text-[9px] truncate font-medium">{item.mobileLabel || item.label}</span>
           </Link>
         );
       })}
 
-      <Link to="/news/settings" className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg ${location.pathname === '/news/settings' ? 'text-berna-purple' : 'text-muted-foreground'}`}>
+      <Link
+        to="/news/settings"
+        className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${
+          location.pathname === '/news/settings'
+            ? 'bg-primary/15 text-primary m-nav-active scale-105'
+            : 'text-muted-foreground active:scale-90'
+        }`}
+      >
         <ChevronRight className="w-4 h-4" />
-        <span className="text-[9px]">More</span>
+        <span className="text-[9px] font-medium">More</span>
       </Link>
     </nav>
   );
