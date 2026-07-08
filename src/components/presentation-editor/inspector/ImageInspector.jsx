@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { InspectorShell, Group, Field, ColorField, SliderField, NumField, pj, IconBtn } from './shared';
+import SvgGenerator from './SvgGenerator';
 import {
   Trash2, Lock, Unlock, ArrowUp, ArrowDown, ImagePlus,
 } from 'lucide-react';
@@ -29,6 +30,10 @@ export default function ImageInspector({ element, onUpdate, onDelete, onRegenera
         <Button variant="outline" size="sm" className="w-full h-7 text-[10px]" onClick={onRegenerate}>
           <ImagePlus className="w-3 h-3" /> Replace Using AI
         </Button>
+      </Group>
+
+      <Group value="ai-svg" title="AI Vector Art (SVG)">
+        <SvgGenerator onInsert={(url) => onUpdate(element.id, { content: url })} />
       </Group>
 
       <Group value="adjust" title="Adjustments">
