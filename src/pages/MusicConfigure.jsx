@@ -275,10 +275,11 @@ export default function MusicConfigure() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black">
+    <div className="relative min-h-screen overflow-x-hidden bg-black" style={{ scrollbarWidth: 'none' }}>
+      <style>{`.config-scroll::-webkit-scrollbar, .overflow-x-auto::-webkit-scrollbar { display: none; }`}</style>
       <CyberpunkMusicBg variant="left" />
 
-      <div className="relative z-10 config-scroll h-screen overflow-y-auto pb-32">
+      <div className="relative z-10 config-scroll min-h-screen overflow-y-auto pb-32">
         {/* Hero */}
         <div className="px-4 pt-8 pb-6 max-w-5xl mx-auto">
           <motion.div
@@ -296,15 +297,15 @@ export default function MusicConfigure() {
               >
                 <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
               </motion.div>
-              <h1 className="relative z-10 text-7xl font-bold mb-1 futuristic-title tracking-[0.15em]" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
+              <h1 className="relative z-10 text-4xl sm:text-5xl md:text-7xl font-bold mb-1 futuristic-title tracking-[0.15em] whitespace-nowrap" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
             <p className="relative z-10 text-2xl mb-1 tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif", color: 'hsl(152 60% 45%)', filter: 'drop-shadow(0 0 6px hsl(152 60% 45% / 0.6)) drop-shadow(0 0 20px hsl(152 60% 45% / 0.4))' }}>Discover Your Vibes</p>
-            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+            <div className="flex items-center gap-2 mt-4 overflow-x-auto md:flex-wrap md:justify-center md:overflow-visible pb-3 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none' }}>
               <motion.button
                 onClick={() => setRouletteOpen(true)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-base font-medium border"
+                className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-lg text-base font-medium border"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,0,255,0.12), rgba(0,255,255,0.08))',
                   borderColor: 'rgba(255,0,255,0.4)',
@@ -322,7 +323,7 @@ export default function MusicConfigure() {
                 return (
                   <motion.div
                     key={room.path}
-                    className="group relative flex flex-col items-center"
+                    className="group relative flex-shrink-0 flex flex-col items-center"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
