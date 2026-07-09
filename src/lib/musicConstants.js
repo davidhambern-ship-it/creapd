@@ -98,6 +98,7 @@ export const MUSIC_NAV_ITEMS = [
   { icon: 'Compass', label: 'Discovery — Configuration', path: '/music/configure', section: 'Discovery' },
   { icon: 'Search', label: 'Knowledge — Research', path: '/music/research', section: 'Knowledge' },
   { icon: 'ListMusic', label: 'Blueprint — Playlist', path: '/music/playlist', section: 'Blueprint' },
+  { icon: 'Library', label: 'Music Library', path: '/music/library', section: 'Knowledge' },
   { icon: 'Mic', label: 'Blueprint — Topics', path: '/music/topics', section: 'Blueprint' },
   { icon: 'Sparkles', label: 'Production — AI Assets', path: '/music/assets', section: 'Production' },
   { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/music/rundown', section: 'Assembly' },
