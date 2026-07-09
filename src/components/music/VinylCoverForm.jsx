@@ -109,7 +109,7 @@ function CoverZone({ children, style, accent, label, glow = true }) {
           </div>
         )}
 
-        <div className="p-3 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="p-2.5 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           {children}
         </div>
       </div>
@@ -163,7 +163,7 @@ export default function VinylCoverForm({
         className="relative rounded-xl overflow-hidden"
         style={{
           width: 'min(560px, 92vw)',
-          aspectRatio: '1 / 1',
+          aspectRatio: '1 / 1.25',
           boxShadow: `0 24px 80px rgba(0,0,0,0.7), 0 0 60px ${accent}15`,
           border: `1px solid ${accent}33`,
         }}
@@ -199,17 +199,17 @@ export default function VinylCoverForm({
             <CoverZone
               label="Album Title"
               accent={accent}
-              style={{ top: '4%', left: '8%', right: '8%', height: '22%' }}
+              style={{ top: '3%', left: '6%', right: '6%', height: '20%' }}
             >
               <FieldLabel accent={accent}>Show / Album Name *</FieldLabel>
               <Input
                 value={config.production_name}
                 onChange={e => updateConfig('production_name', e.target.value)}
                 placeholder="Enter album title..."
-                className={`${inputClass} text-base font-bold`}
+                className={`${inputClass} text-sm font-bold`}
                 style={{ borderColor: `${accent}33` }}
               />
-              <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="grid grid-cols-2 gap-2 mt-1.5">
                 <div>
                   <FieldLabel accent={accent}>Release Date *</FieldLabel>
                   <Input type="date" value={config.show_date} onChange={e => updateConfig('show_date', e.target.value)} className={inputClass} />
@@ -225,22 +225,30 @@ export default function VinylCoverForm({
             <CoverZone
               label="Artist"
               accent={accent}
-              style={{ top: '30%', left: '4%', width: '40%', height: '38%' }}
+              style={{ top: '26%', left: '3%', width: '45%', height: '40%' }}
             >
-              <FieldLabel accent={accent}>Host / Artist</FieldLabel>
-              <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
-              <FieldLabel accent={accent}>Co-Host / Featured</FieldLabel>
-              <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional..." className={inputClass} />
-              <FieldLabel accent={accent}>Label / Station</FieldLabel>
-              <Input value={config.station_name} onChange={e => updateConfig('station_name', e.target.value)} placeholder="Station name..." className={inputClass} />
+              <div className="space-y-1.5">
+                <div>
+                  <FieldLabel accent={accent}>Host / Artist</FieldLabel>
+                  <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
+                </div>
+                <div>
+                  <FieldLabel accent={accent}>Co-Host / Featured</FieldLabel>
+                  <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional..." className={inputClass} />
+                </div>
+                <div>
+                  <FieldLabel accent={accent}>Label / Station</FieldLabel>
+                  <Input value={config.station_name} onChange={e => updateConfig('station_name', e.target.value)} placeholder="Station name..." className={inputClass} />
+                </div>
+              </div>
             </CoverZone>
 
-            {/* Format sticker — center-right circular */}
+            {/* Format sticker — right side */}
             <CoverZone
               label="Format"
               accent={accent}
               glow={false}
-              style={{ top: '30%', right: '4%', width: '40%', height: '38%' }}
+              style={{ top: '26%', right: '3%', width: '45%', height: '40%' }}
             >
               <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
               <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
@@ -250,13 +258,14 @@ export default function VinylCoverForm({
                   <SelectItem value="recorded">Recorded</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="flex items-center justify-center mt-3">
+              <div className="flex flex-col items-center justify-center mt-3 gap-1.5">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
                 >
-                  <Disc3 className="w-10 h-10" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
+                  <Disc3 className="w-8 h-8" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
                 </motion.div>
+                <span className="text-[9px] text-gray-500">Now Spinning</span>
               </div>
             </CoverZone>
 
@@ -264,7 +273,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Liner Notes"
               accent={accent}
-              style={{ bottom: '4%', left: '8%', right: '8%', height: '22%' }}
+              style={{ bottom: '3%', left: '6%', right: '6%', height: '24%' }}
             >
               <FieldLabel accent={accent}>Show Description</FieldLabel>
               <Textarea
@@ -284,7 +293,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Side A / B Mix"
               accent={accent}
-              style={{ top: '6%', left: '6%', right: '6%', height: '20%' }}
+              style={{ top: '4%', left: '4%', right: '4%', height: '16%' }}
             >
               <div className="flex h-3 rounded-full overflow-hidden mb-2">
                 <motion.div animate={{ width: `${(config.intro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} />
@@ -304,7 +313,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Track Times"
               accent={accent}
-              style={{ top: '30%', left: '4%', right: '4%', height: '64%' }}
+              style={{ top: '24%', left: '4%', right: '4%', height: '70%' }}
             >
               <div className="grid grid-cols-2 gap-3">
                 <RuntimeSlider label="Total Show" value={config.total_show_runtime} onChange={v => updateConfig('total_show_runtime', v)} max={240} color="#FFFFFF" />
@@ -324,7 +333,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Genre Tags"
               accent={accent}
-              style={{ top: '4%', left: '4%', right: '4%', height: '38%' }}
+              style={{ top: '3%', left: '3%', right: '3%', height: '34%' }}
             >
               <FieldLabel accent={accent}>Genres ({selectedGenres.length})</FieldLabel>
               <div className="flex flex-wrap gap-1">
@@ -340,7 +349,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Mood Board"
               accent="#FF00FF"
-              style={{ top: '44%', left: '4%', width: '52%', height: '28%' }}
+              style={{ top: '41%', left: '3%', width: '54%', height: '30%' }}
             >
               <FieldLabel accent="#FF00FF">Moods ({selectedMoods.length})</FieldLabel>
               <div className="flex flex-wrap gap-1">
@@ -354,7 +363,7 @@ export default function VinylCoverForm({
               label="Tone"
               accent="#00FFFF"
               glow={false}
-              style={{ top: '44%', right: '4%', width: '40%', height: '28%' }}
+              style={{ top: '41%', right: '3%', width: '40%', height: '30%' }}
             >
               <FieldLabel accent="#00FFFF">Show Tone</FieldLabel>
               <div className="flex flex-wrap gap-1">
@@ -367,7 +376,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Vibe Check"
               accent={accent}
-              style={{ bottom: '4%', left: '4%', right: '4%', height: '20%' }}
+              style={{ bottom: '3%', left: '3%', right: '3%', height: '22%' }}
             >
               <p className="text-[10px] text-gray-400 leading-relaxed">
                 {selectedGenres.length} genres · {selectedMoods.length} moods · {config.show_tone} tone
@@ -383,7 +392,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Track Topics"
               accent={accent}
-              style={{ top: '4%', left: '4%', right: '4%', height: '44%' }}
+              style={{ top: '3%', left: '3%', right: '3%', height: '40%' }}
             >
               <FieldLabel accent={accent}>Music Topics ({selectedTopics.length})</FieldLabel>
               <div className="flex flex-wrap gap-1">
@@ -396,7 +405,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Research Credits"
               accent="#00FF88"
-              style={{ bottom: '4%', left: '4%', right: '4%', height: '48%' }}
+              style={{ bottom: '3%', left: '3%', right: '3%', height: '54%' }}
             >
               <FieldLabel accent="#00FF88">Research Sources ({selectedSources.length})</FieldLabel>
               <div className="flex flex-wrap gap-1">
@@ -414,7 +423,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Must-Play / Blocked"
               accent={accent}
-              style={{ top: '4%', left: '4%', right: '4%', height: '40%' }}
+              style={{ top: '3%', left: '3%', right: '3%', height: '36%' }}
             >
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -439,7 +448,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Energy Flow"
               accent="#FF00FF"
-              style={{ top: '46%', left: '4%', right: '4%', height: '22%' }}
+              style={{ top: '42%', left: '3%', right: '3%', height: '20%' }}
             >
               <div className="flex flex-wrap gap-1">
                 {ENERGY_FLOW_OPTIONS.map(opt => (
@@ -451,7 +460,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Settings"
               accent={accent}
-              style={{ bottom: '4%', left: '4%', right: '4%', height: '24%' }}
+              style={{ bottom: '3%', left: '3%', right: '3%', height: '30%' }}
             >
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -489,7 +498,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Auto-Generate"
               accent={accent}
-              style={{ top: '6%', left: '6%', right: '6%', height: '50%' }}
+              style={{ top: '4%', left: '4%', right: '4%', height: '46%' }}
             >
               <FieldLabel accent={accent}>CREAPD Tasks ({selectedAutomation.length} enabled)</FieldLabel>
               <div className="flex flex-wrap gap-1.5">
@@ -503,7 +512,7 @@ export default function VinylCoverForm({
               label="Status"
               accent={accent}
               glow={false}
-              style={{ bottom: '6%', left: '6%', right: '6%', height: '30%' }}
+              style={{ bottom: '4%', left: '4%', right: '4%', height: '32%' }}
             >
               <div className="flex items-center gap-3">
                 <motion.div
