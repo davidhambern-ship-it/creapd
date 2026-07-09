@@ -8,7 +8,7 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
 
   return (
     <div
-      className="sticky top-0 z-40 -mx-4 px-4 py-3 mb-2"
+      className="sticky top-0 z-40 -mx-4 px-4 py-2 mb-2"
       style={{
         background: 'linear-gradient(180deg, hsl(220 20% 6% / 0.95), hsl(220 20% 6% / 0.85))',
         backdropFilter: 'blur(16px)',
@@ -16,18 +16,16 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
         borderBottom: '1px solid rgba(255,0,255,0.12)',
       }}
     >
-      <div
-        className="flex items-center gap-2 overflow-x-auto pb-1"
-        style={{ scrollbarWidth: 'none' }}
-      >
+      <div className="dnav-bar flex items-center gap-1.5 overflow-x-auto pb-0">
         <style>{`.dnav-bar::-webkit-scrollbar { display: none; }`}</style>
+        <style>{`.dnav-bar { scrollbar-width: none; }`}</style>
 
         {/* Show Roulette Button */}
         <motion.button
           onClick={onRoulette}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
+          className="flex-shrink-0 flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium border"
           style={{
             background: `linear-gradient(135deg, ${rouletteColor}22, rgba(0,255,255,0.08))`,
             borderColor: `${rouletteColor}50`,
@@ -41,22 +39,22 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
           >
             <Dices className="w-4 h-4" />
           </motion.span>
-          <span className="hidden sm:inline">Show Roulette</span>
+          <span className="hidden sm:inline">Roulette</span>
         </motion.button>
 
         {/* Divider */}
-        <div className="flex-shrink-0 h-8 w-px bg-white/10 mx-0.5" />
+        <div className="flex-shrink-0 h-6 w-px bg-white/10" />
 
-        {/* Room Icons */}
+        {/* Room Icons — uniform pill buttons that fit the bar */}
         {rooms.map((room, i) => {
           const Icon = room.icon;
           return (
             <motion.button
               key={room.path}
               onClick={() => navigate(room.path)}
-              whileHover={{ scale: 1.15, y: -2 }}
-              whileTap={{ scale: 0.85 }}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              className="flex-shrink-0 flex items-center gap-1.5 h-9 px-2.5 rounded-lg border transition-colors"
               style={{
                 background: `${room.color}14`,
                 borderColor: `${room.color}30`,
@@ -64,19 +62,8 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
               }}
               title={room.label}
             >
-              <Icon className="w-5 h-5" style={{ color: room.color }} />
-              <span className="text-xs font-medium whitespace-nowrap hidden md:inline">{room.label}</span>
-              <motion.span
-                className="absolute inset-0 rounded-lg"
-                animate={{
-                  boxShadow: [
-                    `0 0 0px ${room.color}00`,
-                    `0 0 10px ${room.color}50`,
-                    `0 0 0px ${room.color}00`,
-                  ],
-                }}
-                transition={{ duration: 2.8, repeat: Infinity, delay: i * 0.2, ease: 'easeInOut' }}
-              />
+              <Icon className="w-4 h-4" style={{ color: room.color }} />
+              <span className="text-xs font-medium whitespace-nowrap hidden lg:inline">{room.label}</span>
             </motion.button>
           );
         })}
