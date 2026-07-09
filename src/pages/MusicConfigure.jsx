@@ -22,6 +22,7 @@ import {
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
 import ShowRoulette from '@/components/music/ShowRoulette';
+import DiscoveryNavBar from '@/components/music/DiscoveryNavBar';
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -300,91 +301,11 @@ export default function MusicConfigure() {
               <h1 className="relative z-10 text-4xl sm:text-5xl md:text-7xl font-bold mb-1 futuristic-title tracking-[0.15em] whitespace-nowrap" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
             <p className="relative z-10 text-2xl mb-1 tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif", color: 'hsl(152 60% 45%)', filter: 'drop-shadow(0 0 6px hsl(152 60% 45% / 0.6)) drop-shadow(0 0 20px hsl(152 60% 45% / 0.4))' }}>Discover Your Vibes</p>
-            <div className="flex items-center gap-2 mt-4 overflow-x-auto md:flex-wrap md:justify-center md:overflow-visible pb-3 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0" style={{ scrollbarWidth: 'none' }}>
-              <motion.button
-                onClick={() => setRouletteOpen(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-lg text-base font-medium border"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255,0,255,0.12), rgba(0,255,255,0.08))',
-                  borderColor: 'rgba(255,0,255,0.4)',
-                  color: '#FF00FF',
-                  boxShadow: '0 0 12px rgba(255,0,255,0.15)',
-                }}
-              >
-                <motion.span animate={{ rotate: [0, -12, 12, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
-                  <Dices className="w-5 h-5" />
-                </motion.span>
-                Show Roulette
-              </motion.button>
-              {NAV_ROOMS.map((room, i) => {
-                const Icon = room.icon;
-                return (
-                  <motion.div
-                    key={room.path}
-                    className="group relative flex-shrink-0 flex flex-col items-center"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <motion.button
-                      onClick={() => navigate(room.path)}
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.85 }}
-                      className="flex items-center justify-center w-14 h-14 rounded-xl border relative overflow-visible"
-                      style={{
-                        background: `${room.color}18`,
-                        borderColor: `${room.color}40`,
-                        boxShadow: `0 0 12px ${room.color}25`,
-                      }}
-                    >
-                      <motion.span
-                        className="absolute inset-0 rounded-lg border"
-                        style={{ borderColor: room.color }}
-                        animate={{
-                          boxShadow: [
-                            `0 0 0px ${room.color}00`,
-                            `0 0 16px ${room.color}80, inset 0 0 8px ${room.color}40`,
-                            `0 0 0px ${room.color}00`,
-                          ],
-                          scale: [1, 1.08, 1],
-                          opacity: [0.5, 1, 0.5],
-                        }}
-                        transition={{
-                          duration: 2.8,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                          ease: 'easeInOut',
-                        }}
-                      />
-                      <motion.div
-                        animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
-                        transition={{
-                          duration: 2.8,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                          ease: 'easeInOut',
-                        }}
-                      >
-                        <Icon className="w-7 h-7" style={{ color: room.color }} />
-                      </motion.div>
-                    </motion.button>
-                    <span
-                      className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded text-xs font-medium z-50 opacity-0 -translate-y-1 scale-90 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100"
-                      style={{
-                        background: `${room.color}22`,
-                        border: `1px solid ${room.color}55`,
-                        color: room.color,
-                        boxShadow: `0 0 8px ${room.color}30`,
-                      }}
-                    >
-                      {room.label}
-                    </span>
-                  </motion.div>
-                );
-              })}
-            </div>
+            <DiscoveryNavBar
+              rooms={NAV_ROOMS}
+              onRoulette={() => setRouletteOpen(true)}
+              rouletteColor="#FF00FF"
+            />
           </motion.div>
 
           {/* Room Cards Grid */}
