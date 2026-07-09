@@ -62,21 +62,18 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
                 borderColor: `${room.color}30`,
                 color: room.color,
               }}
+              animate={{
+                boxShadow: [
+                  `0 0 0px ${room.color}00`,
+                  `0 0 10px ${room.color}50`,
+                  `0 0 0px ${room.color}00`,
+                ],
+              }}
+              transition={{ duration: 2.8, repeat: Infinity, delay: i * 0.2, ease: 'easeInOut' }}
               title={room.label}
             >
               <Icon className="w-5 h-5" style={{ color: room.color }} />
               <span className="text-xs font-medium whitespace-nowrap hidden md:inline">{room.label}</span>
-              <motion.span
-                className="absolute inset-0 rounded-lg"
-                animate={{
-                  boxShadow: [
-                    `0 0 0px ${room.color}00`,
-                    `0 0 10px ${room.color}50`,
-                    `0 0 0px ${room.color}00`,
-                  ],
-                }}
-                transition={{ duration: 2.8, repeat: Infinity, delay: i * 0.2, ease: 'easeInOut' }}
-              />
             </motion.button>
           );
         })}
