@@ -596,41 +596,6 @@ export default function MusicConfigure() {
         </AnimatePresence>
       </div>
 
-      {/* Sticky build bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 md:left-60">
-        <div className="backdrop-blur-xl bg-black/80 border-t border-white/10 px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
-              <CheckCircle2 className="w-4 h-4" style={{ color: canBuild ? '#00FF88' : '#555' }} />
-              <span className="truncate max-w-[150px]">{config.production_name || 'Untitled Show'}</span>
-              <span className="text-gray-600">/</span>
-              <span>{selectedGenres.length} genres</span>
-              <span className="text-gray-600">/</span>
-              <span>{config.required_music_runtime} min music</span>
-            </div>
-          </div>
-          <motion.div
-            animate={canBuild ? { boxShadow: ['0 0 20px rgba(255,0,255,0.4)', '0 0 32px rgba(255,0,255,0.6)', '0 0 20px rgba(255,0,255,0.4)'] } : {}}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Button
-              onClick={handleBuild}
-              disabled={!canBuild}
-              size="lg"
-              className="shrink-0"
-              style={canBuild ? {
-                background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
-              } : {}}
-            >
-              <motion.span animate={canBuild ? { rotate: [0, -15, 15, 0] } : {}} transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 2 }}>
-                <Zap className="w-4 h-4 mr-1.5" />
-              </motion.span>
-              Build Production
-            </Button>
-          </motion.div>
-        </div>
-      </div>
-
       <ShowRoulette
         open={rouletteOpen}
         onClose={() => setRouletteOpen(false)}
