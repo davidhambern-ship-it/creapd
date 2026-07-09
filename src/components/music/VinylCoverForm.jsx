@@ -221,13 +221,13 @@ export default function VinylCoverForm({
               </div>
             </CoverZone>
 
-            {/* Band Name — left side */}
+            {/* Artist — full width */}
             <CoverZone
               label="Artist"
               accent={accent}
-              style={{ top: '26%', left: '3%', width: '45%', height: '40%' }}
+              style={{ top: '25%', left: '6%', right: '6%', height: '24%' }}
             >
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <FieldLabel accent={accent}>Host / Artist</FieldLabel>
                   <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
@@ -243,29 +243,31 @@ export default function VinylCoverForm({
               </div>
             </CoverZone>
 
-            {/* Format sticker — right side */}
+            {/* Format — full width */}
             <CoverZone
               label="Format"
               accent={accent}
               glow={false}
-              style={{ top: '26%', right: '3%', width: '45%', height: '40%' }}
+              style={{ top: '51%', left: '6%', right: '6%', height: '14%' }}
             >
-              <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
-              <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
-                <SelectTrigger className={`${inputClass} border-white/10`}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="live">Live</SelectItem>
-                  <SelectItem value="recorded">Recorded</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex flex-col items-center justify-center mt-3 gap-1.5">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
+                  <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
+                    <SelectTrigger className={`${inputClass} border-white/10`}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="live">Live</SelectItem>
+                      <SelectItem value="recorded">Recorded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                  className="mt-4"
                 >
-                  <Disc3 className="w-8 h-8" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
+                  <Disc3 className="w-7 h-7" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
                 </motion.div>
-                <span className="text-[9px] text-gray-500">Now Spinning</span>
               </div>
             </CoverZone>
 
@@ -273,7 +275,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Liner Notes"
               accent={accent}
-              style={{ bottom: '3%', left: '6%', right: '6%', height: '24%' }}
+              style={{ bottom: '3%', left: '6%', right: '6%', height: '22%' }}
             >
               <FieldLabel accent={accent}>Show Description</FieldLabel>
               <Textarea
