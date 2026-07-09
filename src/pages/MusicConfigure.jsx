@@ -2,16 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
-
-// Load The2K12 font via FontFace API for guaranteed loading
-const THE2K12_URL = 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/76244154f_The2K12Font.ttf';
-if (typeof window !== 'undefined' && !window._the2k12_loaded) {
-  window._the2k12_loaded = true;
-  const face = new FontFace('The2K12', `url(${THE2K12_URL})`);
-  face.load().then(() => {
-    document.fonts.add(face);
-  }).catch(() => {});
-}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -136,11 +126,6 @@ export default function MusicConfigure() {
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
   const [openRoom, setOpenRoom] = useState('identity');
-  const [fontReady, setFontReady] = useState(false);
-
-  useEffect(() => {
-    document.fonts.load("16px 'The2K12'").then(() => setFontReady(true)).catch(() => setFontReady(true));
-  }, []);
 
   const [config, setConfig] = useState({
     production_name: '',
@@ -308,7 +293,7 @@ export default function MusicConfigure() {
             >
               <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
             </motion.div>
-            <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: fontReady ? "'The2K12', monospace" : 'monospace', letterSpacing: '0.05em', visibility: fontReady ? 'visible' : 'hidden' }}>Discovery Room</h1>
+            <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: "'The2K12', monospace", letterSpacing: '0.05em' }}>Discovery Room</h1>
             <p className="text-sm text-gray-400">Tap a room to configure your show</p>
             <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
               <motion.button
