@@ -16,7 +16,7 @@ import {
 import {
   Loader2, Music, Clock, Smile, Mic, ListChecks,
   Bot, CheckCircle2, ChevronDown, ChevronUp,
-  Plus, Radio, Disc3, Zap, Sliders, Dices
+  Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import ShowRoulette from '@/components/music/ShowRoulette';
@@ -209,6 +209,9 @@ export default function MusicConfigure() {
       summary: () => config.playlist_energy_flow },
     { id: 'ai', label: 'AI Automation', icon: Bot, color: '#FFD700', subtitle: 'What CREAPD auto-generates',
       summary: () => `${selectedAutomation.length} tasks enabled` },
+    { id: 'playlist', label: 'Playlist Room', icon: ListMusic, color: '#8B5CF6', subtitle: 'View & edit song list',
+      link: '/music/playlist',
+      summary: () => 'Open playlist →' },
   ];
 
   const handleBuild = async () => {
@@ -313,7 +316,7 @@ export default function MusicConfigure() {
               return (
                 <motion.button
                   key={room.id}
-                  onClick={() => setOpenRoom(isOpen ? null : room.id)}
+                  onClick={() => room.link ? navigate(room.link) : setOpenRoom(isOpen ? null : room.id)}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 25 }}
