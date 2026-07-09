@@ -286,27 +286,17 @@ export default function MusicConfigure() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-6"
           >
-            <div className="relative inline-flex flex-col items-center">
+            <div className="relative inline-block">
               <StageLights />
-              {/* Desktop: icon above title */}
               <motion.div
                 animate={{ y: [0, -4, 0] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                className="relative z-20 inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-2 hidden md:inline-flex"
+                className="relative z-20 inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-2"
                 style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)', boxShadow: '0 0 24px rgba(255,0,255,0.15)' }}
               >
                 <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
               </motion.div>
-              {/* Mobile: icon absolutely centered behind the stacked title, between the two words */}
-              <motion.div
-                animate={{ y: [0, -4, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 md:hidden inline-flex items-center justify-center w-16 h-16 rounded-2xl"
-                style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)', boxShadow: '0 0 24px rgba(255,0,255,0.15)' }}
-              >
-                <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
-              </motion.div>
-              <h1 className="relative z-10 text-6xl md:text-7xl font-bold mb-1 futuristic-title tracking-[0.15em] leading-tight text-center" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
+              <h1 className="relative z-10 text-7xl font-bold mb-1 futuristic-title tracking-[0.15em]" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
             <p className="relative z-10 text-2xl mb-1 tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif", color: 'hsl(152 60% 45%)', filter: 'drop-shadow(0 0 6px hsl(152 60% 45% / 0.6)) drop-shadow(0 0 20px hsl(152 60% 45% / 0.4))' }}>Discover Your Vibes</p>
             <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
