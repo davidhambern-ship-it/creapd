@@ -7,7 +7,6 @@ import {
   Compass, ListMusic, ClipboardList, Database, Package
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
-import SidebarNavSections from './SidebarNavSections';
 import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
@@ -30,6 +29,17 @@ const ICON_MAP = {
   X, Menu, LayoutGrid, Circle, Music, Compass, Database, Package
 };
 
+// Music-themed room cards — each nav item gets a unique neon color + music icon
+const ROOM_CARDS = [
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard', color: '#FFD700', subtitle: 'Command center' },
+  { icon: Compass, label: 'Discovery', path: '/music/configure', color: '#FF00FF', subtitle: 'Configure your show' },
+  { icon: Search, label: 'Knowledge', path: '/music/research', color: '#00FFFF', subtitle: 'Music research' },
+  { icon: ClipboardList, label: 'Blueprint', path: '/music/playlist', color: '#8B00FF', subtitle: 'Playlist plan' },
+  { icon: Sparkles, label: 'Production', path: '/music/assets', color: '#FF6B00', subtitle: 'AI assets' },
+  { icon: Package, label: 'Assembly', path: '/music/rundown', color: '#00FF88', subtitle: 'Show rundown' },
+  { icon: Settings, label: 'Settings', path: '/settings/default-production', color: '#6B7280', subtitle: 'Defaults' },
+];
+
 export default function MusicLayout() {
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -41,18 +51,72 @@ export default function MusicLayout() {
       <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex w-60 flex-col env-glass-sidebar relative z-20">
-          <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-            <SidebarNavSections items={MUSIC_NAV_ITEMS} iconMap={ICON_MAP} />
-            <AdminSidebarSection variant="music" onNavigate={() => {}} />
-          </nav>
-          <div className="p-3 border-t border-sidebar-border">
-            <Link to="/production-types" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent transition-colors">
-              <LayoutGrid className="w-4 h-4" />
-              Switch Production Type
-            </Link>
-          </div>
+        {/* Desktop — Music Room Card Rail */}
+        <aside className="hidden md:flex flex-col w-[88px] shrink-0 relative z-20 overflow-y-auto py-3 px-2 gap-2"
+          style={{
+            background: 'hsl(220 20% 8% / 0.85)',
+            backdropFilter: 'blur(16px)',
+            borderRight: '1px solid hsl(190 30% 18% / 0.3)',
+          }}
+        >
+          {ROOM_CARDS.map((room, i) => {
+            const Icon = room.icon;
+            const isActive = location.pathname === room.path;
+            return (
+              <Link
+                key={room.path}
+                to={room.path}
+                className="group flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all relative overflow-hidden"
+                style={isActive ? {
+                  background: `${room.color}12`,
+                  borderColor: `${room.color}60`,
+                  boxShadow: `0 0 12px ${room.color}25, inset 0 1px 0 ${room.color}10`,
+                } : {
+                  background: 'rgba(255,255,255,0.02)',
+                  borderColor: 'rgba(255,255,255,0.06)',
+                }}
+              >
+                {isActive && (
+                  <div
+                    className="absolute -top-4 -right-4 w-12 h-12 rounded-full blur-xl"
+                    style={{ background: `${room.color}30` }}
+                  />
+                )}
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center relative z-10 transition-transform group-hover:scale-110"
+                  style={{
+                    background: `${room.color}15`,
+                    border: `1px solid ${room.color}35`,
+                  }}
+                >
+                  <Icon className="w-4 h-4" style={{ color: room.color }} />
+                </div>
+                <span
+                  className="text-[9px] font-heading font-bold relative z-10 transition-colors"
+                  style={{ color: isActive ? room.color : 'rgba(180,180,200,0.5)' }}
+                >
+                  {room.label}
+                </span>
+              </Link>
+            );
+          })}
+
+          {/* Switch production type */}
+          <Link
+            to="/production-types"
+            className="group flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all mt-auto"
+            style={{
+              background: 'rgba(255,255,255,0.02)',
+              borderColor: 'rgba(255,255,255,0.06)',
+            }}
+          >
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center relative z-10 transition-transform group-hover:scale-110"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <LayoutGrid className="w-4 h-4 text-gray-400" />
+            </div>
+            <span className="text-[9px] font-heading font-bold text-gray-500">Switch</span>
+          </Link>
         </aside>
 
         <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
