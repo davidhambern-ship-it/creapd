@@ -16,9 +16,10 @@ import {
 import {
   Loader2, Music, Calendar, Clock, Tag, Smile, Mic, ListChecks,
   Search, ListFilter, Bot, CheckCircle2, Building2, ChevronDown,
-  ChevronUp, Plus, X, Radio, Disc3, Zap, Sliders
+  ChevronUp, Plus, X, Radio, Disc3, Zap, Sliders, Dices
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import ShowRoulette from '@/components/music/ShowRoulette';
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -143,6 +144,7 @@ export default function MusicConfigure() {
 
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState('');
+  const [rouletteOpen, setRouletteOpen] = useState(false);
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
   const [activeSection, setActiveSection] = useState('identity');
@@ -203,6 +205,11 @@ export default function MusicConfigure() {
       toggleArrayItem(field, customInput.trim());
       setCustomInput('');
     }
+  };
+
+  const handleRouletteApply = (generated) => {
+    setConfig(prev => ({ ...prev, ...generated }));
+    setRouletteOpen(false);
   };
 
   const selectedGenres = safeParse(config.genres, []);
@@ -322,6 +329,23 @@ export default function MusicConfigure() {
               <h1 className="text-xl font-heading font-bold text-white">Discovery Room</h1>
               <p className="text-xs text-gray-400">Configure your music production — all settings on one page</p>
             </div>
+            <motion.button
+              onClick={() => setRouletteOpen(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,0,255,0.12), rgba(0,255,255,0.08))',
+                borderColor: 'rgba(255,0,255,0.4)',
+                color: '#FF00FF',
+                boxShadow: '0 0 12px rgba(255,0,255,0.15)',
+              }}
+            >
+              <motion.span animate={{ rotate: [0, -12, 12, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
+                <Dices className="w-4 h-4" />
+              </motion.span>
+              Roulette
+            </motion.button>
           </div>
 
           {/* Quick section nav */}
@@ -702,6 +726,12 @@ export default function MusicConfigure() {
           </motion.div>
         </div>
       </div>
+
+      <ShowRoulette
+        open={rouletteOpen}
+        onClose={() => setRouletteOpen(false)}
+        onApply={handleRouletteApply}
+      />
     </div>
   );
 }
