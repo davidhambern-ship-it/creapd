@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Disc3, Sparkles } from 'lucide-react';
+import VinylCoverForm from '@/components/music/VinylCoverForm';
 
 /**
  * 2.5D Orbital Configuration Canvas
@@ -16,7 +17,10 @@ export default function OrbitalConfigCanvas({
   onFocusRoom,
   canBuild = false,
   onBuild,
-  children
+  children,
+  config,
+  updateConfig,
+  toggleArrayItem,
 }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
@@ -560,22 +564,35 @@ export default function OrbitalConfigCanvas({
             )}
           </motion.div>
         ) : (
-          /* ── FOCUSED VIEW ── */
+          /* ── FOCUSED VIEW — Vinyl Cover Form ── */
           <motion.div
             key="focused"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.35 }}
+            className="flex flex-col items-center py-4"
           >
-            <button
-              onClick={() => onFocusRoom?.(null)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors mb-4"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Back to Orbit
-            </button>
-            {children}
+            {config && updateConfig ? (
+              <VinylCoverForm
+                room={focusedRoom}
+                config={config}
+                updateConfig={updateConfig}
+                toggleArrayItem={toggleArrayItem}
+                onBack={() => onFocusRoom?.(null)}
+              />
+            ) : (
+              <>
+                <button
+                  onClick={() => onFocusRoom?.(null)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors mb-4"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Orbit
+                </button>
+                {children}
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

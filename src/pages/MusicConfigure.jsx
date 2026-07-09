@@ -319,6 +319,9 @@ export default function MusicConfigure() {
           onFocusRoom={setOpenRoom}
           canBuild={canBuild}
           onBuild={handleBuild}
+          config={config}
+          updateConfig={updateConfig}
+          toggleArrayItem={toggleArrayItem}
         >
           <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
 
