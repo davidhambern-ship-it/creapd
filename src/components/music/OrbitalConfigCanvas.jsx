@@ -171,45 +171,59 @@ export default function OrbitalConfigCanvas({
                   }}
                 />
 
-                {/* ── Spinning vinyl disc ── */}
+                {/* ── Rubber platter mat (sits inside the well) ── */}
+                <div
+                  className="absolute rounded-full"
+                  style={{
+                    top: '50%',
+                    left: '108px',
+                    transform: 'translateY(-50%)',
+                    width: '164px',
+                    height: '164px',
+                    background: 'radial-gradient(circle, rgba(25,25,30,0.8) 0%, rgba(15,15,20,0.9) 90%)',
+                    boxShadow: 'inset 0 0 8px rgba(0,0,0,0.5)',
+                  }}
+                />
+
+                {/* ── Spinning vinyl record (sitting on the mat) ── */}
                 <motion.div
                   className="absolute rounded-full"
                   style={{
                     top: '50%',
-                    left: '115px',
+                    left: '110px',
                     transform: 'translateY(-50%)',
-                    width: '150px',
-                    height: '150px',
+                    width: '160px',
+                    height: '160px',
                     background: `
                       repeating-radial-gradient(circle at center,
-                        rgba(0,0,0,0.5) 0px,
-                        rgba(0,0,0,0.5) 1px,
-                        rgba(35,37,47,0.4) 1px,
-                        rgba(35,37,47,0.4) 3px
+                        rgba(0,0,0,0.55) 0px,
+                        rgba(0,0,0,0.55) 1px,
+                        rgba(38,40,50,0.45) 1px,
+                        rgba(38,40,50,0.45) 3px
                       ),
-                      radial-gradient(circle, rgba(50,52,65,0.7) 0%, rgba(12,12,20,0.95) 80%)
+                      radial-gradient(circle, rgba(55,57,70,0.7) 0%, rgba(12,12,20,0.95) 80%)
                     `,
-                    border: '1px solid rgba(255,255,255,0.04)',
-                    boxShadow: 'inset 0 0 24px rgba(0,0,0,0.6), 0 0 12px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: 'inset 0 0 24px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.05)',
                   }}
                   animate={{ rotate: 360 }}
                   transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
                 >
                   {/* Vinyl groove highlight rings */}
                   <div className="absolute rounded-full" style={{
-                    top: '12%', left: '12%', right: '12%', bottom: '12%',
-                    border: '1px solid rgba(255,255,255,0.03)',
+                    top: '10%', left: '10%', right: '10%', bottom: '10%',
+                    border: '1px solid rgba(255,255,255,0.04)',
                   }} />
                   <div className="absolute rounded-full" style={{
-                    top: '25%', left: '25%', right: '25%', bottom: '25%',
-                    border: '1px solid rgba(255,255,255,0.04)',
+                    top: '22%', left: '22%', right: '22%', bottom: '22%',
+                    border: '1px solid rgba(255,255,255,0.05)',
                   }} />
 
                   {/* Center label */}
                   <div
                     className="absolute rounded-full flex items-center justify-center"
                     style={{
-                      top: '33%', left: '33%', right: '33%', bottom: '33%',
+                      top: '34%', left: '34%', right: '34%', bottom: '34%',
                       background: canBuild
                         ? 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.05) 70%)'
                         : 'radial-gradient(circle, rgba(255,0,255,0.18) 0%, rgba(139,0,255,0.08) 70%)',
@@ -227,12 +241,12 @@ export default function OrbitalConfigCanvas({
                   </div>
                 </motion.div>
 
-                {/* ── Center spindle (fixed, on top of vinyl) ── */}
+                {/* ── Center spindle (fixed, pierces through vinyl center) ── */}
                 <div
                   className="absolute rounded-full"
                   style={{
                     top: '50%',
-                    left: '187px',
+                    left: '190px',
                     transform: 'translate(-50%, -50%)',
                     width: '10px',
                     height: '10px',
