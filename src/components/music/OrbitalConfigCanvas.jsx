@@ -410,27 +410,33 @@ export default function OrbitalConfigCanvas({
 
                 {/* ── "Show Deck" brand plate — etched on the left side of the deck ── */}
                 <div
-                  className="absolute flex flex-col items-center justify-center"
+                  className="absolute flex flex-col items-center justify-center gap-1"
                   style={{
-                    top: '90px',
-                    left: '12px',
-                    width: '76px',
+                    top: '70px',
+                    left: '8px',
+                    width: '84px',
                     zIndex: 2,
                   }}
                 >
                   <span
-                    className="font-mono text-[9px] uppercase tracking-[0.3em] whitespace-nowrap"
+                    className="font-mono uppercase tracking-[0.15em] whitespace-nowrap"
                     style={{
-                      color: 'rgba(200,200,210,0.35)',
+                      fontSize: '20px',
+                      lineHeight: 1,
+                      fontWeight: 700,
+                      color: 'rgba(200,200,210,0.4)',
                       textShadow: '0 1px 0 rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.03)',
                     }}
                   >
                     Show
                   </span>
                   <span
-                    className="font-mono text-[9px] uppercase tracking-[0.3em] whitespace-nowrap"
+                    className="font-mono uppercase tracking-[0.15em] whitespace-nowrap"
                     style={{
-                      color: 'rgba(200,200,210,0.35)',
+                      fontSize: '20px',
+                      lineHeight: 1,
+                      fontWeight: 700,
+                      color: 'rgba(200,200,210,0.4)',
                       textShadow: '0 1px 0 rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.03)',
                     }}
                   >
@@ -438,11 +444,11 @@ export default function OrbitalConfigCanvas({
                   </span>
                   {/* Decorative engraving line */}
                   <div
-                    className="mt-1.5"
+                    className="mt-1"
                     style={{
-                      width: '40px',
+                      width: '60px',
                       height: '1px',
-                      background: 'linear-gradient(to right, transparent, rgba(200,200,210,0.15), transparent)',
+                      background: 'linear-gradient(to right, transparent, rgba(200,200,210,0.2), transparent)',
                     }}
                   />
                 </div>
