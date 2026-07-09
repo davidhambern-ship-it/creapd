@@ -5,7 +5,8 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRuntime } from '@/lib/musicConstants';
-import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Disc3, GripVertical } from 'lucide-react';
+import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Disc3, GripVertical, Mic } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 
 export default function MusicPlaylist() {
@@ -99,6 +100,14 @@ export default function MusicPlaylist() {
             Regenerate
           </Button>
         </motion.div>
+
+        {/* Blueprint sub-room tabs */}
+        <div className="flex gap-2">
+          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#FF00FF]/20 border border-[#FF00FF]/50 text-[#FF00FF]">Playlist</span>
+          <Link to="/music/topics" className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-white/10 hover:border-[#FF00FF]/40 hover:text-[#FF00FF] transition-colors flex items-center gap-1.5">
+            <Mic className="w-3 h-3" /> Topics
+          </Link>
+        </div>
 
         {/* Runtime gauge — horizontal fill bar */}
         <motion.div

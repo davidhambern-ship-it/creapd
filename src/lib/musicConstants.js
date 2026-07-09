@@ -94,14 +94,12 @@ export const RUNTIME_DEFAULTS = {
 
 export const MUSIC_NAV_ITEMS = [
   { icon: 'LayoutDashboard', label: 'Dashboard', path: '/music/dashboard', section: null },
-  // PP-ARCH-001: Universal Department Architecture
-  { icon: 'Compass', label: 'Discovery — Configuration', path: '/music/configure', section: 'Discovery' },
-  { icon: 'Search', label: 'Knowledge — Research', path: '/music/research', section: 'Knowledge' },
-  { icon: 'ListMusic', label: 'Blueprint — Playlist', path: '/music/playlist', section: 'Blueprint' },
-  { icon: 'Mic', label: 'Blueprint — Topics', path: '/music/topics', section: 'Blueprint' },
-  { icon: 'Sparkles', label: 'Production — AI Assets', path: '/music/assets', section: 'Production' },
-  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/music/rundown', section: 'Assembly' },
-  { icon: 'Download', label: 'Assembly — Export', path: '/music/export', section: 'Assembly' },
+  // PP-ARCH-001: Universal Department Architecture — one room per department
+  { icon: 'Compass', label: 'Discovery', path: '/music/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge', path: '/music/research', section: 'Knowledge' },
+  { icon: 'ClipboardList', label: 'Blueprint', path: '/music/playlist', section: 'Blueprint' },
+  { icon: 'Sparkles', label: 'Production', path: '/music/assets', section: 'Production' },
+  { icon: 'Package', label: 'Assembly', path: '/music/rundown', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 
