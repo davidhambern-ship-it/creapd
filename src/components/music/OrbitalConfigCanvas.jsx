@@ -91,41 +91,45 @@ export default function OrbitalConfigCanvas({
                   borderColor: 'rgba(255,255,255,0.03)',
                 }}
               />
-
-              {/* Central Hub (visual) */}
-              <motion.div
-                className="relative flex flex-col items-center"
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ transform: 'translateZ(30px)' }}
-              >
-                <div
-                  className="w-20 h-20 rounded-full flex items-center justify-center relative"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(255,0,255,0.15) 0%, rgba(10,10,20,0.6) 70%)',
-                    border: '1px solid rgba(255,0,255,0.25)',
-                    boxShadow: '0 0 40px rgba(255,0,255,0.08), inset 0 0 24px rgba(0,255,255,0.04)',
-                  }}
-                >
-                  {canBuild && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full"
-                      animate={{ scale: [1, 1.35], opacity: [0.6, 0] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
-                      style={{ border: '2px solid rgba(0,255,136,0.5)' }}
-                    />
-                  )}
-                  <Disc3
-                    className="w-9 h-9"
-                    style={{
-                      color: canBuild ? '#00FF88' : '#FF00FF',
-                      filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
-                    }}
-                  />
-                </div>
-                <p className="text-[9px] text-gray-500 mt-2 font-mono uppercase tracking-[0.2em]">Show Core</p>
-              </motion.div>
             </div>
+
+            {/* ═══ Central Hub — flat layer, perfectly centered ═══ */}
+            <motion.div
+              className="absolute z-15 flex flex-col items-center pointer-events-none"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center relative"
+                style={{
+                  background: 'radial-gradient(circle, rgba(255,0,255,0.15) 0%, rgba(10,10,20,0.6) 70%)',
+                  border: '1px solid rgba(255,0,255,0.25)',
+                  boxShadow: '0 0 40px rgba(255,0,255,0.08), inset 0 0 24px rgba(0,255,255,0.04)',
+                }}
+              >
+                {canBuild && (
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
+                    animate={{ scale: [1, 1.35], opacity: [0.6, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+                    style={{ border: '2px solid rgba(0,255,136,0.5)' }}
+                  />
+                )}
+                <Disc3
+                  className="w-9 h-9"
+                  style={{
+                    color: canBuild ? '#00FF88' : '#FF00FF',
+                    filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
+                  }}
+                />
+              </div>
+              <p className="text-[9px] text-gray-500 mt-2 font-mono uppercase tracking-[0.2em]">Show Core</p>
+            </motion.div>
 
             {/* ═══ INTERACTIVE LAYER — flat, clickable ═══ */}
             {/* Build button on hub */}
