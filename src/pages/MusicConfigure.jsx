@@ -316,24 +316,38 @@ export default function MusicConfigure() {
               {NAV_ROOMS.map((room, i) => {
                 const Icon = room.icon;
                 return (
-                  <motion.button
+                  <motion.div
                     key={room.path}
-                    onClick={() => navigate(room.path)}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    title={room.label}
+                    className="group relative flex flex-col items-center"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex items-center justify-center w-10 h-10 rounded-lg border"
-                    style={{
-                      background: `${room.color}18`,
-                      borderColor: `${room.color}40`,
-                      boxShadow: `0 0 12px ${room.color}25`,
-                    }}
                   >
-                    <Icon className="w-5 h-5" style={{ color: room.color }} />
-                  </motion.button>
+                    <motion.button
+                      onClick={() => navigate(room.path)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg border"
+                      style={{
+                        background: `${room.color}18`,
+                        borderColor: `${room.color}40`,
+                        boxShadow: `0 0 12px ${room.color}25`,
+                      }}
+                    >
+                      <Icon className="w-5 h-5" style={{ color: room.color }} />
+                    </motion.button>
+                    <span
+                      className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-medium z-50 opacity-0 -translate-y-1 scale-90 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100"
+                      style={{
+                        background: `${room.color}22`,
+                        border: `1px solid ${room.color}55`,
+                        color: room.color,
+                        boxShadow: `0 0 8px ${room.color}30`,
+                      }}
+                    >
+                      {room.label}
+                    </span>
+                  </motion.div>
                 );
               })}
             </div>
