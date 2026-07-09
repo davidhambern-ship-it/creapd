@@ -23,6 +23,14 @@
 }
 
 @font-face {
+  font-family: 'ModernConformist';
+  src: url('https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/e6157229d_ModernConformist.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'CreapdCustom';
   src: url('https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/c3e48bc1e_CreapdCustom.ttf') format('truetype');
   font-weight: normal;
