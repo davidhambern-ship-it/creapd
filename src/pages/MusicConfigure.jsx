@@ -128,7 +128,7 @@ export default function MusicConfigure() {
   const [rouletteOpen, setRouletteOpen] = useState(false);
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
-  const [openRoom, setOpenRoom] = useState('identity');
+  const [openRoom, setOpenRoom] = useState(null);
 
   const [config, setConfig] = useState({
     production_name: '',
