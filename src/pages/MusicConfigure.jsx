@@ -325,16 +325,45 @@ export default function MusicConfigure() {
                   >
                     <motion.button
                       onClick={() => navigate(room.path)}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="flex items-center justify-center w-10 h-10 rounded-lg border"
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.85 }}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg border relative overflow-visible"
                       style={{
                         background: `${room.color}18`,
                         borderColor: `${room.color}40`,
                         boxShadow: `0 0 12px ${room.color}25`,
                       }}
                     >
-                      <Icon className="w-5 h-5" style={{ color: room.color }} />
+                      <motion.span
+                        className="absolute inset-0 rounded-lg border"
+                        style={{ borderColor: room.color }}
+                        animate={{
+                          boxShadow: [
+                            `0 0 0px ${room.color}00`,
+                            `0 0 16px ${room.color}80, inset 0 0 8px ${room.color}40`,
+                            `0 0 0px ${room.color}00`,
+                          ],
+                          scale: [1, 1.08, 1],
+                          opacity: [0.5, 1, 0.5],
+                        }}
+                        transition={{
+                          duration: 1.2,
+                          repeat: Infinity,
+                          delay: i * 0.15,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                      <motion.div
+                        animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
+                        transition={{
+                          duration: 1.2,
+                          repeat: Infinity,
+                          delay: i * 0.15,
+                          ease: 'easeInOut',
+                        }}
+                      >
+                        <Icon className="w-5 h-5" style={{ color: room.color }} />
+                      </motion.div>
                     </motion.button>
                     <span
                       className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-medium z-50 opacity-0 -translate-y-1 scale-90 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100"
