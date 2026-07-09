@@ -23,6 +23,7 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
 import ShowRoulette from '@/components/music/ShowRoulette';
 import DiscoveryNavBar from '@/components/music/DiscoveryNavBar';
+import OrbitalConfigCanvas from '@/components/music/OrbitalConfigCanvas';
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -310,67 +311,16 @@ export default function MusicConfigure() {
             </div>
           </motion.div>
 
-          {/* Room Cards Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {ROOMS.map((room, i) => {
-              const Icon = room.icon;
-              const isOpen = openRoom === room.id;
-              return (
-                <motion.button
-                  key={room.id}
-                  onClick={() => setOpenRoom(isOpen ? null : room.id)}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 25 }}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="text-left p-4 rounded-xl border transition-all relative overflow-hidden"
-                  style={isOpen ? {
-                    background: `${room.color}12`,
-                    borderColor: `${room.color}60`,
-                    boxShadow: `0 0 20px ${room.color}25, inset 0 1px 0 ${room.color}15`,
-                  } : {
-                    background: 'rgba(255,255,255,0.03)',
-                    borderColor: 'rgba(255,255,255,0.08)',
-                  }}
-                >
-                  {isOpen && (
-                    <motion.div
-                      layoutId="room-glow"
-                      className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl"
-                      style={{ background: `${room.color}30` }}
-                    />
-                  )}
-                  <motion.div
-                    animate={isOpen ? { rotate: [0, -8, 8, 0], scale: 1.1 } : { rotate: 0, scale: 1 }}
-                    transition={{ duration: 0.4 }}
-                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-3 relative z-10"
-                    style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
-                  >
-                    <Icon className="w-5 h-5" style={{ color: room.color }} />
-                  </motion.div>
-                  <h3 className="text-xs font-heading font-bold text-white relative z-10">{room.label}</h3>
-                  <p className="text-[10px] text-gray-500 mb-2 relative z-10">{room.subtitle}</p>
-                  <p className="text-[10px] font-mono truncate relative z-10" style={{ color: isOpen ? room.color : 'rgba(180,180,200,0.5)' }}>
-                    {room.summary()}
-                  </p>
-                </motion.button>
-              );
-            })}
-          </div>
         </div>
 
-        {/* Room Content */}
-        <AnimatePresence mode="wait">
-          {openRoom && (
-            <motion.div
-              key={openRoom}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
+        <OrbitalConfigCanvas
+          rooms={ROOMS}
+          focusedRoom={openRoom}
+          onFocusRoom={setOpenRoom}
+          canBuild={canBuild}
+          onBuild={handleBuild}
+        >
+          <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
 
                 {/* 1. Identity */}
                 {openRoom === 'identity' && (
@@ -592,13 +542,14 @@ export default function MusicConfigure() {
                   </RoomSection>
                 )}
 
-                {buildError && (
-                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{buildError}</div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        </OrbitalConfigCanvas>
+
+        {buildError && (
+          <div className="max-w-3xl mx-auto px-4 pb-6">
+            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{buildError}</div>
+          </div>
+        )}
       </div>
 
       <ShowRoulette
