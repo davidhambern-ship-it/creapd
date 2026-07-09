@@ -46,11 +46,11 @@ export default function OrbitalConfigCanvas({
     return () => el.removeEventListener('mousemove', handleMouse);
   }, [isMobile]);
 
-  const radius = isMobile ? 125 : 190;
+  const radius = isMobile ? 160 : 290;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ perspective: '1000px' }}>
+    <div ref={containerRef} className="relative w-full" style={{ perspective: '1200px' }}>
       <AnimatePresence mode="wait">
         {!isFocused ? (
           /* ── ORBIT VIEW ── */
@@ -61,7 +61,7 @@ export default function OrbitalConfigCanvas({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4 }}
             className="relative flex items-center justify-center"
-            style={{ height: isMobile ? '440px' : '560px' }}
+            style={{ height: isMobile ? '520px' : 'calc(100vh - 200px)', minHeight: isMobile ? '520px' : '620px' }}
           >
             {/* ═══ VISUAL LAYER — tilted, non-interactive ═══ */}
             <div
@@ -78,8 +78,8 @@ export default function OrbitalConfigCanvas({
                 style={{
                   width: radius * 2,
                   height: radius * 2,
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  boxShadow: '0 0 80px rgba(255,0,255,0.04), inset 0 0 60px rgba(0,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  boxShadow: '0 0 100px rgba(255,0,255,0.05), inset 0 0 80px rgba(0,255,255,0.025)',
                 }}
               />
               {/* Inner dashed ring */}
@@ -96,7 +96,7 @@ export default function OrbitalConfigCanvas({
             {/* ═══ Central Hub — flat layer, perfectly centered ═══ */}
             <motion.div
               className="absolute z-15 flex flex-col items-center pointer-events-none"
-              animate={{ y: [0, -6, 0] }}
+              animate={{ y: [0, -8, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
               style={{
                 top: '50%',
@@ -105,11 +105,11 @@ export default function OrbitalConfigCanvas({
               }}
             >
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center relative"
+                className="w-32 h-32 rounded-full flex items-center justify-center relative"
                 style={{
                   background: 'radial-gradient(circle, rgba(255,0,255,0.15) 0%, rgba(10,10,20,0.6) 70%)',
                   border: '1px solid rgba(255,0,255,0.25)',
-                  boxShadow: '0 0 40px rgba(255,0,255,0.08), inset 0 0 24px rgba(0,255,255,0.04)',
+                  boxShadow: '0 0 60px rgba(255,0,255,0.1), inset 0 0 36px rgba(0,255,255,0.04)',
                 }}
               >
                 {canBuild && (
@@ -121,14 +121,14 @@ export default function OrbitalConfigCanvas({
                   />
                 )}
                 <Disc3
-                  className="w-9 h-9"
+                  className="w-14 h-14"
                   style={{
                     color: canBuild ? '#00FF88' : '#FF00FF',
-                    filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
+                    filter: `drop-shadow(0 0 12px ${canBuild ? '#00FF88' : '#FF00FF'})`,
                   }}
                 />
               </div>
-              <p className="text-[9px] text-gray-500 mt-2 font-mono uppercase tracking-[0.2em]">Show Core</p>
+              <p className="text-[11px] text-gray-500 mt-3 font-mono uppercase tracking-[0.25em]">Show Core</p>
             </motion.div>
 
             {/* ═══ INTERACTIVE LAYER — flat, clickable ═══ */}
@@ -140,18 +140,18 @@ export default function OrbitalConfigCanvas({
                 animate={{ opacity: 1, y: 0 }}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
-                className="absolute z-30 px-5 py-2 rounded-full text-xs font-bold flex items-center gap-1.5"
+                className="absolute z-30 px-7 py-2.5 rounded-full text-sm font-bold flex items-center gap-2"
                 style={{
-                  top: 'calc(50% + 55px)',
+                  top: 'calc(50% + 85px)',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(255,0,255,0.1))',
                   border: '1px solid rgba(0,255,136,0.4)',
                   color: '#00FF88',
-                  boxShadow: '0 0 20px rgba(0,255,136,0.15)',
+                  boxShadow: '0 0 24px rgba(0,255,136,0.15)',
                 }}
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-4 h-4" />
                 Build Show
               </motion.button>
             )}
@@ -187,21 +187,21 @@ export default function OrbitalConfigCanvas({
                   }}
                 >
                   <div
-                    className="flex flex-col items-center gap-1 p-3 rounded-2xl border min-w-[90px] backdrop-blur-sm"
+                    className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border min-w-[130px] backdrop-blur-sm"
                     style={{
                       background: `${room.color}0A`,
                       borderColor: `${room.color}30`,
-                      boxShadow: `0 4px 24px ${room.color}08, 0 0 16px ${room.color}06`,
+                      boxShadow: `0 4px 32px ${room.color}0A, 0 0 24px ${room.color}08`,
                     }}
                   >
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      className="w-14 h-14 rounded-xl flex items-center justify-center"
                       style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
                     >
-                      <Icon className="w-4 h-4" style={{ color: room.color }} />
+                      <Icon className="w-7 h-7" style={{ color: room.color }} />
                     </div>
-                    <span className="text-[10px] font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
-                    <span className="text-[8px] font-mono truncate max-w-[80px] opacity-60" style={{ color: room.color }}>
+                    <span className="text-xs font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
+                    <span className="text-[9px] font-mono truncate max-w-[120px] opacity-60" style={{ color: room.color }}>
                       {typeof room.summary === 'function' ? room.summary() : ''}
                     </span>
                   </div>

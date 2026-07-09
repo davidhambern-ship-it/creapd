@@ -283,7 +283,7 @@ export default function MusicConfigure() {
 
       <div className="relative z-10 config-scroll min-h-screen overflow-y-auto pb-32">
         {/* Hero */}
-        <div className="px-4 pt-8 pb-6 max-w-5xl mx-auto">
+        <div className="px-4 pt-6 pb-2 max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
