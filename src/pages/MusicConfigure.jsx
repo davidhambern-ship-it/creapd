@@ -36,12 +36,14 @@ function NeonChip({ label, active, onClick, color = 'pink' }) {
   };
   const c = colorMap[color] || colorMap.pink;
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${
-        active ? 'scale-105' : 'opacity-60 hover:opacity-100'
-      }`}
+      whileHover={{ scale: 1.08, y: -1 }}
+      whileTap={{ scale: 0.92 }}
+      animate={active ? { scale: 1.05, opacity: 1 } : { scale: 1, opacity: 0.55 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+      className="px-3 py-1.5 rounded-lg text-xs font-medium border"
       style={active ? {
         background: c.active,
         borderColor: c.border,
@@ -54,7 +56,7 @@ function NeonChip({ label, active, onClick, color = 'pink' }) {
       }}
     >
       {label}
-    </button>
+    </motion.button>
   );
 }
 
@@ -80,12 +82,14 @@ function Section({ id, icon: Icon, title, subtitle, color, children, defaultOpen
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 p-4 hover:bg-white/[0.03] transition-colors"
       >
-        <div
+        <motion.div
+          animate={open ? { rotate: [0, -8, 8, 0], scale: 1.1 } : { rotate: 0, scale: 1 }}
+          transition={{ duration: 0.4 }}
           className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: `${c}15`, border: `1px solid ${c}40`, boxShadow: `0 0 12px ${c}20` }}
         >
           <Icon className="w-4 h-4" style={{ color: c }} />
-        </div>
+        </motion.div>
         <div className="flex-1 text-left">
           <h3 className="text-sm font-heading font-semibold text-white">{title}</h3>
           {subtitle && <p className="text-[11px] text-gray-400">{subtitle}</p>}
@@ -306,12 +310,14 @@ export default function MusicConfigure() {
           className="sticky top-0 z-20 backdrop-blur-xl bg-black/60 border-b border-white/5 px-5 py-4"
         >
           <div className="flex items-center gap-3 mb-3">
-            <div
+            <motion.div
+              animate={{ y: [0, -3, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               className="w-11 h-11 rounded-xl flex items-center justify-center"
               style={{ background: 'rgba(255,0,255,0.12)', border: '1px solid rgba(255,0,255,0.4)', boxShadow: '0 0 16px rgba(255,0,255,0.2)' }}
             >
               <Radio className="w-5 h-5" style={{ color: '#FF00FF' }} />
-            </div>
+            </motion.div>
             <div>
               <h1 className="text-xl font-heading font-bold text-white">Discovery Room</h1>
               <p className="text-xs text-gray-400">Configure your music production — all settings on one page</p>
@@ -324,12 +330,14 @@ export default function MusicConfigure() {
               const Icon = s.icon;
               const isActive = activeSection === s.id;
               return (
-                <button
+                <motion.button
                   key={s.id}
                   onClick={() => scrollToSection(s.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap border transition-all ${
-                    isActive ? 'scale-105' : 'opacity-50 hover:opacity-80'
-                  }`}
+                  whileHover={{ scale: 1.06, y: -1 }}
+                  whileTap={{ scale: 0.94 }}
+                  animate={isActive ? { opacity: 1, scale: 1.05 } : { opacity: 0.5, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap border relative"
                   style={isActive ? {
                     background: `${s.color}15`,
                     borderColor: `${s.color}50`,
@@ -341,9 +349,18 @@ export default function MusicConfigure() {
                     color: 'gray',
                   }}
                 >
-                  <Icon className="w-3 h-3" />
+                  <motion.span animate={isActive ? { rotate: [0, -10, 10, 0] } : {}} transition={{ duration: 0.5 }}>
+                    <Icon className="w-3 h-3" />
+                  </motion.span>
                   {s.label}
-                </button>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-underline"
+                      className="absolute -bottom-1 left-2 right-2 h-0.5 rounded-full"
+                      style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }}
+                    />
+                  )}
+                </motion.button>
               );
             })}
           </div>
@@ -452,11 +469,11 @@ export default function MusicConfigure() {
           >
             {/* Visual time bar */}
             <div className="flex h-3 rounded-full overflow-hidden mb-1">
-              <div style={{ width: `${(config.intro_runtime/config.total_show_runtime)*100}%`, background: '#FFD700' }} title="Intro" />
-              <div style={{ width: `${(config.required_music_runtime/config.total_show_runtime)*100}%`, background: '#FF00FF' }} title="Music" />
-              <div style={{ width: `${(config.talk_segment_runtime/config.total_show_runtime)*100}%`, background: '#00FFFF' }} title="Talk" />
-              <div style={{ width: `${(config.commercial_sponsor_runtime/config.total_show_runtime)*100}%`, background: '#FF6B00' }} title="Sponsors" />
-              <div style={{ width: `${(config.outro_runtime/config.total_show_runtime)*100}%`, background: '#FFD700' }} title="Outro" />
+              <motion.div animate={{ width: `${(config.intro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} title="Intro" />
+              <motion.div animate={{ width: `${(config.required_music_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FF00FF' }} title="Music" />
+              <motion.div animate={{ width: `${(config.talk_segment_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#00FFFF' }} title="Talk" />
+              <motion.div animate={{ width: `${(config.commercial_sponsor_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FF6B00' }} title="Sponsors" />
+              <motion.div animate={{ width: `${(config.outro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} title="Outro" />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-400 mb-4">
               <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FFD700'}} />Intro</span>
@@ -664,19 +681,25 @@ export default function MusicConfigure() {
               <span>{config.required_music_runtime} min music</span>
             </div>
           </div>
-          <Button
-            onClick={handleBuild}
-            disabled={!canBuild}
-            size="lg"
-            className="shrink-0"
-            style={canBuild ? {
-              background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
-              boxShadow: '0 0 20px rgba(255,0,255,0.4)',
-            } : {}}
+          <motion.div
+            animate={canBuild ? { boxShadow: ['0 0 20px rgba(255,0,255,0.4)', '0 0 32px rgba(255,0,255,0.6)', '0 0 20px rgba(255,0,255,0.4)'] } : {}}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <Zap className="w-4 h-4 mr-1.5" />
-            Build Production
-          </Button>
+            <Button
+              onClick={handleBuild}
+              disabled={!canBuild}
+              size="lg"
+              className="shrink-0"
+              style={canBuild ? {
+                background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
+              } : {}}
+            >
+              <motion.span animate={canBuild ? { rotate: [0, -15, 15, 0] } : {}} transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 2 }}>
+                <Zap className="w-4 h-4 mr-1.5" />
+              </motion.span>
+              Build Production
+            </Button>
+          </motion.div>
         </div>
       </div>
     </div>
