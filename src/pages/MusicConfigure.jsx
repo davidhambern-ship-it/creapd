@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
@@ -14,9 +14,9 @@ import {
   DEFAULT_AI_AUTOMATION, RUNTIME_DEFAULTS
 } from '@/lib/musicConstants';
 import {
-  Loader2, Music, Calendar, Clock, Tag, Smile, Mic, ListChecks,
-  Search, ListFilter, Bot, CheckCircle2, Building2, ChevronDown,
-  ChevronUp, Plus, X, Radio, Disc3, Zap, Sliders, Dices
+  Loader2, Music, Clock, Smile, Mic, ListChecks,
+  Bot, CheckCircle2, ChevronDown, ChevronUp,
+  Plus, Radio, Disc3, Zap, Sliders, Dices
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import ShowRoulette from '@/components/music/ShowRoulette';
@@ -26,7 +26,6 @@ function safeParse(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
-// ── Neon tag chip ──
 function NeonChip({ label, active, onClick, color = 'pink' }) {
   const colorMap = {
     pink: { active: 'rgba(255,0,255,0.15)', border: 'rgba(255,0,255,0.5)', glow: 'rgba(255,0,255,0.3)', text: '#FF00FF' },
@@ -61,9 +60,7 @@ function NeonChip({ label, active, onClick, color = 'pink' }) {
   );
 }
 
-// ── Collapsible section ──
-function Section({ id, icon: Icon, title, subtitle, color, children, defaultOpen, sectionRef }) {
-  const [open, setOpen] = useState(defaultOpen);
+function RoomSection({ icon: Icon, title, subtitle, color, children }) {
   const colorMap = {
     pink: '#FF00FF', cyan: '#00FFFF', purple: '#8B00FF',
     orange: '#FF6B00', green: '#00FF88', gold: '#FFD700',
@@ -71,20 +68,14 @@ function Section({ id, icon: Icon, title, subtitle, color, children, defaultOpen
   const c = colorMap[color] || '#FF00FF';
   return (
     <motion.div
-      ref={sectionRef}
-      id={id}
       initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className="cp-glass overflow-hidden"
     >
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-4 hover:bg-white/[0.03] transition-colors"
-      >
+      <div className="flex items-center gap-3 p-4 border-b border-white/5">
         <motion.div
-          animate={open ? { rotate: [0, -8, 8, 0], scale: 1.1 } : { rotate: 0, scale: 1 }}
+          animate={{ rotate: [0, -8, 8, 0], scale: 1.1 }}
           transition={{ duration: 0.4 }}
           className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: `${c}15`, border: `1px solid ${c}40`, boxShadow: `0 0 12px ${c}20` }}
@@ -95,26 +86,12 @@ function Section({ id, icon: Icon, title, subtitle, color, children, defaultOpen
           <h3 className="text-sm font-heading font-semibold text-white">{title}</h3>
           {subtitle && <p className="text-[11px] text-gray-400">{subtitle}</p>}
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            <div className="p-4 pt-0 space-y-4">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
+      <div className="p-4 space-y-4">{children}</div>
     </motion.div>
   );
 }
 
-// ── Runtime slider ──
 function RuntimeSlider({ label, value, onChange, max = 180, color = '#FF00FF' }) {
   return (
     <div className="space-y-1.5">
@@ -147,8 +124,7 @@ export default function MusicConfigure() {
   const [rouletteOpen, setRouletteOpen] = useState(false);
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
-  const [activeSection, setActiveSection] = useState('identity');
-  const sectionRefs = { identity: useRef(), runtime: useRef(), sound: useRef(), content: useRef(), rules: useRef(), ai: useRef() };
+  const [openRoom, setOpenRoom] = useState('identity');
 
   const [config, setConfig] = useState({
     production_name: '',
@@ -218,41 +194,22 @@ export default function MusicConfigure() {
   const selectedSources = safeParse(config.research_sources, []);
   const selectedAutomation = safeParse(config.ai_automation, []);
 
-  // Quick nav pills
-  const NAV_SECTIONS = [
-    { id: 'identity', label: 'Identity', icon: Radio, color: '#FF00FF' },
-    { id: 'runtime', label: 'Runtime', icon: Clock, color: '#00FFFF' },
-    { id: 'sound', label: 'Sound', icon: Disc3, color: '#8B00FF' },
-    { id: 'content', label: 'Content', icon: ListChecks, color: '#FF6B00' },
-    { id: 'rules', label: 'Rules', icon: ListFilter, color: '#00FF88' },
-    { id: 'ai', label: 'AI', icon: Bot, color: '#FFD700' },
-  ];
-
-  const scrollToSection = (id) => {
-    sectionRefs[id]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setActiveSection(id);
-  };
-
-  // Track active section on scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      for (const s of NAV_SECTIONS) {
-        const el = document.getElementById(s.id);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          if (rect.top <= 120 && rect.bottom >= 120) {
-            setActiveSection(s.id);
-            break;
-          }
-        }
-      }
-    };
-    const container = document.querySelector('.config-scroll');
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const canBuild = config.production_name && config.show_date;
+
+  const ROOMS = [
+    { id: 'identity', label: 'Studio Identity', icon: Radio, color: '#FF00FF', subtitle: 'Show name, host, schedule',
+      summary: () => config.production_name || 'Untitled' },
+    { id: 'runtime', label: 'Runtime Mix', icon: Clock, color: '#00FFFF', subtitle: 'Distribute show minutes',
+      summary: () => `${config.total_show_runtime} min total` },
+    { id: 'sound', label: 'Sound Profile', icon: Disc3, color: '#8B00FF', subtitle: 'Genres, moods, tone',
+      summary: () => `${selectedGenres.length} genres / ${selectedMoods.length} moods` },
+    { id: 'content', label: 'Content Scope', icon: Music, color: '#FF6B00', subtitle: 'Topics & research sources',
+      summary: () => `${selectedTopics.length} topics / ${selectedSources.length} sources` },
+    { id: 'rules', label: 'Playlist Rules', icon: Sliders, color: '#00FF88', subtitle: 'Must-play, blocks, energy',
+      summary: () => config.playlist_energy_flow },
+    { id: 'ai', label: 'AI Automation', icon: Bot, color: '#FFD700', subtitle: 'What CREAPD auto-generates',
+      summary: () => `${selectedAutomation.length} tasks enabled` },
+  ];
 
   const handleBuild = async () => {
     if (!canBuild) return;
@@ -310,386 +267,333 @@ export default function MusicConfigure() {
       <CyberpunkMusicBg variant="left" />
 
       <div className="relative z-10 config-scroll h-screen overflow-y-auto pb-32">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="sticky top-0 z-20 backdrop-blur-xl bg-black/60 border-b border-white/5 px-5 py-4"
-        >
-          <div className="flex items-center gap-3 mb-3">
+        {/* Hero */}
+        <div className="px-4 pt-8 pb-6 max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-6"
+          >
             <motion.div
-              animate={{ y: [0, -3, 0] }}
+              animate={{ y: [0, -4, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-11 h-11 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(255,0,255,0.12)', border: '1px solid rgba(255,0,255,0.4)', boxShadow: '0 0 16px rgba(255,0,255,0.2)' }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+              style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)', boxShadow: '0 0 24px rgba(255,0,255,0.15)' }}
             >
-              <Radio className="w-5 h-5" style={{ color: '#FF00FF' }} />
+              <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
             </motion.div>
-            <div>
-              <h1 className="text-xl font-heading font-bold text-white">Discovery Room</h1>
-              <p className="text-xs text-gray-400">Configure your music production — all settings on one page</p>
+            <h1 className="text-3xl font-heading font-bold text-white mb-1">Discovery Room</h1>
+            <p className="text-sm text-gray-400">Tap a room to configure your show</p>
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <motion.button
+                onClick={() => setRouletteOpen(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,0,255,0.12), rgba(0,255,255,0.08))',
+                  borderColor: 'rgba(255,0,255,0.4)',
+                  color: '#FF00FF',
+                  boxShadow: '0 0 12px rgba(255,0,255,0.15)',
+                }}
+              >
+                <motion.span animate={{ rotate: [0, -12, 12, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
+                  <Dices className="w-4 h-4" />
+                </motion.span>
+                Show Roulette
+              </motion.button>
             </div>
-            <motion.button
-              onClick={() => setRouletteOpen(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,0,255,0.12), rgba(0,255,255,0.08))',
-                borderColor: 'rgba(255,0,255,0.4)',
-                color: '#FF00FF',
-                boxShadow: '0 0 12px rgba(255,0,255,0.15)',
-              }}
-            >
-              <motion.span animate={{ rotate: [0, -12, 12, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
-                <Dices className="w-4 h-4" />
-              </motion.span>
-              Roulette
-            </motion.button>
-          </div>
+          </motion.div>
 
-          {/* Quick section nav */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {NAV_SECTIONS.map(s => {
-              const Icon = s.icon;
-              const isActive = activeSection === s.id;
+          {/* Room Cards Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {ROOMS.map((room, i) => {
+              const Icon = room.icon;
+              const isOpen = openRoom === room.id;
               return (
                 <motion.button
-                  key={s.id}
-                  onClick={() => scrollToSection(s.id)}
-                  whileHover={{ scale: 1.06, y: -1 }}
-                  whileTap={{ scale: 0.94 }}
-                  animate={isActive ? { opacity: 1, scale: 1.05 } : { opacity: 0.5, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap border relative"
-                  style={isActive ? {
-                    background: `${s.color}15`,
-                    borderColor: `${s.color}50`,
-                    color: s.color,
-                    boxShadow: `0 0 8px ${s.color}30`,
+                  key={room.id}
+                  onClick={() => setOpenRoom(isOpen ? null : room.id)}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 25 }}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="text-left p-4 rounded-xl border transition-all relative overflow-hidden"
+                  style={isOpen ? {
+                    background: `${room.color}12`,
+                    borderColor: `${room.color}60`,
+                    boxShadow: `0 0 20px ${room.color}25, inset 0 1px 0 ${room.color}15`,
                   } : {
                     background: 'rgba(255,255,255,0.03)',
                     borderColor: 'rgba(255,255,255,0.08)',
-                    color: 'gray',
                   }}
                 >
-                  <motion.span animate={isActive ? { rotate: [0, -10, 10, 0] } : {}} transition={{ duration: 0.5 }}>
-                    <Icon className="w-3 h-3" />
-                  </motion.span>
-                  {s.label}
-                  {isActive && (
+                  {isOpen && (
                     <motion.div
-                      layoutId="nav-underline"
-                      className="absolute -bottom-1 left-2 right-2 h-0.5 rounded-full"
-                      style={{ background: s.color, boxShadow: `0 0 6px ${s.color}` }}
+                      layoutId="room-glow"
+                      className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl"
+                      style={{ background: `${room.color}30` }}
                     />
                   )}
+                  <motion.div
+                    animate={isOpen ? { rotate: [0, -8, 8, 0], scale: 1.1 } : { rotate: 0, scale: 1 }}
+                    transition={{ duration: 0.4 }}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-3 relative z-10"
+                    style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
+                  >
+                    <Icon className="w-5 h-5" style={{ color: room.color }} />
+                  </motion.div>
+                  <h3 className="text-xs font-heading font-bold text-white relative z-10">{room.label}</h3>
+                  <p className="text-[10px] text-gray-500 mb-2 relative z-10">{room.subtitle}</p>
+                  <p className="text-[10px] font-mono truncate relative z-10" style={{ color: isOpen ? room.color : 'rgba(180,180,200,0.5)' }}>
+                    {room.summary()}
+                  </p>
                 </motion.button>
               );
             })}
           </div>
-        </motion.div>
-
-        {/* Content */}
-        <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-
-          {/* ── 1. Identity ── */}
-          <Section
-            id="identity"
-            ref={sectionRefs.identity}
-            icon={Radio}
-            title="Show Identity"
-            subtitle="Name your show, set the date, who's hosting"
-            color="pink"
-            defaultOpen={true}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Production Name *</Label>
-                <Input
-                  value={config.production_name}
-                  onChange={e => updateConfig('production_name', e.target.value)}
-                  placeholder="Morning Beats"
-                  className="bg-black/40 border-white/10 text-white placeholder-gray-600"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Host Name</Label>
-                <Input
-                  value={config.host_name}
-                  onChange={e => updateConfig('host_name', e.target.value)}
-                  placeholder="DJ Berna"
-                  className="bg-black/40 border-white/10 text-white placeholder-gray-600"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Co-Host</Label>
-                <Input
-                  value={config.co_host_name}
-                  onChange={e => updateConfig('co_host_name', e.target.value)}
-                  placeholder="Optional"
-                  className="bg-black/40 border-white/10 text-white placeholder-gray-600"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Station / Channel</Label>
-                <Input
-                  value={config.station_name}
-                  onChange={e => updateConfig('station_name', e.target.value)}
-                  placeholder="Beat Radio"
-                  className="bg-black/40 border-white/10 text-white placeholder-gray-600"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Show Date *</Label>
-                <Input
-                  type="date"
-                  value={config.show_date}
-                  onChange={e => updateConfig('show_date', e.target.value)}
-                  className="bg-black/40 border-white/10 text-white"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Start Time</Label>
-                <Input
-                  type="time"
-                  value={config.show_start_time}
-                  onChange={e => updateConfig('show_start_time', e.target.value)}
-                  className="bg-black/40 border-white/10 text-white"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Live or Recorded</Label>
-                <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
-                  <SelectTrigger className="bg-black/40 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="recorded">Recorded</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-300">Show Description</Label>
-              <Textarea
-                value={config.show_description}
-                onChange={e => updateConfig('show_description', e.target.value)}
-                placeholder="Describe your show..."
-                rows={2}
-                className="bg-black/40 border-white/10 text-white placeholder-gray-600 resize-none"
-              />
-            </div>
-          </Section>
-
-          {/* ── 2. Runtime ── */}
-          <Section
-            id="runtime"
-            ref={sectionRefs.runtime}
-            icon={Clock}
-            title="Runtime Mix"
-            subtitle="Distribute minutes across music, talk, sponsors"
-            color="cyan"
-            defaultOpen={false}
-          >
-            {/* Visual time bar */}
-            <div className="flex h-3 rounded-full overflow-hidden mb-1">
-              <motion.div animate={{ width: `${(config.intro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} title="Intro" />
-              <motion.div animate={{ width: `${(config.required_music_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FF00FF' }} title="Music" />
-              <motion.div animate={{ width: `${(config.talk_segment_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#00FFFF' }} title="Talk" />
-              <motion.div animate={{ width: `${(config.commercial_sponsor_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FF6B00' }} title="Sponsors" />
-              <motion.div animate={{ width: `${(config.outro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} title="Outro" />
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-400 mb-4">
-              <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FFD700'}} />Intro</span>
-              <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FF00FF'}} />Music</span>
-              <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#00FFFF'}} />Talk</span>
-              <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FF6B00'}} />Sponsors</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <RuntimeSlider label="Total Show" value={config.total_show_runtime} onChange={v => updateConfig('total_show_runtime', v)} max={240} color="#FFFFFF" />
-              <RuntimeSlider label="Music Runtime" value={config.required_music_runtime} onChange={v => updateConfig('required_music_runtime', v)} max={240} color="#FF00FF" />
-              <RuntimeSlider label="Talk Segments" value={config.talk_segment_runtime} onChange={v => updateConfig('talk_segment_runtime', v)} max={60} color="#00FFFF" />
-              <RuntimeSlider label="Commercials" value={config.commercial_sponsor_runtime} onChange={v => updateConfig('commercial_sponsor_runtime', v)} max={30} color="#FF6B00" />
-              <RuntimeSlider label="Intro" value={config.intro_runtime} onChange={v => updateConfig('intro_runtime', v)} max={10} color="#FFD700" />
-              <RuntimeSlider label="Outro" value={config.outro_runtime} onChange={v => updateConfig('outro_runtime', v)} max={10} color="#FFD700" />
-            </div>
-          </Section>
-
-          {/* ── 3. Sound Profile ── */}
-          <Section
-            id="sound"
-            ref={sectionRefs.sound}
-            icon={Disc3}
-            title="Sound Profile"
-            subtitle="Genres, moods, and tone"
-            color="purple"
-            defaultOpen={false}
-          >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-xs text-gray-300">Genres <span className="text-gray-500">({selectedGenres.length})</span></Label>
-                <button onClick={() => setCustomField(customField === 'genres' ? null : 'genres')} className="text-[10px] text-gray-400 hover:text-white flex items-center gap-0.5">
-                  <Plus className="w-3 h-3" /> Custom
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {GENRE_OPTIONS.map(opt => (
-                  <NeonChip key={opt} label={opt} active={selectedGenres.includes(opt)} onClick={() => toggleArrayItem('genres', opt)} color="purple" />
-                ))}
-              </div>
-              {customField === 'genres' && (
-                <div className="flex gap-2 mt-2">
-                  <Input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCustom('genres'))} placeholder="Custom genre..." className="bg-black/40 border-white/10 text-white text-xs h-8 max-w-[200px]" />
-                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleAddCustom('genres')}>Add</Button>
-                </div>
-              )}
-              {selectedGenres.filter(g => !GENRE_OPTIONS.includes(g)).map(g => (
-                <div key={g} className="inline-flex items-center gap-1 mt-1 ml-1">
-                  <NeonChip label={g} active={true} onClick={() => toggleArrayItem('genres', g)} color="purple" />
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-xs text-gray-300">Moods <span className="text-gray-500">({selectedMoods.length})</span></Label>
-                <button onClick={() => setCustomField(customField === 'moods' ? null : 'moods')} className="text-[10px] text-gray-400 hover:text-white flex items-center gap-0.5">
-                  <Plus className="w-3 h-3" /> Custom
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {MOOD_OPTIONS.map(opt => (
-                  <NeonChip key={opt} label={opt} active={selectedMoods.includes(opt)} onClick={() => toggleArrayItem('moods', opt)} color="pink" />
-                ))}
-              </div>
-              {customField === 'moods' && (
-                <div className="flex gap-2 mt-2">
-                  <Input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCustom('moods'))} placeholder="Custom mood..." className="bg-black/40 border-white/10 text-white text-xs h-8 max-w-[200px]" />
-                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleAddCustom('moods')}>Add</Button>
-                </div>
-              )}
-            </div>
-            <div>
-              <Label className="text-xs text-gray-300 mb-2 block">Show Tone <span className="text-gray-500">(pick one)</span></Label>
-              <div className="flex flex-wrap gap-1.5">
-                {TONE_OPTIONS.map(opt => (
-                  <NeonChip key={opt} label={opt} active={config.show_tone === opt} onClick={() => updateConfig('show_tone', opt)} color="cyan" />
-                ))}
-              </div>
-            </div>
-          </Section>
-
-          {/* ── 4. Content Scope ── */}
-          <Section
-            id="content"
-            ref={sectionRefs.content}
-            icon={ListChecks}
-            title="Content Scope"
-            subtitle="What topics and sources to research"
-            color="orange"
-            defaultOpen={false}
-          >
-            <div>
-              <Label className="text-xs text-gray-300 mb-2 block">Music Topics <span className="text-gray-500">({selectedTopics.length})</span></Label>
-              <div className="flex flex-wrap gap-1.5">
-                {MUSIC_TOPIC_OPTIONS.map(opt => (
-                  <NeonChip key={opt} label={opt} active={selectedTopics.includes(opt)} onClick={() => toggleArrayItem('music_topics', opt)} color="orange" />
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs text-gray-300 mb-2 block">Research Sources <span className="text-gray-500">({selectedSources.length})</span></Label>
-              <div className="flex flex-wrap gap-1.5">
-                {RESEARCH_SOURCE_OPTIONS.map(opt => (
-                  <NeonChip key={opt} label={opt} active={selectedSources.includes(opt)} onClick={() => toggleArrayItem('research_sources', opt)} color="green" />
-                ))}
-              </div>
-            </div>
-          </Section>
-
-          {/* ── 5. Playlist Rules ── */}
-          <Section
-            id="rules"
-            ref={sectionRefs.rules}
-            icon={ListFilter}
-            title="Playlist Rules"
-            subtitle="Must-play, blocked, variety, energy flow"
-            color="green"
-            defaultOpen={false}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Must-Play Songs</Label>
-                <Textarea value={config.must_play_songs} onChange={e => updateConfig('must_play_songs', e.target.value)} placeholder="Song - Artist (one per line)" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Blocked Songs</Label>
-                <Textarea value={config.blocked_songs} onChange={e => updateConfig('blocked_songs', e.target.value)} placeholder="One per line" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Blocked Artists</Label>
-                <Textarea value={config.blocked_artists} onChange={e => updateConfig('blocked_artists', e.target.value)} placeholder="One per line" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Recently Played (avoid)</Label>
-                <Textarea value={config.recently_played_songs} onChange={e => updateConfig('recently_played_songs', e.target.value)} placeholder="One per line" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Max Songs Per Artist</Label>
-                <Input type="number" value={config.max_songs_per_artist} onChange={e => updateConfig('max_songs_per_artist', Number(e.target.value))} className="bg-black/40 border-white/10 text-white" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-300">Preferred Eras</Label>
-                <Input value={config.preferred_eras} onChange={e => updateConfig('preferred_eras', e.target.value)} placeholder="90s, 2000s, 2010s" className="bg-black/40 border-white/10 text-white placeholder-gray-600" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-300">Energy Flow</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {ENERGY_FLOW_OPTIONS.map(opt => (
-                  <NeonChip key={opt} label={opt} active={config.playlist_energy_flow === opt} onClick={() => updateConfig('playlist_energy_flow', opt)} color="pink" />
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              {[
-                ['min_artist_variety', 'Min Artist Variety'],
-                ['include_indie', 'Include Indie'],
-                ['include_local', 'Include Local'],
-                ['include_new_releases', 'New Releases'],
-                ['include_throwbacks', 'Throwbacks'],
-                ['clean_only', 'Clean Only'],
-              ].map(([field, label]) => (
-                <div key={field} className="flex items-center justify-between bg-black/30 rounded-lg px-3 py-2 border border-white/5">
-                  <span className="text-[11px] text-gray-300">{label}</span>
-                  <Switch checked={config[field]} onCheckedChange={v => updateConfig(field, v)} />
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          {/* ── 6. AI Automation ── */}
-          <Section
-            id="ai"
-            ref={sectionRefs.ai}
-            icon={Bot}
-            title="AI Automation"
-            subtitle={`What CREAPD should auto-generate (${selectedAutomation.length} selected)`}
-            color="gold"
-            defaultOpen={false}
-          >
-            <div className="flex flex-wrap gap-1.5">
-              {AI_AUTOMATION_OPTIONS.map(opt => (
-                <NeonChip key={opt.key} label={opt.label} active={selectedAutomation.includes(opt.key)} onClick={() => toggleArrayItem('ai_automation', opt.key)} color="green" />
-              ))}
-            </div>
-          </Section>
-
-          {buildError && (
-            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{buildError}</div>
-          )}
         </div>
+
+        {/* Room Content */}
+        <AnimatePresence mode="wait">
+          {openRoom && (
+            <motion.div
+              key={openRoom}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
+
+                {/* 1. Identity */}
+                {openRoom === 'identity' && (
+                  <RoomSection icon={Radio} title="Show Identity" subtitle="Name your show, set the date, who's hosting" color="pink">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Production Name *</Label>
+                        <Input value={config.production_name} onChange={e => updateConfig('production_name', e.target.value)} placeholder="Morning Beats" className="bg-black/40 border-white/10 text-white placeholder-gray-600" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Host Name</Label>
+                        <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ Berna" className="bg-black/40 border-white/10 text-white placeholder-gray-600" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Co-Host</Label>
+                        <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional" className="bg-black/40 border-white/10 text-white placeholder-gray-600" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Station / Channel</Label>
+                        <Input value={config.station_name} onChange={e => updateConfig('station_name', e.target.value)} placeholder="Beat Radio" className="bg-black/40 border-white/10 text-white placeholder-gray-600" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Show Date *</Label>
+                        <Input type="date" value={config.show_date} onChange={e => updateConfig('show_date', e.target.value)} className="bg-black/40 border-white/10 text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Start Time</Label>
+                        <Input type="time" value={config.show_start_time} onChange={e => updateConfig('show_start_time', e.target.value)} className="bg-black/40 border-white/10 text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Live or Recorded</Label>
+                        <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
+                          <SelectTrigger className="bg-black/40 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="recorded">Recorded</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-300">Show Description</Label>
+                      <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your show..." rows={2} className="bg-black/40 border-white/10 text-white placeholder-gray-600 resize-none" />
+                    </div>
+                  </RoomSection>
+                )}
+
+                {/* 2. Runtime */}
+                {openRoom === 'runtime' && (
+                  <RoomSection icon={Clock} title="Runtime Mix" subtitle="Distribute minutes across music, talk, sponsors" color="cyan">
+                    <div className="flex h-3 rounded-full overflow-hidden mb-1">
+                      <motion.div animate={{ width: `${(config.intro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} />
+                      <motion.div animate={{ width: `${(config.required_music_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FF00FF' }} />
+                      <motion.div animate={{ width: `${(config.talk_segment_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#00FFFF' }} />
+                      <motion.div animate={{ width: `${(config.commercial_sponsor_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FF6B00' }} />
+                      <motion.div animate={{ width: `${(config.outro_runtime/config.total_show_runtime)*100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }} style={{ background: '#FFD700' }} />
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-400 mb-4">
+                      <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FFD700'}} />Intro</span>
+                      <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FF00FF'}} />Music</span>
+                      <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#00FFFF'}} />Talk</span>
+                      <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FF6B00'}} />Sponsors</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <RuntimeSlider label="Total Show" value={config.total_show_runtime} onChange={v => updateConfig('total_show_runtime', v)} max={240} color="#FFFFFF" />
+                      <RuntimeSlider label="Music Runtime" value={config.required_music_runtime} onChange={v => updateConfig('required_music_runtime', v)} max={240} color="#FF00FF" />
+                      <RuntimeSlider label="Talk Segments" value={config.talk_segment_runtime} onChange={v => updateConfig('talk_segment_runtime', v)} max={60} color="#00FFFF" />
+                      <RuntimeSlider label="Commercials" value={config.commercial_sponsor_runtime} onChange={v => updateConfig('commercial_sponsor_runtime', v)} max={30} color="#FF6B00" />
+                      <RuntimeSlider label="Intro" value={config.intro_runtime} onChange={v => updateConfig('intro_runtime', v)} max={10} color="#FFD700" />
+                      <RuntimeSlider label="Outro" value={config.outro_runtime} onChange={v => updateConfig('outro_runtime', v)} max={10} color="#FFD700" />
+                    </div>
+                  </RoomSection>
+                )}
+
+                {/* 3. Sound Profile */}
+                {openRoom === 'sound' && (
+                  <RoomSection icon={Disc3} title="Sound Profile" subtitle="Genres, moods, and tone" color="purple">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs text-gray-300">Genres <span className="text-gray-500">({selectedGenres.length})</span></Label>
+                        <button onClick={() => setCustomField(customField === 'genres' ? null : 'genres')} className="text-[10px] text-gray-400 hover:text-white flex items-center gap-0.5">
+                          <Plus className="w-3 h-3" /> Custom
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {GENRE_OPTIONS.map(opt => (
+                          <NeonChip key={opt} label={opt} active={selectedGenres.includes(opt)} onClick={() => toggleArrayItem('genres', opt)} color="purple" />
+                        ))}
+                      </div>
+                      {customField === 'genres' && (
+                        <div className="flex gap-2 mt-2">
+                          <Input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCustom('genres'))} placeholder="Custom genre..." className="bg-black/40 border-white/10 text-white text-xs h-8 max-w-[200px]" />
+                          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleAddCustom('genres')}>Add</Button>
+                        </div>
+                      )}
+                      {selectedGenres.filter(g => !GENRE_OPTIONS.includes(g)).map(g => (
+                        <div key={g} className="inline-flex items-center gap-1 mt-1 ml-1">
+                          <NeonChip label={g} active={true} onClick={() => toggleArrayItem('genres', g)} color="purple" />
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs text-gray-300">Moods <span className="text-gray-500">({selectedMoods.length})</span></Label>
+                        <button onClick={() => setCustomField(customField === 'moods' ? null : 'moods')} className="text-[10px] text-gray-400 hover:text-white flex items-center gap-0.5">
+                          <Plus className="w-3 h-3" /> Custom
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MOOD_OPTIONS.map(opt => (
+                          <NeonChip key={opt} label={opt} active={selectedMoods.includes(opt)} onClick={() => toggleArrayItem('moods', opt)} color="pink" />
+                        ))}
+                      </div>
+                      {customField === 'moods' && (
+                        <div className="flex gap-2 mt-2">
+                          <Input value={customInput} onChange={e => setCustomInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCustom('moods'))} placeholder="Custom mood..." className="bg-black/40 border-white/10 text-white text-xs h-8 max-w-[200px]" />
+                          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => handleAddCustom('moods')}>Add</Button>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-300 mb-2 block">Show Tone <span className="text-gray-500">(pick one)</span></Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {TONE_OPTIONS.map(opt => (
+                          <NeonChip key={opt} label={opt} active={config.show_tone === opt} onClick={() => updateConfig('show_tone', opt)} color="cyan" />
+                        ))}
+                      </div>
+                    </div>
+                  </RoomSection>
+                )}
+
+                {/* 4. Content Scope */}
+                {openRoom === 'content' && (
+                  <RoomSection icon={Music} title="Content Scope" subtitle="What topics and sources to research" color="orange">
+                    <div>
+                      <Label className="text-xs text-gray-300 mb-2 block">Music Topics <span className="text-gray-500">({selectedTopics.length})</span></Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MUSIC_TOPIC_OPTIONS.map(opt => (
+                          <NeonChip key={opt} label={opt} active={selectedTopics.includes(opt)} onClick={() => toggleArrayItem('music_topics', opt)} color="orange" />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-300 mb-2 block">Research Sources <span className="text-gray-500">({selectedSources.length})</span></Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {RESEARCH_SOURCE_OPTIONS.map(opt => (
+                          <NeonChip key={opt} label={opt} active={selectedSources.includes(opt)} onClick={() => toggleArrayItem('research_sources', opt)} color="green" />
+                        ))}
+                      </div>
+                    </div>
+                  </RoomSection>
+                )}
+
+                {/* 5. Playlist Rules */}
+                {openRoom === 'rules' && (
+                  <RoomSection icon={Sliders} title="Playlist Rules" subtitle="Must-play, blocked, variety, energy flow" color="green">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Must-Play Songs</Label>
+                        <Textarea value={config.must_play_songs} onChange={e => updateConfig('must_play_songs', e.target.value)} placeholder="Song - Artist (one per line)" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Blocked Songs</Label>
+                        <Textarea value={config.blocked_songs} onChange={e => updateConfig('blocked_songs', e.target.value)} placeholder="One per line" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Blocked Artists</Label>
+                        <Textarea value={config.blocked_artists} onChange={e => updateConfig('blocked_artists', e.target.value)} placeholder="One per line" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Recently Played (avoid)</Label>
+                        <Textarea value={config.recently_played_songs} onChange={e => updateConfig('recently_played_songs', e.target.value)} placeholder="One per line" rows={2} className="bg-black/40 border-white/10 text-white text-xs placeholder-gray-600 resize-none" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Max Songs Per Artist</Label>
+                        <Input type="number" value={config.max_songs_per_artist} onChange={e => updateConfig('max_songs_per_artist', Number(e.target.value))} className="bg-black/40 border-white/10 text-white" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-gray-300">Preferred Eras</Label>
+                        <Input value={config.preferred_eras} onChange={e => updateConfig('preferred_eras', e.target.value)} placeholder="90s, 2000s, 2010s" className="bg-black/40 border-white/10 text-white placeholder-gray-600" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-300">Energy Flow</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ENERGY_FLOW_OPTIONS.map(opt => (
+                          <NeonChip key={opt} label={opt} active={config.playlist_energy_flow === opt} onClick={() => updateConfig('playlist_energy_flow', opt)} color="pink" />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      {[
+                        ['min_artist_variety', 'Min Artist Variety'],
+                        ['include_indie', 'Include Indie'],
+                        ['include_local', 'Include Local'],
+                        ['include_new_releases', 'New Releases'],
+                        ['include_throwbacks', 'Throwbacks'],
+                        ['clean_only', 'Clean Only'],
+                      ].map(([field, label]) => (
+                        <div key={field} className="flex items-center justify-between bg-black/30 rounded-lg px-3 py-2 border border-white/5">
+                          <span className="text-[11px] text-gray-300">{label}</span>
+                          <Switch checked={config[field]} onCheckedChange={v => updateConfig(field, v)} />
+                        </div>
+                      ))}
+                    </div>
+                  </RoomSection>
+                )}
+
+                {/* 6. AI Automation */}
+                {openRoom === 'ai' && (
+                  <RoomSection icon={Bot} title="AI Automation" subtitle={`What CREAPD should auto-generate (${selectedAutomation.length} selected)`} color="gold">
+                    <div className="flex flex-wrap gap-1.5">
+                      {AI_AUTOMATION_OPTIONS.map(opt => (
+                        <NeonChip key={opt.key} label={opt.label} active={selectedAutomation.includes(opt.key)} onClick={() => toggleArrayItem('ai_automation', opt.key)} color="green" />
+                      ))}
+                    </div>
+                  </RoomSection>
+                )}
+
+                {buildError && (
+                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{buildError}</div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Sticky build bar */}
@@ -699,9 +603,9 @@ export default function MusicConfigure() {
             <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
               <CheckCircle2 className="w-4 h-4" style={{ color: canBuild ? '#00FF88' : '#555' }} />
               <span className="truncate max-w-[150px]">{config.production_name || 'Untitled Show'}</span>
-              <span className="text-gray-600">·</span>
+              <span className="text-gray-600">/</span>
               <span>{selectedGenres.length} genres</span>
-              <span className="text-gray-600">·</span>
+              <span className="text-gray-600">/</span>
               <span>{config.required_music_runtime} min music</span>
             </div>
           </div>
