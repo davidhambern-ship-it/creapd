@@ -44,6 +44,20 @@ export default function MusicLayout() {
 
       <ProductionFooter variant="music" />
       </div>
+
+      {/* Floating Playlist Room nav icon */}
+      <Link
+        to="/music/playlist"
+        className="hidden md:flex fixed bottom-6 right-6 z-40 w-12 h-12 rounded-xl items-center justify-center transition-all hover:scale-110"
+        style={{
+          background: 'linear-gradient(135deg, #8B00FF, #FF00FF)',
+          boxShadow: '0 0 20px rgba(139,0,255,0.4), 0 4px 16px rgba(0,0,0,0.4)',
+        }}
+        title="Playlist Room"
+      >
+        <ListMusic className="w-5 h-5 text-white" />
+      </Link>
+
       <MobileBottomNav items={MOBILE_NAV_ITEMS} />
 
       <MobileNavDrawer
