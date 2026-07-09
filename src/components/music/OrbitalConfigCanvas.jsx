@@ -408,6 +408,45 @@ export default function OrbitalConfigCanvas({
                   }}
                 />
 
+                {/* ── "Show Deck" brand plate — etched on the left side of the deck ── */}
+                <div
+                  className="absolute flex flex-col items-center justify-center"
+                  style={{
+                    top: '90px',
+                    left: '12px',
+                    width: '76px',
+                    zIndex: 2,
+                  }}
+                >
+                  <span
+                    className="font-mono text-[9px] uppercase tracking-[0.3em] whitespace-nowrap"
+                    style={{
+                      color: 'rgba(200,200,210,0.35)',
+                      textShadow: '0 1px 0 rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    Show
+                  </span>
+                  <span
+                    className="font-mono text-[9px] uppercase tracking-[0.3em] whitespace-nowrap"
+                    style={{
+                      color: 'rgba(200,200,210,0.35)',
+                      textShadow: '0 1px 0 rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    Deck
+                  </span>
+                  {/* Decorative engraving line */}
+                  <div
+                    className="mt-1.5"
+                    style={{
+                      width: '40px',
+                      height: '1px',
+                      background: 'linear-gradient(to right, transparent, rgba(200,200,210,0.15), transparent)',
+                    }}
+                  />
+                </div>
+
                 {/* Ready pulse ring around platter */}
                 {canBuild && (
                   <motion.div
@@ -427,7 +466,6 @@ export default function OrbitalConfigCanvas({
                 )}
               </div>
 
-              <p className="text-[11px] text-gray-500 mt-4 font-mono uppercase tracking-[0.25em]">Show Deck</p>
             </div>
 
             {/* ═══ INTERACTIVE LAYER — flat, clickable ═══ */}
