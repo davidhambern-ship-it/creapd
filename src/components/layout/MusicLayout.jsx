@@ -32,7 +32,9 @@ export default function MusicLayout() {
     <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.music.vars}>
       <EnvironmentLayer profileKey="music" />
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
-      <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
+      {location.pathname !== '/music/configure' && (
+        <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
