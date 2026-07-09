@@ -93,43 +93,181 @@ export default function OrbitalConfigCanvas({
               />
             </div>
 
-            {/* ═══ Central Hub — flat layer, perfectly centered ═══ */}
-            <motion.div
+            {/* ═══ Central Hub — Record Player Platter ═══ */}
+            <div
               className="absolute z-15 flex flex-col items-center pointer-events-none"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
               style={{
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              <div
-                className="w-32 h-32 rounded-full flex items-center justify-center relative"
-                style={{
-                  background: 'radial-gradient(circle, rgba(255,0,255,0.15) 0%, rgba(10,10,20,0.6) 70%)',
-                  border: '1px solid rgba(255,0,255,0.25)',
-                  boxShadow: '0 0 60px rgba(255,0,255,0.1), inset 0 0 36px rgba(0,255,255,0.04)',
-                }}
-              >
+              {/* Platter assembly */}
+              <div className="relative" style={{ width: '180px', height: '180px' }}>
+                {/* Base / deck surface */}
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(30,30,40,0.9) 0%, rgba(10,10,18,0.95) 70%)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 60px rgba(255,0,255,0.06), inset 0 2px 4px rgba(255,255,255,0.04)',
+                  }}
+                />
+
+                {/* Spinning platter disc */}
+                <motion.div
+                  className="absolute rounded-full"
+                  style={{
+                    top: '12px', left: '12px', right: '12px', bottom: '12px',
+                    background: `
+                      repeating-radial-gradient(circle at center,
+                        rgba(0,0,0,0.4) 0px,
+                        rgba(0,0,0,0.4) 1px,
+                        rgba(40,40,50,0.3) 1px,
+                        rgba(40,40,50,0.3) 3px
+                      ),
+                      radial-gradient(circle, rgba(60,60,80,0.6) 0%, rgba(15,15,25,0.9) 80%)
+                    `,
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: 'inset 0 0 30px rgba(0,0,0,0.6)',
+                  }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+                >
+                  {/* Vinyl groove highlights (light reflection streaks) */}
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      top: '15%', left: '15%', right: '15%', bottom: '15%',
+                      border: '1px solid rgba(255,255,255,0.03)',
+                    }}
+                  />
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      top: '30%', left: '30%', right: '30%', bottom: '30%',
+                      border: '1px solid rgba(255,255,255,0.04)',
+                    }}
+                  />
+
+                  {/* Center label */}
+                  <div
+                    className="absolute rounded-full flex items-center justify-center"
+                    style={{
+                      top: '32%', left: '32%', right: '32%', bottom: '32%',
+                      background: canBuild
+                        ? 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.05) 70%)'
+                        : 'radial-gradient(circle, rgba(255,0,255,0.18) 0%, rgba(139,0,255,0.08) 70%)',
+                      border: `1px solid ${canBuild ? 'rgba(0,255,136,0.4)' : 'rgba(255,0,255,0.3)'}`,
+                      boxShadow: `inset 0 0 12px ${canBuild ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,255,0.08)'}`,
+                    }}
+                  >
+                    <Disc3
+                      className="w-7 h-7"
+                      style={{
+                        color: canBuild ? '#00FF88' : '#FF00FF',
+                        filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Center spindle */}
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      top: 'calc(50% - 4px)',
+                      left: 'calc(50% - 4px)',
+                      width: '8px',
+                      height: '8px',
+                      background: 'radial-gradient(circle, #e0e0e0 0%, #888 60%, #444 100%)',
+                      boxShadow: '0 0 6px rgba(255,255,255,0.3), 0 1px 2px rgba(0,0,0,0.5)',
+                    }}
+                  />
+                </motion.div>
+
+                {/* Tonearm */}
+                <motion.div
+                  className="absolute"
+                  style={{
+                    top: '8px',
+                    right: '-4px',
+                    transformOrigin: 'top right',
+                    zIndex: 2,
+                  }}
+                  initial={{ rotate: 30 }}
+                  animate={{ rotate: canBuild ? 8 : 30 }}
+                  transition={{ duration: 0.8, ease: 'easeInOut' }}
+                >
+                  {/* Tonearm pivot base */}
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      top: '-6px',
+                      right: '-6px',
+                      width: '14px',
+                      height: '14px',
+                      background: 'radial-gradient(circle, #999 0%, #555 70%)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                    }}
+                  />
+                  {/* Tonearm shaft */}
+                  <div
+                    style={{
+                      width: '90px',
+                      height: '4px',
+                      background: 'linear-gradient(to bottom, #aaa, #666 50%, #444)',
+                      borderRadius: '2px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                      marginTop: '0px',
+                    }}
+                  />
+                  {/* Cartridge head */}
+                  <div
+                    className="absolute"
+                    style={{
+                      bottom: '-6px',
+                      left: '78px',
+                      width: '14px',
+                      height: '10px',
+                      background: 'linear-gradient(135deg, #777, #333)',
+                      borderRadius: '2px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    {/* Needle glow when on record */}
+                    {canBuild && (
+                      <motion.div
+                        className="absolute rounded-full"
+                        animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.2, 0.8] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                        style={{
+                          bottom: '-3px',
+                          left: '4px',
+                          width: '6px',
+                          height: '6px',
+                          background: '#00FF88',
+                          boxShadow: '0 0 8px #00FF88, 0 0 16px rgba(0,255,136,0.4)',
+                        }}
+                      />
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* Ready pulse ring */}
                 {canBuild && (
                   <motion.div
                     className="absolute inset-0 rounded-full"
-                    animate={{ scale: [1, 1.35], opacity: [0.6, 0] }}
+                    animate={{ scale: [1, 1.25], opacity: [0.5, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
-                    style={{ border: '2px solid rgba(0,255,136,0.5)' }}
+                    style={{ border: '2px solid rgba(0,255,136,0.4)' }}
                   />
                 )}
-                <Disc3
-                  className="w-14 h-14"
-                  style={{
-                    color: canBuild ? '#00FF88' : '#FF00FF',
-                    filter: `drop-shadow(0 0 12px ${canBuild ? '#00FF88' : '#FF00FF'})`,
-                  }}
-                />
               </div>
-              <p className="text-[11px] text-gray-500 mt-3 font-mono uppercase tracking-[0.25em]">Show Core</p>
-            </motion.div>
+
+              <p className="text-[11px] text-gray-500 mt-4 font-mono uppercase tracking-[0.25em]">Show Deck</p>
+            </div>
 
             {/* ═══ INTERACTIVE LAYER — flat, clickable ═══ */}
             {/* Build button on hub */}
