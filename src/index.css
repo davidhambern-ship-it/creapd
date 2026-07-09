@@ -108,6 +108,14 @@
 }
 
 @font-face {
+  font-family: 'Boxpot';
+  src: url('https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/4521ee366_boxpot1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Robotica';
   src: url('https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/a70a3b8b3_Robotica.ttf') format('truetype');
   font-weight: normal;
