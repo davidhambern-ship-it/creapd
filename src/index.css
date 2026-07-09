@@ -1786,16 +1786,16 @@
 
 /* Futuristic neon gradient text with glow + shimmer */
 .futuristic-title {
-  background: linear-gradient(135deg, #FF00FF 0%, #8B00FF 35%, #6A0DAD 60%, #00FFFF 100%);
+  background: linear-gradient(135deg, #FF6B00 0%, #6A0DAD 35%, #8B00FF 60%, #2ECC71 100%);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: none;
   filter:
-    drop-shadow(0 0 6px rgba(255, 0, 255, 0.6))
+    drop-shadow(0 0 6px rgba(255, 107, 0, 0.6))
     drop-shadow(0 0 20px rgba(139, 0, 255, 0.4))
-    drop-shadow(0 0 40px rgba(0, 255, 255, 0.2));
+    drop-shadow(0 0 40px rgba(46, 204, 113, 0.2));
   animation: futuristic-shift 4s ease-in-out infinite, futuristic-flicker 6s ease-in-out infinite;
 }
 
@@ -1807,26 +1807,26 @@
 @keyframes futuristic-flicker {
   0%, 100% {
     filter:
-      drop-shadow(0 0 6px rgba(255, 0, 255, 0.6))
+      drop-shadow(0 0 6px rgba(255, 107, 0, 0.6))
       drop-shadow(0 0 20px rgba(139, 0, 255, 0.4))
-      drop-shadow(0 0 40px rgba(0, 255, 255, 0.2));
+      drop-shadow(0 0 40px rgba(46, 204, 113, 0.2));
   }
   50% {
     filter:
-      drop-shadow(0 0 10px rgba(255, 0, 255, 0.8))
+      drop-shadow(0 0 10px rgba(255, 107, 0, 0.8))
       drop-shadow(0 0 30px rgba(139, 0, 255, 0.5))
-      drop-shadow(0 0 60px rgba(0, 255, 255, 0.3));
+      drop-shadow(0 0 60px rgba(46, 204, 113, 0.3));
   }
   52% {
     filter:
-      drop-shadow(0 0 3px rgba(255, 0, 255, 0.4))
+      drop-shadow(0 0 3px rgba(255, 107, 0, 0.4))
       drop-shadow(0 0 10px rgba(139, 0, 255, 0.2));
   }
   54% {
     filter:
-      drop-shadow(0 0 10px rgba(255, 0, 255, 0.8))
+      drop-shadow(0 0 10px rgba(255, 107, 0, 0.8))
       drop-shadow(0 0 30px rgba(139, 0, 255, 0.5))
-      drop-shadow(0 0 60px rgba(0, 255, 255, 0.3));
+      drop-shadow(0 0 60px rgba(46, 204, 113, 0.3));
   }
 }
 
