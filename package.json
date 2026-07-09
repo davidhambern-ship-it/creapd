@@ -56,7 +56,6 @@
     "embla-carousel-react": "^8.5.2",
     "framer-motion": "^11.16.4",
     "hls.js": "^1.6.16",
-    "howler": "^2.2.4",
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "jspdf": "^4.2.1",
@@ -80,7 +79,6 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.171.0",
     "vaul": "^1.1.2",
-    "wavesurfer.js": "^7.12.10",
     "zod": "^3.24.2"
   },
   "devDependencies": {

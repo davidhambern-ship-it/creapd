@@ -58,46 +58,6 @@
     "artist_fact_generated": {
       "type": "boolean",
       "default": false
-    },
-    "audio_asset_id": {
-      "type": "string",
-      "description": "ID of the KAAE-registered AssetRegistry record providing the playable audio"
-    },
-    "audio_url": {
-      "type": "string",
-      "description": "Direct streaming/download URL for the audio file (from AssetRegistry cached_file_url or source_url)"
-    },
-    "audio_license": {
-      "type": "string",
-      "enum": [
-        "public_domain",
-        "creative_commons",
-        "mit",
-        "apache",
-        "bsd",
-        "official_free_access",
-        "commercial_license",
-        "premium_subscription",
-        "restricted",
-        "unknown",
-        "rejected"
-      ],
-      "default": "unknown",
-      "description": "Cached license classification from the linked AssetRegistry record (KAAE-004)"
-    },
-    "kaae_validated": {
-      "type": "boolean",
-      "default": false,
-      "description": "True only if the linked audio asset passed KAAE licensing validation (approved, active, commercially usable)"
-    },
-    "kaae_validated_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "When KAAE last validated this track's licensing"
-    },
-    "attribution_text": {
-      "type": "string",
-      "description": "Attribution string required by the license (from AssetRegistry)"
     }
   },
   "required": [

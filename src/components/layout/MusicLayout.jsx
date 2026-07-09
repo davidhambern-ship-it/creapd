@@ -4,7 +4,7 @@ import { MUSIC_NAV_ITEMS } from '@/lib/musicConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Music, Mic,
   List, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle,
-  Compass, ListMusic, ClipboardList, Database, Package, Library
+  Compass, ListMusic, ClipboardList, Database, Package
 } from 'lucide-react';
 import AdminSidebarSection from './AdminSidebarSection';
 import SidebarNavSections from './SidebarNavSections';
@@ -27,7 +27,7 @@ const MOBILE_NAV_ITEMS = [
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, ListMusic: Music,
   Mic, ClipboardList: List, Sparkles, Download, Settings,
-  X, Menu, LayoutGrid, Circle, Music, Compass, Database, Package, Library
+  X, Menu, LayoutGrid, Circle, Music, Compass, Database, Package
 };
 
 export default function MusicLayout() {

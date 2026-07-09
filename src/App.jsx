@@ -51,7 +51,6 @@ import MusicConfigure from '@/pages/MusicConfigure';
 import MusicDashboard from '@/pages/MusicDashboard';
 import MusicResearch from '@/pages/MusicResearch';
 import MusicPlaylist from '@/pages/MusicPlaylist';
-import MusicLibraryPage from '@/pages/MusicLibraryPage';
 import MusicTopics from '@/pages/MusicTopics';
 import MusicRundown from '@/pages/MusicRundown';
 import MusicAssets from '@/pages/MusicAssets';
@@ -130,7 +129,6 @@ import HandlerRegistry from '@/pages/admin/HandlerRegistry';
 import CreapSettings from '@/pages/admin/CreapSettings';
 import ControllerDashboard from '@/components/creapd/ControllerDashboard';
 import AssetLibrary from '@/pages/admin/AssetLibrary';
-import ConnectorSystem from '@/pages/ConnectorSystem';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -208,7 +206,6 @@ const AuthenticatedApp = () => {
           <Route path="/music/dashboard" element={<MusicDashboard />} />
           <Route path="/music/research" element={<MusicResearch />} />
           <Route path="/music/playlist" element={<MusicPlaylist />} />
-          <Route path="/music/library" element={<MusicLibraryPage />} />
           <Route path="/music/topics" element={<MusicTopics />} />
           <Route path="/music/rundown" element={<MusicRundown />} />
           <Route path="/music/assets" element={<MusicAssets />} />
@@ -306,7 +303,6 @@ const AuthenticatedApp = () => {
         <Route path="/admin/creap-settings" element={<CreapSettings />} />
         <Route path="/admin/controller-dashboard" element={<ControllerDashboard />} />
         <Route path="/admin/asset-library" element={<AssetLibrary />} />
-        <Route path="/admin/connectors" element={<ConnectorSystem />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
