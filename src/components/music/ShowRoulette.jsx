@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Disc3, RefreshCw, Dices, Zap, Smile, Mic, ListChecks, Bot, Sparkles } from 'lucide-react';
+import { X, Disc3, RefreshCw, Dices, Zap, Smile, Mic, ListChecks, Bot, Sparkles, Check, Music2 } from 'lucide-react';
 import {
   GENRE_OPTIONS, MOOD_OPTIONS, TONE_OPTIONS, MUSIC_TOPIC_OPTIONS,
   ENERGY_FLOW_OPTIONS, AI_AUTOMATION_OPTIONS
@@ -21,12 +21,12 @@ const PRESET_VIBES = [
 ];
 
 const RESULT_CARDS = [
-  { field: 'genres', label: 'Genres', icon: Disc3, color: '#8B00FF' },
-  { field: 'moods', label: 'Moods', icon: Smile, color: '#FF00FF' },
-  { field: 'show_tone', label: 'Tone', icon: Mic, color: '#00FFFF' },
-  { field: 'music_topics', label: 'Topics', icon: ListChecks, color: '#FF6B00' },
-  { field: 'playlist_energy_flow', label: 'Energy Flow', icon: Zap, color: '#00FF88' },
-  { field: 'ai_automation', label: 'AI Automation', icon: Bot, color: '#FFD700' },
+  { field: 'genres', label: 'Genres', icon: Disc3, color: '#8B00FF', anim: 'vinyl' },
+  { field: 'moods', label: 'Moods', icon: Smile, color: '#FF00FF', anim: 'eq' },
+  { field: 'show_tone', label: 'Tone', icon: Mic, color: '#00FFFF', anim: 'mic' },
+  { field: 'music_topics', label: 'Topics', icon: ListChecks, color: '#FF6B00', anim: 'staff' },
+  { field: 'playlist_energy_flow', label: 'Energy Flow', icon: Zap, color: '#00FF88', anim: 'waveform' },
+  { field: 'ai_automation', label: 'AI Automation', icon: Bot, color: '#FFD700', anim: 'oscilloscope' },
 ];
 
 const OPTIONS_MAP = {
@@ -95,13 +95,249 @@ const SPIN_SCHEMA = {
   required: ['production_name', 'genres', 'moods', 'show_tone', 'music_topics', 'playlist_energy_flow', 'ai_automation'],
 };
 
+/* ═══ Music-Themed Animations ═══ */
+
+function VinylAnim({ color, spinning }) {
+  return (
+    <div className="relative w-24 h-24 mx-auto mb-4">
+      {/* Turntable base */}
+      <div className="absolute inset-0 rounded-full" style={{ background: 'rgba(0,0,0,0.5)', border: `2px solid ${color}40` }} />
+      {/* Vinyl record */}
+      <motion.div
+        animate={{ rotate: spinning ? 360 : 0 }}
+        transition={{ duration: 1.2, repeat: spinning ? Infinity : 0, ease: 'linear' }}
+        className="absolute inset-2 rounded-full flex items-center justify-center"
+        style={{
+          background: `radial-gradient(circle, #1a1a1a 30%, #0a0a0a 60%, #1a1a1a 100%)`,
+          boxShadow: `0 0 20px ${color}30, inset 0 0 30px rgba(0,0,0,0.8)`,
+        }}
+      >
+        {/* Grooves */}
+        {[0.4, 0.55, 0.7, 0.85].map((scale, i) => (
+          <div key={i} className="absolute rounded-full border border-white/5" style={{ width: `${scale * 100}%`, height: `${scale * 100}%` }} />
+        ))}
+        {/* Center label */}
+        <div className="w-1/3 h-1/3 rounded-full flex items-center justify-center" style={{ background: color }}>
+          <div className="w-2 h-2 rounded-full bg-black" />
+        </div>
+      </motion.div>
+      {/* Tonearm */}
+      <div className="absolute -top-1 -right-1 w-12 h-1.5 rounded-full origin-right" style={{ background: `${color}80`, transform: 'rotate(-25deg) translateY(-4px)' }} />
+    </div>
+  );
+}
+
+function EqBarsAnim({ color }) {
+  return (
+    <div className="flex items-end justify-center gap-1 h-20 mx-auto mb-4 w-full max-w-xs">
+      {Array.from({ length: 16 }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="flex-1 rounded-t"
+          style={{ background: `linear-gradient(180deg, ${color}, ${color}40)`, boxShadow: `0 0 8px ${color}40` }}
+          animate={{ height: [`${20 + Math.random() * 20}%`, `${60 + Math.random() * 40}%`, `${20 + Math.random() * 20}%`] }}
+          transition={{ duration: 0.6 + (i % 3) * 0.2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.05 }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MicRingsAnim({ color }) {
+  return (
+    <div className="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+      {[0, 1, 2].map(i => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full border-2"
+          style={{ borderColor: color }}
+          initial={{ width: 20, height: 20, opacity: 0.8 }}
+          animate={{ width: [20, 80], height: [20, 80], opacity: [0.8, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.5, ease: 'easeOut' }}
+        />
+      ))}
+      <div className="w-8 h-8 rounded-full flex items-center justify-center relative z-10" style={{ background: color }}>
+        <Mic className="w-4 h-4 text-black" />
+      </div>
+    </div>
+  );
+}
+
+function StaffLinesAnim({ color }) {
+  return (
+    <div className="relative w-full max-w-xs h-20 mx-auto mb-4 overflow-hidden">
+      {/* 5 staff lines */}
+      {[0, 1, 2, 3, 4].map(i => (
+        <motion.div
+          key={i}
+          className="absolute left-0 right-0 h-px"
+          style={{ top: `${20 + i * 15}%`, background: `${color}60` }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.4, delay: i * 0.1, ease: 'easeOut' }}
+        />
+      ))}
+      {/* Music notes popping in */}
+      {[0, 1, 2, 3, 4].map(i => (
+        <motion.div
+          key={`note-${i}`}
+          className="absolute"
+          style={{ left: `${15 + i * 18}%`, top: `${15 + (i % 3) * 15}%` }}
+          initial={{ scale: 0, y: -20, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 + i * 0.12, type: 'spring', stiffness: 300, damping: 15 }}
+        >
+          <Music2 className="w-4 h-4" style={{ color, filter: `drop-shadow(0 0 4px ${color})` }} />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function WaveformAnim({ color }) {
+  return (
+    <div className="flex items-center justify-center gap-0.5 h-20 mx-auto mb-4 w-full max-w-xs">
+      {Array.from({ length: 40 }).map((_, i) => {
+        const h = Math.sin(i * 0.5) * 30 + 40 + Math.cos(i * 0.3) * 20;
+        return (
+          <motion.div
+            key={i}
+            className="w-1 rounded-full"
+            style={{ background: color, boxShadow: `0 0 4px ${color}60` }}
+            animate={{ height: [`${h * 0.5}%`, `${h}%`, `${h * 0.5}%`] }}
+            transition={{ duration: 0.8 + (i % 4) * 0.15, repeat: Infinity, ease: 'easeInOut', delay: i * 0.03 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function OscilloscopeAnim({ color }) {
+  return (
+    <div className="relative w-full max-w-xs h-20 mx-auto mb-4 overflow-hidden rounded-lg" style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${color}30` }}>
+      {/* Grid */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: `linear-gradient(${color}10 1px, transparent 1px), linear-gradient(90deg, ${color}10 1px, transparent 1px)`,
+        backgroundSize: '12px 12px',
+      }} />
+      {/* Oscilloscope trace */}
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <motion.path
+          d="M0,40 Q15,10 30,40 T60,40 T90,40 T120,40 T150,40 T180,40 T210,40 T240,40 T270,40 T300,40"
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+          animate={{
+            d: [
+              "M0,40 Q15,10 30,40 T60,40 T90,40 T120,40 T150,40 T180,40 T210,40 T240,40 T270,40 T300,40",
+              "M0,40 Q15,70 30,40 T60,40 T90,40 T120,40 T150,40 T180,40 T210,40 T240,40 T270,40 T300,40",
+              "M0,40 Q15,10 30,40 T60,40 T90,40 T120,40 T150,40 T180,40 T210,40 T240,40 T270,40 T300,40",
+            ]
+          }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </svg>
+    </div>
+  );
+}
+
+function MusicAnim({ type, color, spinning }) {
+  switch (type) {
+    case 'vinyl': return <VinylAnim color={color} spinning={spinning} />;
+    case 'eq': return <EqBarsAnim color={color} />;
+    case 'mic': return <MicRingsAnim color={color} />;
+    case 'staff': return <StaffLinesAnim color={color} />;
+    case 'waveform': return <WaveformAnim color={color} />;
+    case 'oscilloscope': return <OscilloscopeAnim color={color} />;
+    default: return null;
+  }
+}
+
+/* ═══ Exit animations per card type ═══ */
+
+const EXIT_ANIMS = {
+  vinyl: { exit: { scale: 0, rotate: 720, opacity: 0 }, transition: { duration: 0.5, ease: 'easeIn' } },
+  eq: { exit: { height: 0, opacity: 0 }, transition: { duration: 0.4, ease: 'easeIn' } },
+  mic: { exit: { scale: 0.3, opacity: 0, filter: 'blur(8px)' }, transition: { duration: 0.4, ease: 'easeIn' } },
+  staff: { exit: { x: '-100%', opacity: 0 }, transition: { duration: 0.4, ease: 'easeIn' } },
+  waveform: { exit: { scaleX: 0, opacity: 0 }, transition: { duration: 0.4, ease: 'easeIn' } },
+  oscilloscope: { exit: { scaleY: 0, opacity: 0 }, transition: { duration: 0.4, ease: 'easeIn' } },
+};
+
+/* ═══ Ambient background — floating music notes ═══ */
+
+function AmbientNotes() {
+  const notes = Array.from({ length: 12 }).map((_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 10,
+    duration: 15 + Math.random() * 10,
+    size: 12 + Math.random() * 16,
+    opacity: 0.05 + Math.random() * 0.1,
+  }));
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {notes.map(n => (
+        <motion.div
+          key={n.id}
+          className="absolute"
+          style={{ left: `${n.left}%`, bottom: '-30px', opacity: n.opacity }}
+          animate={{ y: [0, -window.innerHeight - 50], x: [0, (Math.random() - 0.5) * 100], rotate: [0, 360] }}
+          transition={{ duration: n.duration, repeat: Infinity, delay: n.delay, ease: 'linear' }}
+        >
+          <Music2 style={{ width: n.size, height: n.size, color: '#FF00FF' }} />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══ Progress dots ═══ */
+
+function ProgressDots({ total, current, colors }) {
+  return (
+    <div className="flex items-center gap-2">
+      {Array.from({ length: total }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="rounded-full"
+          animate={{
+            width: i === current ? 24 : 8,
+            height: 8,
+            backgroundColor: i < current ? colors[i] : i === current ? colors[i] : 'rgba(255,255,255,0.15)',
+            boxShadow: i <= current ? `0 0 8px ${colors[i]}` : 'none',
+          }}
+          transition={{ duration: 0.3 }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function ShowRoulette({ open, onClose, onApply }) {
   const [vibe, setVibe] = useState('');
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState(null);
   const [remixingField, setRemixingField] = useState(null);
+  const [phase, setPhase] = useState('input'); // input | spinning | revealing | done
+  const [revealIndex, setRevealIndex] = useState(0);
+  const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setPhase('input');
+      setVibe('');
+      setResult(null);
+      setRevealIndex(0);
+      setSpinning(false);
+      setExiting(false);
+    }
+  }, [open]);
 
   const spin = async () => {
+    setPhase('spinning');
     setSpinning(true);
     setResult(null);
     try {
@@ -110,10 +346,14 @@ export default function ShowRoulette({ open, onClose, onApply }) {
         response_json_schema: SPIN_SCHEMA,
       });
       setResult(response);
+      setRevealIndex(0);
+      setSpinning(false);
+      setPhase('revealing');
     } catch (err) {
       console.error('Roulette failed:', err);
+      setSpinning(false);
+      setPhase('input');
     }
-    setSpinning(false);
   };
 
   const remix = async (field) => {
@@ -128,6 +368,20 @@ export default function ShowRoulette({ open, onClose, onApply }) {
       console.error('Remix failed:', err);
     }
     setRemixingField(null);
+  };
+
+  const approveCard = () => {
+    const exitAnim = EXIT_ANIMS[RESULT_CARDS[revealIndex].anim];
+    setExiting(true);
+    setTimeout(() => {
+      if (revealIndex < RESULT_CARDS.length - 1) {
+        setRevealIndex(revealIndex + 1);
+        setExiting(false);
+      } else {
+        setPhase('done');
+        setExiting(false);
+      }
+    }, exitAnim.transition.duration * 1000);
   };
 
   const handleApply = () => {
@@ -149,8 +403,6 @@ export default function ShowRoulette({ open, onClose, onApply }) {
       outro_runtime: result.outro_runtime || 1,
     });
     onClose();
-    setVibe('');
-    setResult(null);
   };
 
   const renderCardValue = (field) => {
@@ -158,15 +410,36 @@ export default function ShowRoulette({ open, onClose, onApply }) {
     if (!val) return null;
     if (Array.isArray(val)) {
       return (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5 justify-center">
           {val.map((v, i) => (
-            <span key={i} className="px-2 py-0.5 rounded text-[10px] font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(200,200,220,0.8)' }}>{v}</span>
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, scale: 0.5, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.08, type: 'spring', stiffness: 300, damping: 20 }}
+              className="px-3 py-1 rounded-lg text-xs font-mono font-medium"
+              style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(220,220,240,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              {v}
+            </motion.span>
           ))}
         </div>
       );
     }
-    return <span className="px-2 py-0.5 rounded text-[10px] font-mono" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(200,200,220,0.8)' }}>{val}</span>;
+    return (
+      <motion.span
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3, type: 'spring', stiffness: 300, damping: 20 }}
+        className="px-4 py-1.5 rounded-lg text-sm font-mono font-medium inline-block"
+        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(220,220,240,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}
+      >
+        {val}
+      </motion.span>
+    );
   };
+
+  const currentCard = RESULT_CARDS[revealIndex];
 
   return (
     <AnimatePresence>
@@ -175,193 +448,279 @@ export default function ShowRoulette({ open, onClose, onApply }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
-          onClick={onClose}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 md:p-8"
+          style={{
+            background: 'radial-gradient(ellipse at center, rgba(20,5,30,0.95), rgba(5,5,10,0.98))',
+            backdropFilter: 'blur(8px)',
+          }}
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            onClick={e => e.stopPropagation()}
-            className="cp-glass w-full max-w-lg mt-8 mb-8 relative"
-            style={{ boxShadow: '0 0 40px rgba(255,0,255,0.15)' }}
+          <AmbientNotes />
+
+          {/* X button — always visible */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
           >
-            {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-white/5">
-              <motion.div
-                animate={{ rotate: spinning ? 360 : 0 }}
-                transition={{ duration: spinning ? 0.8 : 0.3, repeat: spinning ? Infinity : 0, ease: spinning ? 'linear' : 'easeOut' }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'rgba(255,0,255,0.12)', border: '1px solid rgba(255,0,255,0.4)' }}
+            <X className="w-5 h-5 text-gray-400 hover:text-white" />
+          </button>
+
+          {/* ═══ INPUT PHASE ═══ */}
+          {phase === 'input' && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative z-10 w-full max-w-md text-center"
+            >
+              <VinylAnim color="#FF00FF" spinning={false} />
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-2xl font-heading font-bold text-white mb-1"
               >
-                <Dices className="w-5 h-5" style={{ color: '#FF00FF' }} />
-              </motion.div>
-              <div className="flex-1">
-                <h2 className="text-lg font-heading font-bold text-white">Show Roulette</h2>
-                <p className="text-[11px] text-gray-400">Give a vibe, spin, remix what you don't like</p>
+                Show Roulette
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-xs text-gray-400 mb-6"
+              >
+                Give a vibe, spin the wheel, approve each part
+              </motion.p>
+
+              <div className="space-y-1.5 mb-4 text-left">
+                <label className="text-xs text-gray-300">What's the vibe?</label>
+                <Input
+                  value={vibe}
+                  onChange={e => setVibe(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && spin()}
+                  placeholder="e.g. dark and experimental..."
+                  className="bg-black/40 border-white/10 text-white placeholder-gray-600"
+                  autoFocus
+                />
               </div>
-              <button onClick={onClose} className="text-gray-500 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Body */}
-            <div className="p-4 space-y-4">
-              {!result && !spinning && (
-                <>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-300">What's the vibe?</label>
-                    <Input
-                      value={vibe}
-                      onChange={e => setVibe(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && spin()}
-                      placeholder="e.g. dark and experimental..."
-                      className="bg-black/40 border-white/10 text-white placeholder-gray-600"
-                      autoFocus
-                    />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wider">Quick Vibes</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {PRESET_VIBES.map(v => (
-                        <motion.button
-                          key={v}
-                          onClick={() => setVibe(v)}
-                          whileHover={{ scale: 1.05, y: -1 }}
-                          whileTap={{ scale: 0.92 }}
-                          className="px-2.5 py-1 rounded-lg text-[10px] font-medium border transition-all"
-                          style={{
-                            background: vibe === v ? 'rgba(0,255,255,0.12)' : 'rgba(255,255,255,0.03)',
-                            borderColor: vibe === v ? 'rgba(0,255,255,0.5)' : 'rgba(255,255,255,0.08)',
-                            color: vibe === v ? '#00FFFF' : 'rgba(200,200,220,0.6)',
-                          }}
-                        >
-                          {v}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {spinning && (
-                <div className="flex flex-col items-center py-12">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <Disc3 className="w-16 h-16" style={{ color: '#FF00FF', filter: 'drop-shadow(0 0 20px #FF00FF)' }} />
-                  </motion.div>
-                  <motion.p
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="text-sm text-gray-400 mt-4"
-                  >
-                    Spinning the wheel...
-                  </motion.p>
+              <div className="mb-6">
+                <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wider">Quick Vibes</p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {PRESET_VIBES.map(v => (
+                    <motion.button
+                      key={v}
+                      onClick={() => setVibe(v)}
+                      whileHover={{ scale: 1.05, y: -1 }}
+                      whileTap={{ scale: 0.92 }}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-medium border transition-all"
+                      style={{
+                        background: vibe === v ? 'rgba(0,255,255,0.12)' : 'rgba(255,255,255,0.03)',
+                        borderColor: vibe === v ? 'rgba(0,255,255,0.5)' : 'rgba(255,255,255,0.08)',
+                        color: vibe === v ? '#00FFFF' : 'rgba(200,200,220,0.6)',
+                      }}
+                    >
+                      {v}
+                    </motion.button>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              {result && !spinning && (
-                <div className="space-y-2">
-                  {/* Show name + description */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-3 rounded-lg"
-                    style={{ background: 'linear-gradient(135deg, rgba(255,0,255,0.06), rgba(139,0,255,0.06))', border: '1px solid rgba(255,0,255,0.2)' }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="w-3.5 h-3.5" style={{ color: '#FF00FF' }} />
-                      <h3 className="text-sm font-heading font-bold text-white">{result.production_name}</h3>
-                    </div>
-                    {result.show_description && (
-                      <p className="text-[11px] text-gray-400">{result.show_description}</p>
-                    )}
-                  </motion.div>
-
-                  {/* Config cards with remix */}
-                  {RESULT_CARDS.map((card, i) => {
-                    const Icon = card.icon;
-                    const isRemixing = remixingField === card.field;
-                    return (
-                      <motion.div
-                        key={card.field}
-                        initial={{ opacity: 0, x: -15 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.08 }}
-                        className="p-3 rounded-lg bg-black/30 border border-white/5"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: `${card.color}15` }}>
-                            <Icon className="w-3 h-3" style={{ color: card.color }} />
-                          </div>
-                          <span className="text-[11px] font-medium text-gray-300">{card.label}</span>
-                          <motion.button
-                            onClick={() => remix(card.field)}
-                            disabled={isRemixing}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className="ml-auto p-1 rounded text-gray-500 hover:text-white"
-                            title={`Remix ${card.label}`}
-                          >
-                            <motion.span animate={isRemixing ? { rotate: 360 } : {}} transition={{ duration: 0.6, repeat: isRemixing ? Infinity : 0, ease: 'linear' }}>
-                              <RefreshCw className="w-3 h-3" />
-                            </motion.span>
-                          </motion.button>
-                        </div>
-                        {renderCardValue(card.field)}
-                      </motion.div>
-                    );
-                  })}
-
-                  {/* Runtime summary */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="p-3 rounded-lg bg-black/30 border border-white/5"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: '#FFFFFF10' }}>
-                        <Zap className="w-3 h-3 text-white" />
-                      </div>
-                      <span className="text-[11px] font-medium text-gray-300">Runtime Mix</span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-400 font-mono">
-                      <span>Total: <span className="text-white">{result.total_show_runtime}m</span></span>
-                      <span>Music: <span style={{ color: '#FF00FF' }}>{result.required_music_runtime}m</span></span>
-                      <span>Talk: <span style={{ color: '#00FFFF' }}>{result.talk_segment_runtime}m</span></span>
-                      <span>Ads: <span style={{ color: '#FF6B00' }}>{result.commercial_sponsor_runtime}m</span></span>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-white/5 flex items-center gap-2">
-              {result && !spinning && (
-                <Button variant="ghost" size="sm" onClick={spin} className="text-gray-400 hover:text-white">
-                  <Dices className="w-3.5 h-3.5 mr-1" /> Re-spin
+              <motion.div
+                animate={{ boxShadow: ['0 0 16px rgba(255,0,255,0.3)', '0 0 32px rgba(255,0,255,0.6)', '0 0 16px rgba(255,0,255,0.3)'] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="inline-block rounded-lg"
+              >
+                <Button onClick={spin} size="lg" style={{ background: 'linear-gradient(135deg, #FF00FF, #8B00FF)' }}>
+                  <Dices className="w-4 h-4 mr-2" /> Spin the Wheel
                 </Button>
-              )}
-              <div className="flex-1" />
-              {!result && !spinning && (
-                <motion.div animate={{ boxShadow: ['0 0 16px rgba(255,0,255,0.3)', '0 0 28px rgba(255,0,255,0.5)', '0 0 16px rgba(255,0,255,0.3)'] }} transition={{ duration: 2, repeat: Infinity }}>
-                  <Button onClick={spin} size="sm" style={{ background: 'linear-gradient(135deg, #FF00FF, #8B00FF)' }}>
-                    <Dices className="w-3.5 h-3.5 mr-1" /> Spin
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* ═══ SPINNING PHASE ═══ */}
+          {phase === 'spinning' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="relative z-10 flex flex-col items-center"
+            >
+              <VinylAnim color="#FF00FF" spinning={true} />
+              <motion.div
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <p className="text-lg font-heading text-white">Spinning the wheel...</p>
+                <p className="text-xs text-gray-500 text-center mt-1">Cueing up your show</p>
+              </motion.div>
+              {/* Pulsing sound waves around */}
+              {[0, 1, 2].map(i => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full border border-purple-500/20"
+                  animate={{ width: [100, 400], height: [100, 400], opacity: [0.3, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: i * 0.6, ease: 'easeOut' }}
+                />
+              ))}
+            </motion.div>
+          )}
+
+          {/* ═══ REVEALING PHASE — one card at a time ═══ */}
+          {phase === 'revealing' && currentCard && result && (
+            <div className="relative z-10 w-full max-w-lg flex flex-col items-center">
+              {/* Progress dots */}
+              <div className="mb-6">
+                <ProgressDots
+                  total={RESULT_CARDS.length}
+                  current={revealIndex}
+                  colors={RESULT_CARDS.map(c => c.color)}
+                />
+              </div>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={revealIndex}
+                  initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                  animate={exiting ? EXIT_ANIMS[currentCard.anim].exit : { opacity: 1, scale: 1, y: 0 }}
+                  transition={exiting ? EXIT_ANIMS[currentCard.anim].transition : { type: 'spring', stiffness: 300, damping: 25 }}
+                  className="w-full"
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${currentCard.color}20`, border: `1px solid ${currentCard.color}40` }}>
+                      <currentCard.icon className="w-4 h-4" style={{ color: currentCard.color }} />
+                    </div>
+                    <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider">{currentCard.label}</h3>
+                  </div>
+
+                  {/* Music animation */}
+                  <MusicAnim type={currentCard.anim} color={currentCard.color} spinning={remixingField === currentCard.field} />
+
+                  {/* Values */}
+                  <div className="min-h-[40px] flex items-center justify-center mb-6">
+                    {remixingField === currentCard.field ? (
+                      <motion.p
+                        animate={{ opacity: [0.4, 1, 0.4] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="text-xs text-gray-500"
+                      >
+                        Remixing...
+                      </motion.p>
+                    ) : (
+                      renderCardValue(currentCard.field)
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => remix(currentCard.field)}
+                      disabled={remixingField === currentCard.field}
+                      className="text-gray-400 hover:text-white border border-white/10"
+                    >
+                      <motion.span animate={remixingField === currentCard.field ? { rotate: 360 } : {}} transition={{ duration: 0.6, repeat: remixingField === currentCard.field ? Infinity : 0, ease: 'linear' }}>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </motion.span>
+                      <span className="ml-1.5">Regenerate</span>
+                    </Button>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        onClick={approveCard}
+                        size="sm"
+                        style={{ background: `linear-gradient(135deg, ${currentCard.color}, ${currentCard.color}99)` }}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span className="ml-1.5">Approve</span>
+                      </Button>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Step counter */}
+              <p className="text-[10px] text-gray-600 mt-6 font-mono">
+                Step {revealIndex + 1} of {RESULT_CARDS.length}
+              </p>
+            </div>
+          )}
+
+          {/* ═══ DONE PHASE — summary ═══ */}
+          {phase === 'done' && result && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative z-10 w-full max-w-md text-center"
+            >
+              {/* Final vinyl with all colors */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
+                style={{
+                  background: `conic-gradient(${RESULT_CARDS.map(c => c.color).join(', ')})`,
+                  boxShadow: '0 0 30px rgba(255,0,255,0.3)',
+                }}
+              >
+                <div className="w-6 h-6 rounded-full bg-black" />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Sparkles className="w-5 h-5 mx-auto mb-2" style={{ color: '#FF00FF' }} />
+                <h2 className="text-xl font-heading font-bold text-white mb-1">{result.production_name}</h2>
+                {result.show_description && (
+                  <p className="text-xs text-gray-400 mb-4">{result.show_description}</p>
+                )}
+              </motion.div>
+
+              {/* Compact summary */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="p-4 rounded-lg bg-black/30 border border-white/5 mb-6 text-left space-y-1.5"
+              >
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                  <Disc3 className="w-3 h-3" style={{ color: '#8B00FF' }} />
+                  <span>{(result.genres || []).join(', ')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                  <Smile className="w-3 h-3" style={{ color: '#FF00FF' }} />
+                  <span>{(result.moods || []).join(', ')}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                  <Mic className="w-3 h-3" style={{ color: '#00FFFF' }} />
+                  <span>{result.show_tone}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                  <Zap className="w-3 h-3" style={{ color: '#00FF88' }} />
+                  <span>{result.playlist_energy_flow}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono pt-1 border-t border-white/5">
+                  <span>Total: <span className="text-white">{result.total_show_runtime}m</span></span>
+                  <span>·</span>
+                  <span>Music: <span style={{ color: '#FF00FF' }}>{result.required_music_runtime}m</span></span>
+                  <span>·</span>
+                  <span>Talk: <span style={{ color: '#00FFFF' }}>{result.talk_segment_runtime}m</span></span>
+                </div>
+              </motion.div>
+
+              <div className="flex items-center justify-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => { setPhase('input'); setResult(null); }} className="text-gray-400 hover:text-white border border-white/10">
+                  <Dices className="w-3.5 h-3.5 mr-1.5" /> Start Over
+                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button onClick={handleApply} size="sm" style={{ background: 'linear-gradient(135deg, #00FF88, #00FFFF)' }}>
+                    <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Apply Configuration
                   </Button>
                 </motion.div>
-              )}
-              {result && !spinning && (
-                <Button onClick={handleApply} size="sm" style={{ background: 'linear-gradient(135deg, #00FF88, #00FFFF)' }}>
-                  <Sparkles className="w-3.5 h-3.5 mr-1" /> Apply Configuration
-                </Button>
-              )}
-            </div>
-          </motion.div>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
