@@ -25,8 +25,6 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
         {/* Show Roulette Button */}
         <motion.button
           onClick={onRoulette}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
           className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
           style={{
             background: `linear-gradient(135deg, ${rouletteColor}22, rgba(0,255,255,0.08))`,
@@ -54,9 +52,7 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
             <motion.button
               key={room.path}
               onClick={() => navigate(room.path)}
-              whileHover={{ scale: 1.15, y: -2 }}
-              whileTap={{ scale: 0.85 }}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border"
               style={{
                 background: `${room.color}14`,
                 borderColor: `${room.color}30`,
