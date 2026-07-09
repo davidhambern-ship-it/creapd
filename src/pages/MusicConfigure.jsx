@@ -293,7 +293,7 @@ export default function MusicConfigure() {
             >
               <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
             </motion.div>
-            <h1 className="text-3xl font-bold text-white mb-1" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
+            <h1 className="text-7xl font-bold text-white mb-1" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             <p className="text-sm text-gray-400">Tap a room to configure your show</p>
             <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
               <motion.button
