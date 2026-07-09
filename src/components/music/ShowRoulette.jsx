@@ -175,7 +175,7 @@ export default function ShowRoulette({ open, onClose, onApply }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
           onClick={onClose}
         >
           <motion.div
@@ -184,7 +184,7 @@ export default function ShowRoulette({ open, onClose, onApply }) {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             onClick={e => e.stopPropagation()}
-            className="cp-glass w-full max-w-lg my-8 relative"
+            className="cp-glass w-full max-w-lg mt-8 mb-8 relative"
             style={{ boxShadow: '0 0 40px rgba(255,0,255,0.15)' }}
           >
             {/* Header */}
