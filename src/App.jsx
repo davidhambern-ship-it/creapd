@@ -49,6 +49,7 @@ import ProductionTypes from '@/pages/ProductionTypes';
 import CreapdHome from '@/pages/CreapdHome';
 import MusicConfigure from '@/pages/MusicConfigure';
 import MusicDashboard from '@/pages/MusicDashboard';
+import EmbedDemo from '@/pages/EmbedDemo';
 import MusicResearch from '@/pages/MusicResearch';
 import MusicPlaylist from '@/pages/MusicPlaylist';
 import MusicTopics from '@/pages/MusicTopics';
@@ -204,6 +205,7 @@ const AuthenticatedApp = () => {
         <Route element={<MusicLayout />}>
           <Route path="/music/configure" element={<MusicConfigure />} />
           <Route path="/music/dashboard" element={<MusicDashboard />} />
+          <Route path="/music/embed-demo" element={<EmbedDemo />} />
           <Route path="/music/research" element={<MusicResearch />} />
           <Route path="/music/playlist" element={<MusicPlaylist />} />
           <Route path="/music/topics" element={<MusicTopics />} />
