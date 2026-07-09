@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { MUSIC_NAV_ITEMS } from '@/lib/musicConstants';
 import {
   LayoutDashboard, Search, Sparkles, Compass, ListMusic
 } from 'lucide-react';
-import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
@@ -25,16 +24,13 @@ const ICON_MAP = {
 };
 
 export default function MusicLayout() {
-  const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.music.vars}>
       <EnvironmentLayer profileKey="music" />
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
-      {location.pathname !== '/music/configure' && (
-        <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
-      )}
+
 
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
