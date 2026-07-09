@@ -1,0 +1,83 @@
+{
+  "name": "ConnectorRequest",
+  "type": "object",
+  "properties": {
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "search",
+        "lookup",
+        "preview",
+        "playback",
+        "download"
+      ],
+      "default": "search"
+    },
+    "production_profile": {
+      "type": "string",
+      "enum": [
+        "news",
+        "spiritual",
+        "talk",
+        "music",
+        "sports",
+        "cooking",
+        "research",
+        "cosmo"
+      ]
+    },
+    "department": {
+      "type": "string",
+      "description": "Which department made the request (discovery, knowledge, blueprint, production, assembly)"
+    },
+    "worker": {
+      "type": "string",
+      "description": "Worker ID or name that initiated this request"
+    },
+    "asset_type": {
+      "type": "string",
+      "description": "Expected asset type (image, audio, video, research_paper, etc.)"
+    },
+    "query": {
+      "type": "string",
+      "description": "Search query string"
+    },
+    "keywords": {
+      "type": "string",
+      "description": "JSON array of keywords"
+    },
+    "connector_ids": {
+      "type": "string",
+      "description": "JSON array of specific connector IDs to use (optional \u2014 if empty, Manager auto-selects)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "partial",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processing_time": {
+      "type": "number",
+      "description": "Total processing time in milliseconds"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_type"
+  ]
+}

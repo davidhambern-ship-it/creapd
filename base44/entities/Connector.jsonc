@@ -1,0 +1,127 @@
+{
+  "name": "Connector",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name of this connector"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "research",
+        "images",
+        "svg",
+        "icons",
+        "audio",
+        "music_metadata",
+        "video",
+        "maps",
+        "statistics",
+        "government",
+        "scientific",
+        "presentation_assets"
+      ],
+      "description": "KAAE-CON connector category \u2014 determines which asset types this provider can serve"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Third-party provider identifier (e.g. wikimedia, openverse, unsplash)"
+    },
+    "description": {
+      "type": "string"
+    },
+    "base_url": {
+      "type": "string",
+      "description": "Base API URL for this provider"
+    },
+    "authentication_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "api_key",
+        "oauth",
+        "bearer_token",
+        "basic_auth"
+      ],
+      "default": "none"
+    },
+    "api_key_name": {
+      "type": "string",
+      "description": "Name of the secret/env var holding this provider's API key (server-side only)"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "type": "number",
+      "default": 50,
+      "description": "Sort order \u2014 lower = higher priority (0=local registry, 10=public domain, 20=open license, 30=free api, 40=premium, 50=ai generation)"
+    },
+    "rate_limit_per_minute": {
+      "type": "number",
+      "default": 60
+    },
+    "rate_limit_per_day": {
+      "type": "number",
+      "default": 1000
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "default": 30
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 2,
+      "description": "Number of retries before failing over to next provider"
+    },
+    "supports_search": {
+      "type": "boolean",
+      "default": false
+    },
+    "supports_download": {
+      "type": "boolean",
+      "default": false
+    },
+    "supports_preview": {
+      "type": "boolean",
+      "default": false
+    },
+    "supports_streaming": {
+      "type": "boolean",
+      "default": false
+    },
+    "supports_metadata": {
+      "type": "boolean",
+      "default": false
+    },
+    "health_status": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "last_health_check": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_success": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_failure": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "provider_name"
+  ]
+}

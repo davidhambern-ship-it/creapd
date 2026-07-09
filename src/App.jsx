@@ -129,6 +129,7 @@ import HandlerRegistry from '@/pages/admin/HandlerRegistry';
 import CreapSettings from '@/pages/admin/CreapSettings';
 import ControllerDashboard from '@/components/creapd/ControllerDashboard';
 import AssetLibrary from '@/pages/admin/AssetLibrary';
+import ConnectorSystem from '@/pages/ConnectorSystem';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -303,6 +304,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/creap-settings" element={<CreapSettings />} />
         <Route path="/admin/controller-dashboard" element={<ControllerDashboard />} />
         <Route path="/admin/asset-library" element={<AssetLibrary />} />
+        <Route path="/admin/connectors" element={<ConnectorSystem />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

@@ -1,0 +1,67 @@
+{
+  "name": "ProviderHealth",
+  "type": "object",
+  "properties": {
+    "connector_id": {
+      "type": "string",
+      "description": "ID of the Connector this health record tracks"
+    },
+    "current_status": {
+      "type": "string",
+      "enum": [
+        "online",
+        "offline",
+        "degraded",
+        "rate_limited",
+        "auth_failed",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "last_ping": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "latency": {
+      "type": "number",
+      "description": "Response latency in milliseconds"
+    },
+    "remaining_requests": {
+      "type": "number",
+      "description": "Remaining requests in current rate window"
+    },
+    "reset_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the rate limit window resets"
+    },
+    "uptime_percentage": {
+      "type": "number",
+      "default": 0,
+      "description": "Rolling uptime percentage 0-100"
+    },
+    "authentication_status": {
+      "type": "string",
+      "enum": [
+        "authenticated",
+        "unauthenticated",
+        "expired",
+        "not_required",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "error_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Consecutive error count"
+    },
+    "warning_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "connector_id"
+  ]
+}

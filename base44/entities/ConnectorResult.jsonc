@@ -1,0 +1,91 @@
+{
+  "name": "ConnectorResult",
+  "type": "object",
+  "properties": {
+    "connector_request_id": {
+      "type": "string",
+      "description": "ID of the ConnectorRequest that produced this result"
+    },
+    "connector_id": {
+      "type": "string",
+      "description": "Which Connector returned this asset"
+    },
+    "provider_asset_id": {
+      "type": "string",
+      "description": "Provider-native unique identifier for this asset"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "creator": {
+      "type": "string",
+      "description": "Author, artist, or creator name"
+    },
+    "asset_type": {
+      "type": "string",
+      "description": "Normalized asset type (image, audio, video, document, dataset, etc.)"
+    },
+    "metadata": {
+      "type": "string",
+      "description": "JSON: provider-specific metadata (tags, dimensions, duration, bitrate, etc.)"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Original source URL"
+    },
+    "preview_url": {
+      "type": "string",
+      "description": "Preview/thumbnail streamable URL"
+    },
+    "playback_url": {
+      "type": "string",
+      "description": "URL for streaming playback (if licensed)"
+    },
+    "download_url": {
+      "type": "string",
+      "description": "Direct download URL (if licensed)"
+    },
+    "thumbnail_url": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Duration in seconds (audio/video)"
+    },
+    "file_type": {
+      "type": "string",
+      "description": "File extension (mp3, mp4, png, svg, pdf, etc.)"
+    },
+    "license_data": {
+      "type": "string",
+      "description": "JSON: { license_type, commercial_use_allowed, attribution_required, modification_allowed, redistribution_allowed, playback_allowed, download_allowed, cache_allowed }"
+    },
+    "confidence_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Relevance confidence 0-100"
+    },
+    "qa_status": {
+      "type": "string",
+      "enum": [
+        "not_reviewed",
+        "needs_revision",
+        "passed",
+        "approved"
+      ],
+      "default": "not_reviewed"
+    },
+    "imported_to_registry": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this result has been imported into AssetRegistry"
+    }
+  },
+  "required": [
+    "connector_request_id",
+    "connector_id"
+  ]
+}
