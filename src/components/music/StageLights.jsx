@@ -70,54 +70,7 @@ export default function StageLights() {
         ))}
       </div>
 
-      {/* ── Hanging fixtures — render relative to title position ── */}
-      {/* Rig bar */}
-      <div
-        className="absolute -top-3 left-0 right-0 h-1.5 rounded-full pointer-events-none"
-        style={{
-          background: 'linear-gradient(to bottom, hsl(0 0% 35% / 0.4), hsl(0 0% 20% / 0.2))',
-          boxShadow: '0 1px 2px hsl(0 0% 0% / 0.4)',
-        }}
-      />
-      {FIXTURES.map((fx, i) => (
-        <div
-          key={`fix-${i}`}
-          className="absolute pointer-events-none"
-          style={{
-            left: `${fx.offset}%`,
-            top: 0,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {/* Hanging cable */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 bg-gradient-to-b from-white/30 to-white/10"
-            style={{ width: '1px', height: '6px', top: '-6px' }}
-          />
-          {/* Fixture body */}
-          <div
-            className="relative rounded-full"
-            style={{
-              width: '14px',
-              height: '14px',
-              background: 'linear-gradient(135deg, hsl(0 0% 28%), hsl(0 0% 12%))',
-              border: '1px solid hsl(0 0% 40% / 0.6)',
-              boxShadow: `0 0 10px ${fx.color.replace(')', ' / 0.4)')}, inset 0 1px 1px hsl(0 0% 100% / 0.15)`,
-            }}
-          >
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: fx.color,
-                opacity: 0.65,
-                filter: 'blur(3px)',
-                animation: `bulb-pulse ${2 + (i % 3)}s ease-in-out infinite`,
-                animationDelay: `${fx.delay}s`,
-              }}
-            />
-          </div>
-        </div>
-      ))}
+
 
       <style>{`
         @keyframes bulb-pulse {
