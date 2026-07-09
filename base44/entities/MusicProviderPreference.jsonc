@@ -1,0 +1,61 @@
+{
+  "name": "MusicProviderPreference",
+  "type": "object",
+  "properties": {
+    "allow_attribution_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "Allow assets that require attribution"
+    },
+    "allow_premium_providers": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow premium / paid music providers"
+    },
+    "allow_ai_music_generation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow AI-generated music as a fallback"
+    },
+    "allow_streaming_assets": {
+      "type": "boolean",
+      "default": true
+    },
+    "allow_downloadable_assets": {
+      "type": "boolean",
+      "default": true
+    },
+    "preferred_genres": {
+      "type": "string",
+      "description": "JSON array of preferred genres"
+    },
+    "preferred_languages": {
+      "type": "string",
+      "description": "JSON array of preferred languages"
+    },
+    "preferred_music_style": {
+      "type": "string",
+      "description": "Free-text music style preference"
+    },
+    "preferred_audio_quality": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "lossless"
+      ],
+      "default": "high"
+    },
+    "explicit_content_filter": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, filters out explicit content"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": []
+}
