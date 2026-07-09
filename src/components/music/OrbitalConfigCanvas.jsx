@@ -186,60 +186,66 @@ export default function OrbitalConfigCanvas({
                 />
 
                 {/* ── Spinning vinyl record (sitting on the mat) ── */}
-                <motion.div
-                  className="absolute rounded-full"
+                <div
+                  className="absolute"
                   style={{
                     top: '50%',
-                    left: '110px',
-                    transform: 'translateY(-50%)',
+                    left: '190px',
+                    transform: 'translate(-50%, -50%)',
                     width: '160px',
                     height: '160px',
-                    background: `
-                      repeating-radial-gradient(circle at center,
-                        rgba(0,0,0,0.55) 0px,
-                        rgba(0,0,0,0.55) 1px,
-                        rgba(38,40,50,0.45) 1px,
-                        rgba(38,40,50,0.45) 3px
-                      ),
-                      radial-gradient(circle, rgba(55,57,70,0.7) 0%, rgba(12,12,20,0.95) 80%)
-                    `,
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    boxShadow: 'inset 0 0 24px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.05)',
                   }}
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
                 >
-                  {/* Vinyl groove highlight rings */}
-                  <div className="absolute rounded-full" style={{
-                    top: '10%', left: '10%', right: '10%', bottom: '10%',
-                    border: '1px solid rgba(255,255,255,0.04)',
-                  }} />
-                  <div className="absolute rounded-full" style={{
-                    top: '22%', left: '22%', right: '22%', bottom: '22%',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                  }} />
-
-                  {/* Center label */}
-                  <div
-                    className="absolute rounded-full flex items-center justify-center"
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
                     style={{
-                      top: '34%', left: '34%', right: '34%', bottom: '34%',
-                      background: canBuild
-                        ? 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.05) 70%)'
-                        : 'radial-gradient(circle, rgba(255,0,255,0.18) 0%, rgba(139,0,255,0.08) 70%)',
-                      border: `1px solid ${canBuild ? 'rgba(0,255,136,0.4)' : 'rgba(255,0,255,0.3)'}`,
-                      boxShadow: `inset 0 0 12px ${canBuild ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,255,0.08)'}`,
+                      background: `
+                        repeating-radial-gradient(circle at center,
+                          rgba(0,0,0,0.55) 0px,
+                          rgba(0,0,0,0.55) 1px,
+                          rgba(38,40,50,0.45) 1px,
+                          rgba(38,40,50,0.45) 3px
+                        ),
+                        radial-gradient(circle, rgba(55,57,70,0.7) 0%, rgba(12,12,20,0.95) 80%)
+                      `,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: 'inset 0 0 24px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.05)',
                     }}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
                   >
-                    <Disc3
-                      className="w-6 h-6"
+                    {/* Vinyl groove highlight rings */}
+                    <div className="absolute rounded-full" style={{
+                      top: '10%', left: '10%', right: '10%', bottom: '10%',
+                      border: '1px solid rgba(255,255,255,0.04)',
+                    }} />
+                    <div className="absolute rounded-full" style={{
+                      top: '22%', left: '22%', right: '22%', bottom: '22%',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                    }} />
+
+                    {/* Center label */}
+                    <div
+                      className="absolute rounded-full flex items-center justify-center"
                       style={{
-                        color: canBuild ? '#00FF88' : '#FF00FF',
-                        filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
+                        top: '34%', left: '34%', right: '34%', bottom: '34%',
+                        background: canBuild
+                          ? 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.05) 70%)'
+                          : 'radial-gradient(circle, rgba(255,0,255,0.18) 0%, rgba(139,0,255,0.08) 70%)',
+                        border: `1px solid ${canBuild ? 'rgba(0,255,136,0.4)' : 'rgba(255,0,255,0.3)'}`,
+                        boxShadow: `inset 0 0 12px ${canBuild ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,255,0.08)'}`,
                       }}
-                    />
-                  </div>
-                </motion.div>
+                    >
+                      <Disc3
+                        className="w-6 h-6"
+                        style={{
+                          color: canBuild ? '#00FF88' : '#FF00FF',
+                          filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                </div>
 
                 {/* ── Center spindle (fixed, pierces through vinyl center) ── */}
                 <div
