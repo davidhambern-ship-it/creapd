@@ -300,7 +300,7 @@ export default function MusicConfigure() {
                 onClick={() => setRouletteOpen(true)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-base font-medium border"
                 style={{
                   background: 'linear-gradient(135deg, rgba(255,0,255,0.12), rgba(0,255,255,0.08))',
                   borderColor: 'rgba(255,0,255,0.4)',
@@ -309,7 +309,7 @@ export default function MusicConfigure() {
                 }}
               >
                 <motion.span animate={{ rotate: [0, -12, 12, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}>
-                  <Dices className="w-4 h-4" />
+                  <Dices className="w-5 h-5" />
                 </motion.span>
                 Show Roulette
               </motion.button>
@@ -327,7 +327,7 @@ export default function MusicConfigure() {
                       onClick={() => navigate(room.path)}
                       whileHover={{ scale: 1.15 }}
                       whileTap={{ scale: 0.85 }}
-                      className="flex items-center justify-center w-10 h-10 rounded-lg border relative overflow-visible"
+                      className="flex items-center justify-center w-14 h-14 rounded-xl border relative overflow-visible"
                       style={{
                         background: `${room.color}18`,
                         borderColor: `${room.color}40`,
@@ -362,11 +362,11 @@ export default function MusicConfigure() {
                           ease: 'easeInOut',
                         }}
                       >
-                        <Icon className="w-5 h-5" style={{ color: room.color }} />
+                        <Icon className="w-7 h-7" style={{ color: room.color }} />
                       </motion.div>
                     </motion.button>
                     <span
-                      className="pointer-events-none absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-medium z-50 opacity-0 -translate-y-1 scale-90 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100"
+                      className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded text-xs font-medium z-50 opacity-0 -translate-y-1 scale-90 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100"
                       style={{
                         background: `${room.color}22`,
                         border: `1px solid ${room.color}55`,
