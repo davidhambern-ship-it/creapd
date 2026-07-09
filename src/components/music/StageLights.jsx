@@ -1,152 +1,143 @@
 import React from 'react';
 
-/**
- * Animated stage light beams emanating from behind a title element.
- * Renders colored light cones that sweep around like a concert light show.
- */
+const FIXTURES = [
+  { offset: 5, color: 'hsl(25 95% 55%)', baseAngle: -35, sweep: 70, delay: 0, dur: 8 },
+  { offset: 18, color: 'hsl(270 80% 60%)', baseAngle: -20, sweep: 60, delay: 1.5, dur: 7 },
+  { offset: 32, color: 'hsl(152 60% 45%)', baseAngle: -45, sweep: 90, delay: 0.8, dur: 9 },
+  { offset: 46, color: 'hsl(270 80% 70%)', baseAngle: 10, sweep: 50, delay: 2.2, dur: 6.5 },
+  { offset: 58, color: 'hsl(25 95% 60%)', baseAngle: 30, sweep: 65, delay: 1.2, dur: 7.5 },
+  { offset: 72, color: 'hsl(152 60% 50%)', baseAngle: -10, sweep: 55, delay: 3, dur: 8.5 },
+  { offset: 86, color: 'hsl(270 80% 65%)', baseAngle: 40, sweep: 75, delay: 0.4, dur: 9.5 },
+  { offset: 96, color: 'hsl(25 95% 55%)', baseAngle: -25, sweep: 60, delay: 2.8, dur: 7 },
+];
+
+const POOLS = [
+  { color: 'hsl(25 95% 55%)', top: '80%', left: '20%', delay: 0, dur: 10 },
+  { color: 'hsl(270 80% 60%)', top: '75%', left: '50%', delay: 2, dur: 12 },
+  { color: 'hsl(152 60% 45%)', top: '85%', left: '75%', delay: 1, dur: 11 },
+  { color: 'hsl(270 80% 70%)', top: '90%', left: '35%', delay: 3, dur: 9 },
+  { color: 'hsl(25 95% 60%)', top: '82%', left: '65%', delay: 1.5, dur: 13 },
+];
+
 export default function StageLights() {
-  const lights = [
-    { color: 'hsl(25 95% 55%)', startX: '10%', angle: -30, delay: 0, duration: 6 },
-    { color: 'hsl(270 80% 60%)', startX: '30%', angle: 20, delay: 1.5, duration: 7 },
-    { color: 'hsl(152 60% 45%)', startX: '50%', angle: -15, delay: 0.8, duration: 5.5 },
-    { color: 'hsl(270 80% 60%)', startX: '70%', angle: 25, delay: 2.2, duration: 6.5 },
-    { color: 'hsl(25 95% 55%)', startX: '90%', angle: -40, delay: 1.2, duration: 7.5 },
-    { color: 'hsl(152 60% 45%)', startX: '20%', angle: 35, delay: 3, duration: 6 },
-    { color: 'hsl(270 80% 70%)', startX: '80%', angle: -25, delay: 2.5, duration: 8 },
-    { color: 'hsl(25 95% 60%)', startX: '45%', angle: 10, delay: 0.4, duration: 5 },
-  ];
-
   return (
-    <div className="absolute inset-0 flex items-start justify-center pointer-events-none overflow-hidden">
-      {/* Central glow burst */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full blur-[80px] opacity-30"
-        style={{
-          background: 'radial-gradient(ellipse, hsl(270 80% 60% / 0.4), hsl(25 95% 55% / 0.2) 40%, transparent 70%)',
-          animation: 'stage-glow-pulse 4s ease-in-out infinite',
-        }}
-      />
-
-      {/* Light beams */}
-      {lights.map((light, i) => (
-        <div
-          key={i}
-          className="absolute top-0"
-          style={{
-            left: light.startX,
-            transformOrigin: 'top center',
-            animation: `stage-light-sweep-${i} ${light.duration}s ease-in-out infinite`,
-            animationDelay: `${light.delay}s`,
-          }}
-        >
+    <>
+      {/* ── Fixed full-page overlay: beams + floor pools ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Beams — originate from top of viewport, sweep across entire page */}
+        {FIXTURES.map((fx, i) => (
           <div
-            className="stage-beam"
+            key={`beam-${i}`}
+            className="absolute top-0"
             style={{
-              width: '180px',
-              height: '400px',
-              background: `linear-gradient(to bottom, ${light.color} 0%, ${light.color.replace(')', ' / 0.15)')} 30%, transparent 80%)`,
-              clipPath: 'polygon(45% 0%, 55% 0%, 100% 100%, 0% 100%)',
-              filter: `blur(6px)`,
-              opacity: 0.5,
+              left: `${fx.offset}%`,
+              transformOrigin: 'top center',
+              animation: `stage-beam-${i} ${fx.dur}s ease-in-out infinite`,
+              animationDelay: `${fx.delay}s`,
+            }}
+          >
+            <div
+              className="absolute"
+              style={{
+                left: '-90px',
+                width: '180px',
+                height: '120vh',
+                background: `linear-gradient(to bottom, ${fx.color} 0%, ${fx.color.replace(')', ' / 0.12)')} 20%, transparent 60%)`,
+                clipPath: 'polygon(45% 0%, 55% 0%, 100% 100%, 0% 100%)',
+                filter: 'blur(10px)',
+                opacity: 0.35,
+              }}
+            />
+          </div>
+        ))}
+
+        {/* Floor pools of moving colored light */}
+        {POOLS.map((p, i) => (
+          <div
+            key={`pool-${i}`}
+            className="absolute rounded-full blur-[60px]"
+            style={{
+              width: '220px',
+              height: '220px',
+              top: p.top,
+              left: p.left,
+              background: p.color,
+              opacity: 0.07,
+              animation: `stage-pool-${i} ${p.dur}s ease-in-out infinite`,
+              animationDelay: `${p.delay}s`,
             }}
           />
+        ))}
+      </div>
+
+      {/* ── Hanging fixtures — render relative to title position ── */}
+      {/* Rig bar */}
+      <div
+        className="absolute -top-3 left-0 right-0 h-1.5 rounded-full pointer-events-none"
+        style={{
+          background: 'linear-gradient(to bottom, hsl(0 0% 35% / 0.4), hsl(0 0% 20% / 0.2))',
+          boxShadow: '0 1px 2px hsl(0 0% 0% / 0.4)',
+        }}
+      />
+      {FIXTURES.map((fx, i) => (
+        <div
+          key={`fix-${i}`}
+          className="absolute pointer-events-none"
+          style={{
+            left: `${fx.offset}%`,
+            top: 0,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          {/* Hanging cable */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 bg-gradient-to-b from-white/30 to-white/10"
+            style={{ width: '1px', height: '6px', top: '-6px' }}
+          />
+          {/* Fixture body */}
+          <div
+            className="relative rounded-full"
+            style={{
+              width: '14px',
+              height: '14px',
+              background: 'linear-gradient(135deg, hsl(0 0% 28%), hsl(0 0% 12%))',
+              border: '1px solid hsl(0 0% 40% / 0.6)',
+              boxShadow: `0 0 10px ${fx.color.replace(')', ' / 0.4)')}, inset 0 1px 1px hsl(0 0% 100% / 0.15)`,
+            }}
+          >
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: fx.color,
+                opacity: 0.65,
+                filter: 'blur(3px)',
+                animation: `bulb-pulse ${2 + (i % 3)}s ease-in-out infinite`,
+                animationDelay: `${fx.delay}s`,
+              }}
+            />
+          </div>
         </div>
       ))}
 
-      {/* Floating color orbs that drift around the title */}
-      {[
-        { color: 'hsl(25 95% 55%)', size: 80, top: '20%', left: '15%', delay: 0, dur: 8 },
-        { color: 'hsl(270 80% 60%)', size: 100, top: '30%', left: '75%', delay: 2, dur: 10 },
-        { color: 'hsl(152 60% 45%)', size: 70, top: '50%', left: '25%', delay: 1, dur: 9 },
-        { color: 'hsl(25 95% 60%)', size: 90, top: '10%', left: '60%', delay: 3, dur: 7 },
-        { color: 'hsl(270 80% 70%)', size: 60, top: '40%', left: '50%', delay: 1.5, dur: 11 },
-      ].map((orb, i) => (
-        <div
-          key={`orb-${i}`}
-          className="absolute rounded-full blur-[40px]"
-          style={{
-            width: orb.size,
-            height: orb.size,
-            top: orb.top,
-            left: orb.left,
-            background: orb.color,
-            opacity: 0.25,
-            animation: `stage-orb-drift-${i} ${orb.dur}s ease-in-out infinite`,
-            animationDelay: `${orb.delay}s`,
-          }}
-        />
-      ))}
-
       <style>{`
-        @keyframes stage-glow-pulse {
-          0%, 100% { opacity: 0.2; transform: translateX(-50%) scale(0.9); }
-          50% { opacity: 0.4; transform: translateX(-50%) scale(1.1); }
+        @keyframes bulb-pulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.95; transform: scale(1.2); }
         }
-
-        @keyframes stage-orb-drift-0 {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(40px, 20px); }
-          50% { transform: translate(-20px, 40px); }
-          75% { transform: translate(30px, -10px); }
-        }
-        @keyframes stage-orb-drift-1 {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(-50px, 30px); }
-          50% { transform: translate(30px, -20px); }
-          75% { transform: translate(-10px, 50px); }
-        }
-        @keyframes stage-orb-drift-2 {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(50px, -30px); }
-          50% { transform: translate(-30px, 20px); }
-          75% { transform: translate(20px, 40px); }
-        }
-        @keyframes stage-orb-drift-3 {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(-30px, 40px); }
-          50% { transform: translate(40px, -30px); }
-          75% { transform: translate(-20px, -10px); }
-        }
-        @keyframes stage-orb-drift-4 {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(30px, -40px); }
-          50% { transform: translate(-40px, 10px); }
-          75% { transform: translate(50px, 30px); }
-        }
-
-        @keyframes stage-light-sweep-0 {
-          0%, 100% { transform: rotate(-30deg) scaleY(1); opacity: 0.4; }
-          50% { transform: rotate(20deg) scaleY(1.2); opacity: 0.6; }
-        }
-        @keyframes stage-light-sweep-1 {
-          0%, 100% { transform: rotate(20deg) scaleY(1.1); opacity: 0.5; }
-          50% { transform: rotate(-25deg) scaleY(0.9); opacity: 0.7; }
-        }
-        @keyframes stage-light-sweep-2 {
-          0%, 100% { transform: rotate(-15deg) scaleY(0.9); opacity: 0.6; }
-          50% { transform: rotate(30deg) scaleY(1.2); opacity: 0.4; }
-        }
-        @keyframes stage-light-sweep-3 {
-          0%, 100% { transform: rotate(25deg) scaleY(1); opacity: 0.5; }
-          50% { transform: rotate(-20deg) scaleY(1.1); opacity: 0.7; }
-        }
-        @keyframes stage-light-sweep-4 {
-          0%, 100% { transform: rotate(-40deg) scaleY(1.2); opacity: 0.4; }
-          50% { transform: rotate(15deg) scaleY(0.9); opacity: 0.6; }
-        }
-        @keyframes stage-light-sweep-5 {
-          0%, 100% { transform: rotate(35deg) scaleY(1); opacity: 0.5; }
-          50% { transform: rotate(-30deg) scaleY(1.2); opacity: 0.6; }
-        }
-        @keyframes stage-light-sweep-6 {
-          0%, 100% { transform: rotate(-25deg) scaleY(1.1); opacity: 0.4; }
-          50% { transform: rotate(25deg) scaleY(0.95); opacity: 0.6; }
-        }
-        @keyframes stage-light-sweep-7 {
-          0%, 100% { transform: rotate(10deg) scaleY(0.9); opacity: 0.6; }
-          50% { transform: rotate(-35deg) scaleY(1.15); opacity: 0.4; }
-        }
+        ${FIXTURES.map((fx, i) => `
+          @keyframes stage-beam-${i} {
+            0%, 100% { transform: rotate(${fx.baseAngle - fx.sweep / 2}deg); opacity: 0.3; }
+            50% { transform: rotate(${fx.baseAngle + fx.sweep / 2}deg); opacity: 0.5; }
+          }
+        `).join('')}
+        ${POOLS.map((_, i) => `
+          @keyframes stage-pool-${i} {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(${i % 2 ? -50 : 60}px, ${i % 2 ? 20 : -30}px) scale(1.2); }
+            66% { transform: translate(${i % 2 ? 40 : -40}px, ${i % 2 ? -40 : 20}px) scale(0.9); }
+          }
+        `).join('')}
       `}</style>
-    </div>
+    </>
   );
 }
