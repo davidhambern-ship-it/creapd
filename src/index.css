@@ -92,14 +92,6 @@
 }
 
 @font-face {
-  font-family: 'The2K12';
-  src: url('https://drive.usercontent.google.com/download?id=14KNTf1qDcOO8zp2-xeRRejnnWGuCSoae&export=download&confirm=t') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
   font-family: 'CreapdTagline';
   src: url('https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/4cb74d10b_CreapdTagline2.ttf') format('truetype');
   font-weight: normal;
