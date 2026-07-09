@@ -96,7 +96,7 @@
   src: url('https://drive.google.com/uc?export=download&id=14KNTf1qDcOO8zp2-xeRRejnnWGuCSoae') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
