@@ -301,11 +301,13 @@ export default function MusicConfigure() {
               <h1 className="relative z-10 text-4xl sm:text-5xl md:text-7xl font-bold mb-1 futuristic-title tracking-[0.15em] whitespace-nowrap" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
             <p className="relative z-10 text-2xl mb-1 tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif", color: 'hsl(152 60% 45%)', filter: 'drop-shadow(0 0 6px hsl(152 60% 45% / 0.6)) drop-shadow(0 0 20px hsl(152 60% 45% / 0.4))' }}>Discover Your Vibes</p>
-            <DiscoveryNavBar
-              rooms={NAV_ROOMS}
-              onRoulette={() => setRouletteOpen(true)}
-              rouletteColor="#FF00FF"
-            />
+            <div className="flex justify-center mt-4 overflow-x-auto">
+              <DiscoveryNavBar
+                rooms={NAV_ROOMS}
+                onRoulette={() => setRouletteOpen(true)}
+                rouletteColor="#FF00FF"
+              />
+            </div>
           </motion.div>
 
           {/* Room Cards Grid */}
