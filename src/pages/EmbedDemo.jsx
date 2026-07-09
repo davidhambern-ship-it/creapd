@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Youtube, Music2, ExternalLink, Sparkles, Loader2, Play, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
 
 const EMBED_DEMOS = [
   {
@@ -86,14 +87,73 @@ export default function EmbedDemo() {
   const [briefText, setBriefText] = useState('Uplifting synthwave for a tech product launch segment, 120-130 BPM');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setGenerating(true);
     setPlaylist([]);
-    // Simulate the backend function call delay
-    setTimeout(() => {
-      setPlaylist(SIMULATED_PLAYLIST);
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a music supervisor for a broadcast production. Based on this brief, find 5 REAL, well-known tracks that fit.
+
+BRIEF: ${briefText}
+
+For each track, return:
+- title: the song title
+- artist: the artist name
+- mood: a short mood descriptor (e.g. "Energetic / Driving")
+- bpm: the BPM as a number (or null if unknown)
+- platform: "youtube", "spotify", or "soundcloud" — pick whichever platform you can confidently provide a real embed URL for
+- embedUrl: a REAL working embed URL for this exact track on the chosen platform:
+  * YouTube: https://www.youtube.com/embed/VIDEO_ID (find the real video ID)
+  * Spotify: https://open.spotify.com/embed/track/TRACK_ID (find the real track ID)
+  * SoundCloud: https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/TRACK_ID (find the real track ID)
+- sourceUrl: the regular (non-embed) link to the track on that platform
+- matchScore: a 70-99 number for how well it matches the brief
+
+Only return tracks where you are confident the embed URL is correct and real. Do not guess or fabricate IDs — if you're not sure of the exact ID, pick a different platform where you ARE sure.`,
+        add_context_from_internet: true,
+        model: 'gemini_3_flash',
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            tracks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  artist: { type: 'string' },
+                  mood: { type: 'string' },
+                  bpm: { type: 'number' },
+                  platform: { type: 'string' },
+                  embedUrl: { type: 'string' },
+                  sourceUrl: { type: 'string' },
+                  matchScore: { type: 'number' }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const tracks = (result.tracks || []).map((t, idx) => ({
+        id: `ai_${idx}_${Date.now()}`,
+        title: t.title,
+        artist: t.artist,
+        mood: t.mood,
+        bpm: t.bpm || null,
+        platform: t.platform,
+        embedUrl: t.embedUrl,
+        sourceUrl: t.sourceUrl,
+        matchScore: t.matchScore || 80
+      })).sort((a, b) => b.matchScore - a.matchScore);
+
+      setPlaylist(tracks);
+    } catch (err) {
+      console.error('AI playlist generation failed:', err);
+      setPlaylist([]);
+    } finally {
       setGenerating(false);
-    }, 2200);
+    }
   };
 
   return (
@@ -194,9 +254,9 @@ export default function EmbedDemo() {
               AI-Generated Playlist
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              This simulates what happens when <code className="text-xs text-primary">buildMusicProduction</code> runs:
-              the AI reads your brief, suggests tracks with metadata, and each suggestion renders as an embeddable
-              player. No audio is hosted by CREAPD — every player loads from its native platform.
+              Type a music brief, click Generate, and the AI searches the web for real tracks — returning embed URLs
+              for YouTube, Spotify, or SoundCloud. Each result renders as a live, playable iframe loaded directly
+              from the source platform. No audio is hosted by CREAPD.
             </p>
           </div>
 
