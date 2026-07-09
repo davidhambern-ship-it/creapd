@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
+
+// Load The2K12 font via FontFace API for guaranteed loading
+const THE2K12_URL = 'https://base44.app/api/apps/6a4126962e5804304cc84b12/files/mp/public/6a4126962e5804304cc84b12/76244154f_The2K12Font.ttf';
+if (typeof window !== 'undefined' && !window._the2k12_loaded) {
+  window._the2k12_loaded = true;
+  const face = new FontFace('The2K12', `url(${THE2K12_URL})`);
+  face.load().then(() => {
+    document.fonts.add(face);
+  }).catch(() => {});
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
