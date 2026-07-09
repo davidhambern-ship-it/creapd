@@ -56,7 +56,7 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
               onClick={() => navigate(room.path)}
               whileHover={{ scale: 1.15, y: -2 }}
               whileTap={{ scale: 0.85 }}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors"
+              className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors"
               style={{
                 background: `${room.color}14`,
                 borderColor: `${room.color}30`,
