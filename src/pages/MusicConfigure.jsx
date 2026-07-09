@@ -16,7 +16,8 @@ import {
 import {
   Loader2, Music, Clock, Smile, Mic, ListChecks,
   Bot, CheckCircle2, ChevronDown, ChevronUp,
-  Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic
+  Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic,
+  LayoutDashboard, Search, Package, Sparkles, Download
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import ShowRoulette from '@/components/music/ShowRoulette';
@@ -194,6 +195,16 @@ export default function MusicConfigure() {
   const selectedSources = safeParse(config.research_sources, []);
   const selectedAutomation = safeParse(config.ai_automation, []);
 
+  const NAV_ROOMS = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard', color: '#00FFFF' },
+    { icon: Search, label: 'Knowledge', path: '/music/research', color: '#00FF88' },
+    { icon: ListMusic, label: 'Playlist', path: '/music/playlist', color: '#8B5CF6' },
+    { icon: ListChecks, label: 'Topics', path: '/music/topics', color: '#FF6B00' },
+    { icon: Package, label: 'Rundown', path: '/music/rundown', color: '#FFD700' },
+    { icon: Sparkles, label: 'Assets', path: '/music/assets', color: '#FF00FF' },
+    { icon: Download, label: 'Export', path: '/music/export', color: '#FF3366' },
+  ];
+
   const canBuild = config.production_name && config.show_date;
 
   const ROOMS = [
@@ -284,7 +295,7 @@ export default function MusicConfigure() {
             </motion.div>
             <h1 className="text-3xl font-heading font-bold text-white mb-1">Discovery Room</h1>
             <p className="text-sm text-gray-400">Tap a room to configure your show</p>
-            <div className="flex items-center justify-center gap-3 mt-4">
+            <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
               <motion.button
                 onClick={() => setRouletteOpen(true)}
                 whileHover={{ scale: 1.05 }}
@@ -302,20 +313,29 @@ export default function MusicConfigure() {
                 </motion.span>
                 Show Roulette
               </motion.button>
-              <motion.button
-                onClick={() => navigate('/music/playlist')}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="flex items-center justify-center w-10 h-10 rounded-lg border"
-                title="Playlist Room"
-                style={{
-                  background: '#8B5CF618',
-                  borderColor: '#8B5CF640',
-                  boxShadow: '0 0 12px #8B5CF625',
-                }}
-              >
-                <ListMusic className="w-5 h-5" style={{ color: '#8B5CF6' }} />
-              </motion.button>
+              {NAV_ROOMS.map((room, i) => {
+                const Icon = room.icon;
+                return (
+                  <motion.button
+                    key={room.path}
+                    onClick={() => navigate(room.path)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    title={room.label}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg border"
+                    style={{
+                      background: `${room.color}18`,
+                      borderColor: `${room.color}40`,
+                      boxShadow: `0 0 12px ${room.color}25`,
+                    }}
+                  >
+                    <Icon className="w-5 h-5" style={{ color: room.color }} />
+                  </motion.button>
+                );
+              })}
             </div>
           </motion.div>
 
