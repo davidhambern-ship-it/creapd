@@ -412,7 +412,7 @@ export default function OrbitalConfigCanvas({
                 <div
                   className="absolute flex flex-col items-center justify-center gap-1"
                   style={{
-                    top: '70px',
+                    top: '100px',
                     left: '8px',
                     width: '84px',
                     zIndex: 2,
