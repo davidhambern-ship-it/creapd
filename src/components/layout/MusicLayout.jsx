@@ -42,7 +42,7 @@ export default function MusicLayout() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex w-60 flex-col env-glass-sidebar">
+        <aside className="hidden md:flex w-60 flex-col env-glass-sidebar relative z-20">
           <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
             <SidebarNavSections items={MUSIC_NAV_ITEMS} iconMap={ICON_MAP} />
             <AdminSidebarSection variant="music" onNavigate={() => {}} />
