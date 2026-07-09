@@ -209,9 +209,6 @@ export default function MusicConfigure() {
       summary: () => config.playlist_energy_flow },
     { id: 'ai', label: 'AI Automation', icon: Bot, color: '#FFD700', subtitle: 'What CREAPD auto-generates',
       summary: () => `${selectedAutomation.length} tasks enabled` },
-    { id: 'playlist', label: 'Playlist Room', icon: ListMusic, color: '#8B5CF6', subtitle: 'View & edit song list',
-      link: '/music/playlist',
-      summary: () => 'Open playlist →' },
   ];
 
   const handleBuild = async () => {
@@ -305,6 +302,20 @@ export default function MusicConfigure() {
                 </motion.span>
                 Show Roulette
               </motion.button>
+              <motion.button
+                onClick={() => navigate('/music/playlist')}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="flex items-center justify-center w-10 h-10 rounded-lg border"
+                title="Playlist Room"
+                style={{
+                  background: '#8B5CF618',
+                  borderColor: '#8B5CF640',
+                  boxShadow: '0 0 12px #8B5CF625',
+                }}
+              >
+                <ListMusic className="w-5 h-5" style={{ color: '#8B5CF6' }} />
+              </motion.button>
             </div>
           </motion.div>
 
@@ -316,7 +327,7 @@ export default function MusicConfigure() {
               return (
                 <motion.button
                   key={room.id}
-                  onClick={() => room.link ? navigate(room.link) : setOpenRoom(isOpen ? null : room.id)}
+                  onClick={() => setOpenRoom(isOpen ? null : room.id)}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 25 }}
