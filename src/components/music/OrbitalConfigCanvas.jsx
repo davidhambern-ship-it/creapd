@@ -6,6 +6,9 @@ import { ArrowLeft, Disc3, Sparkles } from 'lucide-react';
  * 2.5D Orbital Configuration Canvas
  * Renders config "rooms" as floating nodes on a tilted perspective plane
  * orbiting a central hub. Clicking a node transitions to a focused panel.
+ *
+ * Visual tilt layer (rings/hub) is separated from the interactive node layer
+ * so 3D transforms never break click hit-testing.
  */
 export default function OrbitalConfigCanvas({
   rooms = [],
@@ -45,8 +48,6 @@ export default function OrbitalConfigCanvas({
 
   const radius = isMobile ? 125 : 190;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
-  const focusedData = rooms.find(r => r.id === focusedRoom);
-  const FocusedIcon = focusedData?.icon;
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ perspective: '1000px' }}>
@@ -62,9 +63,9 @@ export default function OrbitalConfigCanvas({
             className="relative flex items-center justify-center"
             style={{ height: isMobile ? '440px' : '560px' }}
           >
-            {/* Tilted perspective plane */}
+            {/* ═══ VISUAL LAYER — tilted, non-interactive ═══ */}
             <div
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
               style={{
                 transformStyle: 'preserve-3d',
                 transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
@@ -91,9 +92,9 @@ export default function OrbitalConfigCanvas({
                 }}
               />
 
-              {/* Central Hub */}
+              {/* Central Hub (visual) */}
               <motion.div
-                className="relative z-20 flex flex-col items-center"
+                className="relative flex flex-col items-center"
                 animate={{ y: [0, -6, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
                 style={{ transform: 'translateZ(30px)' }}
@@ -106,7 +107,6 @@ export default function OrbitalConfigCanvas({
                     boxShadow: '0 0 40px rgba(255,0,255,0.08), inset 0 0 24px rgba(0,255,255,0.04)',
                   }}
                 >
-                  {/* Pulsing ring when ready to build */}
                   {canBuild && (
                     <motion.div
                       className="absolute inset-0 rounded-full"
@@ -124,79 +124,86 @@ export default function OrbitalConfigCanvas({
                   />
                 </div>
                 <p className="text-[9px] text-gray-500 mt-2 font-mono uppercase tracking-[0.2em]">Show Core</p>
-
-                {/* Build button appears on hub when ready */}
-                {canBuild && (
-                  <motion.button
-                    onClick={onBuild}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ scale: 1.08 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="mt-3 px-5 py-2 rounded-full text-xs font-bold flex items-center gap-1.5"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(255,0,255,0.1))',
-                      border: '1px solid rgba(0,255,136,0.4)',
-                      color: '#00FF88',
-                      boxShadow: '0 0 20px rgba(0,255,136,0.15)',
-                    }}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Build Show
-                  </motion.button>
-                )}
               </motion.div>
+            </div>
 
-              {/* Orbital Nodes */}
-              {rooms.map((room, i) => {
-                const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
-                const Icon = room.icon;
-                return (
+            {/* ═══ INTERACTIVE LAYER — flat, clickable ═══ */}
+            {/* Build button on hub */}
+            {canBuild && (
+              <motion.button
+                onClick={onBuild}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.95 }}
+                className="absolute z-30 px-5 py-2 rounded-full text-xs font-bold flex items-center gap-1.5"
+                style={{
+                  top: 'calc(50% + 55px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(255,0,255,0.1))',
+                  border: '1px solid rgba(0,255,136,0.4)',
+                  color: '#00FF88',
+                  boxShadow: '0 0 20px rgba(0,255,136,0.15)',
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Build Show
+              </motion.button>
+            )}
+
+            {/* Orbital Nodes — positioned in flat 2D space, always clickable */}
+            {rooms.map((room, i) => {
+              const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+              const Icon = room.icon;
+              return (
+                <motion.button
+                  key={room.id}
+                  onClick={() => onFocusRoom?.(room.id)}
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    y: [0, -8, 0],
+                  }}
+                  transition={{
+                    opacity: { duration: 0.4, delay: i * 0.06 },
+                    scale: { duration: 0.4, delay: i * 0.06 },
+                    y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 },
+                  }}
+                  whileHover={{ scale: 1.12 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="absolute z-20"
+                  style={{
+                    left: `calc(50% + ${x}px)`,
+                    top: `calc(50% + ${y}px)`,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
                   <div
-                    key={room.id}
-                    className="absolute z-10"
+                    className="flex flex-col items-center gap-1 p-3 rounded-2xl border min-w-[90px] backdrop-blur-sm"
                     style={{
-                      left: `calc(50% + ${x}px)`,
-                      top: `calc(50% + ${y}px)`,
-                      transform: 'translate(-50%, -50%) translateZ(20px)',
-                      transformStyle: 'preserve-3d',
+                      background: `${room.color}0A`,
+                      borderColor: `${room.color}30`,
+                      boxShadow: `0 4px 24px ${room.color}08, 0 0 16px ${room.color}06`,
                     }}
                   >
-                    <motion.button
-                      onClick={() => onFocusRoom?.(room.id)}
-                      animate={{ y: [0, -8, 0] }}
-                      transition={{
-                        y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 },
-                      }}
-                      whileHover={{ scale: 1.12 }}
-                      whileTap={{ scale: 0.95 }}
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
                     >
-                      <div
-                        className="flex flex-col items-center gap-1 p-3 rounded-2xl border min-w-[90px] backdrop-blur-sm"
-                        style={{
-                          background: `${room.color}0A`,
-                          borderColor: `${room.color}30`,
-                          boxShadow: `0 4px 24px ${room.color}08, 0 0 16px ${room.color}06`,
-                        }}
-                      >
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center"
-                          style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
-                        >
-                          <Icon className="w-4 h-4" style={{ color: room.color }} />
-                        </div>
-                        <span className="text-[10px] font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
-                        <span className="text-[8px] font-mono truncate max-w-[80px] opacity-60" style={{ color: room.color }}>
-                          {typeof room.summary === 'function' ? room.summary() : ''}
-                        </span>
-                      </div>
-                    </motion.button>
+                      <Icon className="w-4 h-4" style={{ color: room.color }} />
+                    </div>
+                    <span className="text-[10px] font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
+                    <span className="text-[8px] font-mono truncate max-w-[80px] opacity-60" style={{ color: room.color }}>
+                      {typeof room.summary === 'function' ? room.summary() : ''}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                </motion.button>
+              );
+            })}
 
             {/* Hint when not ready to build */}
             {!canBuild && (
