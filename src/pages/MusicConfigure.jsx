@@ -298,7 +298,7 @@ export default function MusicConfigure() {
               </motion.div>
               <h1 className="relative z-10 text-7xl font-bold mb-1 futuristic-title tracking-[0.15em]" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
-            <p className="text-sm text-gray-400" style={{ fontFamily: "'ModernConformist', sans-serif" }}>Discover Your Vibes</p>
+            <p className="relative z-10 text-2xl mb-1 futuristic-title tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif" }}>Discover Your Vibes</p>
             <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
               <motion.button
                 onClick={() => setRouletteOpen(true)}
