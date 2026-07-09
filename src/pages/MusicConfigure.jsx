@@ -347,18 +347,18 @@ export default function MusicConfigure() {
                           opacity: [0.5, 1, 0.5],
                         }}
                         transition={{
-                          duration: 1.2,
+                          duration: 2.8,
                           repeat: Infinity,
-                          delay: i * 0.15,
+                          delay: i * 0.2,
                           ease: 'easeInOut',
                         }}
                       />
                       <motion.div
                         animate={{ scale: [1, 1.12, 1], opacity: [0.7, 1, 0.7] }}
                         transition={{
-                          duration: 1.2,
+                          duration: 2.8,
                           repeat: Infinity,
-                          delay: i * 0.15,
+                          delay: i * 0.2,
                           ease: 'easeInOut',
                         }}
                       >
