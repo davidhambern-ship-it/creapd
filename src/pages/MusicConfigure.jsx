@@ -286,16 +286,16 @@ export default function MusicConfigure() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-6"
           >
-            <motion.div
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-              style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)', boxShadow: '0 0 24px rgba(255,0,255,0.15)' }}
-            >
-              <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
-            </motion.div>
             <div className="relative inline-block">
               <StageLights />
+              <motion.div
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                className="relative z-20 inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-2"
+                style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)', boxShadow: '0 0 24px rgba(255,0,255,0.15)' }}
+              >
+                <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
+              </motion.div>
               <h1 className="relative z-10 text-7xl font-bold mb-1 futuristic-title" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
             <p className="text-sm text-gray-400">Tap a room to configure your show</p>
