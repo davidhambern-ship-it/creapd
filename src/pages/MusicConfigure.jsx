@@ -20,6 +20,7 @@ import {
   LayoutDashboard, Search, Package, Sparkles, Download
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import StageLights from '@/components/music/StageLights';
 import ShowRoulette from '@/components/music/ShowRoulette';
 
 function safeParse(str, fallback) {
@@ -293,7 +294,10 @@ export default function MusicConfigure() {
             >
               <Radio className="w-8 h-8" style={{ color: '#FF00FF' }} />
             </motion.div>
-            <h1 className="text-7xl font-bold mb-1 futuristic-title" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
+            <div className="relative inline-block">
+              <StageLights />
+              <h1 className="relative z-10 text-7xl font-bold mb-1 futuristic-title" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
+            </div>
             <p className="text-sm text-gray-400">Tap a room to configure your show</p>
             <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
               <motion.button
