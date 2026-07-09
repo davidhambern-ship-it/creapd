@@ -226,9 +226,9 @@ Only return tracks where you are confident the embed URL is correct and real. Do
               key={active.embedUrl}
               src={active.embedUrl}
               className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
-              sandbox="allow-scripts allow-same-origin allow-popups"
+              referrerPolicy="strict-origin-when-cross-origin"
               title={`${active.label} embed demo`}
             />
           </div>
@@ -383,9 +383,9 @@ Only return tracks where you are confident the embed URL is correct and real. Do
                           key={track.embedUrl}
                           src={track.embedUrl}
                           className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           allowFullScreen
-                          sandbox="allow-scripts allow-same-origin allow-popups"
+                          referrerPolicy="strict-origin-when-cross-origin"
                           title={`${track.title} — ${meta.label}`}
                         />
                       </div>
