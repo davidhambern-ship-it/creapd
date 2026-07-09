@@ -225,7 +225,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Artist"
               accent={accent}
-              style={{ top: '30%', left: '4%', width: '34%', height: '28%' }}
+              style={{ top: '30%', left: '4%', width: '40%', height: '38%' }}
             >
               <FieldLabel accent={accent}>Host / Artist</FieldLabel>
               <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
@@ -240,7 +240,7 @@ export default function VinylCoverForm({
               label="Format"
               accent={accent}
               glow={false}
-              style={{ top: '28%', right: '4%', width: '28%', height: '24%' }}
+              style={{ top: '30%', right: '4%', width: '40%', height: '38%' }}
             >
               <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
               <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
@@ -264,7 +264,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Liner Notes"
               accent={accent}
-              style={{ bottom: '4%', left: '8%', right: '8%', height: '24%' }}
+              style={{ bottom: '4%', left: '8%', right: '8%', height: '22%' }}
             >
               <FieldLabel accent={accent}>Show Description</FieldLabel>
               <Textarea
