@@ -98,9 +98,12 @@ export default function OrbitalConfigCanvas({
               />
             </div>
 
-            {/* ═══ Central Hub — TurntableHub is parent for nodes ═══ */}
-            <TurntableHub canBuild={canBuild}>
-              {/* Build button on hub */}
+            {/* ═══ Central Hub — turntable + nodes as siblings, sharing one relative container ═══ */}
+            <div className="relative flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
+              {/* Turntable deck (visual only, centered by flexbox) */}
+              <TurntableHub canBuild={canBuild} />
+
+              {/* Build button below deck */}
               {canBuild && (
                 <motion.button
                   onClick={onBuild}
@@ -110,7 +113,7 @@ export default function OrbitalConfigCanvas({
                   whileTap={{ scale: 0.95 }}
                   className="absolute z-30 px-7 py-2.5 rounded-full text-sm font-bold flex items-center gap-2"
                   style={{
-                    top: 'calc(50% + 85px)',
+                    top: 'calc(50% + 170px)',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(255,0,255,0.1))',
@@ -124,7 +127,7 @@ export default function OrbitalConfigCanvas({
                 </motion.button>
               )}
 
-              {/* Orbital Nodes — positioned relative to hub center, flat 2D */}
+              {/* Orbital Nodes — floating around the deck center */}
               {rooms.map((room, i) => {
                 const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
                 const x = Math.cos(angle) * radius;
@@ -179,11 +182,11 @@ export default function OrbitalConfigCanvas({
 
               {/* Hint when not ready to build */}
               {!canBuild && (
-                <p className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-mono whitespace-nowrap">
+                <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-mono whitespace-nowrap z-20">
                   Set a show name &amp; date to unlock build
                 </p>
               )}
-            </TurntableHub>
+            </div>
           </motion.div>
         ) : (
           /* ── FOCUSED VIEW — Vinyl Cover Form ── */

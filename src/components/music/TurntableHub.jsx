@@ -11,15 +11,15 @@ import { Disc3 } from 'lucide-react';
  *  - canBuild: boolean — controls tonearm position, LED color, vinyl label glow
  *  - children: orbital nodes rendered as children of the hub
  */
-export default function TurntableHub({ canBuild = false, children }) {
+export default function TurntableHub({ canBuild = false }) {
   return (
     <div
-      className="relative"
-      style={{ width: '336px', height: '276px' }}
+      className="relative pointer-events-none"
+      style={{ width: '336px', height: '276px', flexShrink: 0 }}
     >
       {/* ═══ TURNTABLE DECK ═══ */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute"
         style={{ width: '280px', height: '230px', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.2)' }}
       >
         {/* ── Deck body (rectangular turntable base) ── */}
@@ -390,8 +390,6 @@ export default function TurntableHub({ canBuild = false, children }) {
         )}
       </div>
 
-      {/* ═══ ORBITAL NODES — children rendered relative to hub center ═══ */}
-      {children}
     </div>
   );
 }
