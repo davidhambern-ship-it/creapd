@@ -172,8 +172,8 @@ export default function TurntableHub({ canBuild = false }) {
               viewBox="0 0 160 160"
             >
               <defs>
-                <path id="vinyl-arc-top" d="M 25,80 A 55,55 0 0,1 135,80" fill="none" />
-                <path id="vinyl-arc-bottom" d="M 135,80 A 55,55 0 0,0 25,80" fill="none" />
+                <path id="vinyl-arc-left" d="M 80,25 A 55,55 0 0,0 80,135" fill="none" />
+                <path id="vinyl-arc-right" d="M 80,25 A 55,55 0 0,1 80,135" fill="none" />
               </defs>
               <text
                 fill={canBuild ? 'rgba(0,255,136,0.7)' : 'rgba(255,0,255,0.6)'}
@@ -182,7 +182,7 @@ export default function TurntableHub({ canBuild = false }) {
                 fontFamily="var(--font-heading, Inter, sans-serif)"
                 letterSpacing="0.1em"
               >
-                <textPath href="#vinyl-arc-top" startOffset="50%" textAnchor="middle">
+                <textPath href="#vinyl-arc-left" startOffset="50%" textAnchor="middle">
                   BernATune
                 </textPath>
               </text>
@@ -193,7 +193,7 @@ export default function TurntableHub({ canBuild = false }) {
                 fontFamily="var(--font-heading, Inter, sans-serif)"
                 letterSpacing="0.1em"
               >
-                <textPath href="#vinyl-arc-bottom" startOffset="50%" textAnchor="middle">
+                <textPath href="#vinyl-arc-right" startOffset="50%" textAnchor="middle">
                   The Come Up
                 </textPath>
               </text>
