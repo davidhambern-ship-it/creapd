@@ -269,7 +269,7 @@ export default function VinylCoverForm({
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
               className="relative flex items-center justify-center"
-              style={{ gridRow: '2', gridColumn: '2', aspectRatio: '1 / 1' }}
+              style={{ gridRow: '2', gridColumn: '2', aspectRatio: '1 / 1', justifySelf: 'center', alignSelf: 'center', maxHeight: '100%' }}
             >
               <div
                 className="relative rounded-full flex items-center justify-center"
