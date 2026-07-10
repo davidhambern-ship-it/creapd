@@ -162,6 +162,42 @@ export default function TurntableHub({ canBuild = false }) {
                 }}
               />
             </div>
+
+            {/* Curved label text on the spinning vinyl */}
+            <svg
+              className="absolute pointer-events-none"
+              style={{ top: 0, left: 0 }}
+              width="160"
+              height="160"
+              viewBox="0 0 160 160"
+            >
+              <defs>
+                <path id="vinyl-arc-top" d="M 25,80 A 55,55 0 0,1 135,80" fill="none" />
+                <path id="vinyl-arc-bottom" d="M 135,80 A 55,55 0 0,0 25,80" fill="none" />
+              </defs>
+              <text
+                fill={canBuild ? 'rgba(0,255,136,0.7)' : 'rgba(255,0,255,0.6)'}
+                fontSize="9"
+                fontWeight="700"
+                fontFamily="var(--font-heading, Inter, sans-serif)"
+                letterSpacing="0.1em"
+              >
+                <textPath href="#vinyl-arc-top" startOffset="50%" textAnchor="middle">
+                  BernATune
+                </textPath>
+              </text>
+              <text
+                fill={canBuild ? 'rgba(0,255,136,0.7)' : 'rgba(255,0,255,0.6)'}
+                fontSize="9"
+                fontWeight="700"
+                fontFamily="var(--font-heading, Inter, sans-serif)"
+                letterSpacing="0.1em"
+              >
+                <textPath href="#vinyl-arc-bottom" startOffset="50%" textAnchor="middle">
+                  The Come Up
+                </textPath>
+              </text>
+            </svg>
           </motion.div>
         </div>
 
