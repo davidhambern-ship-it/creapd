@@ -228,12 +228,13 @@ export default function VinylCoverForm({
               </div>
             </CoverZone>
 
-            {/* Broadcast — positioned over the bottom rectangle on the album cover */}
+            {/* Broadcast — top right */}
             <CoverZone
+              gridMode
               label="Broadcast"
               accent={accent}
               glow={false}
-              style={{ bottom: '8%', left: '8%', right: '38%' }}
+              style={{ gridRow: '1', gridColumn: '2' }}
             >
               <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
               <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
