@@ -206,7 +206,7 @@ export default function VinylCoverForm({
               gridMode
               label="Album ID"
               accent={accent}
-              style={{ gridRow: '1', gridColumn: '1 / 3', maxWidth: '88%' }}
+              style={{ gridRow: '1', gridColumn: '1 / 3', maxWidth: '88%', marginLeft: '6%', marginTop: '2%' }}
             >
               <FieldLabel accent={accent}>Show / Album Name *</FieldLabel>
               <Input
