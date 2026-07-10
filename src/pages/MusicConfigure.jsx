@@ -25,6 +25,7 @@ import ShowRoulette from '@/components/music/ShowRoulette';
 import DiscoveryNavBar from '@/components/music/DiscoveryNavBar';
 import OrbitalConfigCanvas from '@/components/music/OrbitalConfigCanvas';
 import { playClick, playComplete } from '@/lib/recordingSound';
+import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -301,13 +302,11 @@ export default function MusicConfigure() {
           });
           await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
           await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
-        } catch (err) {
+          navigate('/music/research');
+          } catch (err) {
           setBuildError(err.message || 'Failed to build production.');
-        }
-      })();
-      // Navigate to Research Department after completion animation
-      const t = setTimeout(() => navigate('/music/research'), 2800);
-      return () => clearTimeout(t);
+          }
+          })();
     }
   }, [completedModules, recording, finalSequence]);
 
@@ -336,44 +335,7 @@ export default function MusicConfigure() {
   };
 
   if (finalSequence) {
-    return (
-      <div className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
-        <CyberpunkMusicBg variant="eq" />
-        <div className="relative z-10 max-w-md w-full text-center px-6">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="inline-block mb-6"
-          >
-            <Disc3 className="w-20 h-20" style={{ color: '#00FF88', filter: 'drop-shadow(0 0 24px #00FF88)' }} />
-          </motion.div>
-          <motion.h2
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
-            className="text-2xl font-heading font-bold mb-3"
-            style={{ color: '#00FF88', textShadow: '0 0 20px rgba(0,255,136,0.6)' }}
-          >
-            Discovery Complete
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-gray-400 mb-8 text-sm"
-          >
-            Dispatching to the Research Department...
-          </motion.p>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: '100%' }}
-            transition={{ duration: 2.5, ease: 'easeInOut' }}
-            className="h-1 rounded-full mx-auto"
-            style={{ background: 'linear-gradient(90deg, #00FF88, #FF00FF)' }}
-          />
-        </div>
-      </div>
-    );
+    return <DiscoveryBreakRoom buildError={buildError} />;
   }
 
   if (building) {
