@@ -194,7 +194,7 @@ export default function VinylCoverForm({
         {/* ── IDENTITY ROOM — Album Cover Grid Layout ── */}
         {room === 'identity' && (
           <div
-            className="absolute inset-0 grid gap-3 p-4"
+            className="absolute inset-0 grid gap-3 p-3 pt-1"
             style={{
               gridTemplateColumns: '1fr 1fr',
               gridTemplateRows: 'auto auto auto',
