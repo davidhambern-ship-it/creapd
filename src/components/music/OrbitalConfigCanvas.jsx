@@ -100,10 +100,8 @@ export default function OrbitalConfigCanvas({
 
             {/* ═══ Central Hub — turntable + nodes share same absolute center ═══ */}
             <div className="absolute inset-0">
-              {/* Turntable deck — shifted left 60px so the vinyl platter center
-                  (offset right within the deck at left:190/280 × 1.2 scale = 60px)
-                  aligns with the 50%/50% orbital center that nodes reference */}
-              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 60px), -50%)' }}>
+              {/* Turntable deck — centered at 50%/50%, nodes orbit this same center */}
+              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
                 <TurntableHub canBuild={canBuild} />
               </div>
 
