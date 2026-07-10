@@ -143,7 +143,7 @@ export default function MusicConfigure() {
     co_host_name: '',
     show_date: new Date().toISOString().split('T')[0],
     show_start_time: '06:00',
-    live_or_recorded: 'live',
+    production_format: 'radio',
     station_name: '',
     show_description: '',
     ...RUNTIME_DEFAULTS,
@@ -455,12 +455,12 @@ export default function MusicConfigure() {
                         <Input type="time" value={config.show_start_time} onChange={e => updateConfig('show_start_time', e.target.value)} className="bg-black/40 border-white/10 text-white" />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-gray-300">Live or Recorded</Label>
-                        <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
+                        <Label className="text-xs text-gray-300">Production Format</Label>
+                        <Select value={config.production_format} onValueChange={v => updateConfig('production_format', v)}>
                           <SelectTrigger className="bg-black/40 border-white/10 text-white"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="live">Live</SelectItem>
-                            <SelectItem value="recorded">Recorded</SelectItem>
+                            <SelectItem value="radio">Radio</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

@@ -236,12 +236,12 @@ export default function VinylCoverForm({
               glow={false}
               style={{ position: 'absolute', bottom: '9%', right: '10%', width: '42%', zIndex: 5 }}
             >
-              <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
-              <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
+              <FieldLabel accent={accent}>Production Format</FieldLabel>
+              <Select value={config.production_format} onValueChange={v => updateConfig('production_format', v)}>
                 <SelectTrigger className={`${inputClass} border-white/10`}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="live">Live</SelectItem>
-                  <SelectItem value="recorded">Recorded</SelectItem>
+                  <SelectItem value="radio">Radio</SelectItem>
                 </SelectContent>
               </Select>
               <div className="mt-2">
@@ -284,7 +284,7 @@ export default function VinylCoverForm({
                 >
                   <Disc3 className="w-8 h-8" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
                 </motion.div>
-                <p className="text-[10px] font-bold capitalize" style={{ color: accent }}>{config.live_or_recorded || '—'}</p>
+                <p className="text-[10px] font-bold capitalize" style={{ color: accent }}>{config.production_format || '—'}</p>
                 <p className="text-[8px] text-gray-400">Format sticker</p>
               </div>
             </div>
@@ -521,7 +521,8 @@ export default function VinylCoverForm({
               accent={accent}
               style={{ top: '6%', left: '6%', right: '6%', height: '50%' }}
             >
-              <FieldLabel accent={accent}>CREAPD Tasks ({selectedAutomation.length} enabled)</FieldLabel>
+              <FieldLabel accent={accent}>Execution Preferences ({selectedAutomation.length} enabled)</FieldLabel>
+              <p className="text-[9px] text-gray-500 mb-2">Controls which AI workers run automatically — does not define production content.</p>
               <div className="flex flex-wrap gap-1.5">
                 {AI_AUTOMATION_OPTIONS.map(opt => (
                   <NeonChip key={opt.key} label={opt.label} active={selectedAutomation.includes(opt.key)} onClick={() => toggleArrayItem('ai_automation', opt.key)} color={accent} />
@@ -543,8 +544,8 @@ export default function VinylCoverForm({
                   <Disc3 className="w-12 h-12" style={{ color: accent, filter: `drop-shadow(0 0 10px ${accent}66)` }} />
                 </motion.div>
                 <div>
-                  <p className="text-sm font-bold" style={{ color: accent }}>{selectedAutomation.length} tasks</p>
-                  <p className="text-[10px] text-gray-400">CREAPD will auto-generate these assets when you build.</p>
+                  <p className="text-sm font-bold" style={{ color: accent }}>{selectedAutomation.length} workers</p>
+                  <p className="text-[10px] text-gray-400">These AI workers will execute automatically during the build pipeline.</p>
                 </div>
               </div>
             </CoverZone>

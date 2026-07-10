@@ -48,39 +48,18 @@ export const ENERGY_FLOW_OPTIONS = [
 ];
 
 export const AI_AUTOMATION_OPTIONS = [
-  { key: 'Generate Playlist Plan', label: 'Generate Playlist Plan' },
-  { key: 'Generate Show Rundown', label: 'Generate Show Rundown' },
-  { key: 'Generate Show Clock', label: 'Generate Show Clock' },
-  { key: 'Generate Host Banter', label: 'Generate Host Banter' },
-  { key: 'Generate Song Intros', label: 'Generate Song Intros' },
-  { key: 'Generate Song Outros', label: 'Generate Song Outros' },
-  { key: 'Generate Artist Bios', label: 'Generate Artist Bios' },
-  { key: 'Generate Artist Facts', label: 'Generate Artist Facts' },
-  { key: 'Generate Music Trivia', label: 'Generate Music Trivia' },
-  { key: 'Generate Selected Music Topics', label: 'Generate Selected Music Topics' },
-  { key: 'Generate Sponsor Reads', label: 'Generate Sponsor Reads' },
-  { key: 'Generate Station IDs', label: 'Generate Station IDs' },
-  { key: 'Generate Audience Prompts', label: 'Generate Audience Prompts' },
-  { key: 'Generate Social Captions', label: 'Generate Social Captions' },
-  { key: 'Generate Hashtags', label: 'Generate Hashtags' },
-  { key: 'Generate Thumbnail Prompt', label: 'Generate Thumbnail Prompt' },
-  { key: 'Generate AI Images', label: 'Generate AI Images' },
-  { key: 'Generate Video Prompts', label: 'Generate Video Prompts' },
-  { key: 'Generate Production Notes', label: 'Generate Production Notes' },
-  { key: 'Generate Export Package', label: 'Generate Export Package' }
+  { key: 'Auto Research', label: 'Auto Research' },
+  { key: 'Auto Develop', label: 'Auto Develop' },
+  { key: 'Auto Build Playlist', label: 'Auto Build Playlist' },
+  { key: 'Auto Generate Images', label: 'Auto Generate Images' },
+  { key: 'Auto Assemble Packet', label: 'Auto Assemble Packet' },
+  { key: 'Auto Export', label: 'Auto Export' }
 ];
 
 export const DEFAULT_AI_AUTOMATION = [
-  'Generate Playlist Plan',
-  'Generate Show Rundown',
-  'Generate Show Clock',
-  'Generate Host Banter',
-  'Generate Song Intros',
-  'Generate Artist Facts',
-  'Generate Selected Music Topics',
-  'Generate Social Captions',
-  'Generate Thumbnail Prompt',
-  'Generate Production Notes'
+  'Auto Research',
+  'Auto Develop',
+  'Auto Build Playlist'
 ];
 
 export const RUNTIME_DEFAULTS = {
