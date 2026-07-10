@@ -1,0 +1,43 @@
+{
+  "name": "Top10Item",
+  "type": "object",
+  "properties": {
+    "configuration_id": {
+      "type": "string",
+      "description": "ID of the MusicProductionConfiguration this Top 10 list belongs to"
+    },
+    "order": {
+      "type": "number",
+      "default": 0
+    },
+    "title": {
+      "type": "string",
+      "description": "Video/song title from YouTube metadata"
+    },
+    "youtube_video_id": {
+      "type": "string",
+      "description": "YouTube video ID for embed playback"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "YouTube thumbnail URL"
+    },
+    "channel_name": {
+      "type": "string",
+      "description": "YouTube channel name"
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "If locked, this item is protected from AI regeneration"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "configuration_id",
+    "title",
+    "youtube_video_id"
+  ]
+}

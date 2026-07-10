@@ -58,6 +58,27 @@
     "artist_fact_generated": {
       "type": "boolean",
       "default": false
+    },
+    "youtube_video_id": {
+      "type": "string",
+      "description": "YouTube video ID for playable embed (user-selected tracks)"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "YouTube thumbnail URL for user-selected tracks"
+    },
+    "channel_name": {
+      "type": "string",
+      "description": "YouTube channel name for user-selected tracks"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "ai_generated",
+        "user_selected"
+      ],
+      "default": "ai_generated",
+      "description": "Whether this track was AI-suggested or manually added by the user"
     }
   },
   "required": [

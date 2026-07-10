@@ -52,6 +52,7 @@ import MusicDashboard from '@/pages/MusicDashboard';
 import EmbedDemo from '@/pages/EmbedDemo';
 import MusicResearch from '@/pages/MusicResearch';
 import MusicPlaylist from '@/pages/MusicPlaylist';
+import MusicTop10 from '@/pages/MusicTop10';
 import MusicTopics from '@/pages/MusicTopics';
 import MusicRundown from '@/pages/MusicRundown';
 import MusicAssets from '@/pages/MusicAssets';
@@ -208,6 +209,7 @@ const AuthenticatedApp = () => {
           <Route path="/music/embed-demo" element={<EmbedDemo />} />
           <Route path="/music/research" element={<MusicResearch />} />
           <Route path="/music/playlist" element={<MusicPlaylist />} />
+          <Route path="/music/top10" element={<MusicTop10 />} />
           <Route path="/music/topics" element={<MusicTopics />} />
           <Route path="/music/rundown" element={<MusicRundown />} />
           <Route path="/music/assets" element={<MusicAssets />} />

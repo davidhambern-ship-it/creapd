@@ -5,15 +5,18 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRuntime } from '@/lib/musicConstants';
-import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Disc3, GripVertical, Mic } from 'lucide-react';
+import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Disc3, Plus, Youtube, Play, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import YouTubeAddModal from '@/components/music/YouTubeAddModal';
+import CommanderPlayer from '@/components/music/CommanderPlayer';
 
 export default function MusicPlaylist() {
   const { config, playlist, loading, refresh } = useMusicProduction();
   const [regenerating, setRegenerating] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [noteText, setNoteText] = useState('');
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   const handleToggleLock = async (song) => {
     await base44.entities.PlaylistItem.update(song.id, {
@@ -56,6 +59,23 @@ export default function MusicPlaylist() {
     }
   };
 
+  const handleAddTrack = async (trackData) => {
+    const maxOrder = playlist.length > 0 ? Math.max(...playlist.map(s => s.order || 0)) : -1;
+    await base44.entities.PlaylistItem.create({
+      configuration_id: config.id,
+      order: maxOrder + 1,
+      song_title: trackData.title,
+      artist: trackData.channel_name,
+      youtube_video_id: trackData.youtube_video_id,
+      thumbnail_url: trackData.thumbnail_url,
+      channel_name: trackData.channel_name,
+      source: 'user_selected',
+      status: 'suggested',
+      length_seconds: 0,
+    });
+    refresh();
+  };
+
   if (loading) {
     return (
       <div className="relative flex items-center justify-center h-screen bg-black">
@@ -68,6 +88,7 @@ export default function MusicPlaylist() {
   }
 
   const activePlaylist = playlist.filter(s => s.status !== 'removed');
+  const playableTracks = activePlaylist.filter(s => s.youtube_video_id);
   const totalSeconds = activePlaylist.reduce((sum, s) => sum + (s.length_seconds || 0), 0);
   const requiredSeconds = (config?.required_music_runtime || 0) * 60;
   const remaining = requiredSeconds - totalSeconds;
@@ -94,20 +115,43 @@ export default function MusicPlaylist() {
               <p className="text-sm text-gray-400">{config?.production_name || 'Music Production'}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating}
-            className="border-[#FF00FF]/40 hover:border-[#FF00FF]/70 hover:bg-[#FF00FF]/10">
-            {regenerating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" style={{ color: '#FF00FF' }} />}
-            Regenerate
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setAddModalOpen(true)}
+              className="cp-btn-gradient border-0 text-white"
+              size="sm"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Add Track
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={regenerating}
+              className="border-[#FF00FF]/40 hover:border-[#FF00FF]/70 hover:bg-[#FF00FF]/10">
+              {regenerating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" style={{ color: '#FF00FF' }} />}
+              Regenerate
+            </Button>
+          </div>
         </motion.div>
 
         {/* Blueprint sub-room tabs */}
         <div className="flex gap-2">
           <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#FF00FF]/20 border border-[#FF00FF]/50 text-[#FF00FF]">Playlist</span>
+          <Link to="/music/top10" className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-white/10 hover:border-[#FF00FF]/40 hover:text-[#FF00FF] transition-colors flex items-center gap-1.5">
+            <Youtube className="w-3 h-3" /> Top 10
+          </Link>
           <Link to="/music/topics" className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-white/10 hover:border-[#FF00FF]/40 hover:text-[#FF00FF] transition-colors flex items-center gap-1.5">
-            <Mic className="w-3 h-3" /> Topics
+            <Music className="w-3 h-3" /> Topics
           </Link>
         </div>
+
+        {/* Commander Player — shows if there are playable YouTube tracks */}
+        {playableTracks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <CommanderPlayer items={playableTracks} title="Playlist Player" />
+          </motion.div>
+        )}
 
         {/* Runtime gauge — horizontal fill bar */}
         <motion.div
@@ -176,10 +220,14 @@ export default function MusicPlaylist() {
                 <div className="absolute left-0 top-0 bottom-0 w-1"
                   style={{ background: song.status === 'locked' ? '#FF00FF' : '#00FFFF', opacity: 0.6 }} />
                 <div className="flex items-center gap-3 p-3 pl-5">
-                  {/* Track number disc */}
-                  <div className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                  {/* Track number disc / thumbnail */}
+                  <div className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
                     style={{ background: 'rgba(255,0,255,0.1)', border: '1px solid rgba(255,0,255,0.3)' }}>
-                    <span className="text-sm font-bold" style={{ color: '#FF00FF' }}>{i + 1}</span>
+                    {song.thumbnail_url ? (
+                      <img src={song.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-bold" style={{ color: '#FF00FF' }}>{i + 1}</span>
+                    )}
                     {song.status === 'locked' && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
                         style={{ background: '#FF00FF' }}>
@@ -190,7 +238,15 @@ export default function MusicPlaylist() {
 
                   {/* Song info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-white text-sm truncate">{song.song_title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-white text-sm truncate">{song.song_title}</p>
+                      {song.source === 'user_selected' && (
+                        <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full shrink-0"
+                          style={{ background: 'rgba(255,0,0,0.15)', color: '#FF4444', border: '1px solid rgba(255,0,0,0.3)' }}>
+                          <Youtube className="w-2.5 h-2.5" /> Manual
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 truncate">{song.artist}</p>
                   </div>
 
@@ -214,6 +270,17 @@ export default function MusicPlaylist() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-0.5">
+                    {song.youtube_video_id && (
+                      <a
+                        href={`https://youtube.com/watch?v=${song.youtube_video_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-white/10"
+                        title="Open on YouTube"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                      </a>
+                    )}
                     <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-white/10" onClick={() => handleMove(song, 'up')} disabled={i === 0}>
                       <ArrowUp className="w-3.5 h-3.5" />
                     </Button>
@@ -258,13 +325,28 @@ export default function MusicPlaylist() {
           <div className="cp-glass p-12 text-center" style={{ borderColor: 'rgba(255,0,255,0.15)' }}>
             <Disc3 className="w-12 h-12 mx-auto mb-3" style={{ color: 'rgba(255,0,255,0.3)' }} />
             <p className="text-gray-400 mb-4">No playlist has been generated yet.</p>
-            <Button onClick={handleRegenerate} disabled={regenerating} className="cp-btn-gradient border-0 text-white">
-              {regenerating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
-              Generate Playlist
-            </Button>
+            <div className="flex items-center justify-center gap-2">
+              <Button onClick={() => setAddModalOpen(true)} className="cp-btn-gradient border-0 text-white">
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Track Manually
+              </Button>
+              <Button onClick={handleRegenerate} disabled={regenerating} variant="outline" className="border-[#FF00FF]/40 hover:border-[#FF00FF]/70">
+                {regenerating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+                Generate Playlist
+              </Button>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Add Track Modal */}
+      <YouTubeAddModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onAdd={handleAddTrack}
+        configurationId={config?.id}
+        targetType="playlist"
+      />
     </div>
   );
 }
