@@ -83,9 +83,16 @@ function CoverZone({ children, style, accent, label, glow = true, gridMode = fal
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className={gridMode ? "" : "absolute"}
+      className={gridMode ? "relative" : "absolute"}
       style={style}
     >
+      {label && (
+        <div className="absolute -top-2 left-3 px-2 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.2em] z-10"
+          style={{ background: 'rgba(8,6,12,0.95)', color: accent, border: `1px solid ${accent}44` }}
+        >
+          {label}
+        </div>
+      )}
       <div
         className="relative h-full rounded-lg overflow-hidden"
         style={{
@@ -100,14 +107,6 @@ function CoverZone({ children, style, accent, label, glow = true, gridMode = fal
         <div className="absolute top-0 right-0 w-3 h-3 border-t border-r rounded-tr" style={{ borderColor: `${accent}66` }} />
         <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l rounded-bl" style={{ borderColor: `${accent}66` }} />
         <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r rounded-br" style={{ borderColor: `${accent}66` }} />
-
-        {label && (
-          <div className="absolute -top-2 left-3 px-2 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.2em]"
-            style={{ background: 'rgba(8,6,12,0.95)', color: accent, border: `1px solid ${accent}44` }}
-          >
-            {label}
-          </div>
-        )}
 
         <div className="p-3 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           {children}
@@ -198,7 +197,7 @@ export default function VinylCoverForm({
             className="absolute inset-0 grid gap-3 p-4"
             style={{
               gridTemplateColumns: '1fr 1fr',
-              gridTemplateRows: 'auto auto 1fr',
+              gridTemplateRows: 'auto auto auto',
               alignContent: 'start',
             }}
           >
