@@ -266,7 +266,7 @@ export default function VinylCoverForm({
             {/* Format — positioned over the circle in the album cover background */}
             <div
               className="absolute flex items-center justify-center"
-              style={{ top: '52%', left: '67%', transform: 'translate(-50%, -50%)', zIndex: 10 }}
+              style={{ top: '49%', left: '67%', transform: 'translate(-50%, -50%)', zIndex: 10 }}
             >
               <div
                 className="relative rounded-full flex flex-col items-center justify-center gap-1 text-center"
