@@ -135,29 +135,19 @@ export default function OrbitalConfigCanvas({
                 </motion.button>
               )}
 
-              {/* Orbital Nodes — elliptical orbit around hubCenter (deck center) */}
+              {/* Orbital Nodes — elliptical orbit around hubCenter (deck center).
+                  Static positioning on the outer div keeps the node center
+                  anchored to the exact calculated coordinate; Framer Motion
+                  animations live on the inner motion.button so they never
+                  override the translate(-50%,-50%) centering. */}
               {rooms.map((room, i) => {
                 const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
                 const x = Math.cos(angle) * radiusX;
                 const y = Math.sin(angle) * radiusY;
                 const Icon = room.icon;
                 return (
-                  <motion.button
+                  <div
                     key={room.id}
-                    onClick={() => onFocusRoom?.(room.id)}
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      y: [0, -8, 0],
-                    }}
-                    transition={{
-                      opacity: { duration: 0.4, delay: i * 0.06 },
-                      scale: { duration: 0.4, delay: i * 0.06 },
-                      y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 },
-                    }}
-                    whileHover={{ scale: 1.12 }}
-                    whileTap={{ scale: 0.95 }}
                     className="absolute z-20"
                     style={{
                       left: `calc(50% + ${x}px)`,
@@ -165,26 +155,44 @@ export default function OrbitalConfigCanvas({
                       transform: 'translate(-50%, -50%)',
                     }}
                   >
-                    <div
-                      className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border min-w-[130px] backdrop-blur-sm"
-                      style={{
-                        background: `${room.color}0A`,
-                        borderColor: `${room.color}30`,
-                        boxShadow: `0 4px 32px ${room.color}0A, 0 0 24px ${room.color}08`,
+                    <motion.button
+                      type="button"
+                      onClick={() => onFocusRoom?.(room.id)}
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                        y: [0, -8, 0],
                       }}
+                      transition={{
+                        opacity: { duration: 0.4, delay: i * 0.06 },
+                        scale: { duration: 0.4, delay: i * 0.06 },
+                        y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 },
+                      }}
+                      whileHover={{ scale: 1.12 }}
+                      whileTap={{ scale: 0.95 }}
                     >
                       <div
-                        className="w-14 h-14 rounded-xl flex items-center justify-center"
-                        style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
+                        className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border min-w-[130px] backdrop-blur-sm"
+                        style={{
+                          background: `${room.color}0A`,
+                          borderColor: `${room.color}30`,
+                          boxShadow: `0 4px 32px ${room.color}0A, 0 0 24px ${room.color}08`,
+                        }}
                       >
-                        <Icon className="w-7 h-7" style={{ color: room.color }} />
+                        <div
+                          className="w-14 h-14 rounded-xl flex items-center justify-center"
+                          style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
+                        >
+                          <Icon className="w-7 h-7" style={{ color: room.color }} />
+                        </div>
+                        <span className="text-xs font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
+                        <span className="text-[9px] font-mono truncate max-w-[120px] opacity-60" style={{ color: room.color }}>
+                          {typeof room.summary === 'function' ? room.summary() : ''}
+                        </span>
                       </div>
-                      <span className="text-xs font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
-                      <span className="text-[9px] font-mono truncate max-w-[120px] opacity-60" style={{ color: room.color }}>
-                        {typeof room.summary === 'function' ? room.summary() : ''}
-                      </span>
-                    </div>
-                  </motion.button>
+                    </motion.button>
+                  </div>
                 );
               })}
 
