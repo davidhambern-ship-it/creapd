@@ -233,7 +233,7 @@ export default function VinylCoverForm({
               label="Broadcast"
               accent={accent}
               glow={false}
-              style={{ position: 'absolute', bottom: '9%', right: '8%', width: '42%', zIndex: 5 }}
+              style={{ position: 'absolute', bottom: '9%', right: '10%', width: '42%', zIndex: 5 }}
             >
               <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
               <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
