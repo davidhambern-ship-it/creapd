@@ -51,7 +51,11 @@ export default function OrbitalConfigCanvas({
     return () => el.removeEventListener('mousemove', handleMouse);
   }, [isMobile]);
 
-  const radius = isMobile ? 145 : 230;
+  // Elliptical orbit — deck is wider than tall, so radiusX > radiusY.
+  // hubCenter is the geometric center of the full TurntableHub wrapper,
+  // NOT the vinyl platter. All nodes + rings reference this same origin.
+  const radiusX = isMobile ? 175 : 340;
+  const radiusY = isMobile ? 135 : 245;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (
@@ -77,12 +81,12 @@ export default function OrbitalConfigCanvas({
                 transition: isMobile ? 'none' : 'transform 0.15s ease-out',
               }}
             >
-              {/* Outer orbital ring */}
+              {/* Outer orbital ring (elliptical to match deck proportions) */}
               <div
                 className="absolute rounded-full"
                 style={{
-                  width: radius * 2,
-                  height: radius * 2,
+                  width: radiusX * 2,
+                  height: radiusY * 2,
                   border: '1px solid rgba(255,255,255,0.07)',
                   boxShadow: '0 0 100px rgba(255,0,255,0.05), inset 0 0 80px rgba(0,255,255,0.025)',
                 }}
@@ -91,8 +95,8 @@ export default function OrbitalConfigCanvas({
               <div
                 className="absolute rounded-full border border-dashed"
                 style={{
-                  width: radius * 1.35,
-                  height: radius * 1.35,
+                  width: radiusX * 1.35,
+                  height: radiusY * 1.35,
                   borderColor: 'rgba(255,255,255,0.03)',
                 }}
               />
@@ -100,10 +104,10 @@ export default function OrbitalConfigCanvas({
 
             {/* ═══ Central Hub — turntable + nodes share same absolute center ═══ */}
             <div className="absolute inset-0">
-              {/* Turntable deck — shifted left 60px so the vinyl platter center
-                  (offset right within the deck graphic) aligns with the 50%/50%
-                  orbital center that both the rings and nodes reference */}
-              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(calc(-50% - 60px), -50%)' }}>
+              {/* Turntable deck — centered on the full wrapper bounding box.
+                  hubCenter = 50%/50% of this container. Nodes and rings
+                  use this same origin. No shift — the deck center IS the orbit center. */}
+              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
                 <TurntableHub canBuild={canBuild} />
               </div>
 
@@ -117,7 +121,7 @@ export default function OrbitalConfigCanvas({
                   whileTap={{ scale: 0.95 }}
                   className="absolute z-30 px-7 py-2.5 rounded-full text-sm font-bold flex items-center gap-2"
                   style={{
-                    top: 'calc(50% + 170px)',
+                    top: `calc(50% + ${radiusY + 20}px)`,
                     left: '50%',
                     transform: 'translateX(-50%)',
                     background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(255,0,255,0.1))',
@@ -131,11 +135,11 @@ export default function OrbitalConfigCanvas({
                 </motion.button>
               )}
 
-              {/* Orbital Nodes — floating around the deck center */}
+              {/* Orbital Nodes — elliptical orbit around hubCenter (deck center) */}
               {rooms.map((room, i) => {
                 const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius;
+                const x = Math.cos(angle) * radiusX;
+                const y = Math.sin(angle) * radiusY;
                 const Icon = room.icon;
                 return (
                   <motion.button
