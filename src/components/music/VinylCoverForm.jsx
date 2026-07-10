@@ -255,7 +255,7 @@ export default function VinylCoverForm({
               gridMode
               label="Host"
               accent={accent}
-              style={{ gridRow: '2', gridColumn: '1' }}
+              style={{ gridRow: '2', gridColumn: '1', maxWidth: '82%' }}
             >
               <FieldLabel accent={accent}>Host / Artist</FieldLabel>
               <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
@@ -294,7 +294,7 @@ export default function VinylCoverForm({
               gridMode
               label="Liner Notes"
               accent={accent}
-              style={{ gridRow: '3', gridColumn: '1' }}
+              style={{ gridRow: '3', gridColumn: '1', maxWidth: '82%' }}
             >
               <FieldLabel accent={accent}>Show Description</FieldLabel>
               <Textarea
