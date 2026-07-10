@@ -9,11 +9,13 @@ import React from 'react';
  *  - summary: bottom summary text (small, straight, inside label)
  *  - color:  hex color for accents / glow
  *  - Icon:   lucide icon component
+ *  - size:   total vinyl diameter in px (default 150)
  */
-export default function OrbitalVinylNode({ label = '', summary = '', color = '#FF00FF', Icon }) {
-  const size = 150;          // total vinyl diameter (px)
-  const labelRadius = 38;    // inner label circle radius
-  const arcRadius = 60;      // radius of the curved text arc
+export default function OrbitalVinylNode({ label = '', summary = '', color = '#FF00FF', Icon, size = 150 }) {
+  const labelRadius = size * 0.253;    // scale: 38/150
+  const arcRadius = size * 0.4;        // scale: 60/150
+  const iconSize = size * 0.04;        // 6px per 150
+  const summarySize = size * 0.047;     // 7px per 150
 
   return (
     <div
@@ -64,13 +66,13 @@ export default function OrbitalVinylNode({ label = '', summary = '', color = '#F
           }}
         >
           {Icon && (
-            <Icon className="w-6 h-6" style={{ color, filter: `drop-shadow(0 0 6px ${color}80)` }} />
+            <Icon style={{ width: `${size * 0.16}px`, height: `${size * 0.16}px`, color, filter: `drop-shadow(0 0 6px ${color}80)` }} />
           )}
           {/* Summary text inside label */}
-          {summary && (
+          {summary && size >= 100 && (
             <span
-              className="absolute font-mono text-[7px] leading-tight text-center px-2"
-              style={{ color: `${color}cc`, bottom: '4px', maxWidth: labelRadius * 1.6 }}
+              className="absolute font-mono leading-tight text-center"
+              style={{ color: `${color}cc`, bottom: `${size * 0.027}px`, maxWidth: labelRadius * 1.6, fontSize: `${summarySize}px` }}
             >
               {summary}
             </span>
@@ -90,37 +92,39 @@ export default function OrbitalVinylNode({ label = '', summary = '', color = '#F
         />
       </div>
 
-      {/* ═══ Curved label text (SVG textPath along top arc) ═══ */}
-      <svg
-        className="absolute inset-0 pointer-events-none"
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-      >
-        <defs>
-          <path
-            id={`arc-${label.replace(/\s+/g, '')}`}
-            d={`M ${size / 2 - arcRadius},${size / 2} A ${arcRadius},${arcRadius} 0 0,1 ${size / 2 + arcRadius},${size / 2}`}
-            fill="none"
-          />
-        </defs>
-        <text
-          fill={color}
-          fontSize="11"
-          fontWeight="700"
-          fontFamily="var(--font-heading, Inter, sans-serif)"
-          letterSpacing="0.08em"
-          style={{ textShadow: `0 0 8px ${color}60` }}
+      {/* ═══ Curved label text (SVG textPath along top arc) — only if large enough ═══ */}
+      {size >= 90 && (
+        <svg
+          className="absolute inset-0 pointer-events-none"
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
         >
-          <textPath
-            href={`#arc-${label.replace(/\s+/g, '')}`}
-            startOffset="50%"
-            textAnchor="middle"
+          <defs>
+            <path
+              id={`arc-${label.replace(/\s+/g, '')}`}
+              d={`M ${size / 2 - arcRadius},${size / 2} A ${arcRadius},${arcRadius} 0 0,1 ${size / 2 + arcRadius},${size / 2}`}
+              fill="none"
+            />
+          </defs>
+          <text
+            fill={color}
+            fontSize={size >= 120 ? 11 : 8}
+            fontWeight="700"
+            fontFamily="var(--font-heading, Inter, sans-serif)"
+            letterSpacing="0.08em"
+            style={{ textShadow: `0 0 8px ${color}60` }}
           >
-            {label.toUpperCase()}
-          </textPath>
-        </text>
-      </svg>
+            <textPath
+              href={`#arc-${label.replace(/\s+/g, '')}`}
+              startOffset="50%"
+              textAnchor="middle"
+            >
+              {label.toUpperCase()}
+            </textPath>
+          </text>
+        </svg>
+      )}
     </div>
   );
 }

@@ -62,8 +62,10 @@ export default function OrbitalConfigCanvas({
   // Elliptical orbit — deck is wider than tall, so radiusX > radiusY.
   // hubCenter is the geometric center of the full TurntableHub wrapper,
   // NOT the vinyl platter. All nodes + rings reference this same origin.
-  const radiusX = isMobile ? 175 : 340;
-  const radiusY = isMobile ? 135 : 245;
+  const radiusX = isMobile ? 105 : 340;
+  const radiusY = isMobile ? 80 : 245;
+  const nodeSize = isMobile ? 80 : 150;
+  const hubScale = isMobile ? 0.5 : 1;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (
@@ -78,7 +80,7 @@ export default function OrbitalConfigCanvas({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4 }}
             className="relative flex items-center justify-center"
-            style={{ height: isMobile ? '560px' : 'calc(100vh - 160px)', minHeight: isMobile ? '560px' : '720px' }}
+            style={{ height: isMobile ? '420px' : 'calc(100vh - 160px)', minHeight: isMobile ? '420px' : '720px' }}
           >
             {/* ═══ VISUAL LAYER — tilted, non-interactive ═══ */}
             <div
@@ -115,7 +117,7 @@ export default function OrbitalConfigCanvas({
               {/* Turntable deck — centered on the full wrapper bounding box.
                   hubCenter = 50%/50% of this container. Nodes and rings
                   use this same origin. No shift — the deck center IS the orbit center. */}
-              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+              <div className="absolute" style={{ top: '50%', left: '50%', transform: `translate(-50%, -50%) scale(${hubScale})` }}>
                 <TurntableHub
                   recordingPhase={recording?.phase}
                   completedCount={completedModules?.size || 0}
@@ -178,6 +180,7 @@ export default function OrbitalConfigCanvas({
                           summary={typeof room.summary === 'function' ? room.summary() : ''}
                           color={room.color}
                           Icon={Icon}
+                          size={nodeSize}
                         />
                       </motion.button>
                     </div>
@@ -209,6 +212,7 @@ export default function OrbitalConfigCanvas({
                         label={room.label}
                         color={room.color}
                         Icon={Icon}
+                        size={nodeSize}
                       />
                     </div>
                   </motion.div>
