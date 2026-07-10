@@ -99,7 +99,7 @@ export default function OrbitalConfigCanvas({
             </div>
 
             {/* ═══ Central Hub — turntable + nodes share same absolute center ═══ */}
-            <div className="relative" style={{ width: '100%', height: '100%' }}>
+            <div className="absolute inset-0">
               {/* Turntable deck — absolutely centered at 50%/50% */}
               <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
                 <TurntableHub canBuild={canBuild} />

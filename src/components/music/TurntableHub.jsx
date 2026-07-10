@@ -14,7 +14,7 @@ import { Disc3 } from 'lucide-react';
 export default function TurntableHub({ canBuild = false }) {
   return (
     <div
-      className="relative pointer-events-none"
+      className="pointer-events-none"
       style={{ width: '336px', height: '276px', flexShrink: 0 }}
     >
       {/* ═══ TURNTABLE DECK ═══ */}
