@@ -128,6 +128,7 @@ export default function VinylCoverForm({
   updateConfig,
   toggleArrayItem,
   onBack,
+  onComplete,
 }) {
   const meta = ROOM_META[room] || ROOM_META.identity;
   const accent = meta.accent;
@@ -550,6 +551,23 @@ export default function VinylCoverForm({
           </>
         )}
       </div>
+
+      {/* Record to Deck button */}
+      <motion.button
+        onClick={() => onComplete?.(room)}
+        whileHover={{ scale: 1.03 }}
+        whileTap={{ scale: 0.97 }}
+        className="mt-4 px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2"
+        style={{
+          background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+          border: `1px solid ${accent}50`,
+          color: accent,
+          boxShadow: `0 0 16px ${accent}22`,
+        }}
+      >
+        <Disc3 className="w-4 h-4" />
+        Record to Deck
+      </motion.button>
 
       <style>{`
         @keyframes vinyl-cover-scan {

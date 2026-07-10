@@ -4,6 +4,7 @@ import { ArrowLeft, Sparkles } from 'lucide-react';
 import VinylCoverForm from '@/components/music/VinylCoverForm';
 import TurntableHub from '@/components/music/TurntableHub';
 import OrbitalVinylNode from '@/components/music/OrbitalVinylNode';
+import RecordingOverlay from '@/components/music/RecordingOverlay';
 
 /**
  * 2.5D Orbital Configuration Canvas
@@ -23,6 +24,11 @@ export default function OrbitalConfigCanvas({
   config,
   updateConfig,
   toggleArrayItem,
+  completedModules,
+  recording,
+  onFlyComplete,
+  onComplete,
+  totalModules = 0,
 }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
@@ -109,32 +115,18 @@ export default function OrbitalConfigCanvas({
                   hubCenter = 50%/50% of this container. Nodes and rings
                   use this same origin. No shift — the deck center IS the orbit center. */}
               <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
-                <TurntableHub canBuild={canBuild} />
+                <TurntableHub
+                  recordingPhase={recording?.phase}
+                  completedCount={completedModules?.size || 0}
+                  totalModules={totalModules || rooms.length}
+                />
+                <RecordingOverlay
+                  phase={recording?.phase}
+                  roomLabel={rooms.find(r => r.id === recording?.roomId)?.label}
+                />
               </div>
 
-              {/* Build button below deck */}
-              {canBuild && (
-                <motion.button
-                  onClick={onBuild}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="absolute z-30 px-7 py-2.5 rounded-full text-sm font-bold flex items-center gap-2"
-                  style={{
-                    top: `calc(50% + ${radiusY + 20}px)`,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(255,0,255,0.1))',
-                    border: '1px solid rgba(0,255,136,0.4)',
-                    color: '#00FF88',
-                    boxShadow: '0 0 24px rgba(0,255,136,0.15)',
-                  }}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Build Show
-                </motion.button>
-              )}
+              {/* Build is automatic when all modules are recorded */}
 
               {/* Orbital Nodes — elliptical orbit around hubCenter (deck center).
                   Static positioning on the outer div keeps the node center
@@ -142,10 +134,17 @@ export default function OrbitalConfigCanvas({
                   animations live on the inner motion.button so they never
                   override the translate(-50%,-50%) centering. */}
               {rooms.map((room, i) => {
+                // Skip completed nodes (they've been recorded into the deck)
+                if (completedModules?.has(room.id) && recording?.roomId !== room.id) return null;
+                // Skip the node currently flying to the deck (unless still in flying phase)
+                if (recording?.roomId === room.id && recording?.phase !== 'flying') return null;
+
                 const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
                 const x = Math.cos(angle) * radiusX;
                 const y = Math.sin(angle) * radiusY;
                 const Icon = room.icon;
+                const isCompleted = completedModules?.has(room.id);
+
                 return (
                   <div
                     key={room.id}
@@ -184,12 +183,42 @@ export default function OrbitalConfigCanvas({
                 );
               })}
 
-              {/* Hint when not ready to build */}
-              {!canBuild && (
-                <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-600 font-mono whitespace-nowrap z-20">
-                  Set a show name &amp; date to unlock build
+              {/* Flying vinyl — animates from orbital position to deck center */}
+              {recording?.phase === 'flying' && (() => {
+                const roomIndex = rooms.findIndex(r => r.id === recording.roomId);
+                if (roomIndex === -1) return null;
+                const room = rooms[roomIndex];
+                const angle = (roomIndex / rooms.length) * Math.PI * 2 - Math.PI / 2;
+                const startX = Math.cos(angle) * radiusX;
+                const startY = Math.sin(angle) * radiusY;
+                const Icon = room.icon;
+                return (
+                  <motion.div
+                    key="flying-vinyl"
+                    className="absolute z-40"
+                    style={{ left: '50%', top: '50%' }}
+                    initial={{ x: startX, y: startY, scale: 1 }}
+                    animate={{ x: 0, y: 0, scale: 0.5 }}
+                    transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+                    onAnimationComplete={onFlyComplete}
+                  >
+                    <div style={{ transform: 'translate(-50%, -50%)' }}>
+                      <OrbitalVinylNode
+                        label={room.label}
+                        color={room.color}
+                        Icon={Icon}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
+              {/* Progress indicator */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 text-center">
+                <p className="text-[10px] text-gray-500 font-mono whitespace-nowrap">
+                  {completedModules?.size || 0} / {rooms.length} modules recorded
                 </p>
-              )}
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -209,6 +238,7 @@ export default function OrbitalConfigCanvas({
                 updateConfig={updateConfig}
                 toggleArrayItem={toggleArrayItem}
                 onBack={() => onFocusRoom?.(null)}
+                onComplete={onComplete}
               />
             ) : (
               <>

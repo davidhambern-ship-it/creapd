@@ -24,6 +24,7 @@ import StageLights from '@/components/music/StageLights';
 import ShowRoulette from '@/components/music/ShowRoulette';
 import DiscoveryNavBar from '@/components/music/DiscoveryNavBar';
 import OrbitalConfigCanvas from '@/components/music/OrbitalConfigCanvas';
+import { playClick, playComplete } from '@/lib/recordingSound';
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -129,6 +130,9 @@ export default function MusicConfigure() {
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
   const [openRoom, setOpenRoom] = useState(null);
+  const [completedModules, setCompletedModules] = useState(new Set());
+  const [recording, setRecording] = useState(null);
+  const [finalSequence, setFinalSequence] = useState(false);
 
   const [config, setConfig] = useState({
     production_name: '',
@@ -225,6 +229,71 @@ export default function MusicConfigure() {
       summary: () => `${selectedAutomation.length} tasks enabled` },
   ];
 
+  const handleModuleComplete = (roomId) => {
+    // Close the album cover, then start the flying animation
+    setOpenRoom(null);
+    setRecording({ roomId, phase: 'flying' });
+  };
+
+  const handleFlyComplete = () => {
+    // Flying animation finished — vinyl landed on deck, start recording
+    setRecording(prev => {
+      if (prev?.phase === 'flying') {
+        playClick();
+        return { ...prev, phase: 'recording' };
+      }
+      return prev;
+    });
+  };
+
+  // Recording state machine — recording → pulse → done
+  useEffect(() => {
+    if (!recording) return;
+    if (recording.phase === 'recording') {
+      const t = setTimeout(() => {
+        setRecording({ ...recording, phase: 'pulse' });
+      }, 1600);
+      return () => clearTimeout(t);
+    }
+    if (recording.phase === 'pulse') {
+      const t = setTimeout(() => {
+        setCompletedModules(prev => new Set([...prev, recording.roomId]));
+        setRecording(null);
+      }, 600);
+      return () => clearTimeout(t);
+    }
+  }, [recording]);
+
+  // All modules complete → final sequence + auto-transition to Research
+  useEffect(() => {
+    if (completedModules.size === ROOMS.length && !recording && !finalSequence) {
+      setFinalSequence(true);
+      playComplete();
+      // Save config + fire build pipeline (fire and forget — research page has loading states)
+      (async () => {
+        try {
+          let savedConfig;
+          if (editConfigId) {
+            savedConfig = await base44.entities.MusicProductionConfiguration.update(editConfigId, config);
+          } else {
+            savedConfig = await base44.entities.MusicProductionConfiguration.create(config);
+          }
+          await base44.auth.updateMe({
+            default_production_type: 'music',
+            default_production_config_id: savedConfig.id
+          });
+          await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
+          await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
+        } catch (err) {
+          setBuildError(err.message || 'Failed to build production.');
+        }
+      })();
+      // Navigate to Research Department after completion animation
+      const t = setTimeout(() => navigate('/music/research'), 2800);
+      return () => clearTimeout(t);
+    }
+  }, [completedModules, recording, finalSequence]);
+
   const handleBuild = async () => {
     if (!canBuild) return;
     setBuilding(true);
@@ -248,6 +317,47 @@ export default function MusicConfigure() {
       setBuilding(false);
     }
   };
+
+  if (finalSequence) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
+        <CyberpunkMusicBg variant="eq" />
+        <div className="relative z-10 max-w-md w-full text-center px-6">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="inline-block mb-6"
+          >
+            <Disc3 className="w-20 h-20" style={{ color: '#00FF88', filter: 'drop-shadow(0 0 24px #00FF88)' }} />
+          </motion.div>
+          <motion.h2
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+            className="text-2xl font-heading font-bold mb-3"
+            style={{ color: '#00FF88', textShadow: '0 0 20px rgba(0,255,136,0.6)' }}
+          >
+            Discovery Complete
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-gray-400 mb-8 text-sm"
+          >
+            Dispatching to the Research Department...
+          </motion.p>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: '100%' }}
+            transition={{ duration: 2.5, ease: 'easeInOut' }}
+            className="h-1 rounded-full mx-auto"
+            style={{ background: 'linear-gradient(90deg, #00FF88, #FF00FF)' }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (building) {
     return (
@@ -322,6 +432,11 @@ export default function MusicConfigure() {
           config={config}
           updateConfig={updateConfig}
           toggleArrayItem={toggleArrayItem}
+          completedModules={completedModules}
+          recording={recording}
+          onFlyComplete={handleFlyComplete}
+          onComplete={handleModuleComplete}
+          totalModules={ROOMS.length}
         >
           <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
 

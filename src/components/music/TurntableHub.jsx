@@ -11,7 +11,11 @@ import { Disc3 } from 'lucide-react';
  *  - canBuild: boolean — controls tonearm position, LED color, vinyl label glow
  *  - children: orbital nodes rendered as children of the hub
  */
-export default function TurntableHub({ canBuild = false }) {
+export default function TurntableHub({ recordingPhase = null, completedCount = 0, totalModules = 0 }) {
+  const isRecording = recordingPhase === 'recording' || recordingPhase === 'pulse';
+  const isComplete = recordingPhase === 'complete';
+  const isFlying = recordingPhase === 'flying';
+  const canBuild = isComplete || (totalModules > 0 && completedCount === totalModules);
   return (
     <div
       className="pointer-events-none"
@@ -130,7 +134,7 @@ export default function TurntableHub({ canBuild = false }) {
               boxShadow: 'inset 0 0 24px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.05)',
             }}
             animate={{ rotate: 360 }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: isRecording ? 2 : isComplete ? 1 : 6, repeat: Infinity, ease: 'linear' }}
           >
             {/* Vinyl groove highlight rings */}
             <div className="absolute rounded-full" style={{
@@ -147,18 +151,20 @@ export default function TurntableHub({ canBuild = false }) {
               className="absolute rounded-full flex items-center justify-center"
               style={{
                 top: '34%', left: '34%', right: '34%', bottom: '34%',
-                background: canBuild
-                  ? 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.05) 70%)'
-                  : 'radial-gradient(circle, rgba(255,0,255,0.18) 0%, rgba(139,0,255,0.08) 70%)',
-                border: `1px solid ${canBuild ? 'rgba(0,255,136,0.4)' : 'rgba(255,0,255,0.3)'}`,
-                boxShadow: `inset 0 0 12px ${canBuild ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,255,0.08)'}`,
+                background: isRecording
+                  ? 'radial-gradient(circle, rgba(255,0,68,0.25) 0%, rgba(255,0,68,0.05) 70%)'
+                  : canBuild
+                    ? 'radial-gradient(circle, rgba(0,255,136,0.2) 0%, rgba(0,255,136,0.05) 70%)'
+                    : 'radial-gradient(circle, rgba(255,0,255,0.18) 0%, rgba(139,0,255,0.08) 70%)',
+                border: `1px solid ${isRecording ? 'rgba(255,0,68,0.5)' : canBuild ? 'rgba(0,255,136,0.4)' : 'rgba(255,0,255,0.3)'}`,
+                boxShadow: `inset 0 0 12px ${isRecording ? 'rgba(255,0,68,0.12)' : canBuild ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,255,0.08)'}`,
               }}
             >
               <Disc3
                 className="w-6 h-6"
                 style={{
-                  color: canBuild ? '#00FF88' : '#FF00FF',
-                  filter: `drop-shadow(0 0 8px ${canBuild ? '#00FF88' : '#FF00FF'})`,
+                  color: isRecording ? '#FF0044' : canBuild ? '#00FF88' : '#FF00FF',
+                  filter: `drop-shadow(0 0 8px ${isRecording ? '#FF0044' : canBuild ? '#00FF88' : '#FF00FF'})`,
                 }}
               />
             </div>
@@ -254,7 +260,7 @@ export default function TurntableHub({ canBuild = false }) {
             zIndex: 5,
           }}
           initial={{ rotate: -25 }}
-          animate={{ rotate: canBuild ? 5 : -25 }}
+          animate={{ rotate: isFlying ? -35 : isRecording ? 5 : -25 }}
           transition={{ duration: 0.8, ease: 'easeInOut' }}
         >
           {/* Tonearm shaft (S-curved look) */}
@@ -295,18 +301,20 @@ export default function TurntableHub({ canBuild = false }) {
             }}
           >
             {/* Needle / stylus */}
-            {canBuild ? (
+            {(isRecording || canBuild) ? (
               <motion.div
                 className="absolute rounded-full"
                 animate={{ opacity: [0.5, 1, 0.5], scale: [0.8, 1.3, 0.8] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: isRecording ? 0.6 : 1.5, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
                   bottom: '-4px',
                   left: '6px',
                   width: '6px',
                   height: '6px',
-                  background: '#00FF88',
-                  boxShadow: '0 0 8px #00FF88, 0 0 16px rgba(0,255,136,0.4)',
+                  background: isRecording ? '#FF0044' : '#00FF88',
+                  boxShadow: isRecording
+                    ? '0 0 8px #FF0044, 0 0 16px rgba(255,0,68,0.4)'
+                    : '0 0 8px #00FF88, 0 0 16px rgba(0,255,136,0.4)',
                 }}
               />
             ) : (
@@ -354,10 +362,12 @@ export default function TurntableHub({ canBuild = false }) {
             left: '22px',
             width: '6px',
             height: '6px',
-            background: canBuild ? '#00FF88' : '#FF6B00',
-            boxShadow: canBuild
-              ? '0 0 8px #00FF88, 0 0 16px rgba(0,255,136,0.4)'
-              : '0 0 6px #FF6B00',
+            background: isRecording ? '#FF0044' : canBuild ? '#00FF88' : '#FF6B00',
+            boxShadow: isRecording
+              ? '0 0 8px #FF0044, 0 0 16px rgba(255,0,68,0.4)'
+              : canBuild
+                ? '0 0 8px #00FF88, 0 0 16px rgba(0,255,136,0.4)'
+                : '0 0 6px #FF6B00',
             zIndex: 2,
           }}
         />
@@ -408,7 +418,7 @@ export default function TurntableHub({ canBuild = false }) {
         </div>
 
         {/* Ready pulse ring around platter */}
-        {canBuild && (
+        {(canBuild || isRecording || isFlying) && (
           <motion.div
             className="absolute rounded-full"
             style={{
@@ -421,7 +431,7 @@ export default function TurntableHub({ canBuild = false }) {
             animate={{ scale: [1, 1.15], opacity: [0.4, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
           >
-            <div className="w-full h-full rounded-full border-2 border-green-400/40" />
+            <div className="w-full h-full rounded-full border-2" style={{ borderColor: isRecording ? 'rgba(255,0,68,0.4)' : 'rgba(0,255,136,0.4)' }} />
           </motion.div>
         )}
       </div>
