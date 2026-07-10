@@ -241,7 +241,57 @@ Return a JSON object with exactly these keys: playlist (array), research (array)
         reason_selected: song.reason_selected || '',
         status: 'suggested'
       }));
+      // ═══════════════════════════════════════════════════════
+      // STAGE 2b: YOUTUBE RESOLUTION — find playable video IDs
+      // ═══════════════════════════════════════════════════════
       if (playlistData.length > 0) {
+        try {
+          const ytPrompt = `For each song below, search YouTube and find the official or most popular YouTube video for that exact song by that exact artist. Return the results in the SAME ORDER as the input list. Each result must include: song_title, artist, youtube_video_id (the 11-character video ID from the YouTube URL, e.g. "dQw4w9WgXcQ"), thumbnail_url (set to "https://img.youtube.com/vi/{youtube_video_id}/mqdefault.jpg"), and channel_name.
+
+Songs:
+${playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n')}`;
+
+          const ytResult = await base44.integrations.Core.InvokeLLM({
+            prompt: ytPrompt,
+            add_context_from_internet: true,
+            response_json_schema: {
+              type: 'object',
+              properties: {
+                tracks: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      song_title: { type: 'string' },
+                      artist: { type: 'string' },
+                      youtube_video_id: { type: 'string' },
+                      thumbnail_url: { type: 'string' },
+                      channel_name: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            },
+            model: 'gemini_3_flash'
+          });
+
+          const ytTracks = ytResult.tracks || [];
+          playlistData = playlistData.map((song, idx) => {
+            const yt = ytTracks[idx];
+            if (yt && yt.youtube_video_id && yt.youtube_video_id.length >= 8) {
+              return {
+                ...song,
+                youtube_video_id: yt.youtube_video_id,
+                thumbnail_url: yt.thumbnail_url || `https://img.youtube.com/vi/${yt.youtube_video_id}/mqdefault.jpg`,
+                channel_name: yt.channel_name || '',
+              };
+            }
+            return song;
+          });
+        } catch (e) {
+          console.error('YouTube resolution failed:', e.message);
+        }
+
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
       }
 
