@@ -50,7 +50,7 @@ export default function OrbitalConfigCanvas({
     return () => el.removeEventListener('mousemove', handleMouse);
   }, [isMobile]);
 
-  const radius = isMobile ? 160 : 290;
+  const radius = isMobile ? 175 : 335;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (
@@ -65,7 +65,7 @@ export default function OrbitalConfigCanvas({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4 }}
             className="relative flex items-center justify-center"
-            style={{ height: isMobile ? '520px' : 'calc(100vh - 200px)', minHeight: isMobile ? '520px' : '620px' }}
+            style={{ height: isMobile ? '560px' : 'calc(100vh - 160px)', minHeight: isMobile ? '560px' : '720px' }}
           >
             {/* ═══ VISUAL LAYER — tilted, non-interactive ═══ */}
             <div
@@ -107,7 +107,7 @@ export default function OrbitalConfigCanvas({
               }}
             >
               {/* ═══ TURNTABLE DECK ═══ */}
-              <div className="relative" style={{ width: '280px', height: '230px' }}>
+              <div className="relative" style={{ width: '280px', height: '230px', transform: 'scale(1.2)' }}>
                 {/* ── Deck body (rectangular turntable base) ── */}
                 <div
                   className="absolute"
