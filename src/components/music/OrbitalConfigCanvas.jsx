@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import VinylCoverForm from '@/components/music/VinylCoverForm';
 import TurntableHub from '@/components/music/TurntableHub';
+import OrbitalVinylNode from '@/components/music/OrbitalVinylNode';
 
 /**
  * 2.5D Orbital Configuration Canvas
@@ -172,25 +173,12 @@ export default function OrbitalConfigCanvas({
                       whileHover={{ scale: 1.12 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <div
-                        className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border min-w-[130px] backdrop-blur-sm"
-                        style={{
-                          background: `${room.color}0A`,
-                          borderColor: `${room.color}30`,
-                          boxShadow: `0 4px 32px ${room.color}0A, 0 0 24px ${room.color}08`,
-                        }}
-                      >
-                        <div
-                          className="w-14 h-14 rounded-xl flex items-center justify-center"
-                          style={{ background: `${room.color}18`, border: `1px solid ${room.color}40` }}
-                        >
-                          <Icon className="w-7 h-7" style={{ color: room.color }} />
-                        </div>
-                        <span className="text-xs font-heading font-bold text-white whitespace-nowrap">{room.label}</span>
-                        <span className="text-[9px] font-mono truncate max-w-[120px] opacity-60" style={{ color: room.color }}>
-                          {typeof room.summary === 'function' ? room.summary() : ''}
-                        </span>
-                      </div>
+                      <OrbitalVinylNode
+                        label={room.label}
+                        summary={typeof room.summary === 'function' ? room.summary() : ''}
+                        color={room.color}
+                        Icon={Icon}
+                      />
                     </motion.button>
                   </div>
                 );
