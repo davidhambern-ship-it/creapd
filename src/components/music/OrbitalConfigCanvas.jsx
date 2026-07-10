@@ -29,6 +29,7 @@ export default function OrbitalConfigCanvas({
   onFlyComplete,
   onComplete,
   totalModules = 0,
+  spinOffset = 0,
 }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
@@ -139,47 +140,48 @@ export default function OrbitalConfigCanvas({
                 // Skip the node currently flying to the deck (unless still in flying phase)
                 if (recording?.roomId === room.id && recording?.phase !== 'flying') return null;
 
-                const angle = (i / rooms.length) * Math.PI * 2 - Math.PI / 2;
+                // Apply spin offset — shifts angle clockwise by one position per recorded module
+                const angle = ((i + spinOffset) / rooms.length) * Math.PI * 2 - Math.PI / 2;
                 const x = Math.cos(angle) * radiusX;
                 const y = Math.sin(angle) * radiusY;
                 const Icon = room.icon;
-                const isCompleted = completedModules?.has(room.id);
 
                 return (
-                  <div
+                  <motion.div
                     key={room.id}
                     className="absolute z-20"
-                    style={{
-                      left: `calc(50% + ${x}px)`,
-                      top: `calc(50% + ${y}px)`,
-                      transform: 'translate(-50%, -50%)',
-                    }}
+                    style={{ left: '50%', top: '50%' }}
+                    initial={false}
+                    animate={{ x, y }}
+                    transition={{ x: { duration: 1, ease: 'easeInOut' }, y: { duration: 1, ease: 'easeInOut' } }}
                   >
-                    <motion.button
-                      type="button"
-                      onClick={() => onFocusRoom?.(room.id)}
-                      initial={{ opacity: 0, scale: 0.7 }}
-                      animate={{
-                        opacity: 1,
-                        scale: 1,
-                        y: [0, -8, 0],
-                      }}
-                      transition={{
-                        opacity: { duration: 0.4, delay: i * 0.06 },
-                        scale: { duration: 0.4, delay: i * 0.06 },
-                        y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 },
-                      }}
-                      whileHover={{ scale: 1.12 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <OrbitalVinylNode
-                        label={room.label}
-                        summary={typeof room.summary === 'function' ? room.summary() : ''}
-                        color={room.color}
-                        Icon={Icon}
-                      />
-                    </motion.button>
-                  </div>
+                    <div style={{ transform: 'translate(-50%, -50%)' }}>
+                      <motion.button
+                        type="button"
+                        onClick={() => onFocusRoom?.(room.id)}
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{
+                          opacity: 1,
+                          scale: 1,
+                          y: [0, -8, 0],
+                        }}
+                        transition={{
+                          opacity: { duration: 0.4, delay: i * 0.06 },
+                          scale: { duration: 0.4, delay: i * 0.06 },
+                          y: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.4 },
+                        }}
+                        whileHover={{ scale: 1.12 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <OrbitalVinylNode
+                          label={room.label}
+                          summary={typeof room.summary === 'function' ? room.summary() : ''}
+                          color={room.color}
+                          Icon={Icon}
+                        />
+                      </motion.button>
+                    </div>
+                  </motion.div>
                 );
               })}
 
@@ -188,7 +190,7 @@ export default function OrbitalConfigCanvas({
                 const roomIndex = rooms.findIndex(r => r.id === recording.roomId);
                 if (roomIndex === -1) return null;
                 const room = rooms[roomIndex];
-                const angle = (roomIndex / rooms.length) * Math.PI * 2 - Math.PI / 2;
+                const angle = ((roomIndex + spinOffset) / rooms.length) * Math.PI * 2 - Math.PI / 2;
                 const startX = Math.cos(angle) * radiusX;
                 const startY = Math.sin(angle) * radiusY;
                 const Icon = room.icon;

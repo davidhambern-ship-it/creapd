@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
@@ -133,6 +133,8 @@ export default function MusicConfigure() {
   const [completedModules, setCompletedModules] = useState(new Set());
   const [recording, setRecording] = useState(null);
   const [finalSequence, setFinalSequence] = useState(false);
+  const [spinOffset, setSpinOffset] = useState(0);
+  const prevRecordingRef = useRef(null);
 
   const [config, setConfig] = useState({
     production_name: '',
@@ -263,6 +265,21 @@ export default function MusicConfigure() {
       return () => clearTimeout(t);
     }
   }, [recording]);
+
+  // After recording completes, spin remaining vinyls clockwise and auto-open next module
+  useEffect(() => {
+    const prevRecording = prevRecordingRef.current;
+    prevRecordingRef.current = recording;
+
+    if (prevRecording && !recording && completedModules.size > 0 && completedModules.size < ROOMS.length) {
+      setSpinOffset(prev => prev + 1);
+      const t = setTimeout(() => {
+        const nextRoom = ROOMS.find(r => !completedModules.has(r.id));
+        if (nextRoom) setOpenRoom(nextRoom.id);
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [recording, completedModules]);
 
   // All modules complete → final sequence + auto-transition to Research
   useEffect(() => {
@@ -437,6 +454,7 @@ export default function MusicConfigure() {
           onFlyComplete={handleFlyComplete}
           onComplete={handleModuleComplete}
           totalModules={ROOMS.length}
+          spinOffset={spinOffset}
         >
           <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
 
