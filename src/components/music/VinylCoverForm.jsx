@@ -201,12 +201,12 @@ export default function VinylCoverForm({
               alignContent: 'start',
             }}
           >
-            {/* Album ID — fitted over the rectangle on the upper background */}
+            {/* Album ID — top left */}
             <CoverZone
+              gridMode
               label="Album ID"
               accent={accent}
-              glow={false}
-              style={{ position: 'absolute', top: '3%', right: '5%', width: '52%', zIndex: 5 }}
+              style={{ gridRow: '1', gridColumn: '1' }}
             >
               <FieldLabel accent={accent}>Show / Album Name *</FieldLabel>
               <Input
