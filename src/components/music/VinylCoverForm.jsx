@@ -294,7 +294,7 @@ export default function VinylCoverForm({
               gridMode
               label="Liner Notes"
               accent={accent}
-              style={{ gridRow: '3', gridColumn: '1 / -1' }}
+              style={{ gridRow: '3', gridColumn: '1' }}
             >
               <FieldLabel accent={accent}>Show Description</FieldLabel>
               <Textarea
