@@ -176,7 +176,7 @@ export default function TurntableHub({ canBuild = false }) {
                 <path id="vinyl-arc-right" d="M 80,25 A 55,55 0 0,1 80,135" fill="none" />
               </defs>
               <text
-                fill={canBuild ? 'rgba(0,255,136,0.7)' : 'rgba(255,0,255,0.6)'}
+                fill={canBuild ? 'rgba(255,165,0,0.85)' : 'rgba(255,140,0,0.75)'}
                 fontSize="9"
                 fontWeight="700"
                 fontFamily="var(--font-heading, Inter, sans-serif)"
