@@ -77,13 +77,13 @@ function RuntimeSlider({ label, value, onChange, max = 180, color = '#FF00FF' })
  * Zone wrapper — positions a form section over a blank space on the album cover.
  * Styled as a semi-transparent etched panel that blends with the artwork.
  */
-function CoverZone({ children, style, accent, label, glow = true }) {
+function CoverZone({ children, style, accent, label, glow = true, gridMode = false }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="absolute"
+      className={gridMode ? "" : "absolute"}
       style={style}
     >
       <div
@@ -192,26 +192,34 @@ export default function VinylCoverForm({
 
         {/* ═══ FORM ZONES — positioned over blank spaces on the cover ═══ */}
 
-        {/* ── IDENTITY ROOM ── */}
+        {/* ── IDENTITY ROOM — Album Cover Grid Layout ── */}
         {room === 'identity' && (
-          <>
-            {/* Album Title banner — top */}
+          <div
+            className="absolute inset-0 grid gap-3 p-4"
+            style={{
+              gridTemplateColumns: '1fr 1fr',
+              gridTemplateRows: 'auto auto 1fr',
+              alignContent: 'start',
+            }}
+          >
+            {/* Album ID — top left */}
             <CoverZone
-              label="Album Title"
+              gridMode
+              label="Album ID"
               accent={accent}
-              style={{ top: '4%', left: '8%', right: '8%', height: '22%' }}
+              style={{ gridRow: '1', gridColumn: '1' }}
             >
               <FieldLabel accent={accent}>Show / Album Name *</FieldLabel>
               <Input
                 value={config.production_name}
                 onChange={e => updateConfig('production_name', e.target.value)}
                 placeholder="Enter album title..."
-                className={`${inputClass} text-base font-bold`}
+                className={`${inputClass} text-sm font-bold`}
                 style={{ borderColor: `${accent}33` }}
               />
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <div>
-                  <FieldLabel accent={accent}>Release Date *</FieldLabel>
+                  <FieldLabel accent={accent}>Release Date</FieldLabel>
                   <Input type="date" value={config.show_date} onChange={e => updateConfig('show_date', e.target.value)} className={inputClass} />
                 </div>
                 <div>
@@ -221,26 +229,13 @@ export default function VinylCoverForm({
               </div>
             </CoverZone>
 
-            {/* Band Name — left side */}
+            {/* Broadcast — top right */}
             <CoverZone
-              label="Artist"
-              accent={accent}
-              style={{ top: '30%', left: '4%', width: '40%', height: '38%' }}
-            >
-              <FieldLabel accent={accent}>Host / Artist</FieldLabel>
-              <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
-              <FieldLabel accent={accent}>Co-Host / Featured</FieldLabel>
-              <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional..." className={inputClass} />
-              <FieldLabel accent={accent}>Label / Station</FieldLabel>
-              <Input value={config.station_name} onChange={e => updateConfig('station_name', e.target.value)} placeholder="Station name..." className={inputClass} />
-            </CoverZone>
-
-            {/* Format sticker — center-right circular */}
-            <CoverZone
-              label="Format"
+              gridMode
+              label="Broadcast"
               accent={accent}
               glow={false}
-              style={{ top: '30%', right: '4%', width: '40%', height: '38%' }}
+              style={{ gridRow: '1', gridColumn: '2' }}
             >
               <FieldLabel accent={accent}>Live or Recorded</FieldLabel>
               <Select value={config.live_or_recorded} onValueChange={v => updateConfig('live_or_recorded', v)}>
@@ -250,21 +245,53 @@ export default function VinylCoverForm({
                   <SelectItem value="recorded">Recorded</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="flex items-center justify-center mt-3">
+              <div className="mt-2">
+                <FieldLabel accent={accent}>Label / Station</FieldLabel>
+                <Input value={config.station_name} onChange={e => updateConfig('station_name', e.target.value)} placeholder="Station name..." className={inputClass} />
+              </div>
+            </CoverZone>
+
+            {/* Host — middle left */}
+            <CoverZone
+              gridMode
+              label="Host"
+              accent={accent}
+              style={{ gridRow: '2', gridColumn: '1' }}
+            >
+              <FieldLabel accent={accent}>Host / Artist</FieldLabel>
+              <Input value={config.host_name} onChange={e => updateConfig('host_name', e.target.value)} placeholder="DJ name..." className={inputClass} />
+              <FieldLabel accent={accent}>Co-Host / Featured</FieldLabel>
+              <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional..." className={inputClass} />
+            </CoverZone>
+
+            {/* Format — middle right */}
+            <CoverZone
+              gridMode
+              label="Format"
+              accent={accent}
+              glow={false}
+              style={{ gridRow: '2', gridColumn: '2' }}
+            >
+              <div className="flex items-center gap-3 h-full">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
                 >
                   <Disc3 className="w-10 h-10" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
                 </motion.div>
+                <div>
+                  <p className="text-xs font-bold capitalize" style={{ color: accent }}>{config.live_or_recorded || '—'}</p>
+                  <p className="text-[9px] text-gray-400">Format sticker</p>
+                </div>
               </div>
             </CoverZone>
 
-            {/* Liner Notes — bottom */}
+            {/* Liner Notes — bottom full width */}
             <CoverZone
+              gridMode
               label="Liner Notes"
               accent={accent}
-              style={{ bottom: '4%', left: '8%', right: '8%', height: '22%' }}
+              style={{ gridRow: '3', gridColumn: '1 / -1' }}
             >
               <FieldLabel accent={accent}>Show Description</FieldLabel>
               <Textarea
@@ -275,7 +302,7 @@ export default function VinylCoverForm({
                 className="bg-black/50 border-white/10 text-white text-xs placeholder-gray-600 resize-none"
               />
             </CoverZone>
-          </>
+          </div>
         )}
 
         {/* ── RUNTIME ROOM ── */}
