@@ -50,7 +50,7 @@ export default function OrbitalConfigCanvas({
     return () => el.removeEventListener('mousemove', handleMouse);
   }, [isMobile]);
 
-  const radius = isMobile ? 175 : 335;
+  const radius = isMobile ? 185 : 370;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (
@@ -107,7 +107,7 @@ export default function OrbitalConfigCanvas({
               }}
             >
               {/* ═══ TURNTABLE DECK ═══ */}
-              <div className="relative" style={{ width: '280px', height: '230px', transform: 'scale(1.2)' }}>
+              <div className="relative" style={{ width: '280px', height: '230px', transform: 'scale(1.35)' }}>
                 {/* ── Deck body (rectangular turntable base) ── */}
                 <div
                   className="absolute"
