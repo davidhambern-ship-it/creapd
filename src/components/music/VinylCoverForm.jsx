@@ -96,8 +96,8 @@ function CoverZone({ children, style, accent, label, glow = true, gridMode = fal
       <div
         className="relative h-full rounded-lg overflow-hidden"
         style={{
-          background: 'rgba(8,6,12,0.72)',
-          backdropFilter: 'blur(10px)',
+          background: 'transparent',
+          backdropFilter: 'none',
           border: `1px solid ${accent}33`,
           boxShadow: glow ? `0 0 24px ${accent}11, inset 0 1px 0 rgba(255,255,255,0.04)` : 'none',
         }}
