@@ -263,10 +263,10 @@ export default function VinylCoverForm({
               <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional..." className={inputClass} />
             </CoverZone>
 
-            {/* Format — absolutely centered circle over album cover */}
+            {/* Format — positioned over the circle in the album cover background */}
             <div
               className="absolute flex items-center justify-center"
-              style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}
+              style={{ top: '38%', left: '73%', transform: 'translate(-50%, -50%)', zIndex: 10 }}
             >
               <div
                 className="relative rounded-full flex flex-col items-center justify-center gap-1 text-center"
