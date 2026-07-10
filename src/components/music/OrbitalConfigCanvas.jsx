@@ -5,7 +5,6 @@ import VinylCoverForm from '@/components/music/VinylCoverForm';
 import TurntableHub from '@/components/music/TurntableHub';
 import OrbitalVinylNode from '@/components/music/OrbitalVinylNode';
 import RecordingOverlay from '@/components/music/RecordingOverlay';
-import MobileConfigLayout from '@/components/music/MobileConfigLayout';
 
 /**
  * 2.5D Orbital Configuration Canvas
@@ -63,37 +62,19 @@ export default function OrbitalConfigCanvas({
   // Elliptical orbit — deck is wider than tall, so radiusX > radiusY.
   // hubCenter is the geometric center of the full TurntableHub wrapper,
   // NOT the vinyl platter. All nodes + rings reference this same origin.
-  const radiusX = 340;
-  const radiusY = 245;
-  const nodeSize = 150;
+  // Mobile: hub scaled to 0.35 (~118px), nodes 60px, orbit radii tuned to
+  // keep nodes outside the hub but within a 375px-wide screen.
+  const radiusX = isMobile ? 120 : 340;
+  const radiusY = isMobile ? 90 : 245;
+  const nodeSize = isMobile ? 60 : 150;
+  const hubScale = isMobile ? 0.35 : 1;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ perspective: isMobile ? 'none' : '1200px' }}>
+    <div ref={containerRef} className="relative w-full" style={{ perspective: '1200px' }}>
       <AnimatePresence mode="wait">
         {!isFocused ? (
-          isMobile ? (
-          /* ── MOBILE GRID VIEW ── */
-          <motion.div
-            key="mobile-grid"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.4 }}
-            className="relative flex items-center justify-center py-4"
-          >
-            <MobileConfigLayout
-              rooms={rooms}
-              focusedRoom={focusedRoom}
-              onFocusRoom={onFocusRoom}
-              completedModules={completedModules}
-              recording={recording}
-              onFlyComplete={onFlyComplete}
-              totalModules={totalModules}
-            />
-          </motion.div>
-          ) : (
-          /* ── ORBIT VIEW (desktop) ── */
+          /* ── ORBIT VIEW ── */
           <motion.div
             key="orbit"
             initial={{ opacity: 0 }}
@@ -101,7 +82,7 @@ export default function OrbitalConfigCanvas({
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.4 }}
             className="relative flex items-center justify-center"
-            style={{ height: 'calc(100vh - 160px)', minHeight: '720px' }}
+            style={{ height: isMobile ? '420px' : 'calc(100vh - 160px)', minHeight: isMobile ? '420px' : '720px' }}
           >
             {/* ═══ VISUAL LAYER — tilted, non-interactive ═══ */}
             <div
@@ -138,7 +119,7 @@ export default function OrbitalConfigCanvas({
               {/* Turntable deck — centered on the full wrapper bounding box.
                   hubCenter = 50%/50% of this container. Nodes and rings
                   use this same origin. No shift — the deck center IS the orbit center. */}
-              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+              <div className="absolute" style={{ top: '50%', left: '50%', transform: `translate(-50%, -50%) scale(${hubScale})` }}>
                 <TurntableHub
                   recordingPhase={recording?.phase}
                   completedCount={completedModules?.size || 0}
@@ -201,6 +182,7 @@ export default function OrbitalConfigCanvas({
                           summary={typeof room.summary === 'function' ? room.summary() : ''}
                           color={room.color}
                           Icon={Icon}
+                          size={nodeSize}
                         />
                       </motion.button>
                     </div>
@@ -232,6 +214,7 @@ export default function OrbitalConfigCanvas({
                         label={room.label}
                         color={room.color}
                         Icon={Icon}
+                        size={nodeSize}
                       />
                     </div>
                   </motion.div>
@@ -246,7 +229,6 @@ export default function OrbitalConfigCanvas({
               </div>
             </div>
           </motion.div>
-          )
         ) : (
           /* ── FOCUSED VIEW — Vinyl Cover Form ── */
           <motion.div
