@@ -263,27 +263,40 @@ export default function VinylCoverForm({
               <Input value={config.co_host_name} onChange={e => updateConfig('co_host_name', e.target.value)} placeholder="Optional..." className={inputClass} />
             </CoverZone>
 
-            {/* Format — middle right */}
-            <CoverZone
-              gridMode
-              label="Format"
-              accent={accent}
-              glow={false}
-              style={{ gridRow: '2', gridColumn: '2' }}
+            {/* Format — middle right (circular) */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="relative flex items-center justify-center"
+              style={{ gridRow: '2', gridColumn: '2', aspectRatio: '1 / 1' }}
             >
-              <div className="flex items-center gap-3 h-full">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                >
-                  <Disc3 className="w-10 h-10" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
-                </motion.div>
-                <div>
-                  <p className="text-xs font-bold capitalize" style={{ color: accent }}>{config.live_or_recorded || '—'}</p>
-                  <p className="text-[9px] text-gray-400">Format sticker</p>
+              <div
+                className="relative rounded-full flex items-center justify-center"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  background: 'transparent',
+                  border: `1px solid ${accent}33`,
+                  boxShadow: `0 0 24px ${accent}11, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                }}
+              >
+                {/* Neon corner-style arcs */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full" style={{ borderTop: `2px solid ${accent}66`, width: '24px', height: '24px', borderRadius: '50%', clipPath: 'inset(0 0 50% 0)' }} />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full" style={{ borderBottom: `2px solid ${accent}66`, width: '24px', height: '24px', borderRadius: '50%', clipPath: 'inset(50% 0 0 0)' }} />
+
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Disc3 className="w-8 h-8" style={{ color: accent, filter: `drop-shadow(0 0 8px ${accent}66)` }} />
+                  </motion.div>
+                  <p className="text-[10px] font-bold capitalize" style={{ color: accent }}>{config.live_or_recorded || '—'}</p>
+                  <p className="text-[8px] text-gray-400">Format sticker</p>
                 </div>
               </div>
-            </CoverZone>
+            </motion.div>
 
             {/* Liner Notes — bottom full width */}
             <CoverZone
