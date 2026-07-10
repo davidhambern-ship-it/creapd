@@ -51,7 +51,7 @@ export default function OrbitalConfigCanvas({
     return () => el.removeEventListener('mousemove', handleMouse);
   }, [isMobile]);
 
-  const radius = isMobile ? 175 : 335;
+  const radius = isMobile ? 145 : 230;
   const isFocused = focusedRoom !== null && focusedRoom !== undefined;
 
   return (

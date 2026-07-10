@@ -14,13 +14,13 @@ import { Disc3 } from 'lucide-react';
 export default function TurntableHub({ canBuild = false, children }) {
   return (
     <div
-      className="relative flex items-center justify-center"
-      style={{ width: '100%', height: '100%' }}
+      className="relative"
+      style={{ width: '336px', height: '276px' }}
     >
       {/* ═══ TURNTABLE DECK ═══ */}
       <div
-        className="relative pointer-events-none"
-        style={{ width: '280px', height: '230px', transform: 'scale(1.2)' }}
+        className="absolute pointer-events-none"
+        style={{ width: '280px', height: '230px', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(1.2)' }}
       >
         {/* ── Deck body (rectangular turntable base) ── */}
         <div
