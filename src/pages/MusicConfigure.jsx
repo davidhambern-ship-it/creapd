@@ -195,8 +195,10 @@ export default function MusicConfigure() {
   };
 
   const handleRouletteApply = (generated) => {
-    setConfig(prev => ({ ...prev, ...generated }));
+    const mergedConfig = { ...config, ...generated };
+    setConfig(mergedConfig);
     setRouletteOpen(false);
+    triggerBuild(mergedConfig);
   };
 
   const selectedGenres = safeParse(config.genres, []);
@@ -282,32 +284,36 @@ export default function MusicConfigure() {
     }
   }, [recording, completedModules]);
 
+  // Shared build trigger — saves config, fires build pipeline, navigates to Research
+  const triggerBuild = async (configOverride) => {
+    setFinalSequence(true);
+    playComplete();
+    const configToUse = configOverride || config;
+    try {
+      let savedConfig;
+      if (editConfigId) {
+        savedConfig = await base44.entities.MusicProductionConfiguration.update(editConfigId, configToUse);
+      } else {
+        savedConfig = await base44.entities.MusicProductionConfiguration.create(configToUse);
+      }
+      await base44.auth.updateMe({
+        default_production_type: 'music',
+        default_production_config_id: savedConfig.id
+      });
+      await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
+      await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
+      navigate('/music/research');
+    } catch (err) {
+      setBuildError(err.message || 'Failed to build production.');
+    }
+  };
+
   // All modules complete → final sequence + auto-transition to Research
   useEffect(() => {
     if (completedModules.size === ROOMS.length && !recording && !finalSequence) {
-      setFinalSequence(true);
-      playComplete();
-      // Save config + fire build pipeline (fire and forget — research page has loading states)
-      (async () => {
-        try {
-          let savedConfig;
-          if (editConfigId) {
-            savedConfig = await base44.entities.MusicProductionConfiguration.update(editConfigId, config);
-          } else {
-            savedConfig = await base44.entities.MusicProductionConfiguration.create(config);
-          }
-          await base44.auth.updateMe({
-            default_production_type: 'music',
-            default_production_config_id: savedConfig.id
-          });
-          await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
-          await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
-          navigate('/music/research');
-          } catch (err) {
-          setBuildError(err.message || 'Failed to build production.');
-          }
-          })();
+      triggerBuild();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedModules, recording, finalSequence]);
 
   const handleBuild = async () => {
