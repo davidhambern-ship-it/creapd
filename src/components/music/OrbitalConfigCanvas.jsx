@@ -98,10 +98,12 @@ export default function OrbitalConfigCanvas({
               />
             </div>
 
-            {/* ═══ Central Hub — turntable + nodes as siblings, sharing one relative container ═══ */}
-            <div className="relative flex items-center justify-center" style={{ width: '100%', height: '100%' }}>
-              {/* Turntable deck (visual only, centered by flexbox) */}
-              <TurntableHub canBuild={canBuild} />
+            {/* ═══ Central Hub — turntable + nodes share same absolute center ═══ */}
+            <div className="relative" style={{ width: '100%', height: '100%' }}>
+              {/* Turntable deck — absolutely centered at 50%/50% */}
+              <div className="absolute" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+                <TurntableHub canBuild={canBuild} />
+              </div>
 
               {/* Build button below deck */}
               {canBuild && (
