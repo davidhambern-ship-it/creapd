@@ -32,6 +32,30 @@
     "show_description": {
       "type": "string"
     },
+    "theme": {
+      "type": "string",
+      "description": "Creative theme for the album/show"
+    },
+    "voice": {
+      "type": "string",
+      "description": "Voice profile for the host"
+    },
+    "bpm": {
+      "type": "string",
+      "description": "Preferred BPM range for playlist"
+    },
+    "transition_style": {
+      "type": "string",
+      "description": "Transition style between tracks"
+    },
+    "producer_notes": {
+      "type": "string",
+      "description": "Internal notes for the production team"
+    },
+    "creative_direction": {
+      "type": "string",
+      "description": "Creative direction, mood, pacing, references"
+    },
     "total_show_runtime": {
       "type": "number",
       "description": "Total show runtime in minutes"
