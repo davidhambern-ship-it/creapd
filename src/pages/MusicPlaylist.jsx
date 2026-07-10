@@ -9,7 +9,7 @@ import { Loader2, Lock, Unlock, ArrowUp, ArrowDown, Trash2, Music, RefreshCw, Di
 import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
-import CommanderPlayer from '@/components/music/CommanderPlayer';
+import SpotifyPlayer from '@/components/music/SpotifyPlayer';
 
 export default function MusicPlaylist() {
   const { config, playlist, loading, refresh } = useMusicProduction();
@@ -88,7 +88,7 @@ export default function MusicPlaylist() {
   }
 
   const activePlaylist = playlist.filter(s => s.status !== 'removed');
-  const playableTracks = activePlaylist.filter(s => s.youtube_video_id);
+  const playableTracks = activePlaylist.filter(s => s.spotify_track_id);
   const totalSeconds = activePlaylist.reduce((sum, s) => sum + (s.length_seconds || 0), 0);
   const requiredSeconds = (config?.required_music_runtime || 0) * 60;
   const remaining = requiredSeconds - totalSeconds;
@@ -145,12 +145,12 @@ export default function MusicPlaylist() {
 
         {/* Commander Player — shows if there are playable YouTube tracks */}
         {playableTracks.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <CommanderPlayer items={playableTracks} title="Playlist Player" />
-          </motion.div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <SpotifyPlayer items={playableTracks} title="Playlist Player" />
+        </motion.div>
         )}
 
         {/* Runtime gauge — horizontal fill bar */}
@@ -270,6 +270,17 @@ export default function MusicPlaylist() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-0.5">
+                    {song.spotify_track_id && (
+                      <a
+                        href={`https://open.spotify.com/track/${song.spotify_track_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-white/10"
+                        title="Open in Spotify"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" style={{ color: '#1DB954' }} />
+                      </a>
+                    )}
                     {song.youtube_video_id && (
                       <a
                         href={`https://youtube.com/watch?v=${song.youtube_video_id}`}

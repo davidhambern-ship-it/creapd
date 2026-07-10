@@ -242,17 +242,19 @@ Return a JSON object with exactly these keys: playlist (array), research (array)
         status: 'suggested'
       }));
       // ═══════════════════════════════════════════════════════
-      // STAGE 2b: YOUTUBE RESOLUTION — find playable video IDs
+      // STAGE 2b: SPOTIFY RESOLUTION — find playable track IDs
+      // Playlists use Spotify audio embeds (not YouTube videos).
+      // Top 10s use YouTube video embeds — separate flow.
       // ═══════════════════════════════════════════════════════
       if (playlistData.length > 0) {
         try {
-          const ytPrompt = `For each song below, search YouTube and find the official or most popular YouTube video for that exact song by that exact artist. Return the results in the SAME ORDER as the input list. Each result must include: song_title, artist, youtube_video_id (the 11-character video ID from the YouTube URL, e.g. "dQw4w9WgXcQ"), thumbnail_url (set to "https://img.youtube.com/vi/{youtube_video_id}/mqdefault.jpg"), and channel_name.
+          const spotPrompt = `For each song below, search Spotify and find the exact track on Spotify. Return the Spotify track ID (the 22-character alphanumeric ID from the Spotify track URL, e.g. from "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT" the ID is "4cOdK2wGLETKBW3PvgPWqT"). Also return the album art URL (the image URL from Spotify's API, typically from i.scdn.co). Return results in the SAME ORDER as the input list.
 
 Songs:
 ${playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n')}`;
 
-          const ytResult = await base44.integrations.Core.InvokeLLM({
-            prompt: ytPrompt,
+          const spotResult = await base44.integrations.Core.InvokeLLM({
+            prompt: spotPrompt,
             add_context_from_internet: true,
             response_json_schema: {
               type: 'object',
@@ -264,9 +266,8 @@ ${playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join(
                     properties: {
                       song_title: { type: 'string' },
                       artist: { type: 'string' },
-                      youtube_video_id: { type: 'string' },
-                      thumbnail_url: { type: 'string' },
-                      channel_name: { type: 'string' }
+                      spotify_track_id: { type: 'string' },
+                      album_art_url: { type: 'string' }
                     }
                   }
                 }
@@ -275,21 +276,21 @@ ${playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join(
             model: 'gemini_3_flash'
           });
 
-          const ytTracks = ytResult.tracks || [];
+          const spotTracks = spotResult.tracks || [];
           playlistData = playlistData.map((song, idx) => {
-            const yt = ytTracks[idx];
-            if (yt && yt.youtube_video_id && yt.youtube_video_id.length >= 8) {
+            const sp = spotTracks[idx];
+            if (sp && sp.spotify_track_id && sp.spotify_track_id.length >= 10) {
               return {
                 ...song,
-                youtube_video_id: yt.youtube_video_id,
-                thumbnail_url: yt.thumbnail_url || `https://img.youtube.com/vi/${yt.youtube_video_id}/mqdefault.jpg`,
-                channel_name: yt.channel_name || '',
+                spotify_track_id: sp.spotify_track_id,
+                album_art_url: sp.album_art_url || '',
+                thumbnail_url: sp.album_art_url || '',
               };
             }
             return song;
           });
         } catch (e) {
-          console.error('YouTube resolution failed:', e.message);
+          console.error('Spotify resolution failed:', e.message);
         }
 
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
