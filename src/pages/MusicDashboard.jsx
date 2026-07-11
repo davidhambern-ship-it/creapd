@@ -215,20 +215,8 @@ export default function MusicDashboard() {
     }
   }, [config?.id, pipeline, pipelineLoading, initPipeline]);
 
-  useEffect(() => {
-    if (config?.status === 'building') {
-      const interval = setInterval(async () => {
-        if (config?.id) {
-          const updated = await base44.entities.MusicProductionConfiguration.get(config.id);
-          if (updated && (updated.status === 'ready' || updated.status === 'failed')) {
-            clearInterval(interval);
-            refresh();
-          }
-        }
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [config?.status, config?.id, refresh]);
+  // Realtime config updates are handled by the Break Room's subscription;
+  // no polling needed here.
 
   const handleRefresh = async () => {
     if (!config?.id) return;
