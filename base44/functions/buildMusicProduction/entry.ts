@@ -243,6 +243,88 @@ Return a JSON object with exactly these keys: playlist (array), research (array)
       }));
       if (playlistData.length > 0) {
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
+
+        // YouTube lookup — find real YouTube video IDs for each playlist track
+        try {
+          const songList = playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n');
+
+          const ytPrompt = `You are a music librarian. For each song below, find its REAL YouTube video URL. These must be REAL, searchable YouTube videos that actually exist. Prefer official music videos, Vevo, or official channel uploads.
+
+SONGS TO FIND:
+${songList}
+
+Return a JSON object with key "results" containing an array of objects, each with:
+- song_title (exact match from the list above)
+- artist (exact match from the list above)
+- youtube_url (full YouTube URL: https://www.youtube.com/watch?v=VIDEO_ID)
+
+Only include songs where you found a real, working YouTube URL. Skip any you cannot find.`;
+
+          const ytSchema = {
+            type: 'object',
+            properties: {
+              results: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    song_title: { type: 'string' },
+                    artist: { type: 'string' },
+                    youtube_url: { type: 'string' }
+                  }
+                }
+              }
+            }
+          };
+
+          const ytResult = await base44.integrations.Core.InvokeLLM({
+            prompt: ytPrompt,
+            add_context_from_internet: true,
+            response_json_schema: ytSchema,
+            model: 'gemini_3_flash'
+          });
+
+          const ytResults = ytResult.results || [];
+
+          // Fetch created playlist items to get their IDs
+          const createdItems = await base44.entities.PlaylistItem.filter({ configuration_id });
+
+          const updates = [];
+          for (const result of ytResults) {
+            const videoId = extractVideoId(result.youtube_url || '');
+            if (!videoId) continue;
+
+            const matchedItem = createdItems.find(item =>
+              item.song_title === result.song_title && item.artist === result.artist
+            );
+            if (!matchedItem) continue;
+
+            // Validate via oEmbed
+            let thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+            let channelName = '';
+            try {
+              const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+              if (oembedResp.ok) {
+                const oembed = await oembedResp.json();
+                channelName = oembed.author_name || '';
+                thumbnailUrl = oembed.thumbnail_url || thumbnailUrl;
+              }
+            } catch {}
+
+            updates.push({
+              id: matchedItem.id,
+              youtube_video_id: videoId,
+              thumbnail_url: thumbnailUrl,
+              channel_name: channelName
+            });
+          }
+
+          if (updates.length > 0) {
+            await base44.entities.PlaylistItem.bulkUpdate(updates);
+          }
+        } catch (e) {
+          console.error('YouTube lookup for playlist failed:', e.message);
+        }
       }
 
       // Create research items
@@ -545,4 +627,21 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
 function safeParse(str, fallback) {
   if (!str) return fallback;
   try { return JSON.parse(str); } catch { return fallback; }
+}
+
+function extractVideoId(url) {
+  if (!url) return null;
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /(?:music\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
 }
