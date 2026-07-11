@@ -9,6 +9,7 @@ import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } 
 import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
+import RegenerateDropdown from '@/components/music/RegenerateDropdown';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
@@ -241,6 +242,24 @@ export default function MusicDashboard() {
     }
   };
 
+  const handleRegenerateSection = async (section) => {
+    if (!config?.id) return;
+    setRefreshing(true);
+    try {
+      await base44.functions.invoke('regenerateMusicSection', {
+        configuration_id: config.id,
+        section
+      });
+      await refresh();
+    } catch (err) {
+      console.error('Section regeneration failed:', err.message);
+      // Still refresh to show current state
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="relative flex items-center justify-center h-screen overflow-hidden bg-black">
@@ -459,9 +478,11 @@ export default function MusicDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={handleRefresh} className="cp-btn-gradient border-0 text-white hover:opacity-90">
-            <RefreshCw className="w-4 h-4 mr-1.5" /> Refresh Production
+        <div className="flex flex-wrap gap-2 items-center">
+          <RegenerateDropdown onRegenerate={handleRegenerateSection} disabled={refreshing} />
+          <Button size="sm" variant="outline" onClick={handleRefresh}
+            className="border-[#00FFFF]/40 hover:border-[#00FFFF]/70 hover:bg-[#00FFFF]/10 text-white">
+            <RefreshCw className="w-4 h-4 mr-1.5" style={{ color: '#00FFFF' }} /> Full Rebuild
           </Button>
           {QUICK_ACTIONS.map((qa, i) => {
             const color = qa.accent === 'pink' ? '#FF00FF' : '#00FFFF';
