@@ -8,6 +8,7 @@ import {
   ChefHat, Carrot, Trophy, Sparkles,
   Zap, FlaskConical, Layers
 } from 'lucide-react';
+import { useFooterStats } from '@/hooks/useFooterStats';
 
 const VARIANTS = {
   news: {
@@ -99,10 +100,23 @@ const VARIANTS = {
 export default function ProductionFooter({ variant = 'news' }) {
   const config = VARIANTS[variant] || VARIANTS.news;
   const ActionIcon = config.action.icon;
+  const liveStats = useFooterStats(variant);
+
+  // Build stats array — use live data when available, fall back to static config
+  const stats = config.stats.map((stat) => {
+    if (variant === 'music' && liveStats) {
+      if (stat.label === 'Automation') return { ...stat, value: liveStats.automation, color: liveStats.automationColor };
+      if (stat.label === 'Runtime') return { ...stat, value: liveStats.runtime };
+      if (stat.label === 'Playlist') return { ...stat, value: liveStats.playlist };
+      if (stat.label === 'Talk Segments') return { ...stat, value: liveStats.talkSegments };
+      if (stat.label === 'Rundown') return { ...stat, value: liveStats.rundown, color: liveStats.rundownColor };
+    }
+    return stat;
+  });
 
   return (
     <footer className="hidden lg:flex h-8 glass-panel-navy border-t border-white/[0.06] items-center px-4 gap-6 text-[10px] font-mono text-muted-foreground">
-      {config.stats.map((stat, i) => (
+      {stats.map((stat, i) => (
         <div key={i} className="flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
           <stat.icon className={`w-3 h-3 ${stat.color || ''}`} />
           <span>{stat.label}: <span className={stat.color || 'text-foreground'}>{stat.value}</span></span>
