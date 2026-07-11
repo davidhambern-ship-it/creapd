@@ -65,11 +65,11 @@ export const DEFAULT_AI_AUTOMATION = [
 
 export const RUNTIME_DEFAULTS = {
   total_show_runtime: 90,
-  required_music_runtime: 70,
-  talk_segment_runtime: 12,
-  commercial_sponsor_runtime: 6,
-  intro_runtime: 1,
-  outro_runtime: 1
+  required_music_runtime: 45,
+  talk_segment_runtime: 20,
+  commercial_sponsor_runtime: 10,
+  intro_runtime: 2,
+  outro_runtime: 2
 };
 
 export const MUSIC_NAV_ITEMS = [

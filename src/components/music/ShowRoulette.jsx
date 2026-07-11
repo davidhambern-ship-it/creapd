@@ -52,7 +52,7 @@ AI Automation (pick 4-6 from these keys): ${AI_AUTOMATION_OPTIONS.map(a => a.key
 Also generate:
 - A catchy, creative production_name
 - A 1-2 sentence show_description
-- Runtime allocations in minutes: total_show_runtime (30-180), required_music_runtime (60-80% of total), talk_segment_runtime (8-15), commercial_sponsor_runtime (4-8), intro_runtime (1-2), outro_runtime (1-2)
+- Runtime allocations in minutes: total_show_runtime (30-90, max 90), required_music_runtime (EXACTLY 50% of total_show_runtime), talk_segment_runtime (8-20), commercial_sponsor_runtime (4-10), intro_runtime (1-2), outro_runtime (1-2). The remaining segments (talk + commercials + intro + outro) must fit within the other 50% of total_show_runtime.
 
 IMPORTANT: The playlist should default to MODERN/RECENT MUSIC (2022-2025 releases). Only include throwbacks or older eras if the vibe explicitly calls for it (e.g., "Throwback 90s house party").
 

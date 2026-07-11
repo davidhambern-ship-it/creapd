@@ -35,15 +35,27 @@ Deno.serve(async (req) => {
 
     const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 });
 
-    // Enforce 75-minute maximum show runtime
-    const MAX_SHOW_MINUTES = 75;
-    const talkMin = config.talk_segment_runtime || 12;
-    const sponsorMin = config.commercial_sponsor_runtime || 6;
-    const introMin = config.intro_runtime || 1;
-    const outroMin = config.outro_runtime || 1;
+    // Enforce 90-minute maximum show runtime — music is ALWAYS 50% of total
+    const MAX_SHOW_MINUTES = 90;
     const totalShowMin = Math.min(config.total_show_runtime || MAX_SHOW_MINUTES, MAX_SHOW_MINUTES);
-    const maxMusicMin = totalShowMin - talkMin - sponsorMin - introMin - outroMin;
-    const requiredMusicMinutes = Math.min(config.required_music_runtime || 55, maxMusicMin, 55);
+    const requiredMusicMinutes = Math.floor(totalShowMin / 2);
+    const remainingBudget = totalShowMin - requiredMusicMinutes;
+
+    // AI determines the best split for the remaining 50% across talk, sponsor, intro, outro
+    // Use user-configured values as preferences, then scale to fit the remaining budget
+    let talkMin = config.talk_segment_runtime || 20;
+    let sponsorMin = config.commercial_sponsor_runtime || 10;
+    let introMin = config.intro_runtime || 2;
+    let outroMin = config.outro_runtime || 2;
+
+    const configuredTotal = talkMin + sponsorMin + introMin + outroMin;
+    if (configuredTotal > remainingBudget) {
+      const scale = remainingBudget / configuredTotal;
+      talkMin = Math.max(2, Math.floor(talkMin * scale));
+      sponsorMin = Math.max(1, Math.floor(sponsorMin * scale));
+      introMin = Math.max(1, Math.floor(introMin * scale));
+      outroMin = Math.max(1, Math.floor(outroMin * scale));
+    }
 
     // ═══════════════════════════════════════════════════════
     // STAGE 1: PRODUCTION PLANNING — Build PRP from DCP
@@ -89,7 +101,7 @@ Deno.serve(async (req) => {
 
     const prp = {
       production_format: productionFormat,
-      total_show_runtime: config.total_show_runtime || 90,
+      total_show_runtime: totalShowMin,
       required_music_runtime: requiredMusicMinutes,
       estimated_song_count: estimatedSongCount,
       requirements,
@@ -99,7 +111,7 @@ Deno.serve(async (req) => {
         interchange_rule: 'Track media and Video media are separate asset types and are never interchangeable',
       },
       automation_preferences: aiAutomation,
-      planning_notes: `Production format "${productionFormat}" requires ${requirements.length} deliverable categories. Planning determines required work; departments execute it.`,
+      planning_notes: `Production format "${productionFormat}" requires ${requirements.length} deliverable categories. Total show capped at ${totalShowMin} min. Music is always 50% (${requiredMusicMinutes} min). Remaining ${remainingBudget} min split: talk ${talkMin}m, sponsor ${sponsorMin}m, intro ${introMin}m, outro ${outroMin}m. AI determines optimal content to fill each segment.`,
     };
 
     await base44.entities.MusicProductionConfiguration.update(configuration_id, {
@@ -166,7 +178,8 @@ MUSIC SETTINGS:
 - Genres: ${genres.join(', ') || 'Top 40'}
 - Mood/Vibe: ${moods.join(', ') || 'Feel Good'}
 - Show Tone: ${config.show_tone || 'Professional'}
-- Required Music Runtime: ${requiredMusicMinutes} minutes
+- Total Show Runtime: ${totalShowMin} minutes (max 90)
+- Required Music Runtime: ${requiredMusicMinutes} minutes (always exactly 50% of total show)
 - Energy Flow: ${config.playlist_energy_flow || 'Build Energy Gradually'}
 
 PLAYLIST RULES:
@@ -584,12 +597,12 @@ SHOW CONFIGURATION:
 - Host: ${config.host_name || 'Host'}
 - Co-Host: ${config.co_host_name || 'None'}
 - Production Format: ${productionFormat}
-- Total Show Runtime: ${config.total_show_runtime || 90} minutes
-- Required Music Runtime: ${requiredMusicMinutes} minutes
-- Talk/Segment Runtime: ${config.talk_segment_runtime || 12} minutes
-- Commercial/Sponsor Runtime: ${config.commercial_sponsor_runtime || 6} minutes
-- Intro Runtime: ${config.intro_runtime || 1} minutes
-- Outro Runtime: ${config.outro_runtime || 1} minutes
+- Total Show Runtime: ${totalShowMin} minutes (max 90)
+- Required Music Runtime: ${requiredMusicMinutes} minutes (always exactly 50% of total show)
+- Talk/Segment Runtime: ${talkMin} minutes (AI-determined split of remaining ${remainingBudget} min)
+- Commercial/Sponsor Runtime: ${sponsorMin} minutes
+- Intro Runtime: ${introMin} minutes
+- Outro Runtime: ${outroMin} minutes
 - Show Tone: ${config.show_tone || 'Professional'}
 - Show Start Time: ${config.show_start_time || '06:00'}
 
@@ -805,7 +818,7 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         extraInterstitials.push({ segment_type: 'concert_news', title: 'Concert News', target_duration: 60, content: llmAssets.concert_news.map(n => `${n.headline}: ${n.details}`).join('\n') });
       }
 
-      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config, extraInterstitials);
+      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config, extraInterstitials, { talkMin, sponsorMin, introMin, outroMin });
       const blueprintText = blueprint.map((bp, i) => {
         const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${bp.target_duration || 60}s)`];
         if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
@@ -822,12 +835,12 @@ SHOW CONFIGURATION:
 - Host: ${config.host_name || 'Host'}
 - Co-Host: ${config.co_host_name || 'None'}
 - Production Format: ${productionFormat}
-- Total Show Runtime: ${config.total_show_runtime || 90} minutes
-- Required Music Runtime: ${requiredMusicMinutes} minutes
-- Talk/Segment Runtime: ${config.talk_segment_runtime || 12} minutes
-- Commercial/Sponsor Runtime: ${config.commercial_sponsor_runtime || 6} minutes
-- Intro Runtime: ${config.intro_runtime || 1} minutes
-- Outro Runtime: ${config.outro_runtime || 1} minutes
+- Total Show Runtime: ${totalShowMin} minutes (max 90)
+- Required Music Runtime: ${requiredMusicMinutes} minutes (always exactly 50% of total show)
+- Talk/Segment Runtime: ${talkMin} minutes (AI-determined split of remaining ${remainingBudget} min)
+- Commercial/Sponsor Runtime: ${sponsorMin} minutes
+- Intro Runtime: ${introMin} minutes
+- Outro Runtime: ${outroMin} minutes
 - Show Tone: ${config.show_tone || 'Professional'}
 - Show Start Time: ${config.show_start_time || '06:00'}
 
@@ -1095,13 +1108,13 @@ function formatSecondsToTime(totalSeconds) {
 // no more than max_sequential_songs play in a row, with talk breaks,
 // topic segments, sponsor breaks, and station IDs interleaved between
 // song blocks. Time budgets are calculated from the configuration.
-function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInterstitials = []) {
+function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInterstitials = [], timeBudget = {}) {
   const maxSequential = pacingRules.max_sequential_songs || 4;
 
-  const introSecs = Math.round((config.intro_runtime || 1) * 60);
-  const outroSecs = Math.round((config.outro_runtime || 1) * 60);
-  const talkSecs = Math.round((config.talk_segment_runtime || 12) * 60);
-  const sponsorSecs = Math.round((config.commercial_sponsor_runtime || 6) * 60);
+  const introSecs = Math.round((timeBudget.introMin || config.intro_runtime || 1) * 60);
+  const outroSecs = Math.round((timeBudget.outroMin || config.outro_runtime || 1) * 60);
+  const talkSecs = Math.round((timeBudget.talkMin || config.talk_segment_runtime || 12) * 60);
+  const sponsorSecs = Math.round((timeBudget.sponsorMin || config.commercial_sponsor_runtime || 6) * 60);
   const stationIdSecs = 15;
 
   const songBlocks = [];
@@ -1206,8 +1219,8 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
 
   blueprint.push({ segment_type: 'outro', title: 'Show Outro', target_duration: outroSecs });
 
-  // Enforce 75-minute maximum rundown duration by trimming excess songs from the end
-  const maxTotalSecs = 75 * 60;
+  // Enforce 90-minute maximum rundown duration by trimming excess songs from the end
+  const maxTotalSecs = 90 * 60;
   let totalSecs = blueprint.reduce((sum, bp) => sum + (bp.target_duration || 0), 0);
   while (totalSecs > maxTotalSecs && blueprint.length > 3) {
     const lastSongIdx = blueprint.map(b => b.segment_type).lastIndexOf('song');

@@ -469,11 +469,19 @@ export default function MusicConfigure() {
                       <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#00FFFF'}} />Talk</span>
                       <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{background:'#FF6B00'}} />Sponsors</span>
                     </div>
+                    <div className="rounded-lg p-3 border border-[#FF00FF]/20 bg-[#FF00FF]/5 mb-2">
+                      <p className="text-[11px] text-gray-400 text-center">
+                        <span className="text-[#FF00FF] font-semibold">Music Runtime</span> is always <span className="text-white font-semibold">50% of Total Show</span>. The AI determines the best split for the remaining time across talk, sponsors, intro & outro.
+                      </p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <RuntimeSlider label="Total Show" value={config.total_show_runtime} onChange={v => updateConfig('total_show_runtime', v)} max={240} color="#FFFFFF" />
-                      <RuntimeSlider label="Music Runtime" value={config.required_music_runtime} onChange={v => updateConfig('required_music_runtime', v)} max={240} color="#FF00FF" />
-                      <RuntimeSlider label="Talk Segments" value={config.talk_segment_runtime} onChange={v => updateConfig('talk_segment_runtime', v)} max={60} color="#00FFFF" />
-                      <RuntimeSlider label="Commercials" value={config.commercial_sponsor_runtime} onChange={v => updateConfig('commercial_sponsor_runtime', v)} max={30} color="#FF6B00" />
+                      <RuntimeSlider label="Total Show (max 90)" value={config.total_show_runtime} onChange={v => {
+                        updateConfig('total_show_runtime', Math.min(v, 90));
+                        updateConfig('required_music_runtime', Math.floor(Math.min(v, 90) / 2));
+                      }} max={90} color="#FFFFFF" />
+                      <RuntimeSlider label="Music (auto: 50%)" value={config.required_music_runtime} onChange={() => {}} max={45} color="#FF00FF" />
+                      <RuntimeSlider label="Talk Segments" value={config.talk_segment_runtime} onChange={v => updateConfig('talk_segment_runtime', v)} max={45} color="#00FFFF" />
+                      <RuntimeSlider label="Commercials" value={config.commercial_sponsor_runtime} onChange={v => updateConfig('commercial_sponsor_runtime', v)} max={20} color="#FF6B00" />
                       <RuntimeSlider label="Intro" value={config.intro_runtime} onChange={v => updateConfig('intro_runtime', v)} max={10} color="#FFD700" />
                       <RuntimeSlider label="Outro" value={config.outro_runtime} onChange={v => updateConfig('outro_runtime', v)} max={10} color="#FFD700" />
                     </div>
