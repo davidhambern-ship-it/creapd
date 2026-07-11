@@ -53,6 +53,8 @@ export default function CommanderPlayer({ items = [], title = 'Player' }) {
 
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId: currentItem.youtube_video_id,
+        width: '100%',
+        height: '100%',
         playerVars: {
           autoplay: 0,
           rel: 0,
@@ -151,7 +153,9 @@ export default function CommanderPlayer({ items = [], title = 'Player' }) {
               <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
             </div>
           )}
-          <div ref={containerRef} className="w-full" style={{ aspectRatio: '16/9' }} />
+          <div className="w-full" style={{ aspectRatio: '16/9' }}>
+            <div ref={containerRef} className="w-full h-full" style={{ width: '100%', height: '100%' }} />
+          </div>
         </div>
 
         {/* Now Playing + Controls */}
