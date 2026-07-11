@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
  * Drag up = increase, drag down = decrease.
  * 270° sweep from -135° (min) to +135° (max).
  */
-function Knob({ label, value, min = 0, max = 90, onChange, color = '#FF00FF', disabled = false, unit = 'min' }) {
+export function Knob({ label, value, min = 0, max = 90, onChange, color = '#FF00FF', disabled = false, unit = 'min', size = 72 }) {
   const dragState = useRef({ startY: 0, startVal: 0, dragging: false });
 
   const angleRange = 270; // total degrees of sweep
@@ -45,9 +45,9 @@ function Knob({ label, value, min = 0, max = 90, onChange, color = '#FF00FF', di
   return (
     <div className="flex flex-col items-center gap-2 select-none">
       <Label className="text-[11px] text-gray-300 text-center leading-tight">{label}</Label>
-      <div className="relative" style={{ width: 72, height: 72 }}>
+      <div className="relative" style={{ width: size, height: size }}>
         {/* Tick marks */}
-        <svg className="absolute inset-0" width="72" height="72" viewBox="0 0 72 72">
+        <svg className="absolute inset-0" width={size} height={size} viewBox="0 0 72 72">
           {ticks.map((i) => {
             const tickAngle = minAngle + (i / (ticks.length - 1)) * angleRange;
             const rad = (tickAngle - 90) * (Math.PI / 180);

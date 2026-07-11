@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Disc3 } from 'lucide-react';
+import { ArrowLeft, Disc3, Sliders } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import {
   GENRE_OPTIONS, MOOD_OPTIONS, TONE_OPTIONS, MUSIC_TOPIC_OPTIONS,
   RESEARCH_SOURCE_OPTIONS, ENERGY_FLOW_OPTIONS, AI_AUTOMATION_OPTIONS
 } from '@/lib/musicConstants';
+import { Knob } from '@/components/music/RuntimeSoundBoard';
 
 const ALBUM_COVER_URL = 'https://media.base44.com/images/public/6a4126962e5804304cc84b12/e419e47b4_generated_image.png';
 
@@ -336,13 +337,20 @@ export default function VinylCoverForm({
               accent={accent}
               style={{ top: '30%', left: '4%', right: '4%', height: '64%' }}
             >
-              <div className="grid grid-cols-2 gap-3">
-                <RuntimeSlider label="Total Show" value={config.total_show_runtime} onChange={v => updateConfig('total_show_runtime', v)} max={240} color="#FFFFFF" />
-                <RuntimeSlider label="Music Runtime" value={config.required_music_runtime} onChange={v => updateConfig('required_music_runtime', v)} max={240} color="#FF00FF" />
-                <RuntimeSlider label="Talk Segments" value={config.talk_segment_runtime} onChange={v => updateConfig('talk_segment_runtime', v)} max={60} color="#00FFFF" />
-                <RuntimeSlider label="Commercials" value={config.commercial_sponsor_runtime} onChange={v => updateConfig('commercial_sponsor_runtime', v)} max={30} color="#FF6B00" />
-                <RuntimeSlider label="Intro" value={config.intro_runtime} onChange={v => updateConfig('intro_runtime', v)} max={10} color="#FFD700" />
-                <RuntimeSlider label="Outro" value={config.outro_runtime} onChange={v => updateConfig('outro_runtime', v)} max={10} color="#FFD700" />
+              <div className="flex items-center gap-2 mb-3">
+                <Sliders className="w-3 h-3" style={{ color: accent }} />
+                <span className="text-[9px] text-gray-400">Sound Board — drag knobs up/down</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 place-items-center">
+                <Knob label="Total Show" value={config.total_show_runtime} max={90} size={56} color="#FFFFFF" onChange={v => {
+                  updateConfig('total_show_runtime', v);
+                  updateConfig('required_music_runtime', Math.floor(v / 2));
+                }} />
+                <Knob label="Music (50%)" value={config.required_music_runtime} max={45} size={56} color="#FF00FF" disabled onChange={() => {}} />
+                <Knob label="Talk" value={config.talk_segment_runtime} max={45} size={56} color="#00FFFF" onChange={v => updateConfig('talk_segment_runtime', v)} />
+                <Knob label="Sponsors" value={config.commercial_sponsor_runtime} max={20} size={56} color="#FF6B00" onChange={v => updateConfig('commercial_sponsor_runtime', v)} />
+                <Knob label="Intro" value={config.intro_runtime} max={10} size={56} color="#FFD700" onChange={v => updateConfig('intro_runtime', v)} />
+                <Knob label="Outro" value={config.outro_runtime} max={10} size={56} color="#FFD700" onChange={v => updateConfig('outro_runtime', v)} />
               </div>
             </CoverZone>
           </>
