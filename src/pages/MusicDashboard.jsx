@@ -9,6 +9,7 @@ import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } 
 import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
+import MusicShowArchive from '@/components/music/MusicShowArchive';
 import RegenerateDropdown from '@/components/music/RegenerateDropdown';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
@@ -692,6 +693,9 @@ export default function MusicDashboard() {
             )}
           </WidgetCard>
         </div>
+
+        {/* Show Archive */}
+        <MusicShowArchive currentConfigId={config.id} />
 
         {/* Production Checklist */}
         <motion.div
