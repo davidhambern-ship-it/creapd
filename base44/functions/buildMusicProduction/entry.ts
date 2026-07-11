@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
+  let pipelineConfigId = null;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -8,6 +9,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { configuration_id } = body;
+    pipelineConfigId = configuration_id;
 
     if (!configuration_id) {
       return Response.json({ error: 'configuration_id is required' }, { status: 400 });
@@ -114,6 +116,8 @@ Deno.serve(async (req) => {
     await base44.entities.ShowRundownItem.deleteMany({ configuration_id });
     await base44.entities.MusicAsset.deleteMany({ configuration_id });
 
+    const buildLog = [];
+
     const autoResearch = aiAutomation.includes('Auto Research');
     const autoBuildPlaylist = aiAutomation.includes('Auto Build Playlist');
     const autoDevelop = aiAutomation.includes('Auto Develop');
@@ -146,6 +150,7 @@ Deno.serve(async (req) => {
         );
       } catch (e) {
         console.error('Article query failed:', e.message);
+        buildLog.push({ stage: 'article_query', success: false, error: e.message, timestamp: new Date().toISOString() });
       }
 
       // 2b: If no music articles in DB, fetch via web search and persist as Article records
@@ -209,6 +214,7 @@ Find up to 20 recent articles.`;
           }
         } catch (e) {
           console.error('Music news fetch failed:', e.message);
+          buildLog.push({ stage: 'music_news_fetch', success: false, error: e.message, timestamp: new Date().toISOString() });
         }
       }
 
@@ -272,10 +278,14 @@ Return a JSON object with key "topics" containing an array of topic objects.`;
           }
         };
 
-        const topicResult = await base44.integrations.Core.InvokeLLM({
-          prompt: topicPrompt,
-          response_json_schema: topicSchema
-        });
+        const topicHealResult = await withSelfHealing(base44, 'topic_generation', async (adjustedPrompt) => {
+          return await base44.integrations.Core.InvokeLLM({
+            prompt: adjustedPrompt,
+            response_json_schema: topicSchema
+          });
+        }, topicPrompt);
+        buildLog.push({ stage: 'topic_generation', success: topicHealResult.success, error: topicHealResult.error, attempts: topicHealResult.attempts });
+        const topicResult = topicHealResult.success ? topicHealResult.result : { topics: [] };
 
         topicData = (topicResult.topics || []).map(topic => ({
           configuration_id,
@@ -352,12 +362,16 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
         }
       };
 
-      const playlistResult = await base44.integrations.Core.InvokeLLM({
-        prompt: playlistPrompt,
-        add_context_from_internet: true,
-        response_json_schema: playlistSchema,
-        model: 'gemini_3_flash'
-      });
+      const playlistHealResult = await withSelfHealing(base44, 'playlist_generation', async (adjustedPrompt) => {
+        return await base44.integrations.Core.InvokeLLM({
+          prompt: adjustedPrompt,
+          add_context_from_internet: true,
+          response_json_schema: playlistSchema,
+          model: 'gemini_3_flash'
+        });
+      }, playlistPrompt);
+      buildLog.push({ stage: 'playlist_generation', success: playlistHealResult.success, error: playlistHealResult.error, attempts: playlistHealResult.attempts });
+      const playlistResult = playlistHealResult.success ? playlistHealResult.result : { playlist: [] };
 
       // Create playlist items
       playlistData = (playlistResult.playlist || []).map((song, idx) => ({
@@ -455,6 +469,7 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
           }
         } catch (e) {
           console.error('YouTube lookup for playlist failed:', e.message);
+          buildLog.push({ stage: 'youtube_lookup', success: false, error: e.message, timestamp: new Date().toISOString() });
         }
       }
     }
@@ -589,10 +604,14 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
         }
       };
 
-      const llm2 = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt2,
-        response_json_schema: schema2
-      });
+      const rundownHealResult = await withSelfHealing(base44, 'rundown_scripts', async (adjustedPrompt) => {
+        return await base44.integrations.Core.InvokeLLM({
+          prompt: adjustedPrompt,
+          response_json_schema: schema2
+        });
+      }, prompt2);
+      buildLog.push({ stage: 'rundown_scripts', success: rundownHealResult.success, error: rundownHealResult.error, attempts: rundownHealResult.attempts });
+      const llm2 = rundownHealResult.success ? rundownHealResult.result : { rundown: [], host_banter: '', song_intros: [], song_outros: [], social_captions: [], hashtags: '', thumbnail_prompt: '', video_prompt: '', production_notes: '' };
 
       // Create rundown items — merge blueprint structure with LLM-generated scripts
       const CHARS_PER_SEC = 15;
@@ -697,6 +716,7 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
           }
         } catch (e) {
           console.error('Image generation failed:', e.message);
+          buildLog.push({ stage: 'image_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
         }
       }
 
@@ -726,6 +746,7 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
           });
         } catch (e) {
           console.error('APD adapter failed:', e.message);
+          buildLog.push({ stage: 'apd_packet_assembly', success: false, error: e.message, timestamp: new Date().toISOString() });
         }
       }
 
@@ -744,6 +765,7 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
           });
         } catch (e) {
           console.error('Export job failed:', e.message);
+          buildLog.push({ stage: 'export_job', success: false, error: e.message, timestamp: new Date().toISOString() });
         }
       }
     }
@@ -758,10 +780,11 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
       top10_count = top10Result?.data?.top10_count || 0;
     } catch (e) {
       console.error('Top 10 generation failed:', e.message);
+      buildLog.push({ stage: 'top10_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
     }
 
-    // Update config status to ready
-    await base44.entities.MusicProductionConfiguration.update(configuration_id, { status: 'ready' });
+    // Update config status to ready and persist build log
+    await base44.entities.MusicProductionConfiguration.update(configuration_id, { status: 'ready', build_log: JSON.stringify(buildLog) });
 
     return Response.json({
       success: true,
@@ -776,9 +799,72 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
       top10_count,
     });
   } catch (error) {
+    if (pipelineConfigId) {
+      try {
+        const errorBase44 = createClientFromRequest(req);
+        await errorBase44.asServiceRole.entities.MusicProductionConfiguration.update(pipelineConfigId, {
+          status: 'failed',
+          build_log: JSON.stringify([{ stage: 'pipeline', success: false, error: error.message, timestamp: new Date().toISOString() }])
+        });
+      } catch (updateErr) {
+        console.error('Failed to record pipeline error:', updateErr.message);
+      }
+    }
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+async function withSelfHealing(base44, stageName, fn, initialContext, maxRetries = 2) {
+  let lastError = null;
+  let currentContext = initialContext;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fn(currentContext, lastError);
+      return { success: true, result, attempts: attempt + 1 };
+    } catch (error) {
+      lastError = error;
+      console.error(`[${stageName}] Attempt ${attempt + 1} failed:`, error.message);
+
+      if (attempt < maxRetries) {
+        try {
+          const diagnosis = await base44.integrations.Core.InvokeLLM({
+            prompt: `You are a debugging assistant for an automated music production pipeline.
+
+STAGE: ${stageName}
+ATTEMPT: ${attempt + 1} of ${maxRetries + 1}
+ERROR: ${error.message}
+
+ORIGINAL PROMPT/CONTEXT:
+${currentContext.substring(0, 4000)}
+
+Analyze what went wrong and provide a fix. Return JSON with:
+- root_cause: brief explanation of why the operation failed
+- fix_strategy: concrete steps to avoid this error on retry
+- adjusted_context: the corrected prompt/context to use on the next attempt (return the full corrected prompt, not just the diff)`,
+            response_json_schema: {
+              type: 'object',
+              properties: {
+                root_cause: { type: 'string' },
+                fix_strategy: { type: 'string' },
+                adjusted_context: { type: 'string' }
+              }
+            }
+          });
+
+          if (diagnosis.adjusted_context) {
+            currentContext = diagnosis.adjusted_context;
+          }
+          console.log(`[${stageName}] Self-heal: ${diagnosis.root_cause} -> ${diagnosis.fix_strategy}`);
+        } catch (diagError) {
+          console.error(`[${stageName}] Self-heal diagnosis failed:`, diagError.message);
+        }
+      }
+    }
+  }
+
+  return { success: false, error: lastError?.message || 'Unknown error', attempts: maxRetries + 1 };
+}
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
