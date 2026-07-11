@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, configuration_id, top10_count: lockedItems.length });
     }
 
-    // Request 50% more items than needed as a buffer for validation failures
-    const requestCount = Math.ceil(remainingSlots * 1.5);
+    // Request 2x items as buffer — many LLM-suggested videos fail oEmbed validation
+    const requestCount = Math.ceil(remainingSlots * 2);
 
     const prompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 
@@ -117,7 +117,7 @@ Return a JSON object with key "items" containing an array of ${requestCount} obj
     const top10Records = [];
     const usedVideoIds = new Set();
 
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       if (rawItems.length === 0) break;
 
       // Deduplicate and extract video IDs — skip already-used
@@ -165,7 +165,7 @@ Return a JSON object with key "items" containing an array of ${requestCount} obj
       if (stillNeeded <= 0) break;
 
       // Only retry if we still need more and this isn't the last attempt
-      if (attempt === 1) break;
+      if (attempt === 2) break;
 
       const failedList = candidates
         .filter(c => !top10Records.some(r => r.youtube_video_id === c.videoId))
@@ -173,7 +173,7 @@ Return a JSON object with key "items" containing an array of ${requestCount} obj
         .join('\n');
 
       const retryPrompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
-The following YouTube videos were unavailable or removed. Find ${stillNeeded} REPLACEMENT music videos.
+The following YouTube videos were unavailable or removed. Find ${Math.ceil(stillNeeded * 1.5)} REPLACEMENT music videos (we need ${stillNeeded} that pass validation, so provide extras as backup).
 
 STRICT RULES:
 - NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
@@ -193,7 +193,7 @@ SHOW CONTEXT:
 - Blocked Songs: ${config.blocked_songs || 'None'}
 - Blocked Artists: ${config.blocked_artists || 'None'}
 
-Return a JSON object with key "items" containing an array of ${stillNeeded} objects, each with: title, youtube_url, channel_name, rank_reason.`;
+Return a JSON object with key "items" containing an array of ${Math.ceil(stillNeeded * 1.5)} objects, each with: title, youtube_url, channel_name, rank_reason.`;
 
       const retryResult = await base44.integrations.Core.InvokeLLM({
         prompt: retryPrompt,
