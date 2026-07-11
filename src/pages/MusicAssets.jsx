@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, CheckCircle2, RefreshCw, Disc3, Edit3, Save, X } from 'lucide-react';
 import { ASSET_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import MusicPageNav from '@/components/music/MusicPageNav';
 
 const TYPE_COLORS = {
   song_intro: '#FF00FF',
@@ -181,7 +182,8 @@ export default function MusicAssets() {
             </Button>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
+        <MusicPageNav />
+        </div>
+        </div>
+        );
+        }

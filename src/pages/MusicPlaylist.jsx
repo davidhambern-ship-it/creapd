@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
+import MusicPageNav from '@/components/music/MusicPageNav';
 
 export default function MusicPlaylist() {
   const { config, playlist, loading, refresh } = useMusicProduction();
@@ -337,6 +338,7 @@ export default function MusicPlaylist() {
             </div>
           </div>
         )}
+      <MusicPageNav />
       </div>
 
       {/* Add Track Modal */}

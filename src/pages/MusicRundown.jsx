@@ -5,6 +5,7 @@ import { Loader2, ClipboardList, Disc3, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import MusicPageNav from '@/components/music/MusicPageNav';
 
 const SEGMENT_COLORS = {
   intro: '#00FF88',
@@ -167,6 +168,7 @@ export default function MusicRundown() {
             <p className="text-gray-400">No show rundown has been generated yet.</p>
           </div>
         )}
+        <MusicPageNav />
       </div>
     </div>
   );

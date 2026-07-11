@@ -5,6 +5,7 @@ import { Loader2, Search, RefreshCw, ExternalLink, TrendingUp } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import MusicPageNav from '@/components/music/MusicPageNav';
 
 const RELEVANCE_STYLES = {
   high: { bg: 'rgba(0,255,136,0.1)', border: 'rgba(0,255,136,0.4)', glow: 'rgba(0,255,136,0.15)', text: '#00FF88' },
@@ -112,6 +113,7 @@ export default function MusicResearch() {
             </Button>
           </motion.div>
         )}
+        <MusicPageNav />
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
+import MusicPageNav from '@/components/music/MusicPageNav';
 
 export default function MusicTop10() {
   const [config, setConfig] = useState(null);
@@ -267,6 +268,7 @@ export default function MusicTop10() {
             </div>
           </div>
         )}
+      <MusicPageNav />
       </div>
 
       {/* Add Video Modal */}

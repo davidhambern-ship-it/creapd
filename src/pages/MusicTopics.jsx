@@ -5,6 +5,7 @@ import { Loader2, Mic, Link as LinkIcon, MapPin, Disc3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import MusicPageNav from '@/components/music/MusicPageNav';
 
 export default function MusicTopics() {
   const { config, topics, loading } = useMusicProduction();
@@ -123,6 +124,7 @@ export default function MusicTopics() {
             </Button>
           </div>
         )}
+        <MusicPageNav />
       </div>
     </div>
   );

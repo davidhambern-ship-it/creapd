@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
+import MusicPageNav from '@/components/music/MusicPageNav';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
@@ -713,6 +714,7 @@ export default function MusicDashboard() {
             </div>
           </div>
         </motion.div>
+      <MusicPageNav />
       </div>
 
       {/* Department Detail Panel */}
