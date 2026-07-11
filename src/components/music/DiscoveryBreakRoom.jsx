@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Disc3, Dices, X } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
-import Solitaire from '@/components/games/Solitaire';
 import WordSearch from '@/components/games/WordSearch';
 
 export default function DiscoveryBreakRoom({ buildError }) {
@@ -70,15 +69,7 @@ export default function DiscoveryBreakRoom({ buildError }) {
                 <h3 className="text-sm font-heading font-semibold text-white">Break Room</h3>
                 <span className="text-[11px] text-gray-500">— Play while CREAPD works</span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setActiveGame('solitaire')}
-                  className="rounded-xl p-4 border border-white/10 bg-gradient-to-br from-berna-purple/10 to-transparent hover:border-berna-purple/40 hover:bg-berna-purple/5 transition-all text-left"
-                >
-                  <div className="text-2xl mb-2">♠</div>
-                  <div className="text-sm font-semibold text-white">Solitaire</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">Classic Klondike</div>
-                </button>
+              <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => setActiveGame('wordsearch')}
                   className="rounded-xl p-4 border border-white/10 bg-gradient-to-br from-berna-emerald/10 to-transparent hover:border-berna-emerald/40 hover:bg-berna-emerald/5 transition-all text-left"
@@ -111,7 +102,6 @@ export default function DiscoveryBreakRoom({ buildError }) {
                 </button>
               </div>
               <div className="flex justify-center">
-                {activeGame === 'solitaire' && <Solitaire onClose={() => setActiveGame(null)} />}
                 {activeGame === 'wordsearch' && <WordSearch onClose={() => setActiveGame(null)} />}
               </div>
             </motion.div>

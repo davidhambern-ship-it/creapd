@@ -8,7 +8,6 @@ import {
   RotateCcw, ArrowRight, Wand2, Gamepad2, X,
 } from 'lucide-react';
 import WordSearch from '@/components/games/WordSearch';
-import Solitaire from '@/components/games/Solitaire';
 
 export default function AutoBuildModal({
   isOpen, onClose,
@@ -263,13 +262,6 @@ export default function AutoBuildModal({
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 text-xs h-7"
-                      onClick={() => { setSelectedGame('solitaire'); setShowGame(true); setShowGameInvite(false); }}
-                    >
-                      ♠ Solitaire
-                    </Button>
-                    <Button
-                      size="sm"
                       variant="ghost"
                       className="text-xs h-7"
                       onClick={() => setShowGameInvite(false)}
@@ -296,12 +288,6 @@ export default function AutoBuildModal({
                       🧩
                     </button>
                     <button
-                      onClick={() => setSelectedGame('solitaire')}
-                      className={`text-[10px] px-1.5 py-0.5 rounded ${selectedGame === 'solitaire' ? 'bg-berna-purple/20 text-berna-purple' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                      ♠
-                    </button>
-                    <button
                       onClick={() => setShowGame(false)}
                       className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground ml-1"
                     >
@@ -309,9 +295,7 @@ export default function AutoBuildModal({
                     </button>
                   </div>
                 </div>
-                {selectedGame === 'solitaire'
-                  ? <Solitaire onClose={() => setShowGame(false)} />
-                  : <WordSearch onClose={() => setShowGame(false)} />}
+                <WordSearch onClose={() => setShowGame(false)} />
               </div>
             )}
           </div>
