@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Disc3, Dices, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Disc3, Dices, X, CheckCircle2, AlertCircle, OctagonX } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
@@ -32,6 +32,7 @@ const MODE_CONFIG = {
 export default function DiscoveryBreakRoom({ buildError, configId, onComplete, mode = 'discovery' }) {
   const [activeGame, setActiveGame] = useState(null);
   const [buildStatus, setBuildStatus] = useState('building');
+  const [cancelling, setCancelling] = useState(false);
 
   // Use a ref for onComplete so subscription doesn't re-create on every parent render
   const onCompleteRef = useRef(onComplete);
@@ -50,6 +51,18 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
     });
     return () => unsubscribe();
   }, [configId]);
+
+  const handleCancel = async () => {
+    if (!configId || cancelling) return;
+    setCancelling(true);
+    try {
+      await base44.entities.MusicProductionConfiguration.update(configId, { status: 'configuring' });
+      onCompleteRef.current?.();
+    } catch (err) {
+      console.error('Failed to cancel build:', err.message);
+      setCancelling(false);
+    }
+  };
 
   const statusText = STATUS_MESSAGES[buildStatus] || STATUS_MESSAGES.building;
   const isReady = buildStatus === 'ready';
@@ -102,6 +115,17 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
                 style={{ background: 'linear-gradient(90deg, transparent, #00FF88, #FF00FF, transparent)' }}
               />
             </div>
+          )}
+          {/* Cancel Build button */}
+          {!isReady && !isFailed && (
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="mt-4 inline-flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-all disabled:opacity-50"
+            >
+              <OctagonX className="w-3.5 h-3.5" />
+              {cancelling ? 'Cancelling...' : 'Cancel Build'}
+            </button>
           )}
         </div>
 
