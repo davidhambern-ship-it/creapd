@@ -336,6 +336,16 @@ export default function ShowRoulette({ open, onClose, onApply }) {
     }
   }, [open]);
 
+  // Auto-advance through each card — no manual approval needed
+  useEffect(() => {
+    if (phase !== 'revealing' || !result || exiting || remixingField) return;
+    const t = setTimeout(() => {
+      approveCard();
+    }, 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, revealIndex, result, exiting, remixingField]);
+
   const spin = async () => {
     setPhase('spinning');
     setSpinning(true);
