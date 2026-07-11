@@ -34,6 +34,7 @@ export default function OrbitalConfigCanvas({
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const [hoveredRoom, setHoveredRoom] = useState(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -164,6 +165,8 @@ export default function OrbitalConfigCanvas({
                       <motion.button
                         type="button"
                         onClick={() => onFocusRoom?.(room.id)}
+                        onHoverStart={() => setHoveredRoom(room.id)}
+                        onHoverEnd={() => setHoveredRoom(null)}
                         initial={{ opacity: 0, scale: 0.7 }}
                         animate={{
                           opacity: 1,
@@ -177,6 +180,7 @@ export default function OrbitalConfigCanvas({
                         }}
                         whileHover={{ scale: 1.12 }}
                         whileTap={{ scale: 0.95 }}
+                        className="relative"
                       >
                         <OrbitalVinylNode
                           label={room.label}
@@ -185,6 +189,38 @@ export default function OrbitalConfigCanvas({
                           Icon={Icon}
                           size={nodeSize}
                         />
+                        <AnimatePresence>
+                          {hoveredRoom === room.id && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 6, scale: 0.9 }}
+                              transition={{ duration: 0.2 }}
+                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 pointer-events-none whitespace-nowrap"
+                            >
+                              <div
+                                className="px-3 py-2 rounded-lg border text-left"
+                                style={{
+                                  background: 'rgba(10,10,15,0.92)',
+                                  borderColor: `${room.color}50`,
+                                  boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 12px ${room.color}30`,
+                                }}
+                              >
+                                <div className="text-xs font-heading font-bold" style={{ color: room.color }}>
+                                  {room.label}
+                                </div>
+                                {room.subtitle && (
+                                  <div className="text-[10px] text-gray-300 mt-0.5">{room.subtitle}</div>
+                                )}
+                                {typeof room.summary === 'function' && room.summary() && (
+                                  <div className="text-[10px] font-mono text-gray-400 mt-1 pt-1 border-t border-white/5">
+                                    {room.summary()}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </motion.button>
                     </div>
                   </motion.div>
