@@ -11,6 +11,7 @@ import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 import MusicShowArchive from '@/components/music/MusicShowArchive';
 import RegenerateDropdown from '@/components/music/RegenerateDropdown';
+import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
@@ -236,7 +237,6 @@ export default function MusicDashboard() {
       await base44.entities.MusicProductionConfiguration.update(config.id, { status: 'building' });
       base44.functions.invoke('buildMusicProduction', { configuration_id: config.id })
         .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
-      navigate(`/music/configure?config_id=${config.id}`);
     } catch (err) {
       console.error(err);
       setRefreshing(false);
@@ -301,39 +301,11 @@ export default function MusicDashboard() {
 
   if (config.status === 'building' || refreshing) {
     return (
-      <div className="relative flex items-center justify-center h-screen p-6 overflow-hidden bg-black">
-        <CyberpunkBackground />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full text-center relative z-10"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6"
-            style={{ background: 'rgba(255,0,255,0.12)', border: '1px solid rgba(255,0,255,0.4)', boxShadow: '0 0 20px rgba(255,0,255,0.2)' }}
-          >
-            <Disc3 className="w-10 h-10" style={{ color: '#FF00FF', filter: 'drop-shadow(0 0 8px #FF00FF)' }} />
-          </motion.div>
-          <h2 className="text-2xl font-bold mb-3 text-white cp-glitch">Building Your Production</h2>
-          <p className="text-gray-400 mb-8">Generating playlist, research, topics, rundown, and AI assets...</p>
-          <div className="space-y-2.5 text-left">
-            {['Generating playlist plan', 'Researching music topics', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.15 }}
-                className="flex items-center gap-3 text-sm cp-glass px-4 py-3"
-              >
-                <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#FF00FF' }} />
-                <span className="text-gray-400">{label}...</span>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
+      <DiscoveryBreakRoom
+        buildError=""
+        configId={config.id}
+        onComplete={() => { setRefreshing(false); refresh(); }}
+      />
     );
   }
 
