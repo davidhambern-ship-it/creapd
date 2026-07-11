@@ -250,9 +250,14 @@ export default function MusicRundown() {
                       <span className="text-sm font-mono text-gray-400 flex-shrink-0">{formatRuntime(item.duration_seconds)}</span>
                     </div>
 
-                    {/* Inline YouTube player for song segments — placed before script so it's grouped with the song */}
+                    {/* Script panel — expandable */}
+                    <div className="px-3 pl-5 pb-2">
+                      <RundownScriptPanel item={item} color={color} />
+                    </div>
+
+                    {/* Inline YouTube player for song segments */}
                     {isSong && songTrack && songTrack.youtube_video_id && (
-                      <div className="px-3 pl-5 pb-2">
+                      <div className="px-3 pb-3 pl-5">
                         <RundownSongPlayer
                           videoId={songTrack.youtube_video_id}
                           title={songTrack.song_title || item.title}
@@ -261,11 +266,6 @@ export default function MusicRundown() {
                         />
                       </div>
                     )}
-
-                    {/* Script panel — expandable */}
-                    <div className="px-3 pl-5 pb-2">
-                      <RundownScriptPanel item={item} color={color} />
-                    </div>
                   </motion.div>
                 );
               })}
