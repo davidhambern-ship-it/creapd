@@ -126,13 +126,19 @@ Return a JSON object with key "items" containing an array of ${requestCount} obj
       }
     }
 
-    // Parallel oEmbed validation — check all candidates at once
+    // Parallel oEmbed validation — launch all fetches at once for speed.
+    // Each response body is consumed (via .json() or .text()) to prevent
+    // Deno's stalled-response deadlock warnings.
     const results = await Promise.allSettled(
       candidates.map(async (c) => {
         const oembedResp = await fetch(
           `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${c.videoId}&format=json`
         );
-        if (!oembedResp.ok) throw new Error(`oEmbed ${c.videoId} returned ${oembedResp.status}`);
+        if (!oembedResp.ok) {
+          // Consume body to prevent stalled-response deadlock
+          await oembedResp.text().catch(() => {});
+          throw new Error(`oEmbed ${c.videoId} returned ${oembedResp.status}`);
+        }
         const oembed = await oembedResp.json();
         return { raw: c.raw, videoId: c.videoId, oembed };
       })
