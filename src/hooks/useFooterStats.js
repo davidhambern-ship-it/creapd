@@ -29,10 +29,21 @@ export function useFooterStats(variant) {
       const entityName = configMap[variant];
       if (!entityName) return;
 
-      // Fetch latest config
-      const configs = await base44.entities[entityName].list('-created_date', 1);
-      if (!configs || configs.length === 0) return;
-      const config = configs[0];
+      // Try to get the user's active/default config first; fall back to latest created
+      let config = null;
+      try {
+        const user = await base44.auth.me();
+        const defaultId = user?.default_production_config_id;
+        if (defaultId) {
+          config = await base44.entities[entityName].get(defaultId);
+        }
+      } catch { /* not logged in or no default set */ }
+
+      if (!config) {
+        const configs = await base44.entities[entityName].list('-updated_date', 1);
+        if (!configs || configs.length === 0) return;
+        config = configs[0];
+      }
       configRef.current = config;
       setConfigId(config.id);
 
