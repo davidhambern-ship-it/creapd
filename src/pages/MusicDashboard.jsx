@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
-import MusicPageNav from '@/components/music/MusicPageNav';
+import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
@@ -359,7 +359,7 @@ export default function MusicDashboard() {
       <CyberpunkBackground />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicPageNav />
+        <MusicDiscoveryNav />
         {/* Hero Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -715,7 +715,7 @@ export default function MusicDashboard() {
             </div>
           </div>
         </motion.div>
-      <MusicPageNav />
+      <MusicDiscoveryNav />
       </div>
 
       {/* Department Detail Panel */}

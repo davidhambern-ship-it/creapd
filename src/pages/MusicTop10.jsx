@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
-import MusicPageNav from '@/components/music/MusicPageNav';
+import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 
 export default function MusicTop10() {
   const [config, setConfig] = useState(null);
@@ -106,7 +106,7 @@ export default function MusicTop10() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicPageNav />
+        <MusicDiscoveryNav />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -269,7 +269,7 @@ export default function MusicTop10() {
             </div>
           </div>
         )}
-      <MusicPageNav />
+      <MusicDiscoveryNav />
       </div>
 
       {/* Add Video Modal */}

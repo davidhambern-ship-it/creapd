@@ -22,7 +22,7 @@ import {
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
 import ShowRoulette from '@/components/music/ShowRoulette';
-import DiscoveryNavBar from '@/components/music/DiscoveryNavBar';
+import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 import OrbitalConfigCanvas from '@/components/music/OrbitalConfigCanvas';
 import { playClick, playComplete } from '@/lib/recordingSound';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
@@ -207,15 +207,6 @@ export default function MusicConfigure() {
   const selectedSources = safeParse(config.research_sources, []);
   const selectedAutomation = safeParse(config.ai_automation, []);
 
-  const NAV_ROOMS = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard', color: '#00FFFF' },
-    { icon: ListChecks, label: 'Topics', path: '/music/topics', color: '#FF6B00' },
-    { icon: Search, label: 'Knowledge', path: '/music/research', color: '#00FF88' },
-    { icon: ListMusic, label: 'Playlist', path: '/music/playlist', color: '#8B5CF6' },
-    { icon: Sparkles, label: 'Assets', path: '/music/assets', color: '#FF00FF' },
-    { icon: Package, label: 'Rundown', path: '/music/rundown', color: '#FFD700' },
-  ];
-
   const canBuild = config.production_name && config.show_date;
 
   const ROOMS = [
@@ -396,12 +387,8 @@ export default function MusicConfigure() {
               <h1 className="relative z-10 text-4xl sm:text-5xl md:text-7xl font-bold mb-1 futuristic-title tracking-[0.15em] whitespace-nowrap" style={{ fontFamily: "'Boxpot', sans-serif" }}>Discovery Room</h1>
             </div>
             <p className="relative z-10 text-2xl mb-1 tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif", color: 'hsl(152 60% 45%)', filter: 'drop-shadow(0 0 6px hsl(152 60% 45% / 0.6)) drop-shadow(0 0 20px hsl(152 60% 45% / 0.4))' }}>Discover Your Vibes</p>
-            <div className="flex justify-center mt-4 overflow-x-auto">
-              <DiscoveryNavBar
-                rooms={NAV_ROOMS}
-                onRoulette={() => setRouletteOpen(true)}
-                rouletteColor="#FF00FF"
-              />
+            <div className="flex justify-center mt-4">
+              <MusicDiscoveryNav onRoulette={() => setRouletteOpen(true)} />
             </div>
           </motion.div>
 

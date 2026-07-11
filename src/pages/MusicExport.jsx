@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Download, FileText, Music, ClipboardList, Image, Archive, Disc3, Terminal } from 'lucide-react';
 import { ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS, formatRuntime } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
-import MusicPageNav from '@/components/music/MusicPageNav';
+import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 
 export default function MusicExport() {
   const { config, playlist, topics, research, rundown, assets, loading } = useMusicProduction();
@@ -106,7 +106,7 @@ export default function MusicExport() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicPageNav />
+        <MusicDiscoveryNav />
         {/* Terminal-style header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -195,7 +195,7 @@ export default function MusicExport() {
           <Archive className="w-4 h-4 shrink-0" style={{ color: '#8B00FF' }} />
           <span className="font-mono text-xs">[pending] ZIP package export will be available in a future update.</span>
         </div>
-        <MusicPageNav />
+        <MusicDiscoveryNav />
       </div>
     </div>
   );

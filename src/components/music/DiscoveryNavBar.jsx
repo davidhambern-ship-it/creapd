@@ -16,27 +16,31 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
         border: '1px solid rgba(255,0,255,0.12)',
       }}
     >
-      {/* Show Roulette Button */}
-      <motion.button
-        onClick={onRoulette}
-        className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border"
-        style={{
-          background: `linear-gradient(135deg, ${rouletteColor}22, rgba(0,255,255,0.08))`,
-          borderColor: `${rouletteColor}50`,
-          color: rouletteColor,
-        }}
-      >
-        <motion.span
-          animate={{ rotate: [0, -12, 12, 0] }}
-          transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-        >
-          <Dices className="w-4 h-4" />
-        </motion.span>
-        <span className="hidden sm:inline">Show Roulette</span>
-      </motion.button>
+      {/* Show Roulette Button — only when onRoulette is provided */}
+      {onRoulette && (
+        <>
+          <motion.button
+            onClick={onRoulette}
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border"
+            style={{
+              background: `linear-gradient(135deg, ${rouletteColor}22, rgba(0,255,255,0.08))`,
+              borderColor: `${rouletteColor}50`,
+              color: rouletteColor,
+            }}
+          >
+            <motion.span
+              animate={{ rotate: [0, -12, 12, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            >
+              <Dices className="w-4 h-4" />
+            </motion.span>
+            <span className="hidden sm:inline">Show Roulette</span>
+          </motion.button>
 
-      {/* Divider */}
-      <div className="flex-shrink-0 h-6 w-px bg-white/10" />
+          {/* Divider */}
+          <div className="flex-shrink-0 h-6 w-px bg-white/10" />
+        </>
+      )}
 
       {/* Room Icons */}
       {rooms.map((room, i) => {

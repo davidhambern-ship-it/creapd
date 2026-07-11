@@ -6,7 +6,7 @@ import { useNativeSpeech } from '@/hooks/useNativeSpeech';
 import { ClipboardList, Disc3, Play, Pause, Crown, Loader2, Volume2 } from 'lucide-react';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
-import MusicPageNav from '@/components/music/MusicPageNav';
+import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 import RundownVoiceoverControls from '@/components/music/RundownVoiceoverControls';
 import RundownSongPlayer from '@/components/music/RundownSongPlayer';
 import RundownScriptPanel from '@/components/music/RundownScriptPanel';
@@ -96,7 +96,7 @@ export default function MusicRundown() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicPageNav />
+        <MusicDiscoveryNav />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -277,7 +277,7 @@ export default function MusicRundown() {
             <p className="text-gray-400">No show rundown has been generated yet.</p>
           </div>
         )}
-        <MusicPageNav />
+        <MusicDiscoveryNav />
       </div>
 
       {/* Upgrade modal for non-pro users */}
