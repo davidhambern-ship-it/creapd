@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles, Save } from 'lucide-react';
 import VinylCoverForm from '@/components/music/VinylCoverForm';
 import RuntimeSoundBoard from '@/components/music/RuntimeSoundBoard';
 import TurntableHub from '@/components/music/TurntableHub';
@@ -15,6 +15,30 @@ import RecordingOverlay from '@/components/music/RecordingOverlay';
  * Visual tilt layer (rings/hub) is separated from the interactive node layer
  * so 3D transforms never break click hit-testing.
  */
+function SaveButton({ onSave, saving, saveStatus, accent = '#FF00FF' }) {
+  const label = saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Failed' : 'Save Configuration';
+  const color = saveStatus === 'saved' ? '#00FF88' : saveStatus === 'error' ? '#FF3333' : accent;
+  return (
+    <motion.button
+      onClick={onSave}
+      disabled={saving}
+      whileHover={{ scale: saving ? 1 : 1.03 }}
+      whileTap={{ scale: saving ? 1 : 0.97 }}
+      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors"
+      style={{
+        background: `linear-gradient(135deg, ${color}22, ${color}08)`,
+        border: `1px solid ${color}50`,
+        color: color,
+        boxShadow: `0 0 12px ${color}22`,
+        opacity: saving ? 0.6 : 1,
+      }}
+    >
+      <Save className="w-3.5 h-3.5" />
+      {saving ? 'Saving...' : label}
+    </motion.button>
+  );
+}
+
 export default function OrbitalConfigCanvas({
   rooms = [],
   focusedRoom = null,
@@ -31,6 +55,9 @@ export default function OrbitalConfigCanvas({
   onComplete,
   totalModules = 0,
   spinOffset = 0,
+  onSave,
+  saving = false,
+  saveStatus = null,
 }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
@@ -279,13 +306,16 @@ export default function OrbitalConfigCanvas({
           >
             {config && updateConfig && focusedRoom === 'runtime' ? (
               <div className="w-full max-w-2xl mx-auto">
-                <button
-                  onClick={() => onFocusRoom?.(null)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors mb-4"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  Back to Orbit
-                </button>
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => onFocusRoom?.(null)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Back to Orbit
+                  </button>
+                  <SaveButton onSave={onSave} saving={saving} saveStatus={saveStatus} accent="#00FFFF" />
+                </div>
                 <RuntimeSoundBoard config={config} updateConfig={updateConfig} />
               </div>
             ) : config && updateConfig ? (
@@ -296,6 +326,9 @@ export default function OrbitalConfigCanvas({
                 toggleArrayItem={toggleArrayItem}
                 onBack={() => onFocusRoom?.(null)}
                 onComplete={onComplete}
+                onSave={onSave}
+                saving={saving}
+                saveStatus={saveStatus}
               />
             ) : (
               <>

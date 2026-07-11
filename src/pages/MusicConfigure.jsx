@@ -17,7 +17,7 @@ import {
   Loader2, Music, Clock, Smile, Mic, ListChecks,
   Bot, CheckCircle2, ChevronDown, ChevronUp,
   Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic,
-  LayoutDashboard, Search, Package, Sparkles
+  LayoutDashboard, Search, Package, Sparkles, Save
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
@@ -130,6 +130,8 @@ export default function MusicConfigure() {
   const [building, setBuilding] = useState(false);
   const [buildConfigId, setBuildConfigId] = useState(null);
   const [buildError, setBuildError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null);
   const [rouletteOpen, setRouletteOpen] = useState(false);
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
@@ -346,6 +348,27 @@ export default function MusicConfigure() {
     }
   };
 
+  const handleSaveConfig = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaveStatus(null);
+    try {
+      if (editConfigId) {
+        await base44.entities.MusicProductionConfiguration.update(editConfigId, config);
+      } else {
+        const saved = await base44.entities.MusicProductionConfiguration.create(config);
+        navigate(`/music/configure?config_id=${saved.id}`, { replace: true });
+      }
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus(null), 2500);
+    } catch (err) {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus(null), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (building || finalSequence) {
     return (
       <DiscoveryBreakRoom
@@ -405,6 +428,9 @@ export default function MusicConfigure() {
           onComplete={handleModuleComplete}
           totalModules={ROOMS.length}
           spinOffset={spinOffset}
+          onSave={handleSaveConfig}
+          saving={saving}
+          saveStatus={saveStatus}
         >
           <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
 

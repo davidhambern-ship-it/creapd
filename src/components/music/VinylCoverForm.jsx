@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Disc3 } from 'lucide-react';
+import { ArrowLeft, Disc3, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -129,6 +129,9 @@ export default function VinylCoverForm({
   toggleArrayItem,
   onBack,
   onComplete,
+  onSave,
+  saving = false,
+  saveStatus = null,
 }) {
   const meta = ROOM_META[room] || ROOM_META.identity;
   const accent = meta.accent;
@@ -553,22 +556,52 @@ export default function VinylCoverForm({
         )}
       </div>
 
-      {/* Record to Deck button */}
-      <motion.button
-        onClick={() => onComplete?.(room)}
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        className="mt-4 px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2"
-        style={{
-          background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
-          border: `1px solid ${accent}50`,
-          color: accent,
-          boxShadow: `0 0 16px ${accent}22`,
-        }}
-      >
-        <Disc3 className="w-4 h-4" />
-        Record to Deck
-      </motion.button>
+      {/* Action buttons */}
+      <div className="mt-4 flex items-center gap-3 flex-wrap justify-center">
+        {/* Save Configuration button */}
+        <motion.button
+          onClick={() => onSave?.()}
+          disabled={saving}
+          whileHover={{ scale: saving ? 1 : 1.03 }}
+          whileTap={{ scale: saving ? 1 : 0.97 }}
+          className="px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2"
+          style={{
+            background: saveStatus === 'saved'
+              ? 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05))'
+              : saveStatus === 'error'
+              ? 'linear-gradient(135deg, rgba(255,51,51,0.15), rgba(255,51,51,0.05))'
+              : `linear-gradient(135deg, ${accent}15, ${accent}05)`,
+            border: `1px solid ${
+              saveStatus === 'saved' ? 'rgba(0,255,136,0.5)'
+              : saveStatus === 'error' ? 'rgba(255,51,51,0.5)'
+              : `${accent}40`
+            }`,
+            color: saveStatus === 'saved' ? '#00FF88' : saveStatus === 'error' ? '#FF3333' : accent,
+            boxShadow: `0 0 12px ${accent}15`,
+            opacity: saving ? 0.6 : 1,
+          }}
+        >
+          <Save className="w-4 h-4" />
+          {saving ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Failed' : 'Save Configuration'}
+        </motion.button>
+
+        {/* Record to Deck button */}
+        <motion.button
+          onClick={() => onComplete?.(room)}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          className="px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2"
+          style={{
+            background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+            border: `1px solid ${accent}50`,
+            color: accent,
+            boxShadow: `0 0 16px ${accent}22`,
+          }}
+        >
+          <Disc3 className="w-4 h-4" />
+          Record to Deck
+        </motion.button>
+      </div>
 
       <style>{`
         @keyframes vinyl-cover-scan {
