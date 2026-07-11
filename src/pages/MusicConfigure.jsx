@@ -353,14 +353,20 @@ export default function MusicConfigure() {
     setSaving(true);
     setSaveStatus(null);
     try {
+      let savedId = editConfigId;
       if (editConfigId) {
         await base44.entities.MusicProductionConfiguration.update(editConfigId, config);
       } else {
         const saved = await base44.entities.MusicProductionConfiguration.create(config);
+        savedId = saved.id;
         navigate(`/music/configure?config_id=${saved.id}`, { replace: true });
       }
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus(null), 2500);
+      // Saving completes the module — fly the vinyl to the deck
+      if (openRoom && !completedModules.has(openRoom)) {
+        handleModuleComplete(openRoom);
+      }
     } catch (err) {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus(null), 3000);
