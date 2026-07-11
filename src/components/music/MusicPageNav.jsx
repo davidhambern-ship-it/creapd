@@ -5,10 +5,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 const MUSIC_PAGE_FLOW = [
   { path: '/music/configure', label: 'Discovery' },
   { path: '/music/dashboard', label: 'Dashboard' },
+  { path: '/music/topics', label: 'Topics' },
   { path: '/music/research', label: 'Knowledge' },
   { path: '/music/playlist', label: 'Playlist' },
   { path: '/music/top10', label: 'Top 10' },
-  { path: '/music/topics', label: 'Topics' },
   { path: '/music/assets', label: 'Assets' },
   { path: '/music/rundown', label: 'Rundown' },
 ];

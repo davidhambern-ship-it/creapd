@@ -17,7 +17,7 @@ import {
   Loader2, Music, Clock, Smile, Mic, ListChecks,
   Bot, CheckCircle2, ChevronDown, ChevronUp,
   Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic,
-  LayoutDashboard, Search, Package, Sparkles, Download
+  LayoutDashboard, Search, Package, Sparkles
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
@@ -209,12 +209,11 @@ export default function MusicConfigure() {
 
   const NAV_ROOMS = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard', color: '#00FFFF' },
+    { icon: ListChecks, label: 'Topics', path: '/music/topics', color: '#FF6B00' },
     { icon: Search, label: 'Knowledge', path: '/music/research', color: '#00FF88' },
     { icon: ListMusic, label: 'Playlist', path: '/music/playlist', color: '#8B5CF6' },
-    { icon: ListChecks, label: 'Topics', path: '/music/topics', color: '#FF6B00' },
-    { icon: Package, label: 'Rundown', path: '/music/rundown', color: '#FFD700' },
     { icon: Sparkles, label: 'Assets', path: '/music/assets', color: '#FF00FF' },
-    { icon: Download, label: 'Export', path: '/music/export', color: '#FF3366' },
+    { icon: Package, label: 'Rundown', path: '/music/rundown', color: '#FFD700' },
   ];
 
   const canBuild = config.production_name && config.show_date;
