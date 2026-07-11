@@ -1,8 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
-import { Loader2, ClipboardList, Disc3, Download } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Loader2, ClipboardList, Disc3 } from 'lucide-react';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicPageNav from '@/components/music/MusicPageNav';
@@ -70,9 +69,6 @@ export default function MusicRundown() {
         {/* Assembly sub-room tabs */}
         <div className="flex gap-2">
           <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#FF00FF]/20 border border-[#FF00FF]/50 text-[#FF00FF]">Rundown</span>
-          <Link to="/music/export" className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-white/10 hover:border-[#FF00FF]/40 hover:text-[#FF00FF] transition-colors flex items-center gap-1.5">
-            <Download className="w-3 h-3" /> Export
-          </Link>
         </div>
 
         {rundown.length > 0 ? (

@@ -9,9 +9,8 @@ const MUSIC_PAGE_FLOW = [
   { path: '/music/playlist', label: 'Playlist' },
   { path: '/music/top10', label: 'Top 10' },
   { path: '/music/topics', label: 'Topics' },
-  { path: '/music/rundown', label: 'Rundown' },
   { path: '/music/assets', label: 'Assets' },
-  { path: '/music/export', label: 'Export' },
+  { path: '/music/rundown', label: 'Rundown' },
 ];
 
 export default function MusicPageNav() {

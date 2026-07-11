@@ -56,7 +56,6 @@ import MusicTop10 from '@/pages/MusicTop10';
 import MusicTopics from '@/pages/MusicTopics';
 import MusicRundown from '@/pages/MusicRundown';
 import MusicAssets from '@/pages/MusicAssets';
-import MusicExport from '@/pages/MusicExport';
 import TalkConfigure from '@/pages/TalkConfigure';
 import TalkDashboard from '@/pages/TalkDashboard';
 import TalkResearch from '@/pages/TalkResearch';
@@ -213,7 +212,6 @@ const AuthenticatedApp = () => {
           <Route path="/music/topics" element={<MusicTopics />} />
           <Route path="/music/rundown" element={<MusicRundown />} />
           <Route path="/music/assets" element={<MusicAssets />} />
-          <Route path="/music/export" element={<MusicExport />} />
           <Route path="/settings/default-production" element={<DefaultProductionSettings />} />
         </Route>
 
