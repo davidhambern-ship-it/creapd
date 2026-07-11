@@ -1,10 +1,13 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
-import { Loader2, ClipboardList, Disc3 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { useNativeSpeech } from '@/hooks/useNativeSpeech';
+import { ClipboardList, Disc3, Play, Pause, Crown } from 'lucide-react';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicPageNav from '@/components/music/MusicPageNav';
+import RundownVoiceoverControls from '@/components/music/RundownVoiceoverControls';
 
 const SEGMENT_COLORS = {
   intro: '#00FF88',
@@ -18,6 +21,23 @@ const SEGMENT_COLORS = {
 
 export default function MusicRundown() {
   const { config, rundown, loading } = useMusicProduction();
+  const { user } = useAuth();
+  const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
+  const { speak, stop, speakingId, isSupported } = useNativeSpeech();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  const handleNativePreview = (item) => {
+    const script = item.script_content || item.notes || item.title || '';
+    if (speakingId === item.id) {
+      stop();
+    } else {
+      speak(script, item.id);
+    }
+  };
+
+  const handleAudioGenerated = (itemId, audioUrl) => {
+    // The hook will refresh on next load; for now just note it
+  };
 
   if (loading) {
     return (
@@ -151,9 +171,38 @@ export default function MusicRundown() {
                         {item.notes && <p className="text-xs text-gray-400 truncate">{item.notes}</p>}
                       </div>
 
+                      {/* Native preview button (free for all) */}
+                      {isSupported && (item.script_content || item.notes || item.title) && (
+                        <button
+                          onClick={() => handleNativePreview(item)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all"
+                          style={{
+                            background: speakingId === item.id ? 'rgba(0,255,255,0.15)' : 'rgba(0,255,255,0.06)',
+                            borderColor: speakingId === item.id ? 'rgba(0,255,255,0.5)' : 'rgba(0,255,255,0.2)',
+                          }}
+                        >
+                          {speakingId === item.id ? (
+                            <Pause className="w-3.5 h-3.5 text-cyan-400" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 text-cyan-400" />
+                          )}
+                          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider hidden sm:inline">
+                            {speakingId === item.id ? 'Stop' : 'Preview'}
+                          </span>
+                        </button>
+                      )}
+
+                      {/* ElevenLabs controls */}
+                      <RundownVoiceoverControls
+                        item={item}
+                        isPro={isPro}
+                        onUpgradeNeeded={() => setShowUpgrade(true)}
+                        onAudioGenerated={handleAudioGenerated}
+                      />
+
                       {/* Duration */}
                       <span className="text-sm font-mono text-gray-400 flex-shrink-0">{formatRuntime(item.duration_seconds)}</span>
-                    </div>
+                      </div>
                   </motion.div>
                 );
               })}
@@ -167,6 +216,43 @@ export default function MusicRundown() {
         )}
         <MusicPageNav />
       </div>
+
+      {/* Upgrade modal for non-pro users */}
+      <AnimatePresence>
+        {showUpgrade && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowUpgrade(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="cp-glass p-8 max-w-md mx-4 text-center"
+              style={{ borderColor: 'rgba(168,85,247,0.3)' }}
+            >
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.4)' }}>
+                <Crown className="w-8 h-8 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Upgrade to Pro</h3>
+              <p className="text-sm text-gray-400 mb-6">
+                Generate broadcast-quality voiceovers with ElevenLabs AI. Pro members get lifelike, studio-grade audio for every segment.
+              </p>
+              <button
+                onClick={() => setShowUpgrade(false)}
+                className="cp-btn-gradient px-6 py-2.5 rounded-xl text-sm font-bold text-white"
+              >
+                Maybe Later
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

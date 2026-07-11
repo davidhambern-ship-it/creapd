@@ -7,6 +7,15 @@
         "admin",
         "user"
       ]
+    },
+    "subscription_tier": {
+      "type": "string",
+      "description": "Subscription plan \u2014 controls access to premium features like ElevenLabs voiceovers",
+      "enum": [
+        "free",
+        "pro"
+      ],
+      "default": "free"
     }
   },
   "required": [

@@ -26,6 +26,10 @@
     "title": {
       "type": "string"
     },
+    "script_content": {
+      "type": "string",
+      "description": "Voiceover script text for this segment \u2014 used by TTS engines"
+    },
     "start_time": {
       "type": "string",
       "description": "Estimated start time (HH:MM)"
@@ -55,6 +59,19 @@
     },
     "associated_topic": {
       "type": "string"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL of the generated voiceover audio file (ElevenLabs or native)"
+    },
+    "audio_provider": {
+      "type": "string",
+      "enum": [
+        "native",
+        "elevenlabs"
+      ],
+      "default": "native",
+      "description": "Which TTS engine produced the audio_url"
     }
   },
   "required": [
