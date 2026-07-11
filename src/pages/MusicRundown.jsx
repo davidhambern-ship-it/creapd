@@ -28,11 +28,28 @@ export default function MusicRundown() {
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   // Lookup maps for matching songs and topics to rundown items
-  const playlistMap = React.useMemo(() => {
+  const playlistById = React.useMemo(() => {
     const m = {};
     (playlist || []).forEach(p => { m[p.id] = p; });
     return m;
   }, [playlist]);
+
+  const playlistByTitle = React.useMemo(() => {
+    const m = {};
+    (playlist || []).forEach(p => {
+      const key = (p.song_title || '').toLowerCase().trim();
+      if (key) m[key] = p;
+    });
+    return m;
+  }, [playlist]);
+
+  const findSongTrack = (item) => {
+    if (item.associated_song_id && playlistById[item.associated_song_id]) {
+      return playlistById[item.associated_song_id];
+    }
+    const titleKey = (item.title || '').toLowerCase().trim();
+    return playlistByTitle[titleKey] || null;
+  };
 
   const topicMap = React.useMemo(() => {
     const m = {};
@@ -161,7 +178,7 @@ export default function MusicRundown() {
               {rundown.map((item, i) => {
                 const color = SEGMENT_COLORS[item.segment_type] || '#888888';
                 const isSong = item.segment_type === 'song';
-                const songTrack = isSong && item.associated_song_id ? playlistMap[item.associated_song_id] : null;
+                const songTrack = isSong ? findSongTrack(item) : null;
                 const script = getScriptForItem(item);
                 const showVoiceover = !isSong;
                 return (
