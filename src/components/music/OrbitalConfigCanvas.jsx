@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import VinylCoverForm from '@/components/music/VinylCoverForm';
+import RuntimeSoundBoard from '@/components/music/RuntimeSoundBoard';
 import TurntableHub from '@/components/music/TurntableHub';
 import OrbitalVinylNode from '@/components/music/OrbitalVinylNode';
 import RecordingOverlay from '@/components/music/RecordingOverlay';
@@ -276,7 +277,18 @@ export default function OrbitalConfigCanvas({
             transition={{ duration: 0.35 }}
             className="flex flex-col items-center py-4"
           >
-            {config && updateConfig ? (
+            {config && updateConfig && focusedRoom === 'runtime' ? (
+              <div className="w-full max-w-2xl mx-auto">
+                <button
+                  onClick={() => onFocusRoom?.(null)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors mb-4"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Orbit
+                </button>
+                <RuntimeSoundBoard config={config} updateConfig={updateConfig} />
+              </div>
+            ) : config && updateConfig ? (
               <VinylCoverForm
                 room={focusedRoom}
                 config={config}

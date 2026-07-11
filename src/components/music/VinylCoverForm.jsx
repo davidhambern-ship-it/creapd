@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Disc3, Sliders } from 'lucide-react';
+import { ArrowLeft, Disc3 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,6 @@ import {
   GENRE_OPTIONS, MOOD_OPTIONS, TONE_OPTIONS, MUSIC_TOPIC_OPTIONS,
   RESEARCH_SOURCE_OPTIONS, ENERGY_FLOW_OPTIONS, AI_AUTOMATION_OPTIONS
 } from '@/lib/musicConstants';
-import { Knob } from '@/components/music/RuntimeSoundBoard';
 
 const ALBUM_COVER_URL = 'https://media.base44.com/images/public/6a4126962e5804304cc84b12/e419e47b4_generated_image.png';
 
@@ -78,9 +77,7 @@ function RuntimeSlider({ label, value, onChange, max = 180, color = '#FF00FF' })
  * Zone wrapper — positions a form section over a blank space on the album cover.
  * Styled as a semi-transparent etched panel that blends with the artwork.
  */
-const CP_SOUND_BOARD_BG = 'https://media.base44.com/images/public/6a4126962e5804304cc84b12/97fafc255_generated_image.png';
-
-function CoverZone({ children, style, accent, label, glow = true, gridMode = false, bgImage }) {
+function CoverZone({ children, style, accent, label, glow = true, gridMode = false }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
@@ -99,20 +96,19 @@ function CoverZone({ children, style, accent, label, glow = true, gridMode = fal
       <div
         className="relative h-full rounded-lg overflow-hidden"
         style={{
-          background: bgImage ? `url(${bgImage}) center / cover` : 'transparent',
+          background: 'transparent',
           backdropFilter: 'none',
           border: `1px solid ${accent}33`,
           boxShadow: glow ? `0 0 24px ${accent}11, inset 0 1px 0 rgba(255,255,255,0.04)` : 'none',
         }}
       >
-        {bgImage && <div className="absolute inset-0 bg-black/50" />}
         {/* Neon corner accents */}
         <div className="absolute top-0 left-0 w-3 h-3 border-t border-l rounded-tl" style={{ borderColor: `${accent}66` }} />
         <div className="absolute top-0 right-0 w-3 h-3 border-t border-r rounded-tr" style={{ borderColor: `${accent}66` }} />
         <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l rounded-bl" style={{ borderColor: `${accent}66` }} />
         <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r rounded-br" style={{ borderColor: `${accent}66` }} />
 
-        <div className="relative p-3 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="p-3 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           {children}
         </div>
       </div>
@@ -338,23 +334,15 @@ export default function VinylCoverForm({
             <CoverZone
               label="Track Times"
               accent={accent}
-              bgImage={CP_SOUND_BOARD_BG}
               style={{ top: '30%', left: '4%', right: '4%', height: '64%' }}
             >
-              <div className="flex items-center gap-2 mb-3">
-                <Sliders className="w-3 h-3" style={{ color: accent }} />
-                <span className="text-[9px] text-gray-400">Sound Board — drag knobs up/down</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 place-items-center">
-                <Knob label="Total Show" value={config.total_show_runtime} max={90} size={56} color="#FFFFFF" onChange={v => {
-                  updateConfig('total_show_runtime', v);
-                  updateConfig('required_music_runtime', Math.floor(v / 2));
-                }} />
-                <Knob label="Music (50%)" value={config.required_music_runtime} max={45} size={56} color="#FF00FF" disabled onChange={() => {}} />
-                <Knob label="Talk" value={config.talk_segment_runtime} max={45} size={56} color="#00FFFF" onChange={v => updateConfig('talk_segment_runtime', v)} />
-                <Knob label="Sponsors" value={config.commercial_sponsor_runtime} max={20} size={56} color="#FF6B00" onChange={v => updateConfig('commercial_sponsor_runtime', v)} />
-                <Knob label="Intro" value={config.intro_runtime} max={10} size={56} color="#FFD700" onChange={v => updateConfig('intro_runtime', v)} />
-                <Knob label="Outro" value={config.outro_runtime} max={10} size={56} color="#FFD700" onChange={v => updateConfig('outro_runtime', v)} />
+              <div className="grid grid-cols-2 gap-3">
+                <RuntimeSlider label="Total Show" value={config.total_show_runtime} onChange={v => updateConfig('total_show_runtime', v)} max={240} color="#FFFFFF" />
+                <RuntimeSlider label="Music Runtime" value={config.required_music_runtime} onChange={v => updateConfig('required_music_runtime', v)} max={240} color="#FF00FF" />
+                <RuntimeSlider label="Talk Segments" value={config.talk_segment_runtime} onChange={v => updateConfig('talk_segment_runtime', v)} max={60} color="#00FFFF" />
+                <RuntimeSlider label="Commercials" value={config.commercial_sponsor_runtime} onChange={v => updateConfig('commercial_sponsor_runtime', v)} max={30} color="#FF6B00" />
+                <RuntimeSlider label="Intro" value={config.intro_runtime} onChange={v => updateConfig('intro_runtime', v)} max={10} color="#FFD700" />
+                <RuntimeSlider label="Outro" value={config.outro_runtime} onChange={v => updateConfig('outro_runtime', v)} max={10} color="#FFD700" />
               </div>
             </CoverZone>
           </>
