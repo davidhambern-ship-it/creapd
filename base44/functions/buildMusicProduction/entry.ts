@@ -35,15 +35,10 @@ Deno.serve(async (req) => {
 
     // ═══════════════════════════════════════════════════════
     // STAGE 1: PRODUCTION PLANNING — Build PRP from DCP
-    // The DCP (Discovery Configuration Package) IS the config.
-    // Planning interprets it and produces a PRP (Production
-    // Requirements Package) — a list of required deliverables.
-    // No content is generated here — only requirements.
     // ═══════════════════════════════════════════════════════
 
     const estimatedSongCount = Math.ceil(requiredMusicMinutes / 3.5);
 
-    // Requirements differ by production format
     const requirements = productionFormat === 'live' ? [
       { requirement_type: 'rundown', title: 'Live Rundown', detail: 'Structured live show rundown with timing', quantity: 1, media_type: 'text' },
       { requirement_type: 'script', title: 'Live Host Scripts', detail: 'Host scripts for live segments', quantity: 1, media_type: 'text' },
@@ -64,7 +59,6 @@ Deno.serve(async (req) => {
       { requirement_type: 'final_rundown', title: 'Final Rundown', detail: 'Complete show rundown with timing', quantity: 1, media_type: 'text' },
     ];
 
-    // Add topic-based requirements if topics are selected
     if (musicTopics.length > 0) {
       requirements.push(
         { requirement_type: 'topic_research', title: 'Topic Research', detail: `Research for ${musicTopics.length} selected topics`, quantity: musicTopics.length, media_type: 'text' },
@@ -75,14 +69,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Add video requirements if video-related topics are selected
     if (musicTopics.includes('Music Video Releases') || musicTopics.includes('Viral Songs')) {
       requirements.push(
         { requirement_type: 'video_segment', title: 'Video Segments', detail: 'Video iframe embeds for featured videos', quantity: 1, media_type: 'video' },
       );
     }
 
-    // Build the PRP
     const prp = {
       production_format: productionFormat,
       total_show_runtime: config.total_show_runtime || 90,
@@ -98,16 +90,10 @@ Deno.serve(async (req) => {
       planning_notes: `Production format "${productionFormat}" requires ${requirements.length} deliverable categories. Planning determines required work; departments execute it.`,
     };
 
-    // Store the PRP on the config
     await base44.entities.MusicProductionConfiguration.update(configuration_id, {
       status: 'building',
       production_plan: JSON.stringify(prp),
     });
-
-    // ═══════════════════════════════════════════════════════
-    // STAGE 2: RESEARCH DEPARTMENT
-    // Gated by ai_automation preference: 'Auto Research'
-    // ═══════════════════════════════════════════════════════
 
     // Delete old generated content for this configuration
     await base44.entities.PlaylistItem.deleteMany({ configuration_id });
@@ -128,182 +114,15 @@ Deno.serve(async (req) => {
     let playlistData = [];
     let researchData = [];
     let topicData = [];
-
-    // ═══ ARTICLE-BASED RESEARCH ═══
-    // Pull real music news from the Article entity. If none exist, fetch
-    // fresh via web search and store as Article records so they persist.
-    const MUSIC_ARTICLE_CATEGORIES = [
-      'new_release', 'tour_announcement', 'artist_news', 'chart_movement',
-      'festival_lineup', 'album_review', 'interview', 'music_industry',
-      'streaming', 'local_concert', 'genre_spotlight', 'classic_track'
-    ];
-    const ARTICLE_STATUSES = ['approved', 'available', 'selected', 'bernas_pick', 'saved_for_later'];
-
+    let assets = [];
     let musicArticles = [];
+    let rundownData = [];
 
-    if (autoResearch) {
-      // 2a: Query existing Article records for music categories
-      try {
-        const allRecent = await base44.asServiceRole.entities.Article.list('-published_at', 60);
-        musicArticles = allRecent.filter(
-          a => MUSIC_ARTICLE_CATEGORIES.includes(a.category) && ARTICLE_STATUSES.includes(a.status)
-        );
-      } catch (e) {
-        console.error('Article query failed:', e.message);
-        buildLog.push({ stage: 'article_query', success: false, error: e.message, timestamp: new Date().toISOString() });
-      }
+    // ═══════════════════════════════════════════════════════
+    // STAGE 2: PLAYLIST DEPARTMENT
+    // Gated by ai_automation preference: 'Auto Build Playlist'
+    // ═══════════════════════════════════════════════════════
 
-      // 2b: If no music articles in DB, fetch via web search and persist as Article records
-      if (musicArticles.length === 0) {
-        try {
-          const newsPrompt = `Search for current music news. Find real, recent articles about:
-- New album/single releases
-- Artist news and announcements
-- Chart movements (Billboard, streaming platforms)
-- Tour announcements and concert news
-- Music industry trends
-- Festival lineups
-- Music interviews
-
-For each article, provide: title, source_name (publication), summary (2-3 sentences), category (must be one of: new_release, tour_announcement, artist_news, chart_movement, festival_lineup, album_review, interview, music_industry, streaming, local_concert, genre_spotlight, classic_track), published_at (ISO date string), url, and suggested_angle (a unique coverage angle for a music show).
-
-Find up to 20 recent articles.`;
-
-          const newsSchema = {
-            type: 'object',
-            properties: {
-              articles: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    title: { type: 'string' },
-                    source_name: { type: 'string' },
-                    summary: { type: 'string' },
-                    category: { type: 'string' },
-                    published_at: { type: 'string' },
-                    url: { type: 'string' },
-                    suggested_angle: { type: 'string' }
-                  }
-                }
-              }
-            }
-          };
-
-          const newsResult = await base44.integrations.Core.InvokeLLM({
-            prompt: newsPrompt,
-            add_context_from_internet: true,
-            response_json_schema: newsSchema,
-            model: 'gemini_3_flash'
-          });
-
-          const newArticleRecords = (newsResult.articles || []).map(a => ({
-            title: a.title || 'Untitled',
-            source_name: a.source_name || '',
-            summary: a.summary || '',
-            category: MUSIC_ARTICLE_CATEGORIES.includes(a.category) ? a.category : 'artist_news',
-            published_at: a.published_at || new Date().toISOString(),
-            url: a.url || '',
-            suggested_angle: a.suggested_angle || '',
-            status: 'approved',
-            content_type: 'text'
-          }));
-
-          if (newArticleRecords.length > 0) {
-            musicArticles = await base44.asServiceRole.entities.Article.bulkCreate(newArticleRecords);
-          }
-        } catch (e) {
-          console.error('Music news fetch failed:', e.message);
-          buildLog.push({ stage: 'music_news_fetch', success: false, error: e.message, timestamp: new Date().toISOString() });
-        }
-      }
-
-      // 2c: Create MusicResearchItem records directly from articles
-      researchData = musicArticles.map(a => ({
-        configuration_id,
-        title: a.title || '',
-        source: a.source_name || '',
-        category: a.category || '',
-        summary: a.summary || '',
-        date: a.published_at ? new Date(a.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        relevance: 'high'
-      }));
-      if (researchData.length > 0) {
-        await base44.entities.MusicResearchItem.bulkCreate(researchData);
-      }
-
-      // 2d: Generate MusicTopic talking points FROM article content
-      // The LLM takes real article body_content / suggested_angle as input
-      // and produces talking points grounded in that content — NOT hallucinated.
-      if (musicArticles.length > 0) {
-        const articleContext = musicArticles.map(a =>
-          `TITLE: ${a.title}\nSOURCE: ${a.source_name}\nCATEGORY: ${a.category}\nSUMMARY: ${a.summary || ''}\nANGLE: ${a.suggested_angle || ''}\nBODY: ${(a.body_content || a.summary || '').substring(0, 800)}`
-        ).join('\n\n---\n\n');
-
-        const topicPrompt = `You are a professional music show producer for a ${productionFormat} show. Based on these REAL news articles, generate talking points for each selected music topic.
-
-SELECTED TOPICS:
-${musicTopics.join(', ') || 'General music news'}
-
-REAL NEWS ARTICLES (your source material — use ONLY this information):
-${articleContext}
-
-For each selected topic, generate:
-- topic_name: Use the exact topic name from the selected topics list above
-- generated_summary: A 2-3 sentence summary of current developments, grounded in the article content
-- talking_points: 3-5 talking points as a single string with line breaks, each grounded in the real article content above
-- sources: List the source names from the articles you referenced
-- suggested_placement: Where in the show this topic fits best (e.g., "After song block 1", "Mid-show", "Near outro")
-
-CRITICAL: All talking points must be grounded in the real article content provided above. Do not invent facts or use information not present in the articles.
-
-Return a JSON object with key "topics" containing an array of topic objects.`;
-
-        const topicSchema = {
-          type: 'object',
-          properties: {
-            topics: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  topic_name: { type: 'string' },
-                  generated_summary: { type: 'string' },
-                  talking_points: { type: 'string' },
-                  sources: { type: 'string' },
-                  suggested_placement: { type: 'string' }
-                }
-              }
-            }
-          }
-        };
-
-        const topicHealResult = await withSelfHealing(base44, 'topic_generation', async (adjustedPrompt) => {
-          return await base44.integrations.Core.InvokeLLM({
-            prompt: adjustedPrompt,
-            response_json_schema: topicSchema
-          });
-        }, topicPrompt);
-        buildLog.push({ stage: 'topic_generation', success: topicHealResult.success, error: topicHealResult.error, attempts: topicHealResult.attempts });
-        const topicResult = topicHealResult.success ? topicHealResult.result : { topics: [] };
-
-        topicData = (topicResult.topics || []).map(topic => ({
-          configuration_id,
-          topic_name: topic.topic_name || '',
-          generated_summary: topic.generated_summary || '',
-          talking_points: topic.talking_points || '',
-          sources: topic.sources || '',
-          suggested_placement: topic.suggested_placement || '',
-          status: 'ready'
-        }));
-        if (topicData.length > 0) {
-          await base44.entities.MusicTopic.bulkCreate(topicData);
-        }
-      }
-    }
-
-    // ═══ PLAYLIST GENERATION ═══
-    // Separate from research — uses web search to find real songs
     if (autoBuildPlaylist) {
       const playlistPrompt = `You are a professional music production assistant for a ${productionFormat === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 You are generating a SET LIST / PLAYLIST PLAN only. You are NOT streaming or providing playable music. Each song entry is a recommendation with title, artist, and metadata.
@@ -373,7 +192,6 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
       buildLog.push({ stage: 'playlist_generation', success: playlistHealResult.success, error: playlistHealResult.error, attempts: playlistHealResult.attempts });
       const playlistResult = playlistHealResult.success ? playlistHealResult.result : { playlist: [] };
 
-      // Create playlist items
       playlistData = (playlistResult.playlist || []).map((song, idx) => ({
         configuration_id,
         order: idx,
@@ -390,7 +208,6 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
 
         // YouTube lookup — find real YouTube video IDs for each playlist track
-        // Retry up to 3 times for songs whose video fails validation
         try {
           const createdItems = await base44.entities.PlaylistItem.filter({ configuration_id });
           const updates = [];
@@ -494,13 +311,187 @@ Only include songs where you found a real, working YouTube URL.`;
     }
 
     // ═══════════════════════════════════════════════════════
-    // STAGE 3: DEVELOPMENT DEPARTMENT
-    // Gated by ai_automation preference: 'Auto Develop'
-    // Generates rundown and production assets
+    // STAGE 3: RESEARCH DEPARTMENT
+    // Gated by ai_automation preference: 'Auto Research'
+    // Fetches music news articles and creates research items
     // ═══════════════════════════════════════════════════════
 
-    let rundownData = [];
-    let assets = [];
+    const MUSIC_ARTICLE_CATEGORIES = [
+      'new_release', 'tour_announcement', 'artist_news', 'chart_movement',
+      'festival_lineup', 'album_review', 'interview', 'music_industry',
+      'streaming', 'local_concert', 'genre_spotlight', 'classic_track'
+    ];
+    const ARTICLE_STATUSES = ['approved', 'available', 'selected', 'bernas_pick', 'saved_for_later'];
+
+    if (autoResearch) {
+      // 3a: Query existing Article records for music categories
+      try {
+        const allRecent = await base44.asServiceRole.entities.Article.list('-published_at', 60);
+        musicArticles = allRecent.filter(
+          a => MUSIC_ARTICLE_CATEGORIES.includes(a.category) && ARTICLE_STATUSES.includes(a.status)
+        );
+      } catch (e) {
+        console.error('Article query failed:', e.message);
+        buildLog.push({ stage: 'article_query', success: false, error: e.message, timestamp: new Date().toISOString() });
+      }
+
+      // 3b: If no music articles in DB, fetch via web search and persist as Article records
+      if (musicArticles.length === 0) {
+        try {
+          const newsPrompt = `Search for current music news. Find real, recent articles about:
+- New album/single releases
+- Artist news and announcements
+- Chart movements (Billboard, streaming platforms)
+- Tour announcements and concert news
+- Music industry trends
+- Festival lineups
+- Music interviews
+
+For each article, provide: title, source_name (publication), summary (2-3 sentences), category (must be one of: new_release, tour_announcement, artist_news, chart_movement, festival_lineup, album_review, interview, music_industry, streaming, local_concert, genre_spotlight, classic_track), published_at (ISO date string), url, and suggested_angle (a unique coverage angle for a music show).
+
+Find up to 20 recent articles.`;
+
+          const newsSchema = {
+            type: 'object',
+            properties: {
+              articles: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    source_name: { type: 'string' },
+                    summary: { type: 'string' },
+                    category: { type: 'string' },
+                    published_at: { type: 'string' },
+                    url: { type: 'string' },
+                    suggested_angle: { type: 'string' }
+                  }
+                }
+              }
+            }
+          };
+
+          const newsResult = await base44.integrations.Core.InvokeLLM({
+            prompt: newsPrompt,
+            add_context_from_internet: true,
+            response_json_schema: newsSchema,
+            model: 'gemini_3_flash'
+          });
+
+          const newArticleRecords = (newsResult.articles || []).map(a => ({
+            title: a.title || 'Untitled',
+            source_name: a.source_name || '',
+            summary: a.summary || '',
+            category: MUSIC_ARTICLE_CATEGORIES.includes(a.category) ? a.category : 'artist_news',
+            published_at: a.published_at || new Date().toISOString(),
+            url: a.url || '',
+            suggested_angle: a.suggested_angle || '',
+            status: 'approved',
+            content_type: 'text'
+          }));
+
+          if (newArticleRecords.length > 0) {
+            musicArticles = await base44.asServiceRole.entities.Article.bulkCreate(newArticleRecords);
+          }
+        } catch (e) {
+          console.error('Music news fetch failed:', e.message);
+          buildLog.push({ stage: 'music_news_fetch', success: false, error: e.message, timestamp: new Date().toISOString() });
+        }
+      }
+
+      // 3c: Create MusicResearchItem records directly from articles
+      researchData = musicArticles.map(a => ({
+        configuration_id,
+        title: a.title || '',
+        source: a.source_name || '',
+        category: a.category || '',
+        summary: a.summary || '',
+        date: a.published_at ? new Date(a.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        relevance: 'high'
+      }));
+      if (researchData.length > 0) {
+        await base44.entities.MusicResearchItem.bulkCreate(researchData);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // STAGE 4: TOPICS DEPARTMENT
+    // Generates topic talking points grounded in research articles
+    // ═══════════════════════════════════════════════════════
+
+    if (autoResearch && musicArticles.length > 0) {
+      const articleContext = musicArticles.map(a =>
+        `TITLE: ${a.title}\nSOURCE: ${a.source_name}\nCATEGORY: ${a.category}\nSUMMARY: ${a.summary || ''}\nANGLE: ${a.suggested_angle || ''}\nBODY: ${(a.body_content || a.summary || '').substring(0, 800)}`
+      ).join('\n\n---\n\n');
+
+      const topicPrompt = `You are a professional music show producer for a ${productionFormat} show. Based on these REAL news articles, generate talking points for each selected music topic.
+
+SELECTED TOPICS:
+${musicTopics.join(', ') || 'General music news'}
+
+REAL NEWS ARTICLES (your source material — use ONLY this information):
+${articleContext}
+
+For each selected topic, generate:
+- topic_name: Use the exact topic name from the selected topics list above
+- generated_summary: A 2-3 sentence summary of current developments, grounded in the article content
+- talking_points: 3-5 talking points as a single string with line breaks, each grounded in the real article content above
+- sources: List the source names from the articles you referenced
+- suggested_placement: Where in the show this topic fits best (e.g., "After song block 1", "Mid-show", "Near outro")
+
+CRITICAL: All talking points must be grounded in the real article content provided above. Do not invent facts or use information not present in the articles.
+
+Return a JSON object with key "topics" containing an array of topic objects.`;
+
+      const topicSchema = {
+        type: 'object',
+        properties: {
+          topics: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                topic_name: { type: 'string' },
+                generated_summary: { type: 'string' },
+                talking_points: { type: 'string' },
+                sources: { type: 'string' },
+                suggested_placement: { type: 'string' }
+              }
+            }
+          }
+        }
+      };
+
+      const topicHealResult = await withSelfHealing(base44, 'topic_generation', async (adjustedPrompt) => {
+        return await base44.integrations.Core.InvokeLLM({
+          prompt: adjustedPrompt,
+          response_json_schema: topicSchema
+        });
+      }, topicPrompt);
+      buildLog.push({ stage: 'topic_generation', success: topicHealResult.success, error: topicHealResult.error, attempts: topicHealResult.attempts });
+      const topicResult = topicHealResult.success ? topicHealResult.result : { topics: [] };
+
+      topicData = (topicResult.topics || []).map(topic => ({
+        configuration_id,
+        topic_name: topic.topic_name || '',
+        generated_summary: topic.generated_summary || '',
+        talking_points: topic.talking_points || '',
+        sources: topic.sources || '',
+        suggested_placement: topic.suggested_placement || '',
+        status: 'ready'
+      }));
+      if (topicData.length > 0) {
+        await base44.entities.MusicTopic.bulkCreate(topicData);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // STAGE 5: ASSETS DEPARTMENT
+    // Gated by ai_automation preference: 'Auto Develop'
+    // Generates production assets: host banter, song intros/outros,
+    // social captions, hashtags, thumbnail/video prompts, production notes
+    // ═══════════════════════════════════════════════════════
 
     if (autoDevelop) {
       const playlistSummary = playlistData.map((s, i) =>
@@ -512,10 +503,199 @@ Only include songs where you found a real, working YouTube URL.`;
         return `- ${t.topic_name}:\n  Summary: ${t.generated_summary || ''}\n  Talking Points:\n${points}`;
       }).join('\n');
 
-      // ═══ RUNDOWN BLUEPRINT — pacing-aware sequencer ═══
-      // Build a deterministic segment structure that enforces pacing rules
-      // (no more than max_sequential_songs in a row), then ask the LLM to
-      // fill in script_content for each segment.
+      const assetsPrompt = `You are a professional music production assistant. Based on the following playlist, topics, and show configuration, generate production assets for the show.
+
+SHOW CONFIGURATION:
+- Production Name: ${config.production_name || 'Music Show'}
+- Host: ${config.host_name || 'Host'}
+- Co-Host: ${config.co_host_name || 'None'}
+- Production Format: ${productionFormat}
+- Total Show Runtime: ${config.total_show_runtime || 90} minutes
+- Required Music Runtime: ${requiredMusicMinutes} minutes
+- Talk/Segment Runtime: ${config.talk_segment_runtime || 12} minutes
+- Commercial/Sponsor Runtime: ${config.commercial_sponsor_runtime || 6} minutes
+- Intro Runtime: ${config.intro_runtime || 1} minutes
+- Outro Runtime: ${config.outro_runtime || 1} minutes
+- Show Tone: ${config.show_tone || 'Professional'}
+- Show Start Time: ${config.show_start_time || '06:00'}
+
+PLAYLIST (songs in order):
+${playlistSummary || 'No playlist generated'}
+
+TOPIC DETAILS:
+${topicSummary || 'No topics generated'}
+
+ASSETS TO GENERATE:
+- host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
+- song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
+- song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
+- social_captions: Array of 3 social media caption strings for promoting the show
+- hashtags: A single string of relevant hashtags separated by spaces
+- thumbnail_prompt: A detailed AI image generation prompt for the show thumbnail
+- video_prompt: A video production prompt for social media clips
+- production_notes: Internal production notes for the team
+
+Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), social_captions (array), hashtags (string), thumbnail_prompt (string), video_prompt (string), production_notes (string).`;
+
+      const assetsSchema = {
+        type: 'object',
+        properties: {
+          host_banter: { type: 'string' },
+          song_intros: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                song_title: { type: 'string' },
+                intro_text: { type: 'string' }
+              }
+            }
+          },
+          song_outros: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                song_title: { type: 'string' },
+                outro_text: { type: 'string' }
+              }
+            }
+          },
+          social_captions: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          hashtags: { type: 'string' },
+          thumbnail_prompt: { type: 'string' },
+          video_prompt: { type: 'string' },
+          production_notes: { type: 'string' }
+        }
+      };
+
+      const assetsHealResult = await withSelfHealing(base44, 'assets_generation', async (adjustedPrompt) => {
+        return await base44.integrations.Core.InvokeLLM({
+          prompt: adjustedPrompt,
+          response_json_schema: assetsSchema
+        });
+      }, assetsPrompt);
+      buildLog.push({ stage: 'assets_generation', success: assetsHealResult.success, error: assetsHealResult.error, attempts: assetsHealResult.attempts });
+      const llmAssets = assetsHealResult.success ? assetsHealResult.result : { host_banter: '', song_intros: [], song_outros: [], social_captions: [], hashtags: '', thumbnail_prompt: '', video_prompt: '', production_notes: '' };
+
+      // Create AI assets
+      if (llmAssets.host_banter) {
+        assets.push({ configuration_id, asset_type: 'host_banter', title: 'Host Banter', content: llmAssets.host_banter, status: 'ready' });
+      }
+      if (llmAssets.song_intros) {
+        for (const intro of llmAssets.song_intros) {
+          assets.push({ configuration_id, asset_type: 'song_intro', title: `Intro: ${intro.song_title}`, content: intro.intro_text, associated_song_title: intro.song_title, status: 'ready' });
+        }
+      }
+      if (llmAssets.song_outros) {
+        for (const outro of llmAssets.song_outros) {
+          assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${outro.song_title}`, content: outro.outro_text, associated_song_title: outro.song_title, status: 'ready' });
+        }
+      }
+      if (llmAssets.social_captions) {
+        assets.push({ configuration_id, asset_type: 'social_caption', title: 'Social Captions', content: llmAssets.social_captions.join('\n\n---\n\n'), status: 'ready' });
+      }
+      if (llmAssets.hashtags) {
+        assets.push({ configuration_id, asset_type: 'hashtag', title: 'Hashtags', content: llmAssets.hashtags, status: 'ready' });
+      }
+      if (llmAssets.thumbnail_prompt) {
+        assets.push({ configuration_id, asset_type: 'thumbnail_prompt', title: 'Thumbnail Prompt', content: llmAssets.thumbnail_prompt, status: 'ready' });
+      }
+      if (llmAssets.video_prompt) {
+        assets.push({ configuration_id, asset_type: 'video_prompt', title: 'Video Prompt', content: llmAssets.video_prompt, status: 'ready' });
+      }
+      if (llmAssets.production_notes) {
+        assets.push({ configuration_id, asset_type: 'production_notes', title: 'Production Notes', content: llmAssets.production_notes, status: 'ready' });
+      }
+
+      if (assets.length > 0) {
+        await base44.entities.MusicAsset.bulkCreate(assets);
+      }
+
+      // AI Image Generation — gated by 'Auto Generate Images'
+      if (autoGenerateImages && llmAssets.thumbnail_prompt) {
+        try {
+          const imgResult = await base44.integrations.Core.GenerateImage({
+            prompt: llmAssets.thumbnail_prompt
+          });
+          if (imgResult?.url) {
+            await base44.entities.MusicAsset.create({
+              configuration_id,
+              asset_type: 'ai_image',
+              title: 'Show Thumbnail',
+              content: llmAssets.thumbnail_prompt,
+              generated_image_url: imgResult.url,
+              status: 'approved'
+            });
+          }
+        } catch (e) {
+          console.error('Image generation failed:', e.message);
+          buildLog.push({ stage: 'image_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
+        }
+      }
+
+      // APD Package Assembly — gated by 'Auto Assemble Packet'
+      if (autoAssemblePacket) {
+        try {
+          await base44.functions.invoke('createAPDReadyPackage', {
+            production_profile: 'music',
+            source_entity_type: 'MusicProductionConfiguration',
+            source_entity_id: configuration_id,
+            configuration_id,
+            title: config.production_name || 'Music Show',
+            headline: config.production_name || 'Music Show',
+            teleprompter_script: llmAssets.host_banter || '',
+            story_summary: topicData.map(t => `${t.topic_name}: ${t.generated_summary}`).join('\n\n'),
+            talking_points: topicData.map(t => t.talking_points).join('\n---\n'),
+            social_media_caption: llmAssets.social_captions ? llmAssets.social_captions.join('\n\n') : '',
+            thumbnail_prompt: llmAssets.thumbnail_prompt || '',
+            image_generation_prompt: llmAssets.thumbnail_prompt || '',
+            producer_notes: llmAssets.production_notes || '',
+            artist_facts: llmAssets.song_intros ? llmAssets.song_intros.map(f => `${f.song_title}`).join('\n') : '',
+            playlist_segment: playlistData.map(p => `${p.song_title} by ${p.artist}`).join('\n')
+          });
+        } catch (e) {
+          console.error('APD adapter failed:', e.message);
+          buildLog.push({ stage: 'apd_packet_assembly', success: false, error: e.message, timestamp: new Date().toISOString() });
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // STAGE 6: TOP 10 DEPARTMENT
+    // Generates ranked YouTube video embeds — excludes playlist songs
+    // ═══════════════════════════════════════════════════════
+
+    let top10_count = 0;
+    try {
+      const top10Result = await base44.functions.invoke('generateMusicTop10', { configuration_id });
+      top10_count = top10Result?.data?.top10_count || 0;
+    } catch (e) {
+      console.error('Top 10 generation failed:', e.message);
+      buildLog.push({ stage: 'top10_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // STAGE 7: RUNDOWN — THE FINISHED PRODUCT
+    // Gated by ai_automation preference: 'Auto Develop'
+    // Final assembly: builds pacing-aware blueprint, then generates
+    // voiceover scripts for each segment. This is the last stage
+    // because the rundown incorporates all prior outputs.
+    // ═══════════════════════════════════════════════════════
+
+    if (autoDevelop) {
+      const playlistSummary = playlistData.map((s, i) =>
+        `${i + 1}. "${s.song_title}" by ${s.artist} (${Math.round((s.length_seconds || 180) / 60)} min, ${s.genre})`
+      ).join('\n');
+
+      const topicSummary = topicData.map(t => {
+        const points = (t.talking_points || '').split('\n').filter(Boolean).map(p => `    ${p}`).join('\n');
+        return `- ${t.topic_name}:\n  Summary: ${t.generated_summary || ''}\n  Talking Points:\n${points}`;
+      }).join('\n');
+
       const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config);
       const blueprintText = blueprint.map((bp, i) => {
         const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${bp.target_duration || 60}s)`];
@@ -524,7 +704,7 @@ Only include songs where you found a real, working YouTube URL.`;
         return parts.join('\n');
       }).join('\n');
 
-      const prompt2 = `You are a professional music production assistant. Based on the following playlist, topics, and show configuration, write voiceover scripts for a pre-structured show rundown.
+      const rundownPrompt = `You are a professional music production assistant. Based on the following playlist, topics, and show configuration, write voiceover scripts for a pre-structured show rundown.
 
 CRITICAL: You MUST follow the RUNDOWN BLUEPRINT below EXACTLY — same segment count, same order, same segment types, same song/topic assignments. Your only job is to write the script_content for each segment and brief notes. Do NOT add, remove, reorder, or rename segments.
 
@@ -561,19 +741,9 @@ SCRIPT REQUIREMENTS:
 - Station IDs: Write a brief station identification segment (e.g., "You're listening to ${config.station_name || 'the station'}"). Keep it under 15 seconds.
 - For each non-song segment, script_content length should be proportional to the target duration shown in the blueprint (~150 words per minute).
 
-AI ASSETS TO GENERATE:
-- host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
-- song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
-- song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
-- social_captions: Array of 3 social media caption strings for promoting the show
-- hashtags: A single string of relevant hashtags separated by spaces
-- thumbnail_prompt: A detailed AI image generation prompt for the show thumbnail
-- video_prompt: A video production prompt for social media clips
-- production_notes: Internal production notes for the team
+Return a JSON object with exactly one key: rundown (array matching the blueprint EXACTLY — same length, same order, same segment_type/title/associated_song_title/associated_topic, plus script_content and notes).`;
 
-Return a JSON object with exactly these keys: rundown (array matching the blueprint EXACTLY — same length, same order, same segment_type/title/associated_song_title/associated_topic, plus script_content and notes), host_banter (string), song_intros (array), song_outros (array), social_captions (array), hashtags (string), thumbnail_prompt (string), video_prompt (string), production_notes (string).`;
-
-      const schema2 = {
+      const rundownSchema = {
         type: 'object',
         properties: {
           rundown: {
@@ -590,57 +760,28 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
                 notes: { type: 'string' }
               }
             }
-          },
-          host_banter: { type: 'string' },
-          song_intros: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                song_title: { type: 'string' },
-                intro_text: { type: 'string' }
-              }
-            }
-          },
-          song_outros: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                song_title: { type: 'string' },
-                outro_text: { type: 'string' }
-              }
-            }
-          },
-          social_captions: {
-            type: 'array',
-            items: { type: 'string' }
-          },
-          hashtags: { type: 'string' },
-          thumbnail_prompt: { type: 'string' },
-          video_prompt: { type: 'string' },
-          production_notes: { type: 'string' }
+          }
         }
       };
 
       const rundownHealResult = await withSelfHealing(base44, 'rundown_scripts', async (adjustedPrompt) => {
         return await base44.integrations.Core.InvokeLLM({
           prompt: adjustedPrompt,
-          response_json_schema: schema2
+          response_json_schema: rundownSchema
         });
-      }, prompt2);
+      }, rundownPrompt);
       buildLog.push({ stage: 'rundown_scripts', success: rundownHealResult.success, error: rundownHealResult.error, attempts: rundownHealResult.attempts });
-      const llm2 = rundownHealResult.success ? rundownHealResult.result : { rundown: [], host_banter: '', song_intros: [], song_outros: [], social_captions: [], hashtags: '', thumbnail_prompt: '', video_prompt: '', production_notes: '' };
+      const llmRundown = rundownHealResult.success ? rundownHealResult.result : { rundown: [] };
 
       // Create rundown items — merge blueprint structure with LLM-generated scripts
       const CHARS_PER_SEC = 15;
       const showStartSecs = parseTimeToSeconds(config.show_start_time || '00:00');
       let cursorSecs = showStartSecs;
 
-      const llmRundown = llm2.rundown || [];
+      const llmRundownItems = llmRundown.rundown || [];
 
       rundownData = blueprint.map((bpItem, idx) => {
-        const llmItem = llmRundown[idx] || {};
+        const llmItem = llmRundownItems[idx] || {};
         const scriptContent = llmItem.script_content || '';
         const segmentType = bpItem.segment_type;
 
@@ -678,110 +819,6 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
       if (rundownData.length > 0) {
         await base44.entities.ShowRundownItem.bulkCreate(rundownData);
       }
-
-      // Create AI assets — format-agnostic deliverables
-      if (llm2.host_banter) {
-        assets.push({ configuration_id, asset_type: 'host_banter', title: 'Host Banter', content: llm2.host_banter, status: 'ready' });
-      }
-      if (llm2.song_intros) {
-        for (const intro of llm2.song_intros) {
-          assets.push({ configuration_id, asset_type: 'song_intro', title: `Intro: ${intro.song_title}`, content: intro.intro_text, associated_song_title: intro.song_title, status: 'ready' });
-        }
-      }
-      if (llm2.song_outros) {
-        for (const outro of llm2.song_outros) {
-          assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${outro.song_title}`, content: outro.outro_text, associated_song_title: outro.song_title, status: 'ready' });
-        }
-      }
-      if (llm2.social_captions) {
-        assets.push({ configuration_id, asset_type: 'social_caption', title: 'Social Captions', content: llm2.social_captions.join('\n\n---\n\n'), status: 'ready' });
-      }
-      if (llm2.hashtags) {
-        assets.push({ configuration_id, asset_type: 'hashtag', title: 'Hashtags', content: llm2.hashtags, status: 'ready' });
-      }
-      if (llm2.thumbnail_prompt) {
-        assets.push({ configuration_id, asset_type: 'thumbnail_prompt', title: 'Thumbnail Prompt', content: llm2.thumbnail_prompt, status: 'ready' });
-      }
-      if (llm2.video_prompt) {
-        assets.push({ configuration_id, asset_type: 'video_prompt', title: 'Video Prompt', content: llm2.video_prompt, status: 'ready' });
-      }
-      if (llm2.production_notes) {
-        assets.push({ configuration_id, asset_type: 'production_notes', title: 'Production Notes', content: llm2.production_notes, status: 'ready' });
-      }
-
-      if (assets.length > 0) {
-        await base44.entities.MusicAsset.bulkCreate(assets);
-      }
-
-      // ═══════════════════════════════════════════════════════
-      // STAGE 4: ASSET DEPARTMENT — AI Image Generation
-      // Gated by ai_automation preference: 'Auto Generate Images'
-      // ═══════════════════════════════════════════════════════
-
-      if (autoGenerateImages && llm2.thumbnail_prompt) {
-        try {
-          const imgResult = await base44.integrations.Core.GenerateImage({
-            prompt: llm2.thumbnail_prompt
-          });
-          if (imgResult?.url) {
-            await base44.entities.MusicAsset.create({
-              configuration_id,
-              asset_type: 'ai_image',
-              title: 'Show Thumbnail',
-              content: llm2.thumbnail_prompt,
-              generated_image_url: imgResult.url,
-              status: 'approved'
-            });
-          }
-        } catch (e) {
-          console.error('Image generation failed:', e.message);
-          buildLog.push({ stage: 'image_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
-        }
-      }
-
-      // ═══════════════════════════════════════════════════════
-      // STAGE 5: PACKET DEPARTMENT — APD Package Assembly
-      // Gated by ai_automation preference: 'Auto Assemble Packet'
-      // ═══════════════════════════════════════════════════════
-
-      if (autoAssemblePacket) {
-        try {
-          await base44.functions.invoke('createAPDReadyPackage', {
-            production_profile: 'music',
-            source_entity_type: 'MusicProductionConfiguration',
-            source_entity_id: configuration_id,
-            configuration_id,
-            title: config.production_name || 'Music Show',
-            headline: config.production_name || 'Music Show',
-            teleprompter_script: llm2.host_banter || '',
-            story_summary: topicData.map(t => `${t.topic_name}: ${t.generated_summary}`).join('\n\n'),
-            talking_points: topicData.map(t => t.talking_points).join('\n---\n'),
-            social_media_caption: llm2.social_captions ? llm2.social_captions.join('\n\n') : '',
-            thumbnail_prompt: llm2.thumbnail_prompt || '',
-            image_generation_prompt: llm2.thumbnail_prompt || '',
-            producer_notes: llm2.production_notes || '',
-            artist_facts: llm2.song_intros ? llm2.song_intros.map(f => `${f.song_title}`).join('\n') : '',
-            playlist_segment: playlistData.map(p => `${p.song_title} by ${p.artist}`).join('\n')
-          });
-        } catch (e) {
-          console.error('APD adapter failed:', e.message);
-          buildLog.push({ stage: 'apd_packet_assembly', success: false, error: e.message, timestamp: new Date().toISOString() });
-        }
-      }
-
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // STAGE 7: TOP 10 — Auto-generate after playlist exists
-    // ═══════════════════════════════════════════════════════
-
-    let top10_count = 0;
-    try {
-      const top10Result = await base44.functions.invoke('generateMusicTop10', { configuration_id });
-      top10_count = top10Result?.data?.top10_count || 0;
-    } catch (e) {
-      console.error('Top 10 generation failed:', e.message);
-      buildLog.push({ stage: 'top10_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
     }
 
     // Update config status to ready and persist build log
@@ -795,9 +832,9 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
       playlist_count: playlistData.length,
       research_count: researchData.length,
       topic_count: topicData.length,
-      rundown_count: rundownData.length,
       asset_count: assets.length,
       top10_count,
+      rundown_count: rundownData.length,
     });
   } catch (error) {
     if (pipelineConfigId) {
@@ -821,7 +858,7 @@ async function withSelfHealing(base44, stageName, fn, initialContext, maxRetries
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const result = await fn(currentContext, lastError);
+      const result = await fn(currentContext);
       return { success: true, result, attempts: attempt + 1 };
     } catch (error) {
       lastError = error;
