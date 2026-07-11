@@ -16,6 +16,7 @@ export default function MusicTop10() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [noteText, setNoteText] = useState('');
+  const [generating, setGenerating] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -76,6 +77,18 @@ export default function MusicTop10() {
     loadData();
   };
 
+  const handleGenerate = async () => {
+    if (!config) return;
+    setGenerating(true);
+    try {
+      await base44.functions.invoke('generateMusicTop10', { configuration_id: config.id });
+      await loadData();
+    } catch (e) {
+      console.error('Top 10 generation failed:', e);
+    }
+    setGenerating(false);
+  };
+
   if (loading) {
     return (
       <div className="relative flex items-center justify-center h-screen bg-black">
@@ -108,14 +121,26 @@ export default function MusicTop10() {
               <p className="text-sm text-gray-400">{config?.production_name || 'Music Production'}</p>
             </div>
           </div>
-          <Button
-            onClick={() => setAddModalOpen(true)}
-            className="cp-btn-gradient border-0 text-white"
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add Video
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleGenerate}
+              disabled={generating || !config}
+              className="cp-btn-gradient border-0 text-white"
+              size="sm"
+            >
+              {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Trophy className="w-4 h-4 mr-1.5" />}
+              {generating ? 'Generating...' : 'Generate Top 10'}
+            </Button>
+            <Button
+              onClick={() => setAddModalOpen(true)}
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Add Video
+            </Button>
+          </div>
         </motion.div>
 
         {/* Sub-room tabs */}
@@ -230,10 +255,16 @@ export default function MusicTop10() {
           <div className="cp-glass p-12 text-center" style={{ borderColor: 'rgba(255,215,0,0.15)' }}>
             <Trophy className="w-12 h-12 mx-auto mb-3" style={{ color: 'rgba(255,215,0,0.3)' }} />
             <p className="text-gray-400 mb-4">No videos in your Top 10 yet.</p>
-            <Button onClick={() => setAddModalOpen(true)} className="cp-btn-gradient border-0 text-white">
-              <Plus className="w-4 h-4 mr-1.5" />
-              Add Your First Video
-            </Button>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button onClick={handleGenerate} disabled={generating || !config} className="cp-btn-gradient border-0 text-white">
+                {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Trophy className="w-4 h-4 mr-1.5" />}
+                {generating ? 'Generating...' : 'Generate Top 10 from Config'}
+              </Button>
+              <Button onClick={() => setAddModalOpen(true)} variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Manually
+              </Button>
+            </div>
           </div>
         )}
       </div>
