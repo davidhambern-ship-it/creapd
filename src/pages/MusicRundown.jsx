@@ -7,7 +7,6 @@ import { ClipboardList, Disc3, Play, Pause, Crown } from 'lucide-react';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicPageNav from '@/components/music/MusicPageNav';
-import CommanderPlayer from '@/components/music/CommanderPlayer';
 import RundownVoiceoverControls from '@/components/music/RundownVoiceoverControls';
 
 const SEGMENT_COLORS = {
@@ -21,7 +20,7 @@ const SEGMENT_COLORS = {
 };
 
 export default function MusicRundown() {
-  const { config, rundown, playlist, loading } = useMusicProduction();
+  const { config, rundown, loading } = useMusicProduction();
   const { user } = useAuth();
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
   const { speak, stop, speakingId, isSupported } = useNativeSpeech();
@@ -52,7 +51,6 @@ export default function MusicRundown() {
   }
 
   const totalSeconds = rundown.reduce((sum, r) => sum + (r.duration_seconds || 0), 0);
-  const playableTracks = playlist.filter(s => s.status !== 'removed' && s.youtube_video_id);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -92,16 +90,6 @@ export default function MusicRundown() {
         <div className="flex gap-2">
           <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#FF00FF]/20 border border-[#FF00FF]/50 text-[#FF00FF]">Rundown</span>
         </div>
-
-        {/* Playlist Player */}
-        {playableTracks.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <CommanderPlayer items={playableTracks} title="Playlist Player" mode="audio" />
-          </motion.div>
-        )}
 
         {rundown.length > 0 ? (
           <>
