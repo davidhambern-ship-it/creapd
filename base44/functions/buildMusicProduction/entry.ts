@@ -135,10 +135,12 @@ Deno.serve(async (req) => {
     let rundownData = [];
 
     // ═══════════════════════════════════════════════════════
+    // STAGES 2+3: PLAYLIST + RESEARCH (PARALLEL)
+    // ═══════════════════════════════════════════════════════
+    await Promise.all([
+      (async () => {
     // STAGE 2: PLAYLIST DEPARTMENT
     // Gated by ai_automation preference: 'Auto Build Playlist'
-    // ═══════════════════════════════════════════════════════
-
     if (autoBuildPlaylist) {
       const playlistPrompt = `You are a professional music production assistant for a ${productionFormat === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 You are generating a SET LIST / PLAYLIST PLAN only. You are NOT streaming or providing playable music. Each song entry is a recommendation with title, artist, and metadata.
@@ -299,34 +301,41 @@ Only include songs where you found a real, working YouTube URL.`;
             const ytResults = ytResult.results || [];
             if (ytResults.length === 0) break;
 
-            for (const result of ytResults) {
+            const oembedResults = (await Promise.all(ytResults.map(async (result) => {
               const videoId = extractVideoId(result.youtube_url || '');
-              if (!videoId || failedVideoIds.has(videoId)) continue;
+              if (!videoId || failedVideoIds.has(videoId)) return null;
 
               const matchedItem = createdItems.find(item =>
                 item.song_title === result.song_title && item.artist === result.artist
               );
-              if (!matchedItem) continue;
+              if (!matchedItem) return null;
 
               try {
                 const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
                 if (!oembedResp.ok) {
                   failedVideoIds.add(videoId);
-                  continue;
+                  return null;
                 }
                 const oembed = await oembedResp.json();
-
-                updates.push({
-                  id: matchedItem.id,
-                  youtube_video_id: videoId,
+                return {
+                  matchedItem,
+                  videoId,
                   thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
                   channel_name: oembed.author_name || ''
-                });
-                resolvedKeys.add(`${matchedItem.song_title}|||${matchedItem.artist}`);
+                };
               } catch {
                 failedVideoIds.add(videoId);
-                continue;
+                return null;
               }
+            }))).filter(Boolean);
+            for (const r of oembedResults) {
+              updates.push({
+                id: r.matchedItem.id,
+                youtube_video_id: r.videoId,
+                thumbnail_url: r.thumbnail_url,
+                channel_name: r.channel_name
+              });
+              resolvedKeys.add(`${r.matchedItem.song_title}|||${r.matchedItem.artist}`);
             }
           }
 
@@ -341,9 +350,10 @@ Only include songs where you found a real, working YouTube URL.`;
     }
 
     await persistBuildLog('playlist', playlistData.length > 0 ? 'complete' : 'skipped', { count: playlistData.length });
-
-    // ═══════════════════════════════════════════════════════
-    // STAGE 3: RESEARCH DEPARTMENT
+      })(),
+      // ═══════════════════════════════════════════════════════
+      // STAGE 3: RESEARCH DEPARTMENT
+      (async () => {
     // Gated by ai_automation preference: 'Auto Research'
     // Fetches music news articles and creates research items
     // ═══════════════════════════════════════════════════════
@@ -448,6 +458,8 @@ Find up to 20 recent articles.`;
     }
 
     await persistBuildLog('research', researchData.length > 0 ? 'complete' : 'skipped', { count: researchData.length });
+      })(),
+    ]);
 
     // ═══════════════════════════════════════════════════════
     // STAGE 4: TOPICS DEPARTMENT
@@ -528,6 +540,15 @@ Return a JSON object with key "topics" containing an array of at least 5 topic o
     }
 
     await persistBuildLog('topics', topicData.length > 0 ? 'complete' : 'skipped', { count: topicData.length });
+
+    // Start Top 10 generation early — runs in parallel with Assets
+    let top10_count = 0;
+    const top10Promise = base44.functions.invoke('generateMusicTop10', { configuration_id })
+      .then(r => { top10_count = r?.data?.top10_count || 0; })
+      .catch(e => {
+        console.error('Top 10 generation failed:', e.message);
+        buildLog.push({ stage: 'top10_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
+      });
 
     // ═══════════════════════════════════════════════════════
     // STAGE 5: ASSETS DEPARTMENT
@@ -734,14 +755,8 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
     // Generates ranked YouTube video embeds — excludes playlist songs
     // ═══════════════════════════════════════════════════════
 
-    let top10_count = 0;
-    try {
-      const top10Result = await base44.functions.invoke('generateMusicTop10', { configuration_id });
-      top10_count = top10Result?.data?.top10_count || 0;
-    } catch (e) {
-      console.error('Top 10 generation failed:', e.message);
-      buildLog.push({ stage: 'top10_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
-    }
+    // Wait for Top 10 generation (started before Assets stage)
+    await top10Promise;
 
     await persistBuildLog('top10', top10_count > 0 ? 'complete' : 'skipped', { count: top10_count });
 
