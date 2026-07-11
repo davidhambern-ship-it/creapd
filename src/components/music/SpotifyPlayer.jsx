@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { SkipForward, SkipBack, Music, ListMusic } from 'lucide-react';
 
 /**
- * SpotifyPlayer — cycling Spotify embed player for audio tracks.
- * Uses Spotify's embed iframe to play full tracks (Premium) or 30s previews (Free).
+ * SpotifyPlayer — cycling Spotify embed player for full audio tracks.
+ * Uses Spotify's embed iframe to play full tracks (requires user to be
+ * logged into Spotify in their browser — Premium or Free both work with embeds).
  *
  * Props:
  *  - items: array of { id, spotify_track_id, song_title, artist, album_art_url, ... }
