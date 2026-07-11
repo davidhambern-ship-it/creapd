@@ -378,8 +378,9 @@ export default function ShowRoulette({ open, onClose, onApply }) {
         setRevealIndex(revealIndex + 1);
         setExiting(false);
       } else {
-        setPhase('done');
+        // Last vinyl saved — auto-apply, no user approval needed
         setExiting(false);
+        handleApply();
       }
     }, exitAnim.transition.duration * 1000);
   };
