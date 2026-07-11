@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, Youtube, Loader2 } from 'lucide-react';
+import { Play, Pause, Disc3, Loader2 } from 'lucide-react';
 
 /**
- * RundownSongPlayer — compact single-track YouTube iframe player.
- * Styled to match CommanderPlayer (cyberpunk glass + neon).
+ * RundownSongPlayer — compact single-track YouTube audio player.
+ * Matches CommanderPlayer audio mode: hidden iframe, spinning vinyl disc.
  *
  * Props:
  *  - videoId: YouTube video ID
@@ -50,8 +50,8 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
       setIsReady(false);
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId,
-        width: '100%',
-        height: '100%',
+        width: '1',
+        height: '1',
         playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
         events: {
           onReady: () => setIsReady(true),
@@ -86,63 +86,78 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
 
   return (
     <div
-      className="rounded-xl overflow-hidden mt-2"
-      style={{
-        background: 'rgba(255,0,255,0.04)',
-        border: '1px solid rgba(255,0,255,0.25)',
-        boxShadow: '0 0 12px rgba(255,0,255,0.08)',
-      }}
+      className="cp-glass rounded-2xl overflow-hidden mt-2"
+      style={{ borderColor: 'rgba(255,0,255,0.25)' }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <Youtube className="w-3.5 h-3.5" style={{ color: '#FF0000' }} />
-          <span className="text-[10px] uppercase tracking-wider text-gray-400">Now Playing</span>
-        </div>
-        {channelName && (
-          <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{channelName}</span>
-        )}
-      </div>
+      {/* Hidden iframe — keeps YouTube audio playing without video UI */}
+      <div
+        ref={containerRef}
+        style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none', top: 0, left: 0 }}
+      />
 
-      <div className="flex items-stretch gap-0">
-        {/* YouTube iframe */}
-        <div className="relative bg-black flex-shrink-0" style={{ width: '160px', minWidth: '160px' }}>
-          {!isReady && (
-            <div className="absolute inset-0 flex items-center justify-center z-10">
-              {thumb ? (
-                <img src={thumb} alt="" className="w-full h-full object-cover opacity-40" />
-              ) : null}
-              <Loader2 className="absolute w-4 h-4 animate-spin text-gray-400" />
-            </div>
-          )}
-          <div style={{ aspectRatio: '16/9' }}>
-            <div ref={containerRef} className="w-full h-full" style={{ width: '100%', height: '100%' }} />
-          </div>
-        </div>
-
-        {/* Title + controls */}
-        <div className="flex-1 flex items-center justify-between gap-2 px-3 py-2 min-w-0">
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-white truncate">{title || 'Unknown Track'}</p>
-            <p className="text-[10px] text-gray-500 truncate mt-0.5">{channelName || ''}</p>
-          </div>
-
-          <button
-            onClick={togglePlayPause}
-            disabled={!isReady}
-            className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
+      <div className="flex items-center gap-4 p-4">
+        {/* Spinning vinyl disc */}
+        <div className="relative flex-shrink-0">
+          <motion.div
+            animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
+            transition={isPlaying ? { duration: 4, repeat: Infinity, ease: 'linear' } : { duration: 0.3 }}
+            className="w-16 h-16 rounded-full flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
-              boxShadow: '0 0 12px rgba(255,0,255,0.3)',
+              background: 'radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0d0d1a 60%, #050510 100%)',
+              border: '2px solid rgba(255,0,255,0.3)',
+              boxShadow: isPlaying ? '0 0 16px rgba(255,0,255,0.2), inset 0 0 16px rgba(0,0,0,0.6)' : 'inset 0 0 16px rgba(0,0,0,0.6)',
             }}
           >
-            {isPlaying ? (
-              <Pause className="w-4 h-4 text-white" />
-            ) : (
-              <Play className="w-4 h-4 text-white ml-0.5" />
-            )}
-          </button>
+            {/* Thumbnail in center */}
+            <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center" style={{ border: '1.5px solid rgba(255,0,255,0.4)' }}>
+              {thumb ? (
+                <img src={thumb} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Disc3 className="w-4 h-4" style={{ color: '#FF00FF' }} />
+              )}
+            </div>
+            {/* Vinyl grooves */}
+            <div className="absolute inset-1.5 rounded-full border border-white/5" />
+            <div className="absolute inset-3 rounded-full border border-white/5" />
+          </motion.div>
+          {/* Pulse indicator when playing */}
+          {isPlaying && (
+            <div
+              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full animate-pulse"
+              style={{ background: '#FF00FF', boxShadow: '0 0 6px #FF00FF' }}
+            />
+          )}
         </div>
+
+        {/* Now Playing + Controls */}
+        <div className="flex-1 min-w-0">
+          {!isReady && (
+            <div className="flex items-center gap-1.5 mb-1">
+              <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
+              <span className="text-[10px] text-gray-500">Loading...</span>
+            </div>
+          )}
+          <p className="text-[9px] uppercase tracking-wider text-gray-500 mb-0.5">Now Playing</p>
+          <p className="text-sm font-medium text-white truncate">{title || 'Unknown Track'}</p>
+          <p className="text-[10px] text-gray-400 truncate">{channelName || ''}</p>
+        </div>
+
+        {/* Play/Pause button */}
+        <button
+          onClick={togglePlayPause}
+          disabled={!isReady}
+          className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
+          style={{
+            background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
+            boxShadow: '0 0 12px rgba(255,0,255,0.3)',
+          }}
+        >
+          {isPlaying ? (
+            <Pause className="w-4 h-4 text-white" />
+          ) : (
+            <Play className="w-4 h-4 text-white ml-0.5" />
+          )}
+        </button>
       </div>
     </div>
   );
