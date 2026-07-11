@@ -570,12 +570,16 @@ ${topicSummary || 'No topics generated'}
 
 ASSETS TO GENERATE:
 - host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
-- song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
-- song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
+- song_intros: Array of {{song_title, intro_text}} for ALL songs in the playlist
+- song_outros: Array of {{song_title, outro_text}} for ALL songs in the playlist
+- artist_bios: Array of {{artist, bio_text}} — a brief 3-4 sentence biography for each UNIQUE artist in the playlist. Cover their background, notable achievements, and musical style.
+- music_trivia: Array of {{question, answer}} — 8-10 music trivia questions related to the playlist artists, songs, and genres. Include fun, engaging questions.
+- tour_dates: Array of {{artist, tour_name, dates, locations}} — upcoming or recent tour dates and concert announcements for artists in the playlist. Use real, current data.
+- concert_news: Array of {{headline, details}} — 5-8 recent concert/festival news items relevant to the playlist's genres and artists.
 - video_prompt: A video production prompt for social media clips
 - production_notes: Internal production notes for the team
 
-Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), video_prompt (string), production_notes (string).`;
+Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), artist_bios (array), music_trivia (array), tour_dates (array), concert_news (array), video_prompt (string), production_notes (string).`;
 
       const assetsSchema = {
         type: 'object',
@@ -598,6 +602,48 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
               properties: {
                 song_title: { type: 'string' },
                 outro_text: { type: 'string' }
+              }
+            }
+          },
+          artist_bios: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                artist: { type: 'string' },
+                bio_text: { type: 'string' }
+              }
+            }
+          },
+          music_trivia: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                question: { type: 'string' },
+                answer: { type: 'string' }
+              }
+            }
+          },
+          tour_dates: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                artist: { type: 'string' },
+                tour_name: { type: 'string' },
+                dates: { type: 'string' },
+                locations: { type: 'string' }
+              }
+            }
+          },
+          concert_news: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                headline: { type: 'string' },
+                details: { type: 'string' }
               }
             }
           },
@@ -628,6 +674,23 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         for (const outro of llmAssets.song_outros) {
           assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${outro.song_title}`, content: outro.outro_text, associated_song_title: outro.song_title, status: 'ready' });
         }
+      }
+      if (llmAssets.artist_bios) {
+        for (const bio of llmAssets.artist_bios) {
+          assets.push({ configuration_id, asset_type: 'artist_bio', title: `Bio: ${bio.artist}`, content: bio.bio_text, associated_song_title: bio.artist, status: 'ready' });
+        }
+      }
+      if (llmAssets.music_trivia) {
+        const triviaContent = llmAssets.music_trivia.map((t, i) => `Q${i + 1}: ${t.question}\nA: ${t.answer}`).join('\n\n');
+        assets.push({ configuration_id, asset_type: 'music_trivia', title: 'Music Trivia', content: triviaContent, status: 'ready' });
+      }
+      if (llmAssets.tour_dates) {
+        const tourContent = llmAssets.tour_dates.map(t => `${t.artist} — ${t.tour_name}: ${t.dates} (${t.locations})`).join('\n');
+        assets.push({ configuration_id, asset_type: 'tour_dates', title: 'Tour Dates', content: tourContent, status: 'ready' });
+      }
+      if (llmAssets.concert_news) {
+        const newsContent = llmAssets.concert_news.map(n => `${n.headline}: ${n.details}`).join('\n');
+        assets.push({ configuration_id, asset_type: 'concert_news', title: 'Concert News', content: newsContent, status: 'ready' });
       }
       if (llmAssets.video_prompt) {
         assets.push({ configuration_id, asset_type: 'video_prompt', title: 'Video Prompt', content: llmAssets.video_prompt, status: 'ready' });
@@ -700,7 +763,24 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         return `- ${t.topic_name}:\n  Summary: ${t.generated_summary || ''}\n  Talking Points:\n${points}`;
       }).join('\n');
 
-      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config);
+      // Build interstitials from generated assets (artist bios, trivia, tour dates, concert news)
+      const extraInterstitials = [];
+      if (llmAssets.artist_bios) {
+        for (const bio of llmAssets.artist_bios.slice(0, 5)) {
+          extraInterstitials.push({ segment_type: 'artist_bio', title: `Artist Bio: ${bio.artist}`, target_duration: 60, content: bio.bio_text });
+        }
+      }
+      if (llmAssets.music_trivia && llmAssets.music_trivia.length > 0) {
+        extraInterstitials.push({ segment_type: 'music_trivia', title: 'Music Trivia', target_duration: 45, content: llmAssets.music_trivia.map((t, i) => `Q${i + 1}: ${t.question} A: ${t.answer}`).join('\n') });
+      }
+      if (llmAssets.tour_dates && llmAssets.tour_dates.length > 0) {
+        extraInterstitials.push({ segment_type: 'tour_dates', title: 'Tour Dates & Concerts', target_duration: 60, content: llmAssets.tour_dates.map(t => `${t.artist} — ${t.tour_name}: ${t.dates} (${t.locations})`).join('\n') });
+      }
+      if (llmAssets.concert_news && llmAssets.concert_news.length > 0) {
+        extraInterstitials.push({ segment_type: 'concert_news', title: 'Concert News', target_duration: 60, content: llmAssets.concert_news.map(n => `${n.headline}: ${n.details}`).join('\n') });
+      }
+
+      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config, extraInterstitials);
       const blueprintText = blueprint.map((bp, i) => {
         const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${bp.target_duration || 60}s)`];
         if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
@@ -786,7 +866,7 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
 
       rundownData = blueprint.map((bpItem, idx) => {
         const llmItem = llmRundownItems[idx] || {};
-        const scriptContent = llmItem.script_content || '';
+        const scriptContent = llmItem.script_content || bpItem.script_content || '';
         const segmentType = bpItem.segment_type;
 
         let durationSeconds;
@@ -990,17 +1070,15 @@ function formatSecondsToTime(totalSeconds) {
 // no more than max_sequential_songs play in a row, with talk breaks,
 // topic segments, sponsor breaks, and station IDs interleaved between
 // song blocks. Time budgets are calculated from the configuration.
-function buildRundownBlueprint(playlist, topics, pacingRules, config) {
+function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInterstitials = []) {
   const maxSequential = pacingRules.max_sequential_songs || 4;
 
-  // Time budgets (in seconds) from configuration
   const introSecs = Math.round((config.intro_runtime || 1) * 60);
   const outroSecs = Math.round((config.outro_runtime || 1) * 60);
   const talkSecs = Math.round((config.talk_segment_runtime || 12) * 60);
   const sponsorSecs = Math.round((config.commercial_sponsor_runtime || 6) * 60);
   const stationIdSecs = 15;
 
-  // Split songs into blocks of at most maxSequential
   const songBlocks = [];
   for (let i = 0; i < playlist.length; i += maxSequential) {
     songBlocks.push(playlist.slice(i, i + maxSequential));
@@ -1014,9 +1092,9 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config) {
   blueprint.push({ segment_type: 'intro', title: 'Show Intro', target_duration: introSecs });
 
   let topicIdx = 0;
+  let interstitialIdx = 0;
 
   for (let blockIdx = 0; blockIdx < songBlocks.length; blockIdx++) {
-    // Add each song in this block
     for (const song of songBlocks[blockIdx]) {
       blueprint.push({
         segment_type: 'song',
@@ -1026,10 +1104,18 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config) {
       });
     }
 
-    // After each block (except the last), insert interstitial segments
     if (blockIdx < songBlocks.length - 1) {
-      // Topic segment or talk break
-      if (topicIdx < topics.length) {
+      // Cycle through topics and extra interstitials (artist bios, trivia, tour dates, concert news)
+      if (interstitialIdx < extraInterstitials.length) {
+        const inter = extraInterstitials[interstitialIdx];
+        blueprint.push({
+          segment_type: inter.segment_type,
+          title: inter.title,
+          target_duration: inter.target_duration || 60,
+          script_content: inter.content || ''
+        });
+        interstitialIdx++;
+      } else if (topicIdx < topics.length) {
         blueprint.push({
           segment_type: 'topic_segment',
           title: topics[topicIdx].topic_name,
@@ -1045,7 +1131,17 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config) {
         });
       }
 
-      // Sponsor break every 2 blocks
+      // Also place a topic if we used an interstitial and still have topics
+      if (interstitialIdx > 0 && topicIdx < topics.length && (blockIdx + 1) % 2 === 0) {
+        blueprint.push({
+          segment_type: 'topic_segment',
+          title: topics[topicIdx].topic_name,
+          associated_topic: topics[topicIdx].topic_name,
+          target_duration: talkPerInterval
+        });
+        topicIdx++;
+      }
+
       if ((blockIdx + 1) % 2 === 0) {
         blueprint.push({
           segment_type: 'sponsor_break',
@@ -1054,7 +1150,6 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config) {
         });
       }
 
-      // Station ID after every block
       blueprint.push({
         segment_type: 'station_id',
         title: 'Station ID',
@@ -1063,7 +1158,7 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config) {
     }
   }
 
-  // Place any remaining topics before the outro
+  // Place any remaining topics and interstitials before the outro
   while (topicIdx < topics.length) {
     blueprint.push({
       segment_type: 'topic_segment',
@@ -1072,6 +1167,16 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config) {
       target_duration: 60
     });
     topicIdx++;
+  }
+  while (interstitialIdx < extraInterstitials.length) {
+    const inter = extraInterstitials[interstitialIdx];
+    blueprint.push({
+      segment_type: inter.segment_type,
+      title: inter.title,
+      target_duration: inter.target_duration || 60,
+      script_content: inter.content || ''
+    });
+    interstitialIdx++;
   }
 
   blueprint.push({ segment_type: 'outro', title: 'Show Outro', target_duration: outroSecs });

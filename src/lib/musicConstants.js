@@ -90,10 +90,15 @@ export const ASSET_TYPE_LABELS = {
   artist_bio: 'Artist Bio',
   artist_fact: 'Artist Fact',
   music_trivia: 'Music Trivia',
+  tour_dates: 'Tour Dates',
+  concert_news: 'Concert News',
   topic_talking_points: 'Topic Talking Points',
   sponsor_read: 'Sponsor Read',
   station_id: 'Station ID',
   audience_prompt: 'Audience Prompt',
+  social_caption: 'Social Caption',
+  hashtag: 'Hashtag',
+  thumbnail_prompt: 'Thumbnail Prompt',
   ai_image: 'AI Image',
   video_prompt: 'Video Prompt',
   production_notes: 'Production Notes'
@@ -104,9 +109,27 @@ export const SEGMENT_TYPE_LABELS = {
   song: 'Song',
   talk_break: 'Talk Break',
   topic_segment: 'Topic Segment',
+  artist_bio: 'Artist Bio',
+  music_trivia: 'Music Trivia',
+  tour_dates: 'Tour Dates',
+  concert_news: 'Concert News',
   sponsor_break: 'Sponsor Break',
   station_id: 'Station ID',
   outro: 'Outro'
+};
+
+export const SEGMENT_COLORS = {
+  intro: '#00FF88',
+  song: '#FF00FF',
+  talk_break: '#00FFFF',
+  topic_segment: '#FF6B00',
+  artist_bio: '#A855F7',
+  music_trivia: '#F59E0B',
+  tour_dates: '#3B82F6',
+  concert_news: '#EF4444',
+  sponsor_break: '#FFD700',
+  station_id: '#8B00FF',
+  outro: '#00FF88',
 };
 
 export function formatRuntime(seconds) {

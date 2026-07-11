@@ -17,6 +17,10 @@
         "song",
         "talk_break",
         "topic_segment",
+        "artist_bio",
+        "music_trivia",
+        "tour_dates",
+        "concert_news",
         "sponsor_break",
         "station_id",
         "outro"

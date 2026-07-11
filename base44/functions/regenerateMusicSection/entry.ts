@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     if (!configuration_id) return Response.json({ error: 'configuration_id is required' }, { status: 400 });
     if (!section) return Response.json({ error: 'section is required' }, { status: 400 });
 
-    const VALID_SECTIONS = ['playlist', 'research', 'topics', 'assets', 'rundown', 'top10'];
+    const VALID_SECTIONS = ['playlist', 'research', 'topics', 'assets', 'rundown', 'rundown_item', 'top10'];
     if (!VALID_SECTIONS.includes(section)) {
       return Response.json({ error: `Invalid section. Valid: ${VALID_SECTIONS.join(', ')}` }, { status: 400 });
     }
@@ -398,12 +398,16 @@ ${topicSummary || 'No topics generated'}
 
 ASSETS TO GENERATE:
 - host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
-- song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
-- song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
+- song_intros: Array of {{song_title, intro_text}} for ALL songs in the playlist
+- song_outros: Array of {{song_title, outro_text}} for ALL songs in the playlist
+- artist_bios: Array of {{artist, bio_text}} — a brief 3-4 sentence biography for each UNIQUE artist in the playlist
+- music_trivia: Array of {{question, answer}} — 8-10 music trivia questions related to the playlist artists, songs, and genres
+- tour_dates: Array of {{artist, tour_name, dates, locations}} — upcoming or recent tour dates for artists in the playlist
+- concert_news: Array of {{headline, details}} — 5-8 recent concert/festival news items relevant to the playlist's genres
 - video_prompt: A video production prompt for social media clips
 - production_notes: Internal production notes for the team
 
-Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), video_prompt (string), production_notes (string).`;
+Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), artist_bios (array), music_trivia (array), tour_dates (array), concert_news (array), video_prompt (string), production_notes (string).`;
 
       const assetsSchema = {
         type: 'object',
@@ -411,6 +415,48 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
           host_banter: { type: 'string' },
           song_intros: { type: 'array', items: { type: 'object', properties: { song_title: { type: 'string' }, intro_text: { type: 'string' } } } },
           song_outros: { type: 'array', items: { type: 'object', properties: { song_title: { type: 'string' }, outro_text: { type: 'string' } } } },
+          artist_bios: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                artist: { type: 'string' },
+                bio_text: { type: 'string' }
+              }
+            }
+          },
+          music_trivia: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                question: { type: 'string' },
+                answer: { type: 'string' }
+              }
+            }
+          },
+          tour_dates: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                artist: { type: 'string' },
+                tour_name: { type: 'string' },
+                dates: { type: 'string' },
+                locations: { type: 'string' }
+              }
+            }
+          },
+          concert_news: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                headline: { type: 'string' },
+                details: { type: 'string' }
+              }
+            }
+          },
           video_prompt: { type: 'string' },
           production_notes: { type: 'string' }
         }
@@ -435,6 +481,23 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         for (const outro of llmAssets.song_outros) {
           assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${outro.song_title}`, content: outro.outro_text, associated_song_title: outro.song_title, status: 'ready' });
         }
+      }
+      if (llmAssets.artist_bios) {
+        for (const bio of llmAssets.artist_bios) {
+          assets.push({ configuration_id, asset_type: 'artist_bio', title: `Bio: ${bio.artist}`, content: bio.bio_text, associated_song_title: bio.artist, status: 'ready' });
+        }
+      }
+      if (llmAssets.music_trivia) {
+        const triviaContent = llmAssets.music_trivia.map((t, i) => `Q${i + 1}: ${t.question}\nA: ${t.answer}`).join('\n\n');
+        assets.push({ configuration_id, asset_type: 'music_trivia', title: 'Music Trivia', content: triviaContent, status: 'ready' });
+      }
+      if (llmAssets.tour_dates) {
+        const tourContent = llmAssets.tour_dates.map(t => `${t.artist} — ${t.tour_name}: ${t.dates} (${t.locations})`).join('\n');
+        assets.push({ configuration_id, asset_type: 'tour_dates', title: 'Tour Dates', content: tourContent, status: 'ready' });
+      }
+      if (llmAssets.concert_news) {
+        const newsContent = llmAssets.concert_news.map(n => `${n.headline}: ${n.details}`).join('\n');
+        assets.push({ configuration_id, asset_type: 'concert_news', title: 'Concert News', content: newsContent, status: 'ready' });
       }
       if (llmAssets.video_prompt) {
         assets.push({ configuration_id, asset_type: 'video_prompt', title: 'Video Prompt', content: llmAssets.video_prompt, status: 'ready' });
@@ -571,6 +634,129 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
           await base44.entities.ShowRundownItem.bulkCreate(rundownData);
         }
         persistLog('rundown', rundownData.length > 0 ? 'complete' : 'failed', { count: rundownData.length });
+      }
+    }
+
+    // ═══ RUNDOWN ITEM (single segment regeneration with optional instruction) ═══
+    if (section === 'rundown_item') {
+      const { item_id, instruction } = body;
+      if (!item_id) return Response.json({ error: 'item_id is required for rundown_item section' }, { status: 400 });
+
+      const existingItem = await base44.entities.ShowRundownItem.get(item_id);
+      if (!existingItem) return Response.json({ error: 'Rundown item not found' }, { status: 404 });
+
+      const playlistData = await loadPlaylist();
+      const topicData = await loadTopics();
+      const assetData = await base44.entities.MusicAsset.filter({ configuration_id });
+
+      const playlistSummary = playlistData.map((s, i) =>
+        `${i + 1}. "${s.song_title}" by ${s.artist} (${s.genre})`
+      ).join('\n');
+
+      const topicSummary = topicData.map(t => `- ${t.topic_name}: ${t.generated_summary || ''}`).join('\n');
+
+      const assetContext = assetData.map(a => `[${a.asset_type}] ${a.title}: ${(a.content || '').substring(0, 200)}`).join('\n');
+
+      const regenPrompt = `You are a professional music show producer. Rewrite the script for a SINGLE show rundown segment.
+
+SHOW: ${config.production_name || 'Music Show'}
+HOST: ${config.host_name || 'Host'}
+TONE: ${config.show_tone || 'Professional'}
+
+PLAYLIST:
+${playlistSummary || 'N/A'}
+
+TOPICS:
+${topicSummary || 'N/A'}
+
+AVAILABLE ASSETS (for reference):
+${assetContext || 'N/A'}
+
+CURRENT SEGMENT:
+- Type: ${existingItem.segment_type}
+- Title: ${existingItem.title}
+- Current Script: ${existingItem.script_content || '(empty)'}
+- Notes: ${existingItem.notes || ''}
+
+${instruction ? `USER INSTRUCTION: ${instruction}` : 'Regenerate this segment with the same intent but fresh, improved content.'}
+
+RULES:
+- Write a complete, ready-to-read voiceover script for this segment
+- Match the show tone (${config.show_tone || 'Professional'})
+- For artist_bio segments: Write a compelling 3-4 sentence artist biography
+- For music_trivia segments: Write an engaging trivia question and reveal the answer
+- For tour_dates segments: Write upcoming tour/concert dates for relevant artists
+- For concert_news segments: Write recent concert/festival news
+- For talk_break segments: Write natural host banter (2-3 sentences)
+- For topic_segment segments: Expand the topic's talking points into a full script
+- For intro segments: Write a compelling show opening
+- For outro segments: Write a show closing
+- For sponsor_break segments: Write ad-read copy
+- For station_id segments: Write a brief station ID (under 15 seconds)
+
+Return a JSON object with: title (string), script_content (string), notes (string).`;
+
+      const regenSchema = {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          script_content: { type: 'string' },
+          notes: { type: 'string' }
+        }
+      };
+
+      try {
+        const regenResult = await base44.integrations.Core.InvokeLLM({
+          prompt: regenPrompt,
+          response_json_schema: regenSchema,
+          add_context_from_internet: ['tour_dates', 'concert_news', 'artist_bio'].includes(existingItem.segment_type),
+        });
+
+        const newScript = regenResult.script_content || '';
+        const newTitle = regenResult.title || existingItem.title;
+        const newNotes = regenResult.notes || existingItem.notes;
+        const CHARS_PER_SEC = 15;
+        const newDuration = existingItem.segment_type === 'song'
+          ? existingItem.duration_seconds
+          : newScript ? Math.ceil(newScript.length / CHARS_PER_SEC) : (existingItem.duration_seconds || 60);
+
+        await base44.entities.ShowRundownItem.update(item_id, {
+          script_content: newScript,
+          title: newTitle,
+          notes: newNotes,
+          duration_seconds: newDuration,
+          status: 'ready',
+        });
+
+        // Retiming: recalculate start/end times for all items after this one
+        const allItems = await base44.entities.ShowRundownItem.filter({ configuration_id }, 'order');
+        const showStartSecs = parseTimeToSeconds(config.show_start_time || '00:00');
+        let cursorSecs = showStartSecs;
+        const timeUpdates = [];
+        for (const ri of allItems) {
+          const startTime = formatSecondsToTime(cursorSecs);
+          cursorSecs += ri.duration_seconds || 60;
+          const endTime = formatSecondsToTime(cursorSecs);
+          timeUpdates.push({ id: ri.id, start_time: startTime, end_time: endTime });
+        }
+        if (timeUpdates.length > 0) {
+          await base44.entities.ShowRundownItem.bulkUpdate(timeUpdates);
+        }
+
+        persistLog('rundown_item', 'complete', { item_id });
+        return Response.json({
+          success: true,
+          configuration_id,
+          section: 'rundown_item',
+          item_id,
+          title: newTitle,
+          script_content: newScript,
+          notes: newNotes,
+          duration_seconds: newDuration,
+        });
+      } catch (e) {
+        persistLog('rundown_item', 'failed', { error: e.message });
+        return Response.json({ error: e.message }, { status: 500 });
       }
     }
 

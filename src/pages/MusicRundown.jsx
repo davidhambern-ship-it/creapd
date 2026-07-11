@@ -1,57 +1,36 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useAuth } from '@/lib/AuthContext';
 import { useShowPlayback } from '@/components/music/ShowPlaybackContext';
-import { ClipboardList, Disc3, Play, Pause, Crown, Loader2, Volume2 } from 'lucide-react';
-import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
+import { ClipboardList, Disc3, Plus, Volume2 } from 'lucide-react';
+import { formatRuntime, SEGMENT_COLORS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import RundownVoiceoverControls from '@/components/music/RundownVoiceoverControls';
-import RundownSongPlayer from '@/components/music/RundownSongPlayer';
-import RundownScriptPanel from '@/components/music/RundownScriptPanel';
-
-const SEGMENT_COLORS = {
-  intro: '#00FF88',
-  song: '#FF00FF',
-  talk_break: '#00FFFF',
-  topic_segment: '#FF6B00',
-  sponsor_break: '#FFD700',
-  station_id: '#8B00FF',
-  outro: '#00FF88',
-};
+import RundownDragList from '@/components/music/RundownDragList';
+import AddSegmentModal from '@/components/music/AddSegmentModal';
 
 export default function MusicRundown() {
-  const { config, rundown, playlist, topics, assets, loading } = useMusicProduction();
+  const { config, rundown, playlist, topics, assets, loading, refresh } = useMusicProduction();
   const { user } = useAuth();
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
-  const [showUpgrade, setShowUpgrade] = React.useState(false);
 
   const ctx = useShowPlayback();
-  const { autoplayIndex, songPhase, speakingId, selectedVoiceURI, setSelectedVoiceURI,
-          startAutoplay, stopAutoplay, handleNativePreview, playSong, toggleYtPlayPause,
-          isYtPlaying, isYtReady, voices, isSupported } = ctx;
+  const { selectedVoiceURI, setSelectedVoiceURI, voices, isSupported } = ctx;
+
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Register show data with the persistent playback engine
   useEffect(() => {
     ctx.registerShowData({ config, rundown, playlist, topics, assets });
   }, [config, rundown, playlist, topics, assets]);
 
-  // Lookup helpers from context
-  const findSongTrack = ctx.findSongTrack;
-  const getScriptForItem = ctx.getScriptForItem;
-  const getSongIntroScript = ctx.getSongIntroScript;
-  const getSongOutroScript = ctx.getSongOutroScript;
-  const songScriptsByTitle = ctx.songScriptsByTitle;
-
   // Scroll active card into view when autoplay advances
   useEffect(() => {
-    if (autoplayIndex === null) return;
-    const el = document.getElementById(`rundown-card-${autoplayIndex}`);
+    if (ctx.autoplayIndex === null) return;
+    const el = document.getElementById(`rundown-card-${ctx.autoplayIndex}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [autoplayIndex, songPhase]);
-
-  const handleAudioGenerated = () => {};
+  }, [ctx.autoplayIndex, ctx.songPhase]);
 
   if (loading) {
     return (
@@ -72,6 +51,7 @@ export default function MusicRundown() {
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
         <MusicDiscoveryNav />
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -116,223 +96,70 @@ export default function MusicRundown() {
               <span className="text-xs text-gray-400">Runtime</span>
               <span className="ml-2 font-bold" style={{ color: '#FF00FF' }}>{formatRuntime(totalSeconds)}</span>
             </div>
+            {/* Add Segment button */}
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
+                color: '#fff',
+                boxShadow: '0 0 12px rgba(255,0,255,0.2)',
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Add Segment
+            </button>
           </div>
         </motion.div>
 
-        {/* Assembly sub-room tabs */}
-        <div className="flex gap-2">
-          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#FF00FF]/20 border border-[#FF00FF]/50 text-[#FF00FF]">Rundown</span>
+        {/* Hint bar */}
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <span className="w-1 h-4 rounded bg-white/20" />
+            <span className="w-1 h-4 rounded bg-white/20" />
+          </span>
+          Drag segments to reorder · Click edit to modify scripts · Click timeline to jump playback
         </div>
 
         {rundown.length > 0 ? (
-          <>
-            {/* Horizontal timeline bar — proportional segments, clickable to jump */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="cp-glass p-4"
-              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
-            >
-              <div className="flex h-8 rounded-lg overflow-hidden gap-0.5">
-                {rundown.map((item, i) => {
-                  const color = SEGMENT_COLORS[item.segment_type] || '#888888';
-                  const pct = totalSeconds > 0 ? ((item.duration_seconds || 0) / totalSeconds) * 100 : 0;
-                  const isActive = autoplayIndex === i;
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.5, delay: i * 0.04 }}
-                      onClick={() => startAutoplay(i)}
-                      className="relative group h-full cursor-pointer hover:brightness-125 transition-all"
-                      style={{
-                        background: color,
-                        boxShadow: isActive ? `0 0 12px ${color}, inset 0 0 8px rgba(255,255,255,0.3)` : `0 0 8px ${color}80`,
-                        minWidth: pct > 5 ? 'auto' : '4px',
-                        outline: isActive ? `2px solid white` : 'none',
-                        outlineOffset: '-2px',
-                      }}
-                    >
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center overflow-hidden">
-                        <span className="text-[8px] font-bold text-black whitespace-nowrap px-1">{SEGMENT_TYPE_LABELS[item.segment_type] || ''}</span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-              {/* Legend */}
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
-                {Object.entries(SEGMENT_COLORS).map(([type, color]) => {
-                  const count = rundown.filter(r => r.segment_type === type).length;
-                  if (count === 0) return null;
-                  return (
-                    <span key={type} className="flex items-center gap-1.5 text-xs text-gray-400">
-                      <span className="w-2 h-2 rounded-sm" style={{ background: color }} />
-                      {SEGMENT_TYPE_LABELS[type] || type} ({count})
-                    </span>
-                  );
-                })}
-              </div>
-            </motion.div>
-
-            {/* Rundown cards — clock-feed style */}
-            <div className="space-y-2">
-              {rundown.map((item, i) => {
-                const color = SEGMENT_COLORS[item.segment_type] || '#888888';
-                const isSong = item.segment_type === 'song';
-                const songTrack = isSong ? findSongTrack(item) : null;
-                const script = getScriptForItem(item);
-                const showVoiceover = !isSong;
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    id={`rundown-card-${i}`}
-                    className="cp-glass group relative overflow-hidden"
-                    style={{
-                      borderColor: autoplayIndex === i ? color : `${color}20`,
-                      boxShadow: autoplayIndex === i ? `0 0 20px ${color}40, inset 0 0 8px ${color}10` : 'none',
-                    }}
-                  >
-                    <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ background: color, boxShadow: `0 0 8px ${color}60` }} />
-                    <div className="flex items-center gap-3 p-3 pl-5">
-                      {/* Time block */}
-                      <div className="flex-shrink-0 w-16 text-center">
-                        <p className="text-sm font-mono font-bold" style={{ color }}>{item.start_time || '--:--'}</p>
-                        <p className="text-[10px] text-gray-500 font-mono">{item.end_time || '--:--'}</p>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="w-px h-10 bg-white/10" />
-
-                      {/* Segment type badge */}
-                      <span className="text-xs px-2.5 py-1 rounded-full border flex-shrink-0"
-                        style={{ background: `${color}15`, color, borderColor: `${color}40` }}>
-                        {SEGMENT_TYPE_LABELS[item.segment_type] || item.segment_type}
-                      </span>
-
-                      {/* Title + notes */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                        {item.notes && <p className="text-xs text-gray-400 truncate">{item.notes}</p>}
-                      </div>
-
-                      {/* Native preview button (free for all) — only for non-song segments */}
-                      {showVoiceover && isSupported && script && (
-                        <button
-                          onClick={() => handleNativePreview(item, i)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all"
-                          style={{
-                            background: speakingId === item.id ? 'rgba(0,255,255,0.15)' : 'rgba(0,255,255,0.06)',
-                            borderColor: speakingId === item.id ? 'rgba(0,255,255,0.5)' : 'rgba(0,255,255,0.2)',
-                          }}
-                        >
-                          {speakingId === item.id ? (
-                            <Pause className="w-3.5 h-3.5 text-cyan-400" />
-                          ) : (
-                            <Play className="w-3.5 h-3.5 text-cyan-400" />
-                          )}
-                          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider hidden sm:inline">
-                            {speakingId === item.id ? (autoplayIndex !== null ? 'Stop Show' : 'Stop') : (item.segment_type === 'intro' ? 'Play Show' : 'Preview')}
-                          </span>
-                        </button>
-                      )}
-
-                      {/* ElevenLabs controls — only for non-song segments */}
-                      {showVoiceover && (
-                        <RundownVoiceoverControls
-                          item={item}
-                          isPro={isPro}
-                          script={script}
-                          onUpgradeNeeded={() => setShowUpgrade(true)}
-                          onAudioGenerated={handleAudioGenerated}
-                        />
-                      )}
-
-                      {/* Duration */}
-                      <span className="text-sm font-mono text-gray-400 flex-shrink-0">{formatRuntime(item.duration_seconds)}</span>
-                    </div>
-
-                    {/* Script panel — expandable (non-song segments only) */}
-                    {!isSong && (
-                      <div className="px-3 pl-5 pb-2">
-                        <RundownScriptPanel item={item} color={color} />
-                      </div>
-                    )}
-
-                    {/* Inline YouTube player for song segments — includes the host intro/outro scripts */}
-                    {isSong && songTrack && songTrack.youtube_video_id && (
-                      <div className="px-3 pb-3 pl-5">
-                        <RundownSongPlayer
-                          videoId={songTrack.youtube_video_id}
-                          title={songTrack.song_title || item.title}
-                          channelName={songTrack.channel_name}
-                          thumbnailUrl={songTrack.thumbnail_url}
-                          introScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.intro || script}
-                          outroScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.outro}
-                          color={color}
-                          itemIndex={i}
-                        />
-                      </div>
-                    )}
-
-                    {/* Script panel for song segments without a YouTube player */}
-                    {isSong && (!songTrack || !songTrack.youtube_video_id) && (
-                      <div className="px-3 pl-5 pb-2">
-                        <RundownScriptPanel item={item} color={color} />
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-          </>
+          <RundownDragList
+            rundown={rundown}
+            config={config}
+            playlist={playlist}
+            assets={assets}
+            isPro={isPro}
+            playbackCtx={ctx}
+            onRefresh={refresh}
+          />
         ) : (
           <div className="cp-glass p-12 text-center" style={{ borderColor: 'rgba(255,0,255,0.15)' }}>
             <ClipboardList className="w-12 h-12 mx-auto mb-3" style={{ color: 'rgba(255,0,255,0.3)' }} />
-            <p className="text-gray-400">No show rundown has been generated yet.</p>
+            <p className="text-gray-400 mb-4">No show rundown has been generated yet.</p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold mx-auto"
+              style={{
+                background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
+                color: '#fff',
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Add First Segment
+            </button>
           </div>
         )}
+
         <MusicDiscoveryNav />
       </div>
 
-      {/* Upgrade modal for non-pro users */}
+      {/* Add Segment Modal */}
       <AnimatePresence>
-        {showUpgrade && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-            onClick={() => setShowUpgrade(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="cp-glass p-8 max-w-md mx-4 text-center"
-              style={{ borderColor: 'rgba(168,85,247,0.3)' }}
-            >
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.4)' }}>
-                <Crown className="w-8 h-8 text-amber-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Upgrade to Pro</h3>
-              <p className="text-sm text-gray-400 mb-6">
-                Generate broadcast-quality voiceovers with ElevenLabs AI. Pro members get lifelike, studio-grade audio for every segment.
-              </p>
-              <button
-                onClick={() => setShowUpgrade(false)}
-                className="cp-btn-gradient px-6 py-2.5 rounded-xl text-sm font-bold text-white"
-              >
-                Maybe Later
-              </button>
-            </motion.div>
-          </motion.div>
+        {showAddModal && config && (
+          <AddSegmentModal
+            configurationId={config.id}
+            onClose={() => setShowAddModal(false)}
+            onAdded={refresh}
+          />
         )}
       </AnimatePresence>
     </div>
