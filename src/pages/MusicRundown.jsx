@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useAuth } from '@/lib/AuthContext';
 import { useNativeSpeech } from '@/hooks/useNativeSpeech';
-import { ClipboardList, Disc3, Play, Pause, Crown } from 'lucide-react';
+import { ClipboardList, Disc3, Play, Pause, Crown, Loader2, Volume2 } from 'lucide-react';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicPageNav from '@/components/music/MusicPageNav';
 import RundownVoiceoverControls from '@/components/music/RundownVoiceoverControls';
 import RundownSongPlayer from '@/components/music/RundownSongPlayer';
+import RundownScriptPanel from '@/components/music/RundownScriptPanel';
 
 const SEGMENT_COLORS = {
   intro: '#00FF88',
@@ -247,6 +248,11 @@ export default function MusicRundown() {
 
                       {/* Duration */}
                       <span className="text-sm font-mono text-gray-400 flex-shrink-0">{formatRuntime(item.duration_seconds)}</span>
+                    </div>
+
+                    {/* Script panel — expandable */}
+                    <div className="px-3 pl-5 pb-2">
+                      <RundownScriptPanel item={item} color={color} />
                     </div>
 
                     {/* Inline YouTube player for song segments */}
