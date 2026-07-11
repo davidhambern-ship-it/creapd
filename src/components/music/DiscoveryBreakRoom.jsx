@@ -1,11 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Disc3, Dices, X } from 'lucide-react';
+import { Disc3, Dices, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
 
-export default function DiscoveryBreakRoom({ buildError }) {
+const STATUS_MESSAGES = {
+  planning: 'Planning production requirements...',
+  building: 'Generating playlist & content...',
+  refreshing: 'Refreshing assets...',
+  configuring: 'Preparing configuration...',
+  ready: 'Production ready!',
+  failed: 'Build failed.',
+};
+
+export default function DiscoveryBreakRoom({ buildError, configId, onComplete }) {
   const [activeGame, setActiveGame] = useState(null);
+  const [buildStatus, setBuildStatus] = useState('building');
+
+  useEffect(() => {
+    if (!configId) return;
+    const unsubscribe = base44.entities.MusicProductionConfiguration.subscribe((event) => {
+      if (event.type === 'update' && event.data?.id === configId) {
+        const updated = event.data;
+        if (updated.status) setBuildStatus(updated.status);
+        if (updated.status === 'ready' && onComplete) {
+          setTimeout(onComplete, 1500);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [configId, onComplete]);
+
+  const statusText = STATUS_MESSAGES[buildStatus] || STATUS_MESSAGES.building;
+  const isReady = buildStatus === 'ready';
+  const isFailed = buildStatus === 'failed' || buildError;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
@@ -18,16 +47,22 @@ export default function DiscoveryBreakRoom({ buildError }) {
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             className="inline-block mb-4"
           >
-            <Disc3 className="w-16 h-16" style={{ color: '#00FF88', filter: 'drop-shadow(0 0 24px #00FF88)' }} />
+            {isReady ? (
+              <CheckCircle2 className="w-16 h-16" style={{ color: '#00FF88', filter: 'drop-shadow(0 0 24px #00FF88)' }} />
+            ) : isFailed ? (
+              <AlertCircle className="w-16 h-16" style={{ color: '#FF4444', filter: 'drop-shadow(0 0 24px #FF4444)' }} />
+            ) : (
+              <Disc3 className="w-16 h-16" style={{ color: '#00FF88', filter: 'drop-shadow(0 0 24px #00FF88)' }} />
+            )}
           </motion.div>
           <motion.h2
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
             className="text-2xl font-heading font-bold mb-2"
-            style={{ color: '#00FF88', textShadow: '0 0 20px rgba(0,255,136,0.6)' }}
+            style={{ color: isFailed ? '#FF4444' : '#00FF88', textShadow: `0 0 20px ${isFailed ? 'rgba(255,68,68,0.6)' : 'rgba(0,255,136,0.6)'}` }}
           >
-            Discovery Complete
+            {isReady ? 'Production Ready!' : isFailed ? 'Build Failed' : 'Discovery Complete'}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -35,22 +70,24 @@ export default function DiscoveryBreakRoom({ buildError }) {
             transition={{ delay: 0.3 }}
             className="text-gray-400 mb-4 text-sm"
           >
-            Dispatching to the Research Department...
+            {isReady ? 'Taking you to your dashboard...' : statusText}
           </motion.p>
           {/* Indeterminate progress bar */}
-          <div className="h-1 rounded-full mx-auto max-w-xs bg-white/10 overflow-hidden">
-            <motion.div
-              animate={{ x: ['-100%', '200%'] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="h-full w-1/2 rounded-full"
-              style={{ background: 'linear-gradient(90deg, transparent, #00FF88, #FF00FF, transparent)' }}
-            />
-          </div>
+          {!isReady && !isFailed && (
+            <div className="h-1 rounded-full mx-auto max-w-xs bg-white/10 overflow-hidden">
+              <motion.div
+                animate={{ x: ['-100%', '200%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                className="h-full w-1/2 rounded-full"
+                style={{ background: 'linear-gradient(90deg, transparent, #00FF88, #FF00FF, transparent)' }}
+              />
+            </div>
+          )}
         </div>
 
-        {buildError && (
+        {(buildError || isFailed) && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center">
-            {buildError}
+            {buildError || 'Build encountered an error. You can return to configure and retry.'}
           </div>
         )}
 

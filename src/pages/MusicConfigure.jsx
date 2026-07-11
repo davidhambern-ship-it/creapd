@@ -336,12 +336,14 @@ export default function MusicConfigure() {
     }
   };
 
-  if (building && buildConfigId) {
-    return <RealtimeBuildProgress configId={buildConfigId} onComplete={() => navigate('/music/dashboard')} />;
-  }
-
-  if (finalSequence) {
-    return <DiscoveryBreakRoom buildError={buildError} />;
+  if (building || finalSequence) {
+    return (
+      <DiscoveryBreakRoom
+        buildError={buildError}
+        configId={buildConfigId}
+        onComplete={() => navigate('/music/dashboard')}
+      />
+    );
   }
 
   return (
