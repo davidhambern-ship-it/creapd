@@ -22,7 +22,7 @@ const SEGMENT_COLORS = {
 };
 
 export default function MusicRundown() {
-  const { config, rundown, playlist, topics, loading } = useMusicProduction();
+  const { config, rundown, playlist, topics, assets, loading } = useMusicProduction();
   const { user } = useAuth();
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
   const { speak, stop, speakingId, isSupported } = useNativeSpeech();
@@ -57,6 +57,20 @@ export default function MusicRundown() {
     (topics || []).forEach(t => { m[t.topic_name] = t; });
     return m;
   }, [topics]);
+
+  // Map song titles → intro/outro scripts from MusicAsset records
+  const songScriptsByTitle = React.useMemo(() => {
+    const m = {};
+    (assets || []).forEach(a => {
+      if (a.asset_type !== 'song_intro' && a.asset_type !== 'song_outro') return;
+      const key = (a.associated_song_title || '').toLowerCase().trim();
+      if (!key) return;
+      if (!m[key]) m[key] = {};
+      if (a.asset_type === 'song_intro') m[key].intro = a.content;
+      if (a.asset_type === 'song_outro') m[key].outro = a.content;
+    });
+    return m;
+  }, [assets]);
 
   const getScriptForItem = (item) => {
     return item.script_content ||
@@ -257,7 +271,7 @@ export default function MusicRundown() {
                       </div>
                     )}
 
-                    {/* Inline YouTube player for song segments — includes the host script */}
+                    {/* Inline YouTube player for song segments — includes the host intro/outro scripts */}
                     {isSong && songTrack && songTrack.youtube_video_id && (
                       <div className="px-3 pb-3 pl-5">
                         <RundownSongPlayer
@@ -265,7 +279,8 @@ export default function MusicRundown() {
                           title={songTrack.song_title || item.title}
                           channelName={songTrack.channel_name}
                           thumbnailUrl={songTrack.thumbnail_url}
-                          script={script}
+                          introScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.intro || script}
+                          outroScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.outro}
                           color={color}
                         />
                       </div>

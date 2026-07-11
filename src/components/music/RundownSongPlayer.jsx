@@ -12,7 +12,7 @@ import { Play, Pause, Disc3, Loader2, FileText, ChevronDown } from 'lucide-react
  *  - channelName: YouTube channel name
  *  - thumbnailUrl: optional thumbnail override
  */
-export default function RundownSongPlayer({ videoId, title, channelName, thumbnailUrl, script, color = '#FF00FF' }) {
+export default function RundownSongPlayer({ videoId, title, channelName, thumbnailUrl, introScript, outroScript, script, color = '#FF00FF' }) {
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef(null);
@@ -84,11 +84,19 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
 
   const thumb = thumbnailUrl || (videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null);
 
-  const [scriptExpanded, setScriptExpanded] = useState(false);
-  const hasScript = script && script.trim().length > 0;
-  const wordCount = hasScript ? script.trim().split(/\s+/).filter(Boolean).length : 0;
-  const estSeconds = hasScript ? Math.ceil(script.length / 15) : 0;
-  const estTime = `${Math.floor(estSeconds / 60)}:${String(estSeconds % 60).padStart(2, '0')}`;
+  const [introExpanded, setIntroExpanded] = useState(false);
+  const [outroExpanded, setOutroExpanded] = useState(false);
+
+  const intro = introScript || script || '';
+  const outro = outroScript || '';
+  const hasIntro = intro.trim().length > 0;
+  const hasOutro = outro.trim().length > 0;
+
+  const calcWordCount = (text) => text.trim().split(/\s+/).filter(Boolean).length;
+  const calcEstTime = (text) => {
+    const secs = Math.ceil(text.length / 15);
+    return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  };
 
   return (
     <div
@@ -166,44 +174,73 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
         </button>
       </div>
 
-      {/* Inline script — host intro/outro for this song */}
-      {hasScript && (
-        <div className="px-4 pb-3">
-          <button
-            onClick={() => setScriptExpanded(!scriptExpanded)}
-            className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
-          >
-            <FileText className="w-3.5 h-3.5" style={{ color }} />
-            <span style={{ color }}>Script</span>
-            <span className="text-gray-600">·</span>
-            <span>{wordCount} words</span>
-            <span className="text-gray-600">·</span>
-            <span>~{estTime}</span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform ${scriptExpanded ? 'rotate-180' : ''}`}
-            />
-          </button>
-          <AnimatePresence>
-            {scriptExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+      {/* Inline scripts — host intro/outro for this song */}
+      {(hasIntro || hasOutro) && (
+        <div className="px-4 pb-3 space-y-2">
+          {hasIntro && (
+            <div>
+              <button
+                onClick={() => setIntroExpanded(!introExpanded)}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
               >
-                <div
-                  className="mt-2 p-3 rounded-lg text-sm text-gray-300 leading-relaxed whitespace-pre-wrap"
-                  style={{
-                    background: `${color}08`,
-                    border: `1px solid ${color}20`,
-                  }}
-                >
-                  {script}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <FileText className="w-3.5 h-3.5" style={{ color }} />
+                <span style={{ color }}>Intro Script</span>
+                <span className="text-gray-600">·</span>
+                <span>{calcWordCount(intro)} words</span>
+                <span className="text-gray-600">·</span>
+                <span>~{calcEstTime(intro)}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${introExpanded ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {introExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 p-3 rounded-lg text-sm text-gray-300 leading-relaxed whitespace-pre-wrap"
+                      style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
+                      {intro}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+          {hasOutro && (
+            <div>
+              <button
+                onClick={() => setOutroExpanded(!outroExpanded)}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" style={{ color }} />
+                <span style={{ color }}>Outro Script</span>
+                <span className="text-gray-600">·</span>
+                <span>{calcWordCount(outro)} words</span>
+                <span className="text-gray-600">·</span>
+                <span>~{calcEstTime(outro)}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${outroExpanded ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {outroExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 p-3 rounded-lg text-sm text-gray-300 leading-relaxed whitespace-pre-wrap"
+                      style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
+                      {outro}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       )}
     </div>
