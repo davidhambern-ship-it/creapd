@@ -444,24 +444,21 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
             );
             if (!matchedItem) continue;
 
-            // Validate via oEmbed
-            let thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-            let channelName = '';
+            // Validate via oEmbed — skip video if unavailable
             try {
               const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-              if (oembedResp.ok) {
-                const oembed = await oembedResp.json();
-                channelName = oembed.author_name || '';
-                thumbnailUrl = oembed.thumbnail_url || thumbnailUrl;
-              }
-            } catch {}
+              if (!oembedResp.ok) continue;
+              const oembed = await oembedResp.json();
 
-            updates.push({
-              id: matchedItem.id,
-              youtube_video_id: videoId,
-              thumbnail_url: thumbnailUrl,
-              channel_name: channelName
-            });
+              updates.push({
+                id: matchedItem.id,
+                youtube_video_id: videoId,
+                thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                channel_name: oembed.author_name || ''
+              });
+            } catch {
+              continue;
+            }
           }
 
           if (updates.length > 0) {

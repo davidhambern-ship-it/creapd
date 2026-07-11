@@ -113,18 +113,17 @@ Return a JSON object with key "items" containing an array of ${remainingSlots} o
       const videoId = extractVideoId(raw.youtube_url || '');
       if (!videoId) continue;
 
-      // Validate via oEmbed
+      // Validate via oEmbed — skip video if unavailable
       let validatedTitle = raw.title || '';
       let validatedChannel = raw.channel_name || '';
       try {
         const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-        if (oembedResp.ok) {
-          const oembed = await oembedResp.json();
-          validatedTitle = oembed.title || validatedTitle;
-          validatedChannel = oembed.author_name || validatedChannel;
-        }
+        if (!oembedResp.ok) continue;
+        const oembed = await oembedResp.json();
+        validatedTitle = oembed.title || validatedTitle;
+        validatedChannel = oembed.author_name || validatedChannel;
       } catch {
-        // skip validation errors, use LLM-provided data
+        continue;
       }
 
       top10Records.push({
