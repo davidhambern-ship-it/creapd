@@ -12,10 +12,11 @@ import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 const TYPE_COLORS = {
   song_intro: '#FF00FF',
   artist_fact: '#00FFFF',
-  social_caption: '#8B00FF',
-  thumbnail_prompt: '#FF6B00',
+  host_banter: '#8B00FF',
+  song_outro: '#FF6B00',
   production_notes: '#00FF88',
   station_id: '#FFD700',
+  video_prompt: '#00FF88',
 };
 
 export default function MusicAssets() {

@@ -168,7 +168,7 @@ PLAYLIST RULES:
 - Explicit Allowed: ${config.explicit_allowed === true ? 'Yes' : 'No'}
 - Preferred Eras: ${config.preferred_eras || 'Any'}
 
-Generate a playlist of REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. Include a mix of songs matching the genres, moods, and energy flow. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected (why this song fits). Respect all playlist rules. Apply the energy flow pattern to song ordering.
+Generate a playlist of AT LEAST 20 REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. If the required runtime demands more than 20 songs, include more. Include a mix of songs matching the genres, moods, and energy flow. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected (why this song fits). Respect all playlist rules. Apply the energy flow pattern to song ordering. NEVER return fewer than 20 songs.
 
 Return a JSON object with key "playlist" containing an array of song objects.`;
 
@@ -456,9 +456,11 @@ For each selected topic, generate:
 - sources: List the source names from the articles you referenced
 - suggested_placement: Where in the show this topic fits best (e.g., "After song block 1", "Mid-show", "Near outro")
 
+IMPORTANT: You MUST generate at least 5 topics. If fewer than 5 topics are selected, generate additional relevant music topics from the article content to reach a minimum of 5 topics.
+
 CRITICAL: All talking points must be grounded in the real article content provided above. Do not invent facts or use information not present in the articles.
 
-Return a JSON object with key "topics" containing an array of topic objects.`;
+Return a JSON object with key "topics" containing an array of at least 5 topic objects.`;
 
       const topicSchema = {
         type: 'object',
@@ -547,13 +549,10 @@ ASSETS TO GENERATE:
 - host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
 - song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
 - song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
-- social_captions: Array of 3 social media caption strings for promoting the show
-- hashtags: A single string of relevant hashtags separated by spaces
-- thumbnail_prompt: A detailed AI image generation prompt for the show thumbnail
 - video_prompt: A video production prompt for social media clips
 - production_notes: Internal production notes for the team
 
-Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), social_captions (array), hashtags (string), thumbnail_prompt (string), video_prompt (string), production_notes (string).`;
+Return a JSON object with exactly these keys: host_banter (string), song_intros (array), song_outros (array), video_prompt (string), production_notes (string).`;
 
       const assetsSchema = {
         type: 'object',
@@ -579,12 +578,6 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
               }
             }
           },
-          social_captions: {
-            type: 'array',
-            items: { type: 'string' }
-          },
-          hashtags: { type: 'string' },
-          thumbnail_prompt: { type: 'string' },
           video_prompt: { type: 'string' },
           production_notes: { type: 'string' }
         }
@@ -597,7 +590,7 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         });
       }, assetsPrompt);
       buildLog.push({ stage: 'assets_generation', success: assetsHealResult.success, error: assetsHealResult.error, attempts: assetsHealResult.attempts });
-      const llmAssets = assetsHealResult.success ? assetsHealResult.result : { host_banter: '', song_intros: [], song_outros: [], social_captions: [], hashtags: '', thumbnail_prompt: '', video_prompt: '', production_notes: '' };
+      const llmAssets = assetsHealResult.success ? assetsHealResult.result : { host_banter: '', song_intros: [], song_outros: [], video_prompt: '', production_notes: '' };
 
       // Create AI assets
       if (llmAssets.host_banter) {
@@ -613,15 +606,6 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
           assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${outro.song_title}`, content: outro.outro_text, associated_song_title: outro.song_title, status: 'ready' });
         }
       }
-      if (llmAssets.social_captions) {
-        assets.push({ configuration_id, asset_type: 'social_caption', title: 'Social Captions', content: llmAssets.social_captions.join('\n\n---\n\n'), status: 'ready' });
-      }
-      if (llmAssets.hashtags) {
-        assets.push({ configuration_id, asset_type: 'hashtag', title: 'Hashtags', content: llmAssets.hashtags, status: 'ready' });
-      }
-      if (llmAssets.thumbnail_prompt) {
-        assets.push({ configuration_id, asset_type: 'thumbnail_prompt', title: 'Thumbnail Prompt', content: llmAssets.thumbnail_prompt, status: 'ready' });
-      }
       if (llmAssets.video_prompt) {
         assets.push({ configuration_id, asset_type: 'video_prompt', title: 'Video Prompt', content: llmAssets.video_prompt, status: 'ready' });
       }
@@ -631,28 +615,6 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
 
       if (assets.length > 0) {
         await base44.entities.MusicAsset.bulkCreate(assets);
-      }
-
-      // AI Image Generation — gated by 'Auto Generate Images'
-      if (autoGenerateImages && llmAssets.thumbnail_prompt) {
-        try {
-          const imgResult = await base44.integrations.Core.GenerateImage({
-            prompt: llmAssets.thumbnail_prompt
-          });
-          if (imgResult?.url) {
-            await base44.entities.MusicAsset.create({
-              configuration_id,
-              asset_type: 'ai_image',
-              title: 'Show Thumbnail',
-              content: llmAssets.thumbnail_prompt,
-              generated_image_url: imgResult.url,
-              status: 'approved'
-            });
-          }
-        } catch (e) {
-          console.error('Image generation failed:', e.message);
-          buildLog.push({ stage: 'image_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
-        }
       }
 
       // APD Package Assembly — gated by 'Auto Assemble Packet'
@@ -668,9 +630,6 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
             teleprompter_script: llmAssets.host_banter || '',
             story_summary: topicData.map(t => `${t.topic_name}: ${t.generated_summary}`).join('\n\n'),
             talking_points: topicData.map(t => t.talking_points).join('\n---\n'),
-            social_media_caption: llmAssets.social_captions ? llmAssets.social_captions.join('\n\n') : '',
-            thumbnail_prompt: llmAssets.thumbnail_prompt || '',
-            image_generation_prompt: llmAssets.thumbnail_prompt || '',
             producer_notes: llmAssets.production_notes || '',
             artist_facts: llmAssets.song_intros ? llmAssets.song_intros.map(f => `${f.song_title}`).join('\n') : '',
             playlist_segment: playlistData.map(p => `${p.song_title} by ${p.artist}`).join('\n')

@@ -93,9 +93,6 @@ export const ASSET_TYPE_LABELS = {
   sponsor_read: 'Sponsor Read',
   station_id: 'Station ID',
   audience_prompt: 'Audience Prompt',
-  social_caption: 'Social Caption',
-  hashtag: 'Hashtags',
-  thumbnail_prompt: 'Thumbnail Prompt',
   ai_image: 'AI Image',
   video_prompt: 'Video Prompt',
   production_notes: 'Production Notes'
