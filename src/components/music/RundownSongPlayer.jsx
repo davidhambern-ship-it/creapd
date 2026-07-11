@@ -1,113 +1,39 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Disc3, Loader2, FileText, ChevronDown } from 'lucide-react';
+import { useShowPlayback } from '@/components/music/ShowPlaybackContext';
 
 /**
- * RundownSongPlayer — compact single-track YouTube audio player.
- * Matches CommanderPlayer audio mode: hidden iframe, spinning vinyl disc.
+ * RundownSongPlayer — compact single-track YouTube audio player UI.
+ * Delegates actual playback to the persistent ShowPlaybackContext engine.
+ * Shows spinning vinyl disc, play/pause, and inline host scripts.
  *
  * Props:
  *  - videoId: YouTube video ID
  *  - title: song title
  *  - channelName: YouTube channel name
  *  - thumbnailUrl: optional thumbnail override
+ *  - itemIndex: rundown index (used to identify the active song)
  */
-export default function RundownSongPlayer({ videoId, title, channelName, thumbnailUrl, introScript, outroScript, script, color = '#FF00FF', autoPlay = false, onEnded }) {
-  const [isReady, setIsReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const playerRef = useRef(null);
-  const containerRef = useRef(null);
-  const apiLoadedRef = useRef(false);
-
-  // Load YouTube IFrame API once
-  useEffect(() => {
-    if (apiLoadedRef.current) return;
-    if (window.YT && window.YT.Player) {
-      apiLoadedRef.current = true;
-      return;
-    }
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    document.body.appendChild(tag);
-    apiLoadedRef.current = true;
-  }, []);
-
-  // Initialize player
-  useEffect(() => {
-    if (!videoId || !containerRef.current) return;
-
-    const initPlayer = () => {
-      if (!window.YT || !window.YT.Player) {
-        setTimeout(initPlayer, 200);
-        return;
-      }
-
-      if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch {}
-        playerRef.current = null;
-      }
-
-      setIsReady(false);
-      playerRef.current = new window.YT.Player(containerRef.current, {
-        videoId,
-        width: '1',
-        height: '1',
-        playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
-        events: {
-          onReady: () => {
-            setIsReady(true);
-            if (autoPlayRef.current) {
-              try { playerRef.current.playVideo(); } catch {}
-            }
-          },
-          onStateChange: (e) => {
-            if (e.data === 1) setIsPlaying(true);
-            if (e.data === 2) setIsPlaying(false);
-            if (e.data === 0 && onEndedRef.current) onEndedRef.current();
-          },
-        },
-      });
-    };
-
-    initPlayer();
-
-    return () => {
-      if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch {}
-        playerRef.current = null;
-      }
-    };
-  }, [videoId]);
-
-  // Track latest autoPlay / onEnded without re-initializing the player
-  const autoPlayRef = useRef(autoPlay);
-  autoPlayRef.current = autoPlay;
-  const onEndedRef = useRef(onEnded);
-  onEndedRef.current = onEnded;
-
-  // When autoPlay flips to true and player is ready, start playback
-  useEffect(() => {
-    if (autoPlay && isReady && playerRef.current) {
-      try { playerRef.current.playVideo(); } catch {}
-    }
-    if (!autoPlay && isReady && playerRef.current && isPlaying) {
-      try { playerRef.current.pauseVideo(); } catch {}
-    }
-  }, [autoPlay, isReady]);
-
-  const togglePlayPause = useCallback(() => {
-    if (!playerRef.current) return;
-    if (isPlaying) {
-      playerRef.current.pauseVideo();
-    } else {
-      playerRef.current.playVideo();
-    }
-  }, [isPlaying]);
-
-  const thumb = thumbnailUrl || (videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null);
-
+export default function RundownSongPlayer({ videoId, title, channelName, thumbnailUrl, introScript, outroScript, script, color = '#FF00FF', itemIndex }) {
+  const ctx = useShowPlayback();
   const [introExpanded, setIntroExpanded] = useState(false);
   const [outroExpanded, setOutroExpanded] = useState(false);
+
+  // Determine if this card is the one currently playing in the persistent engine
+  const isActive = ctx.activeVideoId === videoId;
+  const isPlaying = isActive && ctx.isYtPlaying;
+  const isReady = isActive ? ctx.isYtReady : false;
+
+  const togglePlayPause = () => {
+    if (isActive && ctx.isYtPlaying) {
+      ctx.toggleYtPlayPause();
+    } else {
+      ctx.playSong(videoId, itemIndex);
+    }
+  };
+
+  const thumb = thumbnailUrl || (videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null);
 
   const intro = introScript || script || '';
   const outro = outroScript || '';
@@ -125,12 +51,6 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
       className="cp-glass rounded-2xl overflow-hidden mt-2"
       style={{ borderColor: 'rgba(255,0,255,0.25)' }}
     >
-      {/* Hidden iframe — keeps YouTube audio playing without video UI */}
-      <div
-        ref={containerRef}
-        style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none', top: 0, left: 0 }}
-      />
-
       <div className="flex items-center gap-4 p-4">
         {/* Spinning vinyl disc */}
         <div className="relative flex-shrink-0">
@@ -167,7 +87,7 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
 
         {/* Now Playing + Controls */}
         <div className="flex-1 min-w-0">
-          {!isReady && (
+          {!isReady && isActive && (
             <div className="flex items-center gap-1.5 mb-1">
               <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
               <span className="text-[10px] text-gray-500">Loading...</span>
@@ -181,8 +101,7 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
         {/* Play/Pause button */}
         <button
           onClick={togglePlayPause}
-          disabled={!isReady}
-          className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
+          className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all"
           style={{
             background: 'linear-gradient(135deg, #FF00FF, #8B00FF)',
             boxShadow: '0 0 12px rgba(255,0,255,0.3)',

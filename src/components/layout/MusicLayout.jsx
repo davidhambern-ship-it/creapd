@@ -10,6 +10,8 @@ import MobileBottomNav from './MobileBottomNav';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
+import { ShowPlaybackProvider } from '@/components/music/ShowPlaybackContext';
+import MiniShowBar from '@/components/music/MiniShowBar';
 
 const MOBILE_NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard' },
@@ -27,30 +29,32 @@ export default function MusicLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.music.vars}>
-      <EnvironmentLayer profileKey="music" />
-      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
+    <ShowPlaybackProvider>
+      <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.music.vars}>
+        <EnvironmentLayer profileKey="music" />
+        <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
 
+        <div className="flex flex-1 overflow-hidden">
+          <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+            <MobilePageShell>
+              <Outlet />
+            </MobilePageShell>
+          </main>
+        </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
-          <MobilePageShell>
-            <Outlet />
-          </MobilePageShell>
-        </main>
+        <ProductionFooter variant="music" />
+        </div>
+        <MiniShowBar />
+        <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+
+        <MobileNavDrawer
+          open={mobileNavOpen}
+          onClose={() => setMobileNavOpen(false)}
+          navItems={MUSIC_NAV_ITEMS}
+          iconMap={ICON_MAP}
+          variant="music"
+        />
       </div>
-
-      <ProductionFooter variant="music" />
-      </div>
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
-
-      <MobileNavDrawer
-        open={mobileNavOpen}
-        onClose={() => setMobileNavOpen(false)}
-        navItems={MUSIC_NAV_ITEMS}
-        iconMap={ICON_MAP}
-        variant="music"
-      />
-    </div>
+    </ShowPlaybackProvider>
   );
 }

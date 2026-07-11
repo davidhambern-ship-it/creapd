@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useAuth } from '@/lib/AuthContext';
-import { useNativeSpeech } from '@/hooks/useNativeSpeech';
+import { useShowPlayback } from '@/components/music/ShowPlaybackContext';
 import { ClipboardList, Disc3, Play, Pause, Crown, Loader2, Volume2 } from 'lucide-react';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
@@ -25,187 +25,33 @@ export default function MusicRundown() {
   const { config, rundown, playlist, topics, assets, loading } = useMusicProduction();
   const { user } = useAuth();
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const [autoplayIndex, setAutoplayIndex] = useState(null);
-  // For song segments: 'intro' → speak intro script, 'song' → play YouTube, 'outro' → speak outro script
-  const [songPhase, setSongPhase] = useState(null);
-  const [selectedVoiceURI, setSelectedVoiceURI] = useState(null);
+  const [showUpgrade, setShowUpgrade] = React.useState(false);
 
-  const advanceAutoplay = useCallback(() => {
-    setSongPhase(null);
-    setAutoplayIndex(prev => {
-      if (prev === null) return null;
-      const next = prev + 1;
-      return next < (rundown?.length || 0) ? next : null;
-    });
-  }, [rundown]);
+  const ctx = useShowPlayback();
+  const { autoplayIndex, songPhase, speakingId, selectedVoiceURI, setSelectedVoiceURI,
+          startAutoplay, stopAutoplay, handleNativePreview, playSong, toggleYtPlayPause,
+          isYtPlaying, isYtReady, voices, isSupported } = ctx;
 
-  // Called when TTS finishes — transitions song phases or advances to next card
-  const handleSpeechEnd = useCallback((itemId) => {
-    if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
-    const item = rundown[autoplayIndex];
-    if (item.id === itemId && item.segment_type === 'song') {
-      if (songPhase === 'intro') {
-        setSongPhase('song'); // hand off to YouTube player
-        return;
-      }
-      if (songPhase === 'outro') {
-        advanceAutoplay();
-        return;
-      }
-    }
-    advanceAutoplay();
-  }, [autoplayIndex, rundown, songPhase, advanceAutoplay]);
-
-  const { speak, stop, speakingId, isSupported, voices } = useNativeSpeech({ onEnd: handleSpeechEnd, selectedVoiceURI });
-
-  // Lookup maps for matching songs and topics to rundown items
-  const playlistById = React.useMemo(() => {
-    const m = {};
-    (playlist || []).forEach(p => { m[p.id] = p; });
-    return m;
-  }, [playlist]);
-
-  const playlistByTitle = React.useMemo(() => {
-    const m = {};
-    (playlist || []).forEach(p => {
-      const key = (p.song_title || '').toLowerCase().trim();
-      if (key) m[key] = p;
-    });
-    return m;
-  }, [playlist]);
-
-  const findSongTrack = (item) => {
-    if (item.associated_song_id && playlistById[item.associated_song_id]) {
-      return playlistById[item.associated_song_id];
-    }
-    const titleKey = (item.title || '').toLowerCase().trim();
-    return playlistByTitle[titleKey] || null;
-  };
-
-  const topicMap = React.useMemo(() => {
-    const m = {};
-    (topics || []).forEach(t => { m[t.topic_name] = t; });
-    return m;
-  }, [topics]);
-
-  // Map song titles → intro/outro scripts from MusicAsset records
-  const songScriptsByTitle = React.useMemo(() => {
-    const m = {};
-    (assets || []).forEach(a => {
-      if (a.asset_type !== 'song_intro' && a.asset_type !== 'song_outro') return;
-      const key = (a.associated_song_title || '').toLowerCase().trim();
-      if (!key) return;
-      if (!m[key]) m[key] = {};
-      if (a.asset_type === 'song_intro') m[key].intro = a.content;
-      if (a.asset_type === 'song_outro') m[key].outro = a.content;
-    });
-    return m;
-  }, [assets]);
-
-  const getScriptForItem = (item) => {
-    return item.script_content ||
-           (item.associated_topic && topicMap[item.associated_topic]?.talking_points) ||
-           item.notes ||
-           item.title || '';
-  };
-
-  const getSongIntroScript = (item) => {
-    const track = findSongTrack(item);
-    const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
-    return songScriptsByTitle[titleKey]?.intro || '';
-  };
-
-  const getSongOutroScript = (item) => {
-    const track = findSongTrack(item);
-    const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
-    return songScriptsByTitle[titleKey]?.outro || '';
-  };
-
-  const startAutoplay = (index) => {
-    stop();
-    setSongPhase(null);
-    setAutoplayIndex(index);
-    const item = rundown[index];
-    if (!item) return;
-    if (item.segment_type === 'song') {
-      // Phase 1: speak the intro script, then the song plays, then the outro
-      const intro = getSongIntroScript(item);
-      if (intro) {
-        setSongPhase('intro');
-        speak(intro, item.id);
-      } else {
-        // No intro — go straight to the song
-        setSongPhase('song');
-      }
-    } else {
-      const script = getScriptForItem(item);
-      if (script) speak(script, item.id);
-    }
-  };
-
-  const stopAutoplay = () => {
-    setSongPhase(null);
-    setAutoplayIndex(null);
-    stop();
-  };
-
-  const handleNativePreview = (item, index) => {
-    const script = getScriptForItem(item);
-    if (speakingId === item.id) {
-      stopAutoplay();
-      return;
-    }
-    // Pressing play on the intro (or any talk segment during autoplay) kicks off autonomous mode
-    if (item.segment_type === 'intro' || autoplayIndex !== null) {
-      startAutoplay(index);
-      return;
-    }
-    speak(script, item.id);
-  };
-
-  // YouTube song ended — play outro if there is one, otherwise advance
-  const handleSongEnded = useCallback(() => {
-    if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
-    const item = rundown[autoplayIndex];
-    const outro = getSongOutroScript(item);
-    if (outro) {
-      setSongPhase('outro');
-      speak(outro, item.id);
-    } else {
-      advanceAutoplay();
-    }
-  }, [autoplayIndex, rundown, speak, advanceAutoplay]);
-
-  // Auto-start segments when autoplay advances to them (including songs)
+  // Register show data with the persistent playback engine
   useEffect(() => {
-    if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
-    const item = rundown[autoplayIndex];
+    ctx.registerShowData({ config, rundown, playlist, topics, assets });
+  }, [config, rundown, playlist, topics, assets]);
 
-    if (item.segment_type === 'song') {
-      // When we land on a song, kick off the intro phase (or skip to playback)
-      if (songPhase === null) {
-        const intro = getSongIntroScript(item);
-        if (intro) {
-          setSongPhase('intro');
-          if (speakingId !== item.id) speak(intro, item.id);
-        } else {
-          setSongPhase('song');
-        }
-      }
-    } else {
-      const script = getScriptForItem(item);
-      if (script && speakingId !== item.id) speak(script, item.id);
-    }
+  // Lookup helpers from context
+  const findSongTrack = ctx.findSongTrack;
+  const getScriptForItem = ctx.getScriptForItem;
+  const getSongIntroScript = ctx.getSongIntroScript;
+  const getSongOutroScript = ctx.getSongOutroScript;
+  const songScriptsByTitle = ctx.songScriptsByTitle;
 
-    // Scroll the active card into view
+  // Scroll active card into view when autoplay advances
+  useEffect(() => {
+    if (autoplayIndex === null) return;
     const el = document.getElementById(`rundown-card-${autoplayIndex}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [autoplayIndex, rundown, speakingId, speak, songPhase]);
+  }, [autoplayIndex, songPhase]);
 
-  const handleAudioGenerated = (itemId, audioUrl) => {
-    // The hook will refresh on next load; for now just note it
-  };
+  const handleAudioGenerated = () => {};
 
   if (loading) {
     return (
@@ -280,7 +126,7 @@ export default function MusicRundown() {
 
         {rundown.length > 0 ? (
           <>
-            {/* Horizontal timeline bar — proportional segments */}
+            {/* Horizontal timeline bar — proportional segments, clickable to jump */}
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -291,14 +137,22 @@ export default function MusicRundown() {
                 {rundown.map((item, i) => {
                   const color = SEGMENT_COLORS[item.segment_type] || '#888888';
                   const pct = totalSeconds > 0 ? ((item.duration_seconds || 0) / totalSeconds) * 100 : 0;
+                  const isActive = autoplayIndex === i;
                   return (
                     <motion.div
                       key={item.id}
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ duration: 0.5, delay: i * 0.04 }}
-                      className="relative group h-full"
-                      style={{ background: color, boxShadow: `0 0 8px ${color}80`, minWidth: pct > 5 ? 'auto' : '4px' }}
+                      onClick={() => startAutoplay(i)}
+                      className="relative group h-full cursor-pointer hover:brightness-125 transition-all"
+                      style={{
+                        background: color,
+                        boxShadow: isActive ? `0 0 12px ${color}, inset 0 0 8px rgba(255,255,255,0.3)` : `0 0 8px ${color}80`,
+                        minWidth: pct > 5 ? 'auto' : '4px',
+                        outline: isActive ? `2px solid white` : 'none',
+                        outlineOffset: '-2px',
+                      }}
                     >
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center overflow-hidden">
                         <span className="text-[8px] font-bold text-black whitespace-nowrap px-1">{SEGMENT_TYPE_LABELS[item.segment_type] || ''}</span>
@@ -420,8 +274,7 @@ export default function MusicRundown() {
                           introScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.intro || script}
                           outroScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.outro}
                           color={color}
-                          autoPlay={autoplayIndex === i && songPhase === 'song'}
-                          onEnded={handleSongEnded}
+                          itemIndex={i}
                         />
                       </div>
                     )}
