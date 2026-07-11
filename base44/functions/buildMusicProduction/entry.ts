@@ -103,6 +103,18 @@ Deno.serve(async (req) => {
     await base44.entities.MusicAsset.deleteMany({ configuration_id });
 
     const buildLog = [];
+    const persistBuildLog = async (stageName, status, extra = {}) => {
+      buildLog.push({ stage: stageName, status, timestamp: new Date().toISOString(), ...extra });
+      try {
+        await base44.entities.MusicProductionConfiguration.update(configuration_id, {
+          build_log: JSON.stringify(buildLog)
+        });
+      } catch (e) {
+        console.error(`Failed to persist build log for ${stageName}:`, e.message);
+      }
+    };
+
+    await persistBuildLog('planning', 'complete', { requirements_count: requirements.length });
 
     const autoResearch = aiAutomation.includes('Auto Research');
     const autoBuildPlaylist = aiAutomation.includes('Auto Build Playlist');
@@ -310,6 +322,8 @@ Only include songs where you found a real, working YouTube URL.`;
       }
     }
 
+    await persistBuildLog('playlist', playlistData.length > 0 ? 'complete' : 'skipped', { count: playlistData.length });
+
     // ═══════════════════════════════════════════════════════
     // STAGE 3: RESEARCH DEPARTMENT
     // Gated by ai_automation preference: 'Auto Research'
@@ -415,6 +429,8 @@ Find up to 20 recent articles.`;
       }
     }
 
+    await persistBuildLog('research', researchData.length > 0 ? 'complete' : 'skipped', { count: researchData.length });
+
     // ═══════════════════════════════════════════════════════
     // STAGE 4: TOPICS DEPARTMENT
     // Generates topic talking points grounded in research articles
@@ -485,6 +501,8 @@ Return a JSON object with key "topics" containing an array of topic objects.`;
         await base44.entities.MusicTopic.bulkCreate(topicData);
       }
     }
+
+    await persistBuildLog('topics', topicData.length > 0 ? 'complete' : 'skipped', { count: topicData.length });
 
     // ═══════════════════════════════════════════════════════
     // STAGE 5: ASSETS DEPARTMENT
@@ -664,6 +682,8 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
       }
     }
 
+    await persistBuildLog('assets', assets.length > 0 ? 'complete' : 'skipped', { count: assets.length });
+
     // ═══════════════════════════════════════════════════════
     // STAGE 6: TOP 10 DEPARTMENT
     // Generates ranked YouTube video embeds — excludes playlist songs
@@ -677,6 +697,8 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
       console.error('Top 10 generation failed:', e.message);
       buildLog.push({ stage: 'top10_generation', success: false, error: e.message, timestamp: new Date().toISOString() });
     }
+
+    await persistBuildLog('top10', top10_count > 0 ? 'complete' : 'skipped', { count: top10_count });
 
     // ═══════════════════════════════════════════════════════
     // STAGE 7: RUNDOWN — THE FINISHED PRODUCT
@@ -820,6 +842,8 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
         await base44.entities.ShowRundownItem.bulkCreate(rundownData);
       }
     }
+
+    await persistBuildLog('rundown', rundownData.length > 0 ? 'complete' : 'skipped', { count: rundownData.length });
 
     // Update config status to ready and persist build log
     await base44.entities.MusicProductionConfiguration.update(configuration_id, { status: 'ready', build_log: JSON.stringify(buildLog) });

@@ -26,6 +26,7 @@ import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 import OrbitalConfigCanvas from '@/components/music/OrbitalConfigCanvas';
 import { playClick, playComplete } from '@/lib/recordingSound';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
+import RealtimeBuildProgress from '@/components/music/RealtimeBuildProgress';
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -126,6 +127,7 @@ export default function MusicConfigure() {
   const editConfigId = searchParams.get('config_id');
 
   const [building, setBuilding] = useState(false);
+  const [buildConfigId, setBuildConfigId] = useState(null);
   const [buildError, setBuildError] = useState('');
   const [rouletteOpen, setRouletteOpen] = useState(false);
   const [customField, setCustomField] = useState(null);
@@ -291,10 +293,13 @@ export default function MusicConfigure() {
         default_production_config_id: savedConfig.id
       });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
-      await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
-      navigate('/music/dashboard');
+      setBuildConfigId(savedConfig.id);
+      setBuilding(true);
+      base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
+        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
     } catch (err) {
       setBuildError(err.message || 'Failed to build production.');
+      setBuilding(false);
     }
   };
 
@@ -322,43 +327,21 @@ export default function MusicConfigure() {
         default_production_config_id: savedConfig.id
       });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
-      await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
-      navigate('/music/dashboard');
+      setBuildConfigId(savedConfig.id);
+      base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
+        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
     } catch (err) {
       setBuildError(err.message || 'Failed to build production. Please try again.');
       setBuilding(false);
     }
   };
 
-  if (finalSequence) {
-    return <DiscoveryBreakRoom buildError={buildError} />;
+  if (building && buildConfigId) {
+    return <RealtimeBuildProgress configId={buildConfigId} onComplete={() => navigate('/music/dashboard')} />;
   }
 
-  if (building) {
-    return (
-      <div className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
-        <CyberpunkMusicBg variant="eq" />
-        <div className="relative z-10 max-w-md w-full text-center px-6">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="inline-block mb-6"
-          >
-            <Disc3 className="w-16 h-16" style={{ color: '#FF00FF', filter: 'drop-shadow(0 0 16px #FF00FF)' }} />
-          </motion.div>
-          <h2 className="text-xl font-heading font-bold text-white mb-3">Building Your Music Production</h2>
-          <p className="text-gray-400 mb-8 text-sm">CREAPD is generating your playlist, research, topics, rundown, and AI assets.</p>
-          <div className="space-y-3 text-left">
-            {['Generating playlist plan', 'Researching music topics', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#FF00FF' }} />
-                <span className="text-gray-400">{label}...</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  if (finalSequence) {
+    return <DiscoveryBreakRoom buildError={buildError} />;
   }
 
   return (
