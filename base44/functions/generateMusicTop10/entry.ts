@@ -22,8 +22,31 @@ Deno.serve(async (req) => {
     const moods = safeParse(config.moods, []);
     const musicTopics = safeParse(config.music_topics, []);
 
+    // Fetch existing playlist items so we can exclude them from the Top 10
+    const playlistItems = await base44.entities.PlaylistItem.filter({ configuration_id });
+    const playlistSongList = playlistItems
+      .map(item => `${item.song_title} — ${item.artist}`)
+      .filter(s => s && s !== ' — ');
+    const playlistExclusions = playlistSongList.length > 0
+      ? playlistSongList.join('\n')
+      : 'None';
+
+    // Also exclude any already-locked Top 10 items (they survive regeneration)
+    const existingTop10 = await base44.entities.Top10Item.filter({ configuration_id });
+    const lockedItems = existingTop10.filter(i => i.locked);
+
     // Delete existing non-locked Top 10 items for this config
-    await base44.entities.Top10Item.deleteMany({ configuration_id });
+    const unlockedIds = existingTop10.filter(i => !i.locked).map(i => i.id);
+    for (const id of unlockedIds) {
+      await base44.entities.Top10Item.delete(id);
+    }
+
+    // Build locked items context so AI knows what's already secured
+    const lockedList = lockedItems.length > 0
+      ? lockedItems.map(i => `${i.title} (${i.youtube_video_id})`).join('\n')
+      : 'None';
+
+    const remainingSlots = 10 - lockedItems.length;
 
     const prompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 
@@ -39,15 +62,22 @@ SHOW CONTEXT:
 - Blocked Songs: ${config.blocked_songs || 'None'}
 - Blocked Artists: ${config.blocked_artists || 'None'}
 
+EXCLUSIONS — DO NOT include any of these songs (they are already in the show playlist):
+${playlistExclusions}
+
+ALREADY LOCKED (these are already in the Top 10, do NOT duplicate them):
+${lockedList}
+
 RULES:
-1. Return exactly 10 items, ranked #1 through #10 (best/most fitting first).
+1. Return exactly ${remainingSlots} items. These will fill the remaining Top 10 slots alongside the locked items.
 2. Each item MUST be a real YouTube video — include the full YouTube URL (https://www.youtube.com/watch?v=VIDEO_ID).
 3. Prefer official music videos, live performances, or Vevo channels.
 4. Match the genres, moods, and topics from the show config where possible.
 5. Respect blocked songs/artists — never include them.
-6. Each item needs: title (video title), youtube_url (full URL), channel_name (YouTube channel), and rank_reason (why it's ranked here).
+6. DO NOT include ANY song from the EXCLUSIONS list above — the Top 10 must be DIFFERENT from the playlist.
+7. Each item needs: title (video title), youtube_url (full URL), channel_name (YouTube channel), and rank_reason (why it's ranked here).
 
-Return a JSON object with key "items" containing an array of 10 objects, each with: title, youtube_url, channel_name, rank_reason.`;
+Return a JSON object with key "items" containing an array of ${remainingSlots} objects, each with: title, youtube_url, channel_name, rank_reason.`;
 
     const schema = {
       type: 'object',
@@ -78,7 +108,7 @@ Return a JSON object with key "items" containing an array of 10 objects, each wi
 
     // Validate each video via oEmbed and build Top10Item records
     const top10Records = [];
-    for (let i = 0; i < rawItems.length && i < 10; i++) {
+    for (let i = 0; i < rawItems.length && i < remainingSlots; i++) {
       const raw = rawItems[i];
       const videoId = extractVideoId(raw.youtube_url || '');
       if (!videoId) continue;
@@ -99,7 +129,7 @@ Return a JSON object with key "items" containing an array of 10 objects, each wi
 
       top10Records.push({
         configuration_id,
-        order: i,
+        order: lockedItems.length + i,
         title: validatedTitle || raw.title || 'Unknown',
         youtube_video_id: videoId,
         thumbnail_url: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
