@@ -19,10 +19,13 @@ Deno.serve(async (req) => {
     if (!script_text) return Response.json({ error: 'script_text is required' }, { status: 400 });
     if (!source_type || !source_id) return Response.json({ error: 'source_type and source_id are required' }, { status: 400 });
 
-    // ===== NATIVE-FIRST: No auto TTS generation, no transcription =====
-    // The VP stores only the script text and an estimated duration.
-    // Actual audio is synthesized on-demand via the browser's native TTS.
-    // ElevenLabs remains available as a manual "Pro" option from the UI.
+    // ===== Generate voiceover audio using built-in GenerateSpeech (not ElevenLabs) =====
+    const speechResult = await base44.integrations.Core.GenerateSpeech({
+      text: script_text,
+      voice: 'river',
+      language_code: language_code || 'en'
+    });
+    const audioUrl = speechResult?.url || null;
 
     // ===== Estimate duration from word count =====
     const words = script_text.trim().split(/\s+/).filter(Boolean);
@@ -56,16 +59,16 @@ Deno.serve(async (req) => {
 
     // ===== Build voice metadata — native provider =====
     const voiceMetadata = {
-      voice_id: 'native',
-      voice_name: 'Browser TTS',
-      voice_provider: 'native',
+      voice_id: 'river',
+      voice_name: 'River',
+      voice_provider: 'generate_speech',
       language: language_code || 'en',
       accent: 'neutral',
       speaking_style: 'narration',
       emotion: 'neutral',
       pitch: 'default',
       speed: '1.0',
-      generation_engine: 'browser-native (estimated)',
+      generation_engine: 'base44 GenerateSpeech',
       generation_date: new Date().toISOString()
     };
 
@@ -91,6 +94,7 @@ Deno.serve(async (req) => {
     });
 
     const vpData = {
+      voice_audio_url: audioUrl,
       teleprompter_script: script_text,
       transcript: script_text,
       timestamped_transcript: timestampedTranscript,
@@ -120,7 +124,7 @@ Deno.serve(async (req) => {
       await base44.entities.SpiritualMessageSection.update(source_id, { voice_package_id: vp.id });
     }
 
-    return Response.json({ voice_package: vp, audio_url: null });
+    return Response.json({ voice_package: vp, audio_url: audioUrl });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
