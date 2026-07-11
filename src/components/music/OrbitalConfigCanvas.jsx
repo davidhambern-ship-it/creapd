@@ -144,8 +144,9 @@ export default function OrbitalConfigCanvas({
                 // Skip the node currently flying to the deck (unless still in flying phase)
                 if (recording?.roomId === room.id && recording?.phase !== 'flying') return null;
 
-                // Apply spin offset — shifts angle clockwise by one position per recorded module
-                const angle = ((i + spinOffset) / rooms.length) * Math.PI * 2 - Math.PI / 2;
+                // Initial positioning is counterclockwise so the clockwise spin
+                // (spinOffset increases) brings the next module to the top (12 o'clock)
+                const angle = ((spinOffset - i) / rooms.length) * Math.PI * 2 - Math.PI / 2;
                 const x = Math.cos(angle) * radiusX;
                 const y = Math.sin(angle) * radiusY;
                 const Icon = room.icon;
