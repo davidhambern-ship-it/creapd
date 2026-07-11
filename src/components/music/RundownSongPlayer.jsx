@@ -12,7 +12,7 @@ import { Play, Pause, Disc3, Loader2, FileText, ChevronDown } from 'lucide-react
  *  - channelName: YouTube channel name
  *  - thumbnailUrl: optional thumbnail override
  */
-export default function RundownSongPlayer({ videoId, title, channelName, thumbnailUrl, introScript, outroScript, script, color = '#FF00FF' }) {
+export default function RundownSongPlayer({ videoId, title, channelName, thumbnailUrl, introScript, outroScript, script, color = '#FF00FF', autoPlay = false, onEnded }) {
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const playerRef = useRef(null);
@@ -54,10 +54,16 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
         height: '1',
         playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
         events: {
-          onReady: () => setIsReady(true),
+          onReady: () => {
+            setIsReady(true);
+            if (autoPlay) {
+              try { playerRef.current.playVideo(); } catch {}
+            }
+          },
           onStateChange: (e) => {
             if (e.data === 1) setIsPlaying(true);
             if (e.data === 2) setIsPlaying(false);
+            if (e.data === 0 && onEnded) onEnded();
           },
         },
       });
@@ -71,7 +77,7 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
         playerRef.current = null;
       }
     };
-  }, [videoId]);
+  }, [videoId, autoPlay]);
 
   const togglePlayPause = useCallback(() => {
     if (!playerRef.current) return;

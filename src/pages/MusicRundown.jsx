@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useAuth } from '@/lib/AuthContext';
@@ -25,8 +25,18 @@ export default function MusicRundown() {
   const { config, rundown, playlist, topics, assets, loading } = useMusicProduction();
   const { user } = useAuth();
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
-  const { speak, stop, speakingId, isSupported } = useNativeSpeech();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [autoplayIndex, setAutoplayIndex] = useState(null);
+
+  const advanceAutoplay = useCallback(() => {
+    setAutoplayIndex(prev => {
+      if (prev === null) return null;
+      const next = prev + 1;
+      return next < (rundown?.length || 0) ? next : null;
+    });
+  }, [rundown]);
+
+  const { speak, stop, speakingId, isSupported } = useNativeSpeech({ onEnd: advanceAutoplay });
 
   // Lookup maps for matching songs and topics to rundown items
   const playlistById = React.useMemo(() => {
@@ -79,14 +89,53 @@ export default function MusicRundown() {
            item.title || '';
   };
 
-  const handleNativePreview = (item) => {
-    const script = getScriptForItem(item);
-    if (speakingId === item.id) {
-      stop();
-    } else {
-      speak(script, item.id);
+  const startAutoplay = (index) => {
+    stop();
+    setAutoplayIndex(index);
+    const item = rundown[index];
+    if (item && item.segment_type !== 'song') {
+      const script = getScriptForItem(item);
+      if (script) speak(script, item.id);
     }
   };
+
+  const stopAutoplay = () => {
+    setAutoplayIndex(null);
+    stop();
+  };
+
+  const handleNativePreview = (item, index) => {
+    const script = getScriptForItem(item);
+    if (speakingId === item.id) {
+      stopAutoplay();
+      return;
+    }
+    // Pressing play on the intro (or any talk segment during autoplay) kicks off autonomous mode
+    if (item.segment_type === 'intro' || autoplayIndex !== null) {
+      startAutoplay(index);
+      return;
+    }
+    speak(script, item.id);
+  };
+
+  const handleSongEnded = useCallback(() => {
+    advanceAutoplay();
+  }, [advanceAutoplay]);
+
+  // Auto-start non-song segments when autoplay advances to them
+  useEffect(() => {
+    if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
+    const item = rundown[autoplayIndex];
+    if (item.segment_type !== 'song') {
+      const script = getScriptForItem(item);
+      if (script && speakingId !== item.id) speak(script, item.id);
+    }
+    // Songs auto-start via the autoPlay prop on RundownSongPlayer
+
+    // Scroll the active card into view
+    const el = document.getElementById(`rundown-card-${autoplayIndex}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [autoplayIndex, rundown, speakingId, speak]);
 
   const handleAudioGenerated = (itemId, audioUrl) => {
     // The hook will refresh on next load; for now just note it
@@ -202,8 +251,12 @@ export default function MusicRundown() {
                     initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.03 }}
+                    id={`rundown-card-${i}`}
                     className="cp-glass group relative overflow-hidden"
-                    style={{ borderColor: `${color}20` }}
+                    style={{
+                      borderColor: autoplayIndex === i ? color : `${color}20`,
+                      boxShadow: autoplayIndex === i ? `0 0 20px ${color}40, inset 0 0 8px ${color}10` : 'none',
+                    }}
                   >
                     <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ background: color, boxShadow: `0 0 8px ${color}60` }} />
                     <div className="flex items-center gap-3 p-3 pl-5">
@@ -231,7 +284,7 @@ export default function MusicRundown() {
                       {/* Native preview button (free for all) — only for non-song segments */}
                       {showVoiceover && isSupported && script && (
                         <button
-                          onClick={() => handleNativePreview(item)}
+                          onClick={() => handleNativePreview(item, i)}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all"
                           style={{
                             background: speakingId === item.id ? 'rgba(0,255,255,0.15)' : 'rgba(0,255,255,0.06)',
@@ -244,7 +297,7 @@ export default function MusicRundown() {
                             <Play className="w-3.5 h-3.5 text-cyan-400" />
                           )}
                           <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider hidden sm:inline">
-                            {speakingId === item.id ? 'Stop' : 'Preview'}
+                            {speakingId === item.id ? (autoplayIndex !== null ? 'Stop Show' : 'Stop') : (item.segment_type === 'intro' ? 'Play Show' : 'Preview')}
                           </span>
                         </button>
                       )}
@@ -282,6 +335,8 @@ export default function MusicRundown() {
                           introScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.intro || script}
                           outroScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.outro}
                           color={color}
+                          autoPlay={autoplayIndex === i}
+                          onEnded={handleSongEnded}
                         />
                       </div>
                     )}

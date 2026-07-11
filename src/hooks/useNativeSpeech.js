@@ -2,10 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const CHARS_PER_SECOND = 15; // ~150 wpm natural speech estimate
 
-export function useNativeSpeech() {
+export function useNativeSpeech({ onEnd } = {}) {
   const [voices, setVoices] = useState([]);
   const [speakingId, setSpeakingId] = useState(null);
   const utterRef = useRef(null);
+  const onEndRef = useRef(onEnd);
+  onEndRef.current = onEnd;
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -55,13 +57,16 @@ export function useNativeSpeech() {
     utter.rate = 0.95;
     utter.pitch = 1;
 
-    utter.onend = () => setSpeakingId(null);
+    utter.onend = () => {
+      setSpeakingId(null);
+      if (onEndRef.current) onEndRef.current(itemId);
+    };
     utter.onerror = () => setSpeakingId(null);
 
     utterRef.current = utter;
     setSpeakingId(itemId);
     window.speechSynthesis.speak(utter);
-  }, [getDefaultVoice]);
+  }, [getDefaultVoice, onEndRef]);
 
   const stop = useCallback(() => {
     if (window.speechSynthesis) {
