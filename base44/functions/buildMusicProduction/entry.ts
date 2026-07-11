@@ -848,6 +848,47 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
     // Update config status to ready and persist build log
     await base44.entities.MusicProductionConfiguration.update(configuration_id, { status: 'ready', build_log: JSON.stringify(buildLog) });
 
+    // ── Sync the ProductionDepartment pipeline record ──
+    // The build pipeline and department pipeline are separate tracking systems.
+    // When the build completes, sync the pipeline to reflect actual output state.
+    try {
+      const existingPipelines = await base44.asServiceRole.entities.ProductionDepartment.filter({
+        production_profile: 'music',
+        configuration_id,
+      });
+      if (existingPipelines && existingPipelines.length > 0) {
+        const pp = existingPipelines[0];
+        const pipelineUpdates = {};
+        const DEPTS = ['discovery', 'knowledge', 'blueprint', 'production', 'assembly'];
+        const stageMap = {
+          discovery: 'planning',
+          knowledge: 'research',
+          blueprint: 'playlist',
+          production: 'assets',
+          assembly: 'rundown',
+        };
+        for (const dept of DEPTS) {
+          const logEntries = buildLog.filter(e => e.stage === stageMap[dept] || e.stage?.includes(stageMap[dept]));
+          const isComplete = logEntries.some(e => e.status === 'complete' || (e.success !== undefined && e.success));
+          const isSkipped = logEntries.some(e => e.status === 'skipped');
+          pipelineUpdates[`${dept}_status`] = isComplete ? 'approved' : isSkipped ? 'skipped' : 'pending';
+          if (isComplete || isSkipped) {
+            pipelineUpdates[`${dept}_completed_at`] = new Date().toISOString();
+          }
+        }
+        let approvedCount = 0;
+        for (const dept of DEPTS) {
+          if (pipelineUpdates[`${dept}_status`] === 'approved' || pipelineUpdates[`${dept}_status`] === 'skipped') approvedCount++;
+        }
+        pipelineUpdates.pipeline_progress = Math.round((approvedCount / DEPTS.length) * 100);
+        pipelineUpdates.pipeline_status = pipelineUpdates.pipeline_progress >= 100 ? 'completed' : 'in_progress';
+        pipelineUpdates.current_department = DEPTS.find(d => pipelineUpdates[`${d}_status`] === 'pending') || 'assembly';
+        await base44.asServiceRole.entities.ProductionDepartment.update(pp.id, pipelineUpdates);
+      }
+    } catch (pipelineErr) {
+      console.error('Failed to sync department pipeline:', pipelineErr.message);
+    }
+
     return Response.json({
       success: true,
       configuration_id,
