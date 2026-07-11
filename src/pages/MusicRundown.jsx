@@ -27,8 +27,11 @@ export default function MusicRundown() {
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState(null);
+  // For song segments: 'intro' → speak intro script, 'song' → play YouTube, 'outro' → speak outro script
+  const [songPhase, setSongPhase] = useState(null);
 
   const advanceAutoplay = useCallback(() => {
+    setSongPhase(null);
     setAutoplayIndex(prev => {
       if (prev === null) return null;
       const next = prev + 1;
@@ -36,7 +39,24 @@ export default function MusicRundown() {
     });
   }, [rundown]);
 
-  const { speak, stop, speakingId, isSupported } = useNativeSpeech({ onEnd: advanceAutoplay });
+  // Called when TTS finishes — transitions song phases or advances to next card
+  const handleSpeechEnd = useCallback((itemId) => {
+    if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
+    const item = rundown[autoplayIndex];
+    if (item.id === itemId && item.segment_type === 'song') {
+      if (songPhase === 'intro') {
+        setSongPhase('song'); // hand off to YouTube player
+        return;
+      }
+      if (songPhase === 'outro') {
+        advanceAutoplay();
+        return;
+      }
+    }
+    advanceAutoplay();
+  }, [autoplayIndex, rundown, songPhase, advanceAutoplay]);
+
+  const { speak, stop, speakingId, isSupported } = useNativeSpeech({ onEnd: handleSpeechEnd });
 
   // Lookup maps for matching songs and topics to rundown items
   const playlistById = React.useMemo(() => {
@@ -89,17 +109,42 @@ export default function MusicRundown() {
            item.title || '';
   };
 
+  const getSongIntroScript = (item) => {
+    const track = findSongTrack(item);
+    const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
+    return songScriptsByTitle[titleKey]?.intro || '';
+  };
+
+  const getSongOutroScript = (item) => {
+    const track = findSongTrack(item);
+    const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
+    return songScriptsByTitle[titleKey]?.outro || '';
+  };
+
   const startAutoplay = (index) => {
     stop();
+    setSongPhase(null);
     setAutoplayIndex(index);
     const item = rundown[index];
-    if (item && item.segment_type !== 'song') {
+    if (!item) return;
+    if (item.segment_type === 'song') {
+      // Phase 1: speak the intro script, then the song plays, then the outro
+      const intro = getSongIntroScript(item);
+      if (intro) {
+        setSongPhase('intro');
+        speak(intro, item.id);
+      } else {
+        // No intro — go straight to the song
+        setSongPhase('song');
+      }
+    } else {
       const script = getScriptForItem(item);
       if (script) speak(script, item.id);
     }
   };
 
   const stopAutoplay = () => {
+    setSongPhase(null);
     setAutoplayIndex(null);
     stop();
   };
@@ -118,9 +163,18 @@ export default function MusicRundown() {
     speak(script, item.id);
   };
 
+  // YouTube song ended — play outro if there is one, otherwise advance
   const handleSongEnded = useCallback(() => {
-    advanceAutoplay();
-  }, [advanceAutoplay]);
+    if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
+    const item = rundown[autoplayIndex];
+    const outro = getSongOutroScript(item);
+    if (outro) {
+      setSongPhase('outro');
+      speak(outro, item.id);
+    } else {
+      advanceAutoplay();
+    }
+  }, [autoplayIndex, rundown, speak, advanceAutoplay]);
 
   // Auto-start non-song segments when autoplay advances to them
   useEffect(() => {
@@ -130,12 +184,20 @@ export default function MusicRundown() {
       const script = getScriptForItem(item);
       if (script && speakingId !== item.id) speak(script, item.id);
     }
-    // Songs auto-start via the autoPlay prop on RundownSongPlayer
+    // Songs are driven by songPhase below
 
     // Scroll the active card into view
     const el = document.getElementById(`rundown-card-${autoplayIndex}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [autoplayIndex, rundown, speakingId, speak]);
+
+  // When song phase is 'intro' but speech hasn't started yet, kick it off
+  useEffect(() => {
+    if (autoplayIndex === null || songPhase !== 'intro' || !rundown?.[autoplayIndex]) return;
+    const item = rundown[autoplayIndex];
+    const intro = getSongIntroScript(item);
+    if (intro && speakingId !== item.id) speak(intro, item.id);
+  }, [autoplayIndex, songPhase, rundown, speakingId, speak]);
 
   const handleAudioGenerated = (itemId, audioUrl) => {
     // The hook will refresh on next load; for now just note it
@@ -335,7 +397,7 @@ export default function MusicRundown() {
                           introScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.intro || script}
                           outroScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.outro}
                           color={color}
-                          autoPlay={autoplayIndex === i}
+                          autoPlay={autoplayIndex === i && songPhase === 'song'}
                           onEnded={handleSongEnded}
                         />
                       </div>

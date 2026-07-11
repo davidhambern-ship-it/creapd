@@ -56,14 +56,14 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
         events: {
           onReady: () => {
             setIsReady(true);
-            if (autoPlay) {
+            if (autoPlayRef.current) {
               try { playerRef.current.playVideo(); } catch {}
             }
           },
           onStateChange: (e) => {
             if (e.data === 1) setIsPlaying(true);
             if (e.data === 2) setIsPlaying(false);
-            if (e.data === 0 && onEnded) onEnded();
+            if (e.data === 0 && onEndedRef.current) onEndedRef.current();
           },
         },
       });
@@ -77,7 +77,23 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
         playerRef.current = null;
       }
     };
-  }, [videoId, autoPlay]);
+  }, [videoId]);
+
+  // Track latest autoPlay / onEnded without re-initializing the player
+  const autoPlayRef = useRef(autoPlay);
+  autoPlayRef.current = autoPlay;
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
+
+  // When autoPlay flips to true and player is ready, start playback
+  useEffect(() => {
+    if (autoPlay && isReady && playerRef.current) {
+      try { playerRef.current.playVideo(); } catch {}
+    }
+    if (!autoPlay && isReady && playerRef.current && isPlaying) {
+      try { playerRef.current.pauseVideo(); } catch {}
+    }
+  }, [autoPlay, isReady]);
 
   const togglePlayPause = useCallback(() => {
     if (!playerRef.current) return;
