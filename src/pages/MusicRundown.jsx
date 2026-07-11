@@ -58,10 +58,10 @@ export default function MusicRundown() {
   }, [topics]);
 
   const getScriptForItem = (item) => {
-    if (item.associated_topic && topicMap[item.associated_topic]?.talking_points) {
-      return topicMap[item.associated_topic].talking_points;
-    }
-    return item.script_content || item.notes || item.title || '';
+    return item.script_content ||
+           (item.associated_topic && topicMap[item.associated_topic]?.talking_points) ||
+           item.notes ||
+           item.title || '';
   };
 
   const handleNativePreview = (item) => {

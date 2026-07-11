@@ -366,13 +366,14 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
     let assets = [];
 
     if (autoDevelop) {
-      const playlistSummary = playlistData.slice(0, 15).map((s, i) =>
+      const playlistSummary = playlistData.map((s, i) =>
         `${i + 1}. "${s.song_title}" by ${s.artist} (${Math.round((s.length_seconds || 180) / 60)} min, ${s.genre})`
       ).join('\n');
 
-      const topicSummary = topicData.map(t =>
-        `- ${t.topic_name}: ${(t.generated_summary || '').substring(0, 100)}...`
-      ).join('\n');
+      const topicSummary = topicData.map(t => {
+        const points = (t.talking_points || '').split('\n').filter(Boolean).map(p => `    ${p}`).join('\n');
+        return `- ${t.topic_name}:\n  Summary: ${t.generated_summary || ''}\n  Talking Points:\n${points}`;
+      }).join('\n');
 
       const prompt2 = `You are a professional music production assistant. Based on the following playlist, topics, and show configuration, generate the show rundown and AI production assets.
 
@@ -395,17 +396,36 @@ SHOW CONFIGURATION:
 PLAYLIST (songs in order):
 ${playlistSummary || 'No playlist generated'}
 
-TOPICS:
+TOPICS (with talking points):
 ${topicSummary || 'No topics generated'}
 
 TASKS:
 
-1. SHOW RUNDOWN: Create a structured show rundown that fills the total show runtime (${config.total_show_runtime || 90} minutes). Include: intro, music blocks (grouping songs), talk breaks, topic segments, sponsor breaks, station IDs, and outro. Each rundown item must include: order, segment_type (one of: intro, song, talk_break, topic_segment, sponsor_break, station_id, outro), title, duration_seconds, start_time (HH:MM), end_time (HH:MM), and notes.
+1. SHOW RUNDOWN: Create a structured show rundown that fills the total show runtime (${config.total_show_runtime || 90} minutes).
+
+MANDATORY: The rundown MUST start with an "intro" segment (Show Intro) and end with an "outro" segment (Show Outro).
+
+Each rundown item must include:
+- order: sequence number
+- segment_type: one of: intro, song, talk_break, topic_segment, sponsor_break, station_id, outro
+- title: segment title
+- script_content: The FULL voiceover script text for this segment — what the host will say. REQUIRED for every non-song segment. For song segments, this is the intro the host says before the song plays.
+- associated_song_title: For song segments only — the exact song title from the playlist above
+- associated_topic: For topic_segment items only — the topic name
+- notes: brief production notes
+
+SCRIPT REQUIREMENTS:
+- Show Intro: Write a compelling show opening script that welcomes listeners, introduces the host, and sets the tone. Match the show tone (${config.show_tone}).
+- Show Outro: Write a show closing script that thanks listeners and signs off.
+- Talk Breaks: Generate conversational banter scripts based on the show vibe and tone. These should feel natural and engaging.
+- Topic Segments: Derive the script content from the numbered talking points provided for each topic. Expand each talking point into a full spoken script that fills the allocated time.
+- Song Intros: Write a brief, engaging intro for each song that mentions the artist and song title.
+- For each non-song segment, the script_content length should be proportional to the allocated time (~150 words per minute). Do NOT include duration_seconds, start_time, or end_time — those will be calculated from the script text.
 
 2. AI ASSETS: Generate the following based on the production format (${productionFormat}):
 - host_banter: 2-3 segments of conversational banter for the host (matching show tone, separated by ---)
-- song_intros: Array of {song_title, intro_text} for the first 5 songs in the playlist
-- song_outros: Array of {song_title, outro_text} for the first 5 songs in the playlist
+- song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
+- song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
 - social_captions: Array of 3 social media caption strings for promoting the show
 - hashtags: A single string of relevant hashtags separated by spaces
 - thumbnail_prompt: A detailed AI image generation prompt for the show thumbnail
@@ -425,9 +445,9 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
                 order: { type: 'number' },
                 segment_type: { type: 'string' },
                 title: { type: 'string' },
-                duration_seconds: { type: 'number' },
-                start_time: { type: 'string' },
-                end_time: { type: 'string' },
+                script_content: { type: 'string' },
+                associated_song_title: { type: 'string' },
+                associated_topic: { type: 'string' },
                 notes: { type: 'string' }
               }
             }
@@ -469,18 +489,44 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
         response_json_schema: schema2
       });
 
-      // Create rundown items
-      rundownData = (llm2.rundown || []).map((item, idx) => ({
-        configuration_id,
-        order: item.order || idx,
-        segment_type: ['intro', 'song', 'talk_break', 'topic_segment', 'sponsor_break', 'station_id', 'outro'].includes(item.segment_type) ? item.segment_type : 'talk_break',
-        title: item.title || '',
-        duration_seconds: item.duration_seconds || 0,
-        start_time: item.start_time || '',
-        end_time: item.end_time || '',
-        notes: item.notes || '',
-        status: 'ready'
-      }));
+      // Create rundown items — calculate duration from script text, build cumulative timeline
+      const CHARS_PER_SEC = 15;
+      const showStartSecs = parseTimeToSeconds(config.show_start_time || '00:00');
+      let cursorSecs = showStartSecs;
+
+      rundownData = (llm2.rundown || []).map((item, idx) => {
+        const segmentType = ['intro', 'song', 'talk_break', 'topic_segment', 'sponsor_break', 'station_id', 'outro'].includes(item.segment_type) ? item.segment_type : 'talk_break';
+        const scriptContent = item.script_content || '';
+
+        let durationSeconds;
+        if (segmentType === 'song') {
+          const songTitle = (item.associated_song_title || item.title || '').toLowerCase().trim();
+          const matchedSong = playlistData.find(s => (s.song_title || '').toLowerCase().trim() === songTitle);
+          const songLength = matchedSong?.length_seconds || 180;
+          const introLength = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : 0;
+          durationSeconds = songLength + introLength;
+        } else {
+          durationSeconds = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : 60;
+        }
+
+        const startTime = formatSecondsToTime(cursorSecs);
+        cursorSecs += durationSeconds;
+        const endTime = formatSecondsToTime(cursorSecs);
+
+        return {
+          configuration_id,
+          order: item.order || idx,
+          segment_type: segmentType,
+          title: item.title || '',
+          script_content: scriptContent,
+          associated_topic: item.associated_topic || null,
+          duration_seconds: durationSeconds,
+          start_time: startTime,
+          end_time: endTime,
+          notes: item.notes || '',
+          status: 'ready'
+        };
+      });
       if (rundownData.length > 0) {
         await base44.entities.ShowRundownItem.bulkCreate(rundownData);
       }
@@ -644,4 +690,16 @@ function extractVideoId(url) {
     if (m) return m[1];
   }
   return null;
+}
+
+function parseTimeToSeconds(timeStr) {
+  if (!timeStr) return 0;
+  const parts = String(timeStr).split(':').map(Number);
+  return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60;
+}
+
+function formatSecondsToTime(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600) % 24;
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
