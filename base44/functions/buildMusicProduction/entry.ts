@@ -198,12 +198,18 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
       };
 
       const playlistHealResult = await withSelfHealing(base44, 'playlist_generation', async (adjustedPrompt) => {
-        return await base44.integrations.Core.InvokeLLM({
+        const result = await base44.integrations.Core.InvokeLLM({
           prompt: adjustedPrompt,
           add_context_from_internet: true,
           response_json_schema: playlistSchema,
           model: 'gemini_3_flash'
         });
+        // Validate: if LLM returned fewer than 10 songs, treat as failure to trigger self-healing retry
+        const songs = result?.playlist || result?.songs || [];
+        if (songs.length < 10) {
+          throw new Error(`Playlist generation returned only ${songs.length} songs (minimum 10 required). The LLM may not have found enough real songs via web search.`);
+        }
+        return { playlist: songs };
       }, playlistPrompt);
       buildLog.push({ stage: 'playlist_generation', success: playlistHealResult.success, error: playlistHealResult.error, attempts: playlistHealResult.attempts });
       const playlistResult = playlistHealResult.success ? playlistHealResult.result : { playlist: [] };
@@ -486,10 +492,15 @@ Return a JSON object with key "topics" containing an array of at least 5 topic o
       };
 
       const topicHealResult = await withSelfHealing(base44, 'topic_generation', async (adjustedPrompt) => {
-        return await base44.integrations.Core.InvokeLLM({
+        const result = await base44.integrations.Core.InvokeLLM({
           prompt: adjustedPrompt,
           response_json_schema: topicSchema
         });
+        const topics = result?.topics || [];
+        if (topics.length < 3) {
+          throw new Error(`Topic generation returned only ${topics.length} topics (minimum 3 required).`);
+        }
+        return result;
       }, topicPrompt);
       buildLog.push({ stage: 'topic_generation', success: topicHealResult.success, error: topicHealResult.error, attempts: topicHealResult.attempts });
       const topicResult = topicHealResult.success ? topicHealResult.result : { topics: [] };
