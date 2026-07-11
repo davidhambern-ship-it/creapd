@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, configuration_id, top10_count: lockedItems.length });
     }
 
-    // Request 2x items as buffer — many LLM-suggested videos fail oEmbed validation
-    const requestCount = Math.ceil(remainingSlots * 2);
+    // Request 2.5x items as buffer — many LLM-suggested videos fail oEmbed validation
+    const requestCount = Math.ceil(remainingSlots * 2.5);
 
     const prompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 
@@ -173,18 +173,19 @@ Return a JSON object with key "items" containing an array of ${requestCount} obj
         .join('\n');
 
       const retryPrompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
-The following YouTube videos were unavailable or removed. Find ${Math.ceil(stillNeeded * 1.5)} REPLACEMENT music videos (we need ${stillNeeded} that pass validation, so provide extras as backup).
+The following YouTube videos were unavailable or removed. Find ${Math.ceil(stillNeeded * 2)} REPLACEMENT music videos (we need ${stillNeeded} that pass validation, so provide extras as backup).
 
 STRICT RULES:
 - NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
 - ONLY official music videos, Vevo uploads, or official artist/label channel uploads.
 - Each URL must point to a working, publicly available video.
 - Do NOT reuse any of the unavailable videos listed below.
+- CRITICAL: Do NOT reuse ANY video ID from the excluded list. Each video must have a UNIQUE ID not in that list. Pick DIFFERENT songs/artists if needed.
 
 UNAVAILABLE VIDEOS:
 ${failedList}
 
-Do NOT use these video IDs:
+EXCLUDED VIDEO IDS (do NOT use any of these — your videos must have DIFFERENT IDs):
 ${[...usedVideoIds].join(', ')}
 
 SHOW CONTEXT:
@@ -193,7 +194,7 @@ SHOW CONTEXT:
 - Blocked Songs: ${config.blocked_songs || 'None'}
 - Blocked Artists: ${config.blocked_artists || 'None'}
 
-Return a JSON object with key "items" containing an array of ${Math.ceil(stillNeeded * 1.5)} objects, each with: title, youtube_url, channel_name, rank_reason.`;
+Return a JSON object with key "items" containing an array of ${Math.ceil(stillNeeded * 2)} objects, each with: title, youtube_url, channel_name, rank_reason.`;
 
       const retryResult = await base44.integrations.Core.InvokeLLM({
         prompt: retryPrompt,
