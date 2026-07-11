@@ -125,9 +125,177 @@ Deno.serve(async (req) => {
     let researchData = [];
     let topicData = [];
 
-    if (autoResearch || autoBuildPlaylist) {
-      // ===== LLM CALL 1: Research + Playlist + Topics (with web search) =====
-      const prompt1 = `You are a professional music production assistant for a ${productionFormat === 'live' ? 'live music broadcast' : 'radio show'} / music program.
+    // ═══ ARTICLE-BASED RESEARCH ═══
+    // Pull real music news from the Article entity. If none exist, fetch
+    // fresh via web search and store as Article records so they persist.
+    const MUSIC_ARTICLE_CATEGORIES = [
+      'new_release', 'tour_announcement', 'artist_news', 'chart_movement',
+      'festival_lineup', 'album_review', 'interview', 'music_industry',
+      'streaming', 'local_concert', 'genre_spotlight', 'classic_track'
+    ];
+    const ARTICLE_STATUSES = ['approved', 'available', 'selected', 'bernas_pick', 'saved_for_later'];
+
+    let musicArticles = [];
+
+    if (autoResearch) {
+      // 2a: Query existing Article records for music categories
+      try {
+        const allRecent = await base44.asServiceRole.entities.Article.list('-published_at', 60);
+        musicArticles = allRecent.filter(
+          a => MUSIC_ARTICLE_CATEGORIES.includes(a.category) && ARTICLE_STATUSES.includes(a.status)
+        );
+      } catch (e) {
+        console.error('Article query failed:', e.message);
+      }
+
+      // 2b: If no music articles in DB, fetch via web search and persist as Article records
+      if (musicArticles.length === 0) {
+        try {
+          const newsPrompt = `Search for current music news. Find real, recent articles about:
+- New album/single releases
+- Artist news and announcements
+- Chart movements (Billboard, streaming platforms)
+- Tour announcements and concert news
+- Music industry trends
+- Festival lineups
+- Music interviews
+
+For each article, provide: title, source_name (publication), summary (2-3 sentences), category (must be one of: new_release, tour_announcement, artist_news, chart_movement, festival_lineup, album_review, interview, music_industry, streaming, local_concert, genre_spotlight, classic_track), published_at (ISO date string), url, and suggested_angle (a unique coverage angle for a music show).
+
+Find up to 20 recent articles.`;
+
+          const newsSchema = {
+            type: 'object',
+            properties: {
+              articles: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    source_name: { type: 'string' },
+                    summary: { type: 'string' },
+                    category: { type: 'string' },
+                    published_at: { type: 'string' },
+                    url: { type: 'string' },
+                    suggested_angle: { type: 'string' }
+                  }
+                }
+              }
+            }
+          };
+
+          const newsResult = await base44.integrations.Core.InvokeLLM({
+            prompt: newsPrompt,
+            add_context_from_internet: true,
+            response_json_schema: newsSchema,
+            model: 'gemini_3_flash'
+          });
+
+          const newArticleRecords = (newsResult.articles || []).map(a => ({
+            title: a.title || 'Untitled',
+            source_name: a.source_name || '',
+            summary: a.summary || '',
+            category: MUSIC_ARTICLE_CATEGORIES.includes(a.category) ? a.category : 'artist_news',
+            published_at: a.published_at || new Date().toISOString(),
+            url: a.url || '',
+            suggested_angle: a.suggested_angle || '',
+            status: 'approved',
+            content_type: 'text'
+          }));
+
+          if (newArticleRecords.length > 0) {
+            musicArticles = await base44.asServiceRole.entities.Article.bulkCreate(newArticleRecords);
+          }
+        } catch (e) {
+          console.error('Music news fetch failed:', e.message);
+        }
+      }
+
+      // 2c: Create MusicResearchItem records directly from articles
+      researchData = musicArticles.map(a => ({
+        configuration_id,
+        title: a.title || '',
+        source: a.source_name || '',
+        category: a.category || '',
+        summary: a.summary || '',
+        date: a.published_at ? new Date(a.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        relevance: 'high'
+      }));
+      if (researchData.length > 0) {
+        await base44.entities.MusicResearchItem.bulkCreate(researchData);
+      }
+
+      // 2d: Generate MusicTopic talking points FROM article content
+      // The LLM takes real article body_content / suggested_angle as input
+      // and produces talking points grounded in that content — NOT hallucinated.
+      if (musicArticles.length > 0) {
+        const articleContext = musicArticles.map(a =>
+          `TITLE: ${a.title}\nSOURCE: ${a.source_name}\nCATEGORY: ${a.category}\nSUMMARY: ${a.summary || ''}\nANGLE: ${a.suggested_angle || ''}\nBODY: ${(a.body_content || a.summary || '').substring(0, 800)}`
+        ).join('\n\n---\n\n');
+
+        const topicPrompt = `You are a professional music show producer for a ${productionFormat} show. Based on these REAL news articles, generate talking points for each selected music topic.
+
+SELECTED TOPICS:
+${musicTopics.join(', ') || 'General music news'}
+
+REAL NEWS ARTICLES (your source material — use ONLY this information):
+${articleContext}
+
+For each selected topic, generate:
+- topic_name: Use the exact topic name from the selected topics list above
+- generated_summary: A 2-3 sentence summary of current developments, grounded in the article content
+- talking_points: 3-5 talking points as a single string with line breaks, each grounded in the real article content above
+- sources: List the source names from the articles you referenced
+- suggested_placement: Where in the show this topic fits best (e.g., "After song block 1", "Mid-show", "Near outro")
+
+CRITICAL: All talking points must be grounded in the real article content provided above. Do not invent facts or use information not present in the articles.
+
+Return a JSON object with key "topics" containing an array of topic objects.`;
+
+        const topicSchema = {
+          type: 'object',
+          properties: {
+            topics: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  topic_name: { type: 'string' },
+                  generated_summary: { type: 'string' },
+                  talking_points: { type: 'string' },
+                  sources: { type: 'string' },
+                  suggested_placement: { type: 'string' }
+                }
+              }
+            }
+          }
+        };
+
+        const topicResult = await base44.integrations.Core.InvokeLLM({
+          prompt: topicPrompt,
+          response_json_schema: topicSchema
+        });
+
+        topicData = (topicResult.topics || []).map(topic => ({
+          configuration_id,
+          topic_name: topic.topic_name || '',
+          generated_summary: topic.generated_summary || '',
+          talking_points: topic.talking_points || '',
+          sources: topic.sources || '',
+          suggested_placement: topic.suggested_placement || '',
+          status: 'ready'
+        }));
+        if (topicData.length > 0) {
+          await base44.entities.MusicTopic.bulkCreate(topicData);
+        }
+      }
+    }
+
+    // ═══ PLAYLIST GENERATION ═══
+    // Separate from research — uses web search to find real songs
+    if (autoBuildPlaylist) {
+      const playlistPrompt = `You are a professional music production assistant for a ${productionFormat === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 You are generating a SET LIST / PLAYLIST PLAN only. You are NOT streaming or providing playable music. Each song entry is a recommendation with title, artist, and metadata.
 
 IMPORTANT MEDIA RULE: Playlist tracks are AUDIO track embeds only. Never satisfy a track requirement using a video. Video requirements are separate asset types.
@@ -159,23 +327,11 @@ PLAYLIST RULES:
 - Explicit Allowed: ${config.explicit_allowed === true ? 'Yes' : 'No'}
 - Preferred Eras: ${config.preferred_eras || 'Any'}
 
-SELECTED MUSIC TOPICS:
-${musicTopics.join(', ') || 'None selected'}
+Generate a playlist of REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. Include a mix of songs matching the genres, moods, and energy flow. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected (why this song fits). Respect all playlist rules. Apply the energy flow pattern to song ordering.
 
-RESEARCH SOURCES (use these for research):
-${researchSources.join(', ') || 'All available sources'}
+Return a JSON object with key "playlist" containing an array of song objects.`;
 
-TASKS:
-
-1. PLAYLIST: Generate a playlist of REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. Include a mix of songs matching the genres, moods, and energy flow. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected (why this song fits). Respect all playlist rules. Apply the energy flow pattern to song ordering.
-
-2. RESEARCH: For each selected topic, find current and relevant music information from the listed sources. Generate 2-4 research items per topic. Each item must include: title, source, category, summary, date, and relevance (high/medium/low).
-
-3. TOPICS: For each selected topic, generate: a summary of current developments, 3-5 talking points (as a single string with line breaks), sources consulted, and suggested_placement in the show.
-
-Return a JSON object with exactly these keys: playlist (array), research (array), topics (array).`;
-
-      const schema1 = {
+      const playlistSchema = {
         type: 'object',
         properties: {
           playlist: {
@@ -192,46 +348,19 @@ Return a JSON object with exactly these keys: playlist (array), research (array)
                 reason_selected: { type: 'string' }
               }
             }
-          },
-          research: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                source: { type: 'string' },
-                category: { type: 'string' },
-                summary: { type: 'string' },
-                date: { type: 'string' },
-                relevance: { type: 'string' }
-              }
-            }
-          },
-          topics: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                topic_name: { type: 'string' },
-                generated_summary: { type: 'string' },
-                talking_points: { type: 'string' },
-                sources: { type: 'string' },
-                suggested_placement: { type: 'string' }
-              }
-            }
           }
         }
       };
 
-      const llm1 = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt1,
+      const playlistResult = await base44.integrations.Core.InvokeLLM({
+        prompt: playlistPrompt,
         add_context_from_internet: true,
-        response_json_schema: schema1,
+        response_json_schema: playlistSchema,
         model: 'gemini_3_flash'
       });
 
       // Create playlist items
-      playlistData = (llm1.playlist || []).map((song, idx) => ({
+      playlistData = (playlistResult.playlist || []).map((song, idx) => ({
         configuration_id,
         order: idx,
         song_title: song.song_title || 'Unknown',
@@ -327,34 +456,6 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
         } catch (e) {
           console.error('YouTube lookup for playlist failed:', e.message);
         }
-      }
-
-      // Create research items
-      researchData = (llm1.research || []).map(item => ({
-        configuration_id,
-        title: item.title || '',
-        source: item.source || '',
-        category: item.category || '',
-        summary: item.summary || '',
-        date: item.date || new Date().toISOString().split('T')[0],
-        relevance: ['high', 'medium', 'low'].includes(item.relevance) ? item.relevance : 'medium'
-      }));
-      if (researchData.length > 0) {
-        await base44.entities.MusicResearchItem.bulkCreate(researchData);
-      }
-
-      // Create topic items
-      topicData = (llm1.topics || []).map(topic => ({
-        configuration_id,
-        topic_name: topic.topic_name || '',
-        generated_summary: topic.generated_summary || '',
-        talking_points: topic.talking_points || '',
-        sources: topic.sources || '',
-        suggested_placement: topic.suggested_placement || '',
-        status: 'ready'
-      }));
-      if (topicData.length > 0) {
-        await base44.entities.MusicTopic.bulkCreate(topicData);
       }
     }
 
