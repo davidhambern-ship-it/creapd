@@ -292,7 +292,7 @@ export default function MusicConfigure() {
       });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       await base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id });
-      navigate('/music/research');
+      navigate('/music/dashboard');
     } catch (err) {
       setBuildError(err.message || 'Failed to build production.');
     }
