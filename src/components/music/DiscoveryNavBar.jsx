@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Dices } from 'lucide-react';
+import { Dices, Settings } from 'lucide-react';
 
 export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#FF00FF' }) {
   const navigate = useNavigate();
@@ -16,8 +16,9 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
         border: '1px solid rgba(255,0,255,0.12)',
       }}
     >
-      {/* Show Roulette Button — only when onRoulette is provided */}
-      {onRoulette && (
+      {/* Show Roulette Button — only when onRoulette is provided (Discovery Room) */}
+      {/* Configuration Button — shown on all other pages */}
+      {onRoulette ? (
         <>
           <motion.button
             onClick={onRoulette}
@@ -35,6 +36,24 @@ export default function DiscoveryNavBar({ rooms, onRoulette, rouletteColor = '#F
               <Dices className="w-4 h-4" />
             </motion.span>
             <span className="hidden sm:inline">Show Roulette</span>
+          </motion.button>
+
+          {/* Divider */}
+          <div className="flex-shrink-0 h-6 w-px bg-white/10" />
+        </>
+      ) : (
+        <>
+          <motion.button
+            onClick={() => navigate('/music/configure')}
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border"
+            style={{
+              background: 'linear-gradient(135deg, rgba(0,255,255,0.12), rgba(0,255,255,0.04))',
+              borderColor: 'rgba(0,255,255,0.4)',
+              color: '#00FFFF',
+            }}
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">Configuration</span>
           </motion.button>
 
           {/* Divider */}
