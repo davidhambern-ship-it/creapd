@@ -8,6 +8,7 @@ import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicPageNav from '@/components/music/MusicPageNav';
 import RundownVoiceoverControls from '@/components/music/RundownVoiceoverControls';
+import RundownSongPlayer from '@/components/music/RundownSongPlayer';
 
 const SEGMENT_COLORS = {
   intro: '#00FF88',
@@ -20,14 +21,34 @@ const SEGMENT_COLORS = {
 };
 
 export default function MusicRundown() {
-  const { config, rundown, loading } = useMusicProduction();
+  const { config, rundown, playlist, topics, loading } = useMusicProduction();
   const { user } = useAuth();
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
   const { speak, stop, speakingId, isSupported } = useNativeSpeech();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
+  // Lookup maps for matching songs and topics to rundown items
+  const playlistMap = React.useMemo(() => {
+    const m = {};
+    (playlist || []).forEach(p => { m[p.id] = p; });
+    return m;
+  }, [playlist]);
+
+  const topicMap = React.useMemo(() => {
+    const m = {};
+    (topics || []).forEach(t => { m[t.topic_name] = t; });
+    return m;
+  }, [topics]);
+
+  const getScriptForItem = (item) => {
+    if (item.associated_topic && topicMap[item.associated_topic]?.talking_points) {
+      return topicMap[item.associated_topic].talking_points;
+    }
+    return item.script_content || item.notes || item.title || '';
+  };
+
   const handleNativePreview = (item) => {
-    const script = item.script_content || item.notes || item.title || '';
+    const script = getScriptForItem(item);
     if (speakingId === item.id) {
       stop();
     } else {
@@ -139,6 +160,10 @@ export default function MusicRundown() {
             <div className="space-y-2">
               {rundown.map((item, i) => {
                 const color = SEGMENT_COLORS[item.segment_type] || '#888888';
+                const isSong = item.segment_type === 'song';
+                const songTrack = isSong && item.associated_song_id ? playlistMap[item.associated_song_id] : null;
+                const script = getScriptForItem(item);
+                const showVoiceover = !isSong;
                 return (
                   <motion.div
                     key={item.id}
@@ -171,8 +196,8 @@ export default function MusicRundown() {
                         {item.notes && <p className="text-xs text-gray-400 truncate">{item.notes}</p>}
                       </div>
 
-                      {/* Native preview button (free for all) */}
-                      {isSupported && (item.script_content || item.notes || item.title) && (
+                      {/* Native preview button (free for all) — only for non-song segments */}
+                      {showVoiceover && isSupported && script && (
                         <button
                           onClick={() => handleNativePreview(item)}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all"
@@ -192,17 +217,32 @@ export default function MusicRundown() {
                         </button>
                       )}
 
-                      {/* ElevenLabs controls */}
-                      <RundownVoiceoverControls
-                        item={item}
-                        isPro={isPro}
-                        onUpgradeNeeded={() => setShowUpgrade(true)}
-                        onAudioGenerated={handleAudioGenerated}
-                      />
+                      {/* ElevenLabs controls — only for non-song segments */}
+                      {showVoiceover && (
+                        <RundownVoiceoverControls
+                          item={item}
+                          isPro={isPro}
+                          script={script}
+                          onUpgradeNeeded={() => setShowUpgrade(true)}
+                          onAudioGenerated={handleAudioGenerated}
+                        />
+                      )}
 
                       {/* Duration */}
                       <span className="text-sm font-mono text-gray-400 flex-shrink-0">{formatRuntime(item.duration_seconds)}</span>
+                    </div>
+
+                    {/* Inline YouTube player for song segments */}
+                    {isSong && songTrack && songTrack.youtube_video_id && (
+                      <div className="px-3 pb-3 pl-5">
+                        <RundownSongPlayer
+                          videoId={songTrack.youtube_video_id}
+                          title={songTrack.song_title || item.title}
+                          channelName={songTrack.channel_name}
+                          thumbnailUrl={songTrack.thumbnail_url}
+                        />
                       </div>
+                    )}
                   </motion.div>
                 );
               })}

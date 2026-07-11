@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Crown, Loader2, Volume2, Square } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-export default function RundownVoiceoverControls({ item, isPro, onUpgradeNeeded, onAudioGenerated }) {
+export default function RundownVoiceoverControls({ item, isPro, onUpgradeNeeded, onAudioGenerated, script: scriptOverride }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
 
   const hasProAudio = item.audio_url && item.audio_provider === 'elevenlabs';
-  const script = item.script_content || item.notes || item.title || '';
+  const script = scriptOverride || item.script_content || item.notes || item.title || '';
 
   const togglePlayback = () => {
     if (!audioRef.current) return;
