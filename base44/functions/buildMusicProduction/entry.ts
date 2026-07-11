@@ -27,6 +27,8 @@ Deno.serve(async (req) => {
     const aiAutomation = safeParse(config.ai_automation, []);
     const productionFormat = config.production_format || 'radio';
 
+    const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 });
+
     const requiredMusicMinutes = config.required_music_runtime || 70;
 
     // ═══════════════════════════════════════════════════════
@@ -375,9 +377,21 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
         return `- ${t.topic_name}:\n  Summary: ${t.generated_summary || ''}\n  Talking Points:\n${points}`;
       }).join('\n');
 
-      const prompt2 = `You are a professional music production assistant. Based on the following playlist, topics, and show configuration, generate the show rundown and AI production assets.
+      // ═══ RUNDOWN BLUEPRINT — pacing-aware sequencer ═══
+      // Build a deterministic segment structure that enforces pacing rules
+      // (no more than max_sequential_songs in a row), then ask the LLM to
+      // fill in script_content for each segment.
+      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules);
+      const blueprintText = blueprint.map((bp, i) => {
+        const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}"`];
+        if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
+        if (bp.associated_topic) parts.push(`     Topic: "${bp.associated_topic}"`);
+        return parts.join('\n');
+      }).join('\n');
 
-IMPORTANT MEDIA RULE: Playlist track requirements resolve to AUDIO embeds only. Video requirements resolve to VIDEO iframe embeds. These are never interchangeable.
+      const prompt2 = `You are a professional music production assistant. Based on the following playlist, topics, and show configuration, write voiceover scripts for a pre-structured show rundown.
+
+CRITICAL: You MUST follow the RUNDOWN BLUEPRINT below EXACTLY — same segment count, same order, same segment types, same song/topic assignments. Your only job is to write the script_content for each segment and brief notes. Do NOT add, remove, reorder, or rename segments.
 
 SHOW CONFIGURATION:
 - Production Name: ${config.production_name || 'Music Show'}
@@ -396,34 +410,22 @@ SHOW CONFIGURATION:
 PLAYLIST (songs in order):
 ${playlistSummary || 'No playlist generated'}
 
-TOPICS (with talking points):
+RUNDOWN BLUEPRINT (follow this EXACTLY):
+${blueprintText}
+
+TOPIC DETAILS (use talking points to write topic_segment scripts):
 ${topicSummary || 'No topics generated'}
 
-TASKS:
-
-1. SHOW RUNDOWN: Create a structured show rundown that fills the total show runtime (${config.total_show_runtime || 90} minutes).
-
-MANDATORY: The rundown MUST start with an "intro" segment (Show Intro) and end with an "outro" segment (Show Outro).
-
-Each rundown item must include:
-- order: sequence number
-- segment_type: one of: intro, song, talk_break, topic_segment, sponsor_break, station_id, outro
-- title: segment title
-- script_content: The FULL voiceover script text for this segment — what the host will say. REQUIRED for every non-song segment. For song segments, this is the intro the host says before the song plays.
-- associated_song_title: For song segments only — the exact song title from the playlist above
-- associated_topic: For topic_segment items only — the topic name
-- notes: brief production notes
-
 SCRIPT REQUIREMENTS:
-- Show Intro: Write a compelling show opening script that welcomes listeners, introduces the host, and sets the tone. Match the show tone (${config.show_tone}).
-- Show Outro: Write a show closing script that thanks listeners and signs off.
-- Talk Breaks: Generate conversational banter scripts based on the show vibe and tone. These should feel natural and engaging.
-- Topic Segments: Derive the script content from the numbered talking points provided for each topic. Expand each talking point into a full spoken script that fills the allocated time.
-- Song Intros: Write a brief, engaging intro for each song that mentions the artist and song title.
-- For each non-song segment, the script_content length should be proportional to the allocated time (~150 words per minute). Do NOT include duration_seconds, start_time, or end_time — those will be calculated from the script text.
+- Show Intro: A compelling show opening that welcomes listeners, introduces the host, and sets the tone. Match the show tone (${config.show_tone}).
+- Show Outro: A show closing that thanks listeners and signs off.
+- Talk Breaks: Conversational banter scripts that feel natural and engaging.
+- Topic Segments: Expand the topic's talking points into a full spoken script that fills the allocated time (~150 words per minute).
+- Song Intros: A brief, engaging intro for each song that mentions the artist and song title.
+- For each non-song segment, script_content length should be proportional to the allocated talk time (~150 words per minute).
 
-2. AI ASSETS: Generate the following based on the production format (${productionFormat}):
-- host_banter: 2-3 segments of conversational banter for the host (matching show tone, separated by ---)
+AI ASSETS TO GENERATE:
+- host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
 - song_intros: Array of {song_title, intro_text} for ALL songs in the playlist
 - song_outros: Array of {song_title, outro_text} for ALL songs in the playlist
 - social_captions: Array of 3 social media caption strings for promoting the show
@@ -432,7 +434,7 @@ SCRIPT REQUIREMENTS:
 - video_prompt: A video production prompt for social media clips
 - production_notes: Internal production notes for the team
 
-Return a JSON object with exactly these keys: rundown (array), host_banter (string), song_intros (array), song_outros (array), social_captions (array), hashtags (string), thumbnail_prompt (string), video_prompt (string), production_notes (string).`;
+Return a JSON object with exactly these keys: rundown (array matching the blueprint EXACTLY — same length, same order, same segment_type/title/associated_song_title/associated_topic, plus script_content and notes), host_banter (string), song_intros (array), song_outros (array), social_captions (array), hashtags (string), thumbnail_prompt (string), video_prompt (string), production_notes (string).`;
 
       const schema2 = {
         type: 'object',
@@ -489,18 +491,21 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
         response_json_schema: schema2
       });
 
-      // Create rundown items — calculate duration from script text, build cumulative timeline
+      // Create rundown items — merge blueprint structure with LLM-generated scripts
       const CHARS_PER_SEC = 15;
       const showStartSecs = parseTimeToSeconds(config.show_start_time || '00:00');
       let cursorSecs = showStartSecs;
 
-      rundownData = (llm2.rundown || []).map((item, idx) => {
-        const segmentType = ['intro', 'song', 'talk_break', 'topic_segment', 'sponsor_break', 'station_id', 'outro'].includes(item.segment_type) ? item.segment_type : 'talk_break';
-        const scriptContent = item.script_content || '';
+      const llmRundown = llm2.rundown || [];
+
+      rundownData = blueprint.map((bpItem, idx) => {
+        const llmItem = llmRundown[idx] || {};
+        const scriptContent = llmItem.script_content || '';
+        const segmentType = bpItem.segment_type;
 
         let durationSeconds;
         if (segmentType === 'song') {
-          const songTitle = (item.associated_song_title || item.title || '').toLowerCase().trim();
+          const songTitle = (bpItem.associated_song_title || '').toLowerCase().trim();
           const matchedSong = playlistData.find(s => (s.song_title || '').toLowerCase().trim() === songTitle);
           const songLength = matchedSong?.length_seconds || 180;
           const introLength = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : 0;
@@ -515,15 +520,15 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
 
         return {
           configuration_id,
-          order: item.order || idx,
+          order: idx,
           segment_type: segmentType,
-          title: item.title || '',
+          title: bpItem.title || '',
           script_content: scriptContent,
-          associated_topic: item.associated_topic || null,
+          associated_topic: bpItem.associated_topic || null,
           duration_seconds: durationSeconds,
           start_time: startTime,
           end_time: endTime,
-          notes: item.notes || '',
+          notes: llmItem.notes || '',
           status: 'ready'
         };
       });
@@ -702,4 +707,65 @@ function formatSecondsToTime(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600) % 24;
   const m = Math.floor((totalSeconds % 3600) / 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// ═══ RUNDOWN BLUEPRINT BUILDER ═══
+// Builds a deterministic segment structure that enforces pacing rules:
+// no more than max_sequential_songs play in a row, with talk breaks or
+// topic segments interleaved between song blocks.
+function buildRundownBlueprint(playlist, topics, pacingRules) {
+  const maxSequential = pacingRules.max_sequential_songs || 4;
+
+  // Split songs into blocks of at most maxSequential
+  const songBlocks = [];
+  for (let i = 0; i < playlist.length; i += maxSequential) {
+    songBlocks.push(playlist.slice(i, i + maxSequential));
+  }
+
+  const blueprint = [];
+  blueprint.push({ segment_type: 'intro', title: 'Show Intro' });
+
+  let topicIdx = 0;
+
+  for (let blockIdx = 0; blockIdx < songBlocks.length; blockIdx++) {
+    // Add each song in this block
+    for (const song of songBlocks[blockIdx]) {
+      blueprint.push({
+        segment_type: 'song',
+        title: song.song_title,
+        associated_song_title: song.song_title
+      });
+    }
+
+    // After each block (except the last), insert a talk segment
+    if (blockIdx < songBlocks.length - 1) {
+      if (topicIdx < topics.length) {
+        blueprint.push({
+          segment_type: 'topic_segment',
+          title: topics[topicIdx].topic_name,
+          associated_topic: topics[topicIdx].topic_name
+        });
+        topicIdx++;
+      } else {
+        blueprint.push({
+          segment_type: 'talk_break',
+          title: 'Host Banter'
+        });
+      }
+    }
+  }
+
+  // Place any remaining topics before the outro
+  while (topicIdx < topics.length) {
+    blueprint.push({
+      segment_type: 'topic_segment',
+      title: topics[topicIdx].topic_name,
+      associated_topic: topics[topicIdx].topic_name
+    });
+    topicIdx++;
+  }
+
+  blueprint.push({ segment_type: 'outro', title: 'Show Outro' });
+
+  return blueprint;
 }

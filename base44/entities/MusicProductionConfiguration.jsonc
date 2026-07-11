@@ -132,6 +132,10 @@
       "type": "string",
       "default": "Build Energy Gradually"
     },
+    "pacing_rules": {
+      "type": "string",
+      "description": "JSON: { max_sequential_songs, min_talk_break_frequency } \u2014 controls rundown pacing so no more than N songs play in a row"
+    },
     "ai_automation": {
       "type": "string",
       "description": "JSON array of enabled AI execution preferences (which workers run automatically)"
