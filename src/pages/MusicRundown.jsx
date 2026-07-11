@@ -29,6 +29,7 @@ export default function MusicRundown() {
   const [autoplayIndex, setAutoplayIndex] = useState(null);
   // For song segments: 'intro' → speak intro script, 'song' → play YouTube, 'outro' → speak outro script
   const [songPhase, setSongPhase] = useState(null);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState(null);
 
   const advanceAutoplay = useCallback(() => {
     setSongPhase(null);
@@ -56,7 +57,7 @@ export default function MusicRundown() {
     advanceAutoplay();
   }, [autoplayIndex, rundown, songPhase, advanceAutoplay]);
 
-  const { speak, stop, speakingId, isSupported } = useNativeSpeech({ onEnd: handleSpeechEnd });
+  const { speak, stop, speakingId, isSupported, voices } = useNativeSpeech({ onEnd: handleSpeechEnd, selectedVoiceURI });
 
   // Lookup maps for matching songs and topics to rundown items
   const playlistById = React.useMemo(() => {
@@ -176,28 +177,31 @@ export default function MusicRundown() {
     }
   }, [autoplayIndex, rundown, speak, advanceAutoplay]);
 
-  // Auto-start non-song segments when autoplay advances to them
+  // Auto-start segments when autoplay advances to them (including songs)
   useEffect(() => {
     if (autoplayIndex === null || !rundown?.[autoplayIndex]) return;
     const item = rundown[autoplayIndex];
-    if (item.segment_type !== 'song') {
+
+    if (item.segment_type === 'song') {
+      // When we land on a song, kick off the intro phase (or skip to playback)
+      if (songPhase === null) {
+        const intro = getSongIntroScript(item);
+        if (intro) {
+          setSongPhase('intro');
+          if (speakingId !== item.id) speak(intro, item.id);
+        } else {
+          setSongPhase('song');
+        }
+      }
+    } else {
       const script = getScriptForItem(item);
       if (script && speakingId !== item.id) speak(script, item.id);
     }
-    // Songs are driven by songPhase below
 
     // Scroll the active card into view
     const el = document.getElementById(`rundown-card-${autoplayIndex}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [autoplayIndex, rundown, speakingId, speak]);
-
-  // When song phase is 'intro' but speech hasn't started yet, kick it off
-  useEffect(() => {
-    if (autoplayIndex === null || songPhase !== 'intro' || !rundown?.[autoplayIndex]) return;
-    const item = rundown[autoplayIndex];
-    const intro = getSongIntroScript(item);
-    if (intro && speakingId !== item.id) speak(intro, item.id);
-  }, [autoplayIndex, songPhase, rundown, speakingId, speak]);
+  }, [autoplayIndex, rundown, speakingId, speak, songPhase]);
 
   const handleAudioGenerated = (itemId, audioUrl) => {
     // The hook will refresh on next load; for now just note it
@@ -238,7 +242,26 @@ export default function MusicRundown() {
               <p className="text-sm text-gray-400">{config?.production_name || 'Music Production'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {isSupported && voices.length > 0 && (
+              <div className="cp-glass flex items-center gap-2 px-3 py-1.5" style={{ borderColor: 'rgba(0,255,255,0.2)' }}>
+                <Volume2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                <select
+                  value={selectedVoiceURI || ''}
+                  onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                  className="bg-transparent text-xs text-cyan-300 outline-none cursor-pointer max-w-[160px]"
+                >
+                  <option value="" className="bg-zinc-900 text-white">Default Voice</option>
+                  {voices
+                    .filter(v => v.lang.startsWith('en'))
+                    .map(v => (
+                      <option key={v.voiceURI} value={v.voiceURI} className="bg-zinc-900 text-white">
+                        {v.name} ({v.lang})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
             <div className="cp-glass px-4 py-2" style={{ borderColor: 'rgba(0,255,255,0.2)' }}>
               <span className="text-xs text-gray-400">Items</span>
               <span className="ml-2 font-bold" style={{ color: '#00FFFF' }}>{rundown.length}</span>

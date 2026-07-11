@@ -2,12 +2,14 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const CHARS_PER_SECOND = 15; // ~150 wpm natural speech estimate
 
-export function useNativeSpeech({ onEnd } = {}) {
+export function useNativeSpeech({ onEnd, selectedVoiceURI } = {}) {
   const [voices, setVoices] = useState([]);
   const [speakingId, setSpeakingId] = useState(null);
   const utterRef = useRef(null);
   const onEndRef = useRef(onEnd);
+  const selectedVoiceURIRef = useRef(selectedVoiceURI);
   onEndRef.current = onEnd;
+  selectedVoiceURIRef.current = selectedVoiceURI;
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -39,6 +41,14 @@ export function useNativeSpeech({ onEnd } = {}) {
            null;
   }, [voices, getBritishVoice]);
 
+  const getSelectedVoice = useCallback(() => {
+    const uri = selectedVoiceURIRef.current;
+    if (uri && voices.length > 0) {
+      return voices.find(v => v.voiceURI === uri) || null;
+    }
+    return getDefaultVoice();
+  }, [voices, getDefaultVoice]);
+
   const speak = useCallback((text, itemId) => {
     if (!window.speechSynthesis) return;
 
@@ -47,7 +57,7 @@ export function useNativeSpeech({ onEnd } = {}) {
     if (!text) return;
 
     const utter = new SpeechSynthesisUtterance(text);
-    const voice = getDefaultVoice();
+    const voice = getSelectedVoice();
     if (voice) {
       utter.voice = voice;
       utter.lang = voice.lang;
@@ -66,7 +76,7 @@ export function useNativeSpeech({ onEnd } = {}) {
     utterRef.current = utter;
     setSpeakingId(itemId);
     window.speechSynthesis.speak(utter);
-  }, [getDefaultVoice, onEndRef]);
+  }, [getSelectedVoice, onEndRef]);
 
   const stop = useCallback(() => {
     if (window.speechSynthesis) {
