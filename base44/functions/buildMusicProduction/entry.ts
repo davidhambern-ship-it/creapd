@@ -750,24 +750,6 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
         }
       }
 
-      // ═══════════════════════════════════════════════════════
-      // STAGE 6: EXPORT DEPARTMENT
-      // Gated by ai_automation preference: 'Auto Export'
-      // ═══════════════════════════════════════════════════════
-
-      if (autoExport) {
-        try {
-          await base44.functions.invoke('createExportJob', {
-            production_profile: 'music',
-            source_entity_type: 'MusicProductionConfiguration',
-            configuration_id,
-            title: config.production_name || 'Music Show',
-          });
-        } catch (e) {
-          console.error('Export job failed:', e.message);
-          buildLog.push({ stage: 'export_job', success: false, error: e.message, timestamp: new Date().toISOString() });
-        }
-      }
     }
 
     // ═══════════════════════════════════════════════════════
