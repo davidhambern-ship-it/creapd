@@ -312,15 +312,16 @@ export default function MusicConfigure() {
   };
 
   // All modules complete → final sequence + auto-transition to Research
+  // Guarded by `building` to prevent re-triggering on re-renders after build has started
   useEffect(() => {
-    if (completedModules.size === ROOMS.length && !recording && !finalSequence) {
+    if (completedModules.size === ROOMS.length && !recording && !finalSequence && !building) {
       triggerBuild();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [completedModules, recording, finalSequence]);
+  }, [completedModules, recording, finalSequence, building]);
 
   const handleBuild = async () => {
-    if (!canBuild) return;
+    if (!canBuild || building || finalSequence) return;
     setBuilding(true);
     setBuildError('');
     try {
@@ -347,6 +348,7 @@ export default function MusicConfigure() {
   if (building || finalSequence) {
     return (
       <DiscoveryBreakRoom
+        mode="discovery"
         buildError={buildError}
         configId={buildConfigId}
         onComplete={() => navigate('/music/dashboard')}

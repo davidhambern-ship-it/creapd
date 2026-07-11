@@ -232,6 +232,7 @@ export default function MusicDashboard() {
 
   const handleRefresh = async () => {
     if (!config?.id) return;
+    if (config.status === 'building' || refreshing) return;
     setRefreshing(true);
     try {
       await base44.entities.MusicProductionConfiguration.update(config.id, { status: 'building' });
@@ -302,6 +303,7 @@ export default function MusicDashboard() {
   if (config.status === 'building' || refreshing) {
     return (
       <DiscoveryBreakRoom
+        mode="production"
         buildError=""
         configId={config.id}
         onComplete={() => { setRefreshing(false); refresh(); }}

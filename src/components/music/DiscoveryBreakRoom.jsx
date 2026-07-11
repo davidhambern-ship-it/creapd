@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Disc3, Dices, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Disc3, Dices, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
@@ -14,9 +14,28 @@ const STATUS_MESSAGES = {
   failed: 'Build failed.',
 };
 
-export default function DiscoveryBreakRoom({ buildError, configId, onComplete }) {
+const MODE_CONFIG = {
+  discovery: {
+    title: 'Discovery Complete',
+    readyTitle: 'Production Ready!',
+    readyText: 'Taking you to your dashboard...',
+    failedTitle: 'Build Failed',
+  },
+  production: {
+    title: 'Rebuilding Production',
+    readyTitle: 'Production Ready!',
+    readyText: 'Loading your dashboard...',
+    failedTitle: 'Rebuild Failed',
+  },
+};
+
+export default function DiscoveryBreakRoom({ buildError, configId, onComplete, mode = 'discovery' }) {
   const [activeGame, setActiveGame] = useState(null);
   const [buildStatus, setBuildStatus] = useState('building');
+
+  // Use a ref for onComplete so subscription doesn't re-create on every parent render
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   useEffect(() => {
     if (!configId) return;
@@ -24,17 +43,18 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete })
       if (event.type === 'update' && event.data?.id === configId) {
         const updated = event.data;
         if (updated.status) setBuildStatus(updated.status);
-        if (updated.status === 'ready' && onComplete) {
-          setTimeout(onComplete, 1500);
+        if (updated.status === 'ready' && onCompleteRef.current) {
+          setTimeout(() => onCompleteRef.current?.(), 1500);
         }
       }
     });
     return () => unsubscribe();
-  }, [configId, onComplete]);
+  }, [configId]);
 
   const statusText = STATUS_MESSAGES[buildStatus] || STATUS_MESSAGES.building;
   const isReady = buildStatus === 'ready';
   const isFailed = buildStatus === 'failed' || buildError;
+  const mc = MODE_CONFIG[mode] || MODE_CONFIG.discovery;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
@@ -62,7 +82,7 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete })
             className="text-2xl font-heading font-bold mb-2"
             style={{ color: isFailed ? '#FF4444' : '#00FF88', textShadow: `0 0 20px ${isFailed ? 'rgba(255,68,68,0.6)' : 'rgba(0,255,136,0.6)'}` }}
           >
-            {isReady ? 'Production Ready!' : isFailed ? 'Build Failed' : 'Discovery Complete'}
+            {isReady ? mc.readyTitle : isFailed ? mc.failedTitle : mc.title}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -70,7 +90,7 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete })
             transition={{ delay: 0.3 }}
             className="text-gray-400 mb-4 text-sm"
           >
-            {isReady ? 'Taking you to your dashboard...' : statusText}
+            {isReady ? mc.readyText : statusText}
           </motion.p>
           {/* Indeterminate progress bar */}
           {!isReady && !isFailed && (
@@ -87,7 +107,7 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete })
 
         {(buildError || isFailed) && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center">
-            {buildError || 'Build encountered an error. You can return to configure and retry.'}
+            {buildError || 'Build encountered an error. You can return and retry.'}
           </div>
         )}
 
