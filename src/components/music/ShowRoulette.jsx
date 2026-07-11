@@ -54,6 +54,8 @@ Also generate:
 - A 1-2 sentence show_description
 - Runtime allocations in minutes: total_show_runtime (30-180), required_music_runtime (60-80% of total), talk_segment_runtime (8-15), commercial_sponsor_runtime (4-8), intro_runtime (1-2), outro_runtime (1-2)
 
+IMPORTANT: The playlist should default to MODERN/RECENT MUSIC (2022-2025 releases). Only include throwbacks or older eras if the vibe explicitly calls for it (e.g., "Throwback 90s house party").
+
 Make everything feel cohesive with the vibe. Be creative!`;
 }
 

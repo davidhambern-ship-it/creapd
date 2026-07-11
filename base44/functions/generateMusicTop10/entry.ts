@@ -85,6 +85,7 @@ RULES:
 6. DO NOT include ANY song from the EXCLUSIONS list above — the Top 10 must be DIFFERENT from the playlist.
 7. Each item needs: title (video title), youtube_url (full URL), channel_name (YouTube channel), and rank_reason (why it's ranked here).
 8. Each video must have a UNIQUE YouTube video ID — no duplicates.
+9. RECENCY: Unless "Preferred Eras" specifies an older decade, prioritize music videos from 2022-2025. At least 70% of the Top 10 should be recent releases. Only include older videos if the show config explicitly requests throwbacks or classic eras.
 
 Return a JSON object with key "items" containing an array of ${requestCount} objects, each with: title, youtube_url, channel_name, rank_reason.`;
 

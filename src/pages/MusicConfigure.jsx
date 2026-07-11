@@ -163,7 +163,7 @@ export default function MusicConfigure() {
     include_indie: true,
     include_local: false,
     include_new_releases: true,
-    include_throwbacks: true,
+    include_throwbacks: false,
     clean_only: false,
     explicit_allowed: false,
     preferred_eras: '',

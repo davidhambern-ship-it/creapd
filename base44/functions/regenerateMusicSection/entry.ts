@@ -69,10 +69,18 @@ PLAYLIST RULES:
 - Include Independent Artists: ${config.include_indie !== false ? 'Yes' : 'No'}
 - Include Local Artists: ${config.include_local === true ? 'Yes' : 'No'}
 - Include New Releases: ${config.include_new_releases !== false ? 'Yes' : 'No'}
-- Include Throwbacks: ${config.include_throwbacks !== false ? 'Yes' : 'No'}
+- Include Throwbacks: ${config.include_throwbacks === true ? 'Yes' : 'No'}
 - Clean Only: ${config.clean_only === true ? 'Yes' : 'No'}
 - Explicit Allowed: ${config.explicit_allowed === true ? 'Yes' : 'No'}
-- Preferred Eras: ${config.preferred_eras || 'Any'}
+- Preferred Eras: ${config.preferred_eras || 'Modern (2020s)'}
+
+RECENCY RULE — CRITICAL:
+The default era for this playlist is MODERN/RECENT MUSIC. Unless the user has explicitly enabled "Include Throwbacks" or specified older eras in "Preferred Eras", you MUST prioritize songs released in 2022-2025.
+- At least 70% of the playlist must be songs released in 2022 or later.
+- If "Include Throwbacks" is enabled, you may include up to 30% older tracks (pre-2020), but the majority should still be recent.
+- If "Preferred Eras" specifies a specific older decade (e.g., "80s", "90s", "2000s"), follow that era preference instead.
+- Never include more than 2 songs from before 2010 unless throwbacks are explicitly enabled or preferred_eras specifies older eras.
+- era_year must reflect the actual release year of each song.
 
 Generate a playlist of AT LEAST 20 REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected. NEVER return fewer than 20 songs.
 

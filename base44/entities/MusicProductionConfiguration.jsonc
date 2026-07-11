@@ -114,7 +114,8 @@
     },
     "include_throwbacks": {
       "type": "boolean",
-      "default": true
+      "default": false,
+      "description": "Include older/throwback tracks. Defaults to false \u2014 playlists prioritize modern/recent music unless this is enabled or preferred_eras specifies older decades."
     },
     "clean_only": {
       "type": "boolean",
@@ -126,7 +127,7 @@
     },
     "preferred_eras": {
       "type": "string",
-      "description": "Preferred eras/decades"
+      "description": "Preferred eras/decades. When empty or 'Any', defaults to modern (2020s) music."
     },
     "playlist_energy_flow": {
       "type": "string",
