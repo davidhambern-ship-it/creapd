@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
 
     // Delete existing non-locked Top 10 items for this config
     const unlockedIds = existingTop10.filter(i => !i.locked).map(i => i.id);
-    for (const id of unlockedIds) {
-      await base44.entities.Top10Item.delete(id);
+    if (unlockedIds.length > 0) {
+      await base44.entities.Top10Item.deleteMany({ _id: { $in: unlockedIds } });
     }
 
     // Build locked items context so AI knows what's already secured
@@ -47,6 +47,13 @@ Deno.serve(async (req) => {
       : 'None';
 
     const remainingSlots = 10 - lockedItems.length;
+
+    if (remainingSlots <= 0) {
+      return Response.json({ success: true, configuration_id, top10_count: lockedItems.length });
+    }
+
+    // Request 50% more items than needed as a buffer for validation failures
+    const requestCount = Math.ceil(remainingSlots * 1.5);
 
     const prompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 
@@ -69,7 +76,7 @@ ALREADY LOCKED (these are already in the Top 10, do NOT duplicate them):
 ${lockedList}
 
 RULES:
-1. Return exactly ${remainingSlots} items. These will fill the remaining Top 10 slots alongside the locked items.
+1. Return exactly ${requestCount} items (we need ${remainingSlots} that pass validation, so provide extras as backup). These will fill the remaining Top 10 slots alongside the locked items.
 2. Each item MUST be a real YouTube video — include the full YouTube URL (https://www.youtube.com/watch?v=VIDEO_ID).
 3. Prefer official music videos, live performances, or Vevo channels.
 4. Match the genres, moods, and topics from the show config where possible.
@@ -77,7 +84,7 @@ RULES:
 6. DO NOT include ANY song from the EXCLUSIONS list above — the Top 10 must be DIFFERENT from the playlist.
 7. Each item needs: title (video title), youtube_url (full URL), channel_name (YouTube channel), and rank_reason (why it's ranked here).
 
-Return a JSON object with key "items" containing an array of ${remainingSlots} objects, each with: title, youtube_url, channel_name, rank_reason.`;
+Return a JSON object with key "items" containing an array of ${requestCount} objects, each with: title, youtube_url, channel_name, rank_reason.`;
 
     const schema = {
       type: 'object',
@@ -106,53 +113,64 @@ Return a JSON object with key "items" containing an array of ${remainingSlots} o
 
     let rawItems = llmResult.items || [];
 
-    // Validate each video via oEmbed — retry failed ones with alternative picks
+    // Validate videos via oEmbed — parallelize checks for speed
     const top10Records = [];
-    const failedVideoIds = new Set();
+    const usedVideoIds = new Set();
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       if (rawItems.length === 0) break;
 
-      const failedItems = [];
-
+      // Deduplicate and extract video IDs — skip already-used
+      const candidates = [];
       for (const raw of rawItems) {
-        if (top10Records.length >= remainingSlots) break;
-
         const videoId = extractVideoId(raw.youtube_url || '');
-        if (!videoId || failedVideoIds.has(videoId)) {
-          failedItems.push(raw);
-          continue;
+        if (videoId && !usedVideoIds.has(videoId)) {
+          usedVideoIds.add(videoId);
+          candidates.push({ raw, videoId });
         }
+      }
 
-        try {
-          const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-          if (!oembedResp.ok) {
-            failedVideoIds.add(videoId);
-            failedItems.push(raw);
-            continue;
-          }
+      if (candidates.length === 0) break;
+
+      // Parallel oEmbed validation — all at once instead of sequential
+      const results = await Promise.allSettled(
+        candidates.map(async (c) => {
+          const oembedResp = await fetch(
+            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${c.videoId}&format=json`
+          );
+          if (!oembedResp.ok) throw new Error(`oEmbed ${c.videoId} returned ${oembedResp.status}`);
           const oembed = await oembedResp.json();
+          return { raw: c.raw, videoId: c.videoId, oembed };
+        })
+      );
 
+      for (let i = 0; i < results.length; i++) {
+        if (top10Records.length >= remainingSlots) break;
+        const result = results[i];
+        if (result.status === 'fulfilled') {
+          const { videoId, raw, oembed } = result.value;
           top10Records.push({
             configuration_id,
             order: lockedItems.length + top10Records.length,
             title: oembed.title || raw.title || 'Unknown',
             youtube_video_id: videoId,
-            thumbnail_url: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
             channel_name: oembed.author_name || raw.channel_name || '',
             note: raw.rank_reason || ''
           });
-        } catch {
-          failedVideoIds.add(videoId);
-          failedItems.push(raw);
-          continue;
         }
       }
 
-      if (failedItems.length === 0 || top10Records.length >= remainingSlots) break;
-
       const stillNeeded = remainingSlots - top10Records.length;
-      const failedList = failedItems.map(f => `${f.title} (${f.youtube_url})`).join('\n');
+      if (stillNeeded <= 0) break;
+
+      // Only retry if we still need more and this isn't the last attempt
+      if (attempt === 1) break;
+
+      const failedList = candidates
+        .filter(c => !top10Records.some(r => r.youtube_video_id === c.videoId))
+        .map(c => `${c.raw.title} (${c.raw.youtube_url})`)
+        .join('\n');
 
       const retryPrompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 The following YouTube videos were unavailable or removed. Find ${stillNeeded} REPLACEMENT music videos.
@@ -167,7 +185,7 @@ UNAVAILABLE VIDEOS:
 ${failedList}
 
 Do NOT use these video IDs:
-${[...failedVideoIds].join(', ')}
+${[...usedVideoIds].join(', ')}
 
 SHOW CONTEXT:
 - Genres: ${genres.join(', ') || 'Top 40'}
@@ -194,7 +212,7 @@ Return a JSON object with key "items" containing an array of ${stillNeeded} obje
     return Response.json({
       success: true,
       configuration_id,
-      top10_count: top10Records.length
+      top10_count: top10Records.length + lockedItems.length
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
@@ -208,7 +226,6 @@ function safeParse(str, fallback) {
 
 function extractVideoId(url) {
   if (!url) return null;
-  // Raw 11-char ID
   if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
   const patterns = [
     /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
