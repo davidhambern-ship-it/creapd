@@ -198,9 +198,10 @@ export default function CommanderPlayer({ items = [], title = 'Player' }) {
               }}
             >
               <img
-                src={item.thumbnail_url || `https://img.youtube.com/vi/${item.youtube_video_id}/default.jpg`}
+                src={item.thumbnail_url || `https://img.youtube.com/vi/${item.youtube_video_id}/mqdefault.jpg`}
                 alt={item.title}
                 className="w-full h-12 object-cover"
+                onError={(e) => { e.target.src = `https://img.youtube.com/vi/${item.youtube_video_id}/mqdefault.jpg`; }}
               />
               <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5" style={{ background: 'rgba(0,0,0,0.7)' }}>
                 <p className="text-[9px] text-white truncate text-left">{i + 1}. {item.title}</p>
