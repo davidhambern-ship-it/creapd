@@ -510,6 +510,18 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
       }
     }
 
+    // ═══════════════════════════════════════════════════════
+    // STAGE 7: TOP 10 — Auto-generate after playlist exists
+    // ═══════════════════════════════════════════════════════
+
+    let top10_count = 0;
+    try {
+      const top10Result = await base44.functions.invoke('generateMusicTop10', { configuration_id });
+      top10_count = top10Result?.data?.top10_count || 0;
+    } catch (e) {
+      console.error('Top 10 generation failed:', e.message);
+    }
+
     // Update config status to ready
     await base44.entities.MusicProductionConfiguration.update(configuration_id, { status: 'ready' });
 
@@ -523,6 +535,7 @@ Return a JSON object with exactly these keys: rundown (array), host_banter (stri
       topic_count: topicData.length,
       rundown_count: rundownData.length,
       asset_count: assets.length,
+      top10_count,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
