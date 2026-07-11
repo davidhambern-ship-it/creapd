@@ -159,7 +159,7 @@ export default function MusicTop10() {
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <CommanderPlayer items={items} title="Top 10 Player" />
+            <CommanderPlayer items={items} title="Top 10 Player" mode="video" />
           </motion.div>
         )}
 

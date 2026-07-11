@@ -151,7 +151,7 @@ export default function MusicPlaylist() {
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <CommanderPlayer items={playableTracks} title="Playlist Player" />
+            <CommanderPlayer items={playableTracks} title="Playlist Player" mode="audio" />
           </motion.div>
         )}
 
