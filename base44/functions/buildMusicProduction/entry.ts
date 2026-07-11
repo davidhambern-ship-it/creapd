@@ -35,13 +35,21 @@ Deno.serve(async (req) => {
 
     const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 });
 
-    const requiredMusicMinutes = config.required_music_runtime || 70;
+    // Enforce 75-minute maximum show runtime
+    const MAX_SHOW_MINUTES = 75;
+    const talkMin = config.talk_segment_runtime || 12;
+    const sponsorMin = config.commercial_sponsor_runtime || 6;
+    const introMin = config.intro_runtime || 1;
+    const outroMin = config.outro_runtime || 1;
+    const totalShowMin = Math.min(config.total_show_runtime || MAX_SHOW_MINUTES, MAX_SHOW_MINUTES);
+    const maxMusicMin = totalShowMin - talkMin - sponsorMin - introMin - outroMin;
+    const requiredMusicMinutes = Math.min(config.required_music_runtime || 55, maxMusicMin, 55);
 
     // ═══════════════════════════════════════════════════════
     // STAGE 1: PRODUCTION PLANNING — Build PRP from DCP
     // ═══════════════════════════════════════════════════════
 
-    const estimatedSongCount = Math.ceil(requiredMusicMinutes / 3.5);
+    const estimatedSongCount = Math.min(Math.ceil(requiredMusicMinutes / 3.5), 15);
 
     const requirements = productionFormat === 'live' ? [
       { requirement_type: 'rundown', title: 'Live Rundown', detail: 'Structured live show rundown with timing', quantity: 1, media_type: 'text' },
@@ -182,7 +190,7 @@ The default era for this playlist is MODERN/RECENT MUSIC. Unless the user has ex
 - Never include more than 2 songs from before 2010 unless throwbacks are explicitly enabled or preferred_eras specifies older eras.
 - era_year must reflect the actual release year of each song.
 
-Generate a playlist of AT LEAST 20 REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. If the required runtime demands more than 20 songs, include more. Include a mix of songs matching the genres, moods, and energy flow. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected (why this song fits). Respect all playlist rules. Apply the energy flow pattern to song ordering. NEVER return fewer than 20 songs.
+Generate a playlist of EXACTLY ${estimatedSongCount} REAL, well-known songs that totals approximately ${requiredMusicMinutes} minutes. Do not return more than ${estimatedSongCount} songs. Do not return fewer than ${estimatedSongCount} songs. Include a mix of songs matching the genres, moods, and energy flow. Each song must include: song_title, artist, length_seconds (realistic estimate), genre, mood, era_year, and reason_selected (why this song fits). Respect all playlist rules. Apply the energy flow pattern to song ordering.
 
 Return a JSON object with key "playlist" containing an array of song objects.`;
 
@@ -216,10 +224,12 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
         });
         // Validate: if LLM returned fewer than 10 songs, treat as failure to trigger self-healing retry
         const songs = result?.playlist || result?.songs || [];
-        if (songs.length < 10) {
-          throw new Error(`Playlist generation returned only ${songs.length} songs (minimum 10 required). The LLM may not have found enough real songs via web search.`);
+        if (songs.length < 8) {
+          throw new Error(`Playlist generation returned only ${songs.length} songs (minimum 8 required). The LLM may not have found enough real songs via web search.`);
         }
-        return { playlist: songs };
+        // Trim to target count if LLM returned too many
+        const trimmedSongs = songs.length > estimatedSongCount ? songs.slice(0, estimatedSongCount) : songs;
+        return { playlist: trimmedSongs };
       }, playlistPrompt);
       buildLog.push({ stage: 'playlist_generation', success: playlistHealResult.success, error: playlistHealResult.error, attempts: playlistHealResult.attempts });
       const playlistResult = playlistHealResult.success ? playlistHealResult.result : { playlist: [] };
@@ -1195,6 +1205,16 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
   }
 
   blueprint.push({ segment_type: 'outro', title: 'Show Outro', target_duration: outroSecs });
+
+  // Enforce 75-minute maximum rundown duration by trimming excess songs from the end
+  const maxTotalSecs = 75 * 60;
+  let totalSecs = blueprint.reduce((sum, bp) => sum + (bp.target_duration || 0), 0);
+  while (totalSecs > maxTotalSecs && blueprint.length > 3) {
+    const lastSongIdx = blueprint.map(b => b.segment_type).lastIndexOf('song');
+    if (lastSongIdx === -1) break;
+    const removed = blueprint.splice(lastSongIdx, 1)[0];
+    totalSecs -= (removed.target_duration || 0);
+  }
 
   return blueprint;
 }
