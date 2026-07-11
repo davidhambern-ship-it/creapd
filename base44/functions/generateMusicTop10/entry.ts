@@ -104,37 +104,87 @@ Return a JSON object with key "items" containing an array of ${remainingSlots} o
       model: 'gemini_3_flash'
     });
 
-    const rawItems = llmResult.items || [];
+    let rawItems = llmResult.items || [];
 
-    // Validate each video via oEmbed and build Top10Item records
+    // Validate each video via oEmbed — retry failed ones with alternative picks
     const top10Records = [];
-    for (let i = 0; i < rawItems.length && i < remainingSlots; i++) {
-      const raw = rawItems[i];
-      const videoId = extractVideoId(raw.youtube_url || '');
-      if (!videoId) continue;
+    const failedVideoIds = new Set();
 
-      // Validate via oEmbed — skip video if unavailable
-      let validatedTitle = raw.title || '';
-      let validatedChannel = raw.channel_name || '';
-      try {
-        const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-        if (!oembedResp.ok) continue;
-        const oembed = await oembedResp.json();
-        validatedTitle = oembed.title || validatedTitle;
-        validatedChannel = oembed.author_name || validatedChannel;
-      } catch {
-        continue;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (rawItems.length === 0) break;
+
+      const failedItems = [];
+
+      for (const raw of rawItems) {
+        if (top10Records.length >= remainingSlots) break;
+
+        const videoId = extractVideoId(raw.youtube_url || '');
+        if (!videoId || failedVideoIds.has(videoId)) {
+          failedItems.push(raw);
+          continue;
+        }
+
+        try {
+          const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+          if (!oembedResp.ok) {
+            failedVideoIds.add(videoId);
+            failedItems.push(raw);
+            continue;
+          }
+          const oembed = await oembedResp.json();
+
+          top10Records.push({
+            configuration_id,
+            order: lockedItems.length + top10Records.length,
+            title: oembed.title || raw.title || 'Unknown',
+            youtube_video_id: videoId,
+            thumbnail_url: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            channel_name: oembed.author_name || raw.channel_name || '',
+            note: raw.rank_reason || ''
+          });
+        } catch {
+          failedVideoIds.add(videoId);
+          failedItems.push(raw);
+          continue;
+        }
       }
 
-      top10Records.push({
-        configuration_id,
-        order: lockedItems.length + i,
-        title: validatedTitle || raw.title || 'Unknown',
-        youtube_video_id: videoId,
-        thumbnail_url: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-        channel_name: validatedChannel || raw.channel_name || '',
-        note: raw.rank_reason || ''
+      if (failedItems.length === 0 || top10Records.length >= remainingSlots) break;
+
+      const stillNeeded = remainingSlots - top10Records.length;
+      const failedList = failedItems.map(f => `${f.title} (${f.youtube_url})`).join('\n');
+
+      const retryPrompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
+The following YouTube videos were unavailable or removed. Find ${stillNeeded} REPLACEMENT music videos.
+
+STRICT RULES:
+- NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
+- ONLY official music videos, Vevo uploads, or official artist/label channel uploads.
+- Each URL must point to a working, publicly available video.
+- Do NOT reuse any of the unavailable videos listed below.
+
+UNAVAILABLE VIDEOS:
+${failedList}
+
+Do NOT use these video IDs:
+${[...failedVideoIds].join(', ')}
+
+SHOW CONTEXT:
+- Genres: ${genres.join(', ') || 'Top 40'}
+- Moods: ${moods.join(', ') || 'Feel Good'}
+- Blocked Songs: ${config.blocked_songs || 'None'}
+- Blocked Artists: ${config.blocked_artists || 'None'}
+
+Return a JSON object with key "items" containing an array of ${stillNeeded} objects, each with: title, youtube_url, channel_name, rank_reason.`;
+
+      const retryResult = await base44.integrations.Core.InvokeLLM({
+        prompt: retryPrompt,
+        add_context_from_internet: true,
+        response_json_schema: schema,
+        model: 'gemini_3_flash'
       });
+
+      rawItems = retryResult.items || [];
     }
 
     if (top10Records.length > 0) {

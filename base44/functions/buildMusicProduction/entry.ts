@@ -390,20 +390,12 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
 
         // YouTube lookup — find real YouTube video IDs for each playlist track
+        // Retry up to 3 times for songs whose video fails validation
         try {
-          const songList = playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n');
-
-          const ytPrompt = `You are a music librarian. For each song below, find its REAL YouTube video URL. These must be REAL, searchable YouTube videos that actually exist. Prefer official music videos, Vevo, or official channel uploads.
-
-SONGS TO FIND:
-${songList}
-
-Return a JSON object with key "results" containing an array of objects, each with:
-- song_title (exact match from the list above)
-- artist (exact match from the list above)
-- youtube_url (full YouTube URL: https://www.youtube.com/watch?v=VIDEO_ID)
-
-Only include songs where you found a real, working YouTube URL. Skip any you cannot find.`;
+          const createdItems = await base44.entities.PlaylistItem.filter({ configuration_id });
+          const updates = [];
+          const resolvedKeys = new Set();
+          const failedVideoIds = new Set();
 
           const ytSchema = {
             type: 'object',
@@ -422,42 +414,72 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
             }
           };
 
-          const ytResult = await base44.integrations.Core.InvokeLLM({
-            prompt: ytPrompt,
-            add_context_from_internet: true,
-            response_json_schema: ytSchema,
-            model: 'gemini_3_flash'
-          });
-
-          const ytResults = ytResult.results || [];
-
-          // Fetch created playlist items to get their IDs
-          const createdItems = await base44.entities.PlaylistItem.filter({ configuration_id });
-
-          const updates = [];
-          for (const result of ytResults) {
-            const videoId = extractVideoId(result.youtube_url || '');
-            if (!videoId) continue;
-
-            const matchedItem = createdItems.find(item =>
-              item.song_title === result.song_title && item.artist === result.artist
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const remaining = createdItems.filter(item =>
+              !resolvedKeys.has(`${item.song_title}|||${item.artist}`)
             );
-            if (!matchedItem) continue;
+            if (remaining.length === 0) break;
 
-            // Validate via oEmbed — skip video if unavailable
-            try {
-              const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-              if (!oembedResp.ok) continue;
-              const oembed = await oembedResp.json();
+            const songList = remaining.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n');
+            const failedHint = failedVideoIds.size > 0
+              ? `\n\nDo NOT use these video IDs — they are unavailable:\n${[...failedVideoIds].join(', ')}`
+              : '';
 
-              updates.push({
-                id: matchedItem.id,
-                youtube_video_id: videoId,
-                thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-                channel_name: oembed.author_name || ''
-              });
-            } catch {
-              continue;
+            const ytPrompt = `You are a music librarian. For each song below, find its REAL YouTube video URL.
+
+STRICT RULES:
+- NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
+- ONLY official music videos, Vevo uploads, or official artist/label channel uploads.
+- Each URL must point to a working, publicly available video.
+
+SONGS TO FIND:
+${songList}${failedHint}
+
+Return a JSON object with key "results" containing an array of objects, each with:
+- song_title (exact match from the list above)
+- artist (exact match from the list above)
+- youtube_url (full YouTube URL: https://www.youtube.com/watch?v=VIDEO_ID)
+
+Only include songs where you found a real, working YouTube URL.`;
+
+            const ytResult = await base44.integrations.Core.InvokeLLM({
+              prompt: ytPrompt,
+              add_context_from_internet: true,
+              response_json_schema: ytSchema,
+              model: 'gemini_3_flash'
+            });
+
+            const ytResults = ytResult.results || [];
+            if (ytResults.length === 0) break;
+
+            for (const result of ytResults) {
+              const videoId = extractVideoId(result.youtube_url || '');
+              if (!videoId || failedVideoIds.has(videoId)) continue;
+
+              const matchedItem = createdItems.find(item =>
+                item.song_title === result.song_title && item.artist === result.artist
+              );
+              if (!matchedItem) continue;
+
+              try {
+                const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+                if (!oembedResp.ok) {
+                  failedVideoIds.add(videoId);
+                  continue;
+                }
+                const oembed = await oembedResp.json();
+
+                updates.push({
+                  id: matchedItem.id,
+                  youtube_video_id: videoId,
+                  thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                  channel_name: oembed.author_name || ''
+                });
+                resolvedKeys.add(`${matchedItem.song_title}|||${matchedItem.artist}`);
+              } catch {
+                failedVideoIds.add(videoId);
+                continue;
+              }
             }
           }
 
