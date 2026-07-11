@@ -52,8 +52,9 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, configuration_id, top10_count: lockedItems.length });
     }
 
-    // Request 2.5x items as buffer — many LLM-suggested videos fail oEmbed validation
-    const requestCount = Math.ceil(remainingSlots * 2.5);
+    // Request 4x items as buffer — many LLM-suggested videos fail oEmbed validation.
+    // Large initial buffer avoids retry LLM calls, keeping us within the 120s timeout.
+    const requestCount = Math.ceil(remainingSlots * 4);
 
     const prompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
 
@@ -83,6 +84,7 @@ RULES:
 5. Respect blocked songs/artists — never include them.
 6. DO NOT include ANY song from the EXCLUSIONS list above — the Top 10 must be DIFFERENT from the playlist.
 7. Each item needs: title (video title), youtube_url (full URL), channel_name (YouTube channel), and rank_reason (why it's ranked here).
+8. Each video must have a UNIQUE YouTube video ID — no duplicates.
 
 Return a JSON object with key "items" containing an array of ${requestCount} objects, each with: title, youtube_url, channel_name, rank_reason.`;
 
@@ -111,99 +113,47 @@ Return a JSON object with key "items" containing an array of ${requestCount} obj
       model: 'gemini_3_flash'
     });
 
-    let rawItems = llmResult.items || [];
+    const rawItems = llmResult.items || [];
 
-    // Validate videos via oEmbed — parallelize checks for speed
-    const top10Records = [];
+    // Deduplicate and extract video IDs
     const usedVideoIds = new Set();
-
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (rawItems.length === 0) break;
-
-      // Deduplicate and extract video IDs — skip already-used
-      const candidates = [];
-      for (const raw of rawItems) {
-        const videoId = extractVideoId(raw.youtube_url || '');
-        if (videoId && !usedVideoIds.has(videoId)) {
-          usedVideoIds.add(videoId);
-          candidates.push({ raw, videoId });
-        }
+    const candidates = [];
+    for (const raw of rawItems) {
+      const videoId = extractVideoId(raw.youtube_url || '');
+      if (videoId && !usedVideoIds.has(videoId)) {
+        usedVideoIds.add(videoId);
+        candidates.push({ raw, videoId });
       }
+    }
 
-      if (candidates.length === 0) break;
+    // Parallel oEmbed validation — check all candidates at once
+    const results = await Promise.allSettled(
+      candidates.map(async (c) => {
+        const oembedResp = await fetch(
+          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${c.videoId}&format=json`
+        );
+        if (!oembedResp.ok) throw new Error(`oEmbed ${c.videoId} returned ${oembedResp.status}`);
+        const oembed = await oembedResp.json();
+        return { raw: c.raw, videoId: c.videoId, oembed };
+      })
+    );
 
-      // Parallel oEmbed validation — all at once instead of sequential
-      const results = await Promise.allSettled(
-        candidates.map(async (c) => {
-          const oembedResp = await fetch(
-            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${c.videoId}&format=json`
-          );
-          if (!oembedResp.ok) throw new Error(`oEmbed ${c.videoId} returned ${oembedResp.status}`);
-          const oembed = await oembedResp.json();
-          return { raw: c.raw, videoId: c.videoId, oembed };
-        })
-      );
-
-      for (let i = 0; i < results.length; i++) {
-        if (top10Records.length >= remainingSlots) break;
-        const result = results[i];
-        if (result.status === 'fulfilled') {
-          const { videoId, raw, oembed } = result.value;
-          top10Records.push({
-            configuration_id,
-            order: lockedItems.length + top10Records.length,
-            title: oembed.title || raw.title || 'Unknown',
-            youtube_video_id: videoId,
-            thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-            channel_name: oembed.author_name || raw.channel_name || '',
-            note: raw.rank_reason || ''
-          });
-        }
+    // Collect validated records up to remainingSlots
+    const top10Records = [];
+    for (const result of results) {
+      if (top10Records.length >= remainingSlots) break;
+      if (result.status === 'fulfilled') {
+        const { videoId, raw, oembed } = result.value;
+        top10Records.push({
+          configuration_id,
+          order: lockedItems.length + top10Records.length,
+          title: oembed.title || raw.title || 'Unknown',
+          youtube_video_id: videoId,
+          thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+          channel_name: oembed.author_name || raw.channel_name || '',
+          note: raw.rank_reason || ''
+        });
       }
-
-      const stillNeeded = remainingSlots - top10Records.length;
-      if (stillNeeded <= 0) break;
-
-      // Only retry if we still need more and this isn't the last attempt
-      if (attempt === 2) break;
-
-      const failedList = candidates
-        .filter(c => !top10Records.some(r => r.youtube_video_id === c.videoId))
-        .map(c => `${c.raw.title} (${c.raw.youtube_url})`)
-        .join('\n');
-
-      const retryPrompt = `You are a music video curator for a ${config.production_format === 'live' ? 'live music broadcast' : 'radio show'} / music program.
-The following YouTube videos were unavailable or removed. Find ${Math.ceil(stillNeeded * 2)} REPLACEMENT music videos (we need ${stillNeeded} that pass validation, so provide extras as backup).
-
-STRICT RULES:
-- NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
-- ONLY official music videos, Vevo uploads, or official artist/label channel uploads.
-- Each URL must point to a working, publicly available video.
-- Do NOT reuse any of the unavailable videos listed below.
-- CRITICAL: Do NOT reuse ANY video ID from the excluded list. Each video must have a UNIQUE ID not in that list. Pick DIFFERENT songs/artists if needed.
-
-UNAVAILABLE VIDEOS:
-${failedList}
-
-EXCLUDED VIDEO IDS (do NOT use any of these — your videos must have DIFFERENT IDs):
-${[...usedVideoIds].join(', ')}
-
-SHOW CONTEXT:
-- Genres: ${genres.join(', ') || 'Top 40'}
-- Moods: ${moods.join(', ') || 'Feel Good'}
-- Blocked Songs: ${config.blocked_songs || 'None'}
-- Blocked Artists: ${config.blocked_artists || 'None'}
-
-Return a JSON object with key "items" containing an array of ${Math.ceil(stillNeeded * 2)} objects, each with: title, youtube_url, channel_name, rank_reason.`;
-
-      const retryResult = await base44.integrations.Core.InvokeLLM({
-        prompt: retryPrompt,
-        add_context_from_internet: true,
-        response_json_schema: schema,
-        model: 'gemini_3_flash'
-      });
-
-      rawItems = retryResult.items || [];
     }
 
     if (top10Records.length > 0) {
