@@ -359,6 +359,7 @@ export default function MusicDashboard() {
       <CyberpunkBackground />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
+        <MusicPageNav />
         {/* Hero Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

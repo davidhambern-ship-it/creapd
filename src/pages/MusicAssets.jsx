@@ -66,6 +66,7 @@ export default function MusicAssets() {
       <CyberpunkMusicBg variant="left" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
+        <MusicPageNav />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
