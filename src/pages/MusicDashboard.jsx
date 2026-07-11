@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useProductionDepartments } from '@/hooks/useProductionDepartments';
@@ -195,6 +195,7 @@ function ReadinessRing({ percent, done, total }) {
 }
 
 export default function MusicDashboard() {
+  const navigate = useNavigate();
   const { config, playlist, topics, research, rundown, assets, loading, refresh } = useMusicProduction();
   const [refreshing, setRefreshing] = useState(false);
   const [detailDept, setDetailDept] = useState(null);
@@ -231,11 +232,11 @@ export default function MusicDashboard() {
     setRefreshing(true);
     try {
       await base44.entities.MusicProductionConfiguration.update(config.id, { status: 'building' });
-      await base44.functions.invoke('buildMusicProduction', { configuration_id: config.id });
-      refresh();
+      base44.functions.invoke('buildMusicProduction', { configuration_id: config.id })
+        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
+      navigate(`/music/configure?config_id=${config.id}`);
     } catch (err) {
       console.error(err);
-    } finally {
       setRefreshing(false);
     }
   };

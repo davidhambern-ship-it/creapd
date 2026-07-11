@@ -176,7 +176,15 @@ export default function MusicConfigure() {
   useEffect(() => {
     if (editConfigId) {
       base44.entities.MusicProductionConfiguration.get(editConfigId).then(c => {
-        if (c) setConfig({ ...c, status: 'configuring' });
+        if (!c) return;
+        // If a build is already in progress, jump straight to the Break Room
+        if (c.status === 'building' || c.status === 'refreshing') {
+          setBuildConfigId(c.id);
+          setBuilding(true);
+          setConfig(c);
+        } else {
+          setConfig({ ...c, status: 'configuring' });
+        }
       }).catch(() => {});
     }
   }, [editConfigId]);
