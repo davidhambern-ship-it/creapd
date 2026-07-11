@@ -381,9 +381,9 @@ Only include songs where you found a real, working YouTube URL. Skip any you can
       // Build a deterministic segment structure that enforces pacing rules
       // (no more than max_sequential_songs in a row), then ask the LLM to
       // fill in script_content for each segment.
-      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules);
+      const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config);
       const blueprintText = blueprint.map((bp, i) => {
-        const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}"`];
+        const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${bp.target_duration || 60}s)`];
         if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
         if (bp.associated_topic) parts.push(`     Topic: "${bp.associated_topic}"`);
         return parts.join('\n');
@@ -422,7 +422,9 @@ SCRIPT REQUIREMENTS:
 - Talk Breaks: Conversational banter scripts that feel natural and engaging.
 - Topic Segments: Expand the topic's talking points into a full spoken script that fills the allocated time (~150 words per minute).
 - Song Intros: A brief, engaging intro for each song that mentions the artist and song title.
-- For each non-song segment, script_content length should be proportional to the allocated talk time (~150 words per minute).
+- Sponsor Breaks: Write sponsor/ad-read copy that fills the allocated time (~150 words per minute). If no specific sponsor is configured, write generic ad-read copy.
+- Station IDs: Write a brief station identification segment (e.g., "You're listening to ${config.station_name || 'the station'}"). Keep it under 15 seconds.
+- For each non-song segment, script_content length should be proportional to the target duration shown in the blueprint (~150 words per minute).
 
 AI ASSETS TO GENERATE:
 - host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
@@ -510,8 +512,10 @@ Return a JSON object with exactly these keys: rundown (array matching the bluepr
           const songLength = matchedSong?.length_seconds || 180;
           const introLength = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : 0;
           durationSeconds = songLength + introLength;
+        } else if (segmentType === 'sponsor_break' || segmentType === 'station_id') {
+          durationSeconds = bpItem.target_duration || (segmentType === 'station_id' ? 15 : 60);
         } else {
-          durationSeconds = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : 60;
+          durationSeconds = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : (bpItem.target_duration || 60);
         }
 
         const startTime = formatSecondsToTime(cursorSecs);
@@ -711,10 +715,18 @@ function formatSecondsToTime(totalSeconds) {
 
 // ═══ RUNDOWN BLUEPRINT BUILDER ═══
 // Builds a deterministic segment structure that enforces pacing rules:
-// no more than max_sequential_songs play in a row, with talk breaks or
-// topic segments interleaved between song blocks.
-function buildRundownBlueprint(playlist, topics, pacingRules) {
+// no more than max_sequential_songs play in a row, with talk breaks,
+// topic segments, sponsor breaks, and station IDs interleaved between
+// song blocks. Time budgets are calculated from the configuration.
+function buildRundownBlueprint(playlist, topics, pacingRules, config) {
   const maxSequential = pacingRules.max_sequential_songs || 4;
+
+  // Time budgets (in seconds) from configuration
+  const introSecs = Math.round((config.intro_runtime || 1) * 60);
+  const outroSecs = Math.round((config.outro_runtime || 1) * 60);
+  const talkSecs = Math.round((config.talk_segment_runtime || 12) * 60);
+  const sponsorSecs = Math.round((config.commercial_sponsor_runtime || 6) * 60);
+  const stationIdSecs = 15;
 
   // Split songs into blocks of at most maxSequential
   const songBlocks = [];
@@ -722,8 +734,12 @@ function buildRundownBlueprint(playlist, topics, pacingRules) {
     songBlocks.push(playlist.slice(i, i + maxSequential));
   }
 
+  const numIntervals = Math.max(songBlocks.length - 1, 1);
+  const talkPerInterval = Math.floor(talkSecs / numIntervals);
+  const sponsorPerInterval = Math.floor(sponsorSecs / Math.max(Math.floor(songBlocks.length / 2), 1));
+
   const blueprint = [];
-  blueprint.push({ segment_type: 'intro', title: 'Show Intro' });
+  blueprint.push({ segment_type: 'intro', title: 'Show Intro', target_duration: introSecs });
 
   let topicIdx = 0;
 
@@ -733,25 +749,45 @@ function buildRundownBlueprint(playlist, topics, pacingRules) {
       blueprint.push({
         segment_type: 'song',
         title: song.song_title,
-        associated_song_title: song.song_title
+        associated_song_title: song.song_title,
+        target_duration: song.length_seconds || 180
       });
     }
 
-    // After each block (except the last), insert a talk segment
+    // After each block (except the last), insert interstitial segments
     if (blockIdx < songBlocks.length - 1) {
+      // Topic segment or talk break
       if (topicIdx < topics.length) {
         blueprint.push({
           segment_type: 'topic_segment',
           title: topics[topicIdx].topic_name,
-          associated_topic: topics[topicIdx].topic_name
+          associated_topic: topics[topicIdx].topic_name,
+          target_duration: talkPerInterval
         });
         topicIdx++;
       } else {
         blueprint.push({
           segment_type: 'talk_break',
-          title: 'Host Banter'
+          title: 'Host Banter',
+          target_duration: talkPerInterval
         });
       }
+
+      // Sponsor break every 2 blocks
+      if ((blockIdx + 1) % 2 === 0) {
+        blueprint.push({
+          segment_type: 'sponsor_break',
+          title: 'Sponsor Break',
+          target_duration: sponsorPerInterval
+        });
+      }
+
+      // Station ID after every block
+      blueprint.push({
+        segment_type: 'station_id',
+        title: 'Station ID',
+        target_duration: stationIdSecs
+      });
     }
   }
 
@@ -760,12 +796,13 @@ function buildRundownBlueprint(playlist, topics, pacingRules) {
     blueprint.push({
       segment_type: 'topic_segment',
       title: topics[topicIdx].topic_name,
-      associated_topic: topics[topicIdx].topic_name
+      associated_topic: topics[topicIdx].topic_name,
+      target_duration: 60
     });
     topicIdx++;
   }
 
-  blueprint.push({ segment_type: 'outro', title: 'Show Outro' });
+  blueprint.push({ segment_type: 'outro', title: 'Show Outro', target_duration: outroSecs });
 
   return blueprint;
 }
