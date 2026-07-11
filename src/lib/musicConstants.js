@@ -59,7 +59,10 @@ export const AI_AUTOMATION_OPTIONS = [
 export const DEFAULT_AI_AUTOMATION = [
   'Auto Research',
   'Auto Develop',
-  'Auto Build Playlist'
+  'Auto Build Playlist',
+  'Auto Generate Images',
+  'Auto Assemble Packet',
+  'Auto Export'
 ];
 
 export const RUNTIME_DEFAULTS = {

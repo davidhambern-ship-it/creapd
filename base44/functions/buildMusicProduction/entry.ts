@@ -26,7 +26,11 @@ Deno.serve(async (req) => {
     const moods = safeParse(config.moods, []);
     const musicTopics = safeParse(config.music_topics, []);
     const researchSources = safeParse(config.research_sources, []);
-    const aiAutomation = safeParse(config.ai_automation, []);
+    const ALL_AI_AUTOMATIONS = ['Auto Research', 'Auto Develop', 'Auto Build Playlist', 'Auto Generate Images', 'Auto Assemble Packet', 'Auto Export'];
+    let aiAutomation = safeParse(config.ai_automation, []);
+    if (!aiAutomation || aiAutomation.length === 0) {
+      aiAutomation = [...ALL_AI_AUTOMATIONS];
+    }
     const productionFormat = config.production_format || 'radio';
 
     const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 });
