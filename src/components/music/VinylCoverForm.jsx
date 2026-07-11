@@ -78,7 +78,9 @@ function RuntimeSlider({ label, value, onChange, max = 180, color = '#FF00FF' })
  * Zone wrapper — positions a form section over a blank space on the album cover.
  * Styled as a semi-transparent etched panel that blends with the artwork.
  */
-function CoverZone({ children, style, accent, label, glow = true, gridMode = false }) {
+const CP_SOUND_BOARD_BG = 'https://media.base44.com/images/public/6a4126962e5804304cc84b12/97fafc255_generated_image.png';
+
+function CoverZone({ children, style, accent, label, glow = true, gridMode = false, bgImage }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
@@ -97,19 +99,20 @@ function CoverZone({ children, style, accent, label, glow = true, gridMode = fal
       <div
         className="relative h-full rounded-lg overflow-hidden"
         style={{
-          background: 'transparent',
+          background: bgImage ? `url(${bgImage}) center / cover` : 'transparent',
           backdropFilter: 'none',
           border: `1px solid ${accent}33`,
           boxShadow: glow ? `0 0 24px ${accent}11, inset 0 1px 0 rgba(255,255,255,0.04)` : 'none',
         }}
       >
+        {bgImage && <div className="absolute inset-0 bg-black/50" />}
         {/* Neon corner accents */}
         <div className="absolute top-0 left-0 w-3 h-3 border-t border-l rounded-tl" style={{ borderColor: `${accent}66` }} />
         <div className="absolute top-0 right-0 w-3 h-3 border-t border-r rounded-tr" style={{ borderColor: `${accent}66` }} />
         <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l rounded-bl" style={{ borderColor: `${accent}66` }} />
         <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r rounded-br" style={{ borderColor: `${accent}66` }} />
 
-        <div className="p-3 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="relative p-3 h-full overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           {children}
         </div>
       </div>
@@ -335,6 +338,7 @@ export default function VinylCoverForm({
             <CoverZone
               label="Track Times"
               accent={accent}
+              bgImage={CP_SOUND_BOARD_BG}
               style={{ top: '30%', left: '4%', right: '4%', height: '64%' }}
             >
               <div className="flex items-center gap-2 mb-3">
