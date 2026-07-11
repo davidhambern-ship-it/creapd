@@ -241,58 +241,7 @@ Return a JSON object with exactly these keys: playlist (array), research (array)
         reason_selected: song.reason_selected || '',
         status: 'suggested'
       }));
-      // ═══════════════════════════════════════════════════════
-      // STAGE 2b: SPOTIFY RESOLUTION — find playable track IDs
-      // Playlists use Spotify audio embeds (not YouTube videos).
-      // Top 10s use YouTube video embeds — separate flow.
-      // ═══════════════════════════════════════════════════════
       if (playlistData.length > 0) {
-        try {
-          const spotPrompt = `For each song below, search Spotify and find the exact track on Spotify. Return the Spotify track ID (the 22-character alphanumeric ID from the Spotify track URL, e.g. from "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT" the ID is "4cOdK2wGLETKBW3PvgPWqT"). Also return the album art URL (the image URL from Spotify's API, typically from i.scdn.co). Return results in the SAME ORDER as the input list.
-
-Songs:
-${playlistData.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n')}`;
-
-          const spotResult = await base44.integrations.Core.InvokeLLM({
-            prompt: spotPrompt,
-            add_context_from_internet: true,
-            response_json_schema: {
-              type: 'object',
-              properties: {
-                tracks: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      song_title: { type: 'string' },
-                      artist: { type: 'string' },
-                      spotify_track_id: { type: 'string' },
-                      album_art_url: { type: 'string' }
-                    }
-                  }
-                }
-              }
-            },
-            model: 'gemini_3_flash'
-          });
-
-          const spotTracks = spotResult.tracks || [];
-          playlistData = playlistData.map((song, idx) => {
-            const sp = spotTracks[idx];
-            if (sp && sp.spotify_track_id && sp.spotify_track_id.length >= 10) {
-              return {
-                ...song,
-                spotify_track_id: sp.spotify_track_id,
-                album_art_url: sp.album_art_url || '',
-                thumbnail_url: sp.album_art_url || '',
-              };
-            }
-            return song;
-          });
-        } catch (e) {
-          console.error('Spotify resolution failed:', e.message);
-        }
-
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
       }
 

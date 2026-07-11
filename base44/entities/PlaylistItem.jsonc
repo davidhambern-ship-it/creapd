@@ -59,29 +59,17 @@
       "type": "boolean",
       "default": false
     },
-    "spotify_track_id": {
-      "type": "string",
-      "description": "Spotify track ID for audio playback embed (22-char alphanumeric)"
-    },
-    "spotify_preview_url": {
-      "type": "string",
-      "description": "Spotify 30-second preview URL (if available)"
-    },
-    "album_art_url": {
-      "type": "string",
-      "description": "Album artwork URL from Spotify"
-    },
     "youtube_video_id": {
       "type": "string",
-      "description": "YouTube video ID \u2014 used only for user-selected manual tracks"
+      "description": "YouTube video ID for playable embed (user-selected tracks)"
     },
     "thumbnail_url": {
       "type": "string",
-      "description": "Thumbnail/album art URL"
+      "description": "YouTube thumbnail URL for user-selected tracks"
     },
     "channel_name": {
       "type": "string",
-      "description": "YouTube channel or label name"
+      "description": "YouTube channel name for user-selected tracks"
     },
     "source": {
       "type": "string",
