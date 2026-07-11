@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     const moods = safeParse(config.moods, []);
     const musicTopics = safeParse(config.music_topics, []);
     const researchSources = safeParse(config.research_sources, []);
-    const ALL_AI_AUTOMATIONS = ['Auto Research', 'Auto Develop', 'Auto Build Playlist', 'Auto Generate Images', 'Auto Assemble Packet', 'Auto Export'];
+    const ALL_AI_AUTOMATIONS = ['Auto Research', 'Auto Develop', 'Auto Build Playlist', 'Auto Generate Images', 'Auto Assemble Packet'];
     let aiAutomation = safeParse(config.ai_automation, []);
     if (!aiAutomation || aiAutomation.length === 0) {
       aiAutomation = [...ALL_AI_AUTOMATIONS];
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     const autoDevelop = aiAutomation.includes('Auto Develop');
     const autoGenerateImages = aiAutomation.includes('Auto Generate Images');
     const autoAssemblePacket = aiAutomation.includes('Auto Assemble Packet');
-    const autoExport = aiAutomation.includes('Auto Export');
+
 
     let playlistData = [];
     let researchData = [];

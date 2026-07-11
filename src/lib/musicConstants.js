@@ -52,8 +52,7 @@ export const AI_AUTOMATION_OPTIONS = [
   { key: 'Auto Develop', label: 'Auto Develop' },
   { key: 'Auto Build Playlist', label: 'Auto Build Playlist' },
   { key: 'Auto Generate Images', label: 'Auto Generate Images' },
-  { key: 'Auto Assemble Packet', label: 'Auto Assemble Packet' },
-  { key: 'Auto Export', label: 'Auto Export' }
+  { key: 'Auto Assemble Packet', label: 'Auto Assemble Packet' }
 ];
 
 export const DEFAULT_AI_AUTOMATION = [
@@ -61,8 +60,7 @@ export const DEFAULT_AI_AUTOMATION = [
   'Auto Develop',
   'Auto Build Playlist',
   'Auto Generate Images',
-  'Auto Assemble Packet',
-  'Auto Export'
+  'Auto Assemble Packet'
 ];
 
 export const RUNTIME_DEFAULTS = {
