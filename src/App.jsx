@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useParams } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import CreapdLoading from '@/components/shared/CreapdLoading';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -99,6 +99,12 @@ import ResearchArchive from '@/pages/ResearchArchive';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import Presentations from '@/pages/Presentations';
 import PresentationEditor from '@/pages/PresentationEditor';
+
+// Redirects /news/presentations/:id → /editor/:id (Navigate doesn't interpolate route params)
+const RedirectToEditor = () => {
+  const { id } = useParams();
+  return <Navigate to={`/editor/${id}`} replace />;
+};
 import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
@@ -190,7 +196,7 @@ const AuthenticatedApp = () => {
           <Route path="/news/checklist" element={<AcceptanceChecklist />} />
           <Route path="/news/settings" element={<SettingsPage />} />
           <Route path="/news/presentations" element={<Presentations />} />
-          <Route path="/news/presentations/:id" element={<Navigate to="/editor/:id" replace />} />
+          <Route path="/news/presentations/:id" element={<RedirectToEditor />} />
         </Route>
 
         {/* CREAPD Presentation Editor — standalone full-screen */}
