@@ -201,7 +201,7 @@ export default function ResearchExport() {
           }}
         >
           {assembling
-            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Assembling...</>
+            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Directing slides & generating narration...</>
             : <><Package className="w-4 h-4 mr-2" /> {packet ? 'Reassemble Packet' : 'Assemble Production Packet'}</>
           }
         </button>
