@@ -48,9 +48,14 @@ export function usePresentationPlayer(storySlides) {
       setAudioError(null);
     };
     const onEnded = () => {
-      // Advance to next slide when audio ends
-      if (currentSlideIndex < slides.length - 1) {
-        setCurrentSlideIndex(prev => prev + 1);
+      // Advance to next slide when audio ends — use refs for current values
+      const idx = slideIndexRef.current;
+      const total = (slideDurationsRef.current || []).length;
+      if (idx < total - 1) {
+        const newIdx = idx + 1;
+        setCurrentSlideIndex(newIdx);
+        // Reset to new slide's start so slideLocalTime is 0 (animations sync to new audio)
+        setCurrentTime(slideStartsRef.current[newIdx] || 0);
       } else {
         setPlaying(false);
         playingRef.current = false;
@@ -98,11 +103,18 @@ export function usePresentationPlayer(storySlides) {
   }, [playbackRate]);
 
   // When slide changes during playback, auto-play the new slide's audio
+  // Delay so the scene transition completes before speech begins — keeps audio and animations in sync
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !playing) return;
     if (audio.src) {
-      audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
+      audio.currentTime = 0;
+      const timer = setTimeout(() => {
+        if (playingRef.current) {
+          audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
+        }
+      }, 500); // Match scene transition duration
+      return () => clearTimeout(timer);
     }
   }, [currentSlideIndex]);
 
@@ -207,7 +219,9 @@ export function usePresentationPlayer(storySlides) {
   const jumpToSlide = useCallback((index) => {
     if (index < 0 || index >= slides.length) return;
     setCurrentSlideIndex(index);
-    setCurrentTime((slideStarts[index] || 0) + 1);
+    setCurrentTime((slideStarts[index] || 0));
+    const audio = audioRef.current;
+    if (audio) audio.currentTime = 0;
   }, [slides, slideStarts]);
 
   const restart = useCallback(() => {
