@@ -86,7 +86,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
   const content = element.content || '';
   const animWrap = isVisible ? animClass : '';
 
-  if (element.element_type === 'image' && element.asset_reference) {
+  if (element.element_type === 'image') {
+    // Only render if there's a real asset URL; otherwise skip (backgrounds are scene-level)
+    if (!element.asset_reference || element.asset_reference === '') return null;
     return (
       <div style={style} className={animWrap}>
         <img
@@ -97,6 +99,11 @@ export default function PresentationElement({ element, slideLocalTime }) {
         />
       </div>
     );
+  }
+
+  // Skip icon/chart/logo elements without a renderer — don't show raw content text
+  if (element.element_type === 'icon' || element.element_type === 'chart' || element.element_type === 'logo') {
+    return null;
   }
 
   if (element.element_type === 'headline') {

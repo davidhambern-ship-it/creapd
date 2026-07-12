@@ -722,7 +722,16 @@ For each scene, determine:
 - Background design (choose from the STYLE GUIDE background options — each scene MUST use a different one)
 - Layers with elements (use the layer hierarchy: background, environmental_effects, primary_imagery, secondary_imagery, graphics, text, lower_third, foreground_effects)
 
-Element types: image, headline, body_text, talking_point_card, discussion_response, lower_third, chart, logo, icon, callout, statistic, quote.
+Element types: headline, body_text, talking_point_card, discussion_response, lower_third, callout, statistic, quote.
+NOTE: Only use element type "image" when a real image asset URL is available (see AVAILABLE IMAGE ASSET above). If no image URL is available, do NOT create image elements. NEVER create image elements to represent backgrounds — backgrounds are handled by the scene-level background_design property only.
+
+CRITICAL CONTENT RULES:
+1. NEVER put background design names (e.g. "gradient_orb_background", "particle_field") as element content. These are scene-level properties, not text.
+2. NEVER create placeholder content like "test_badge_icon" or "background_image". Every element's content must be real, meaningful text from the story.
+3. When the script mentions statistics, numbers, percentages, or data points, create a "statistic" element with the ACTUAL number or data as its content (e.g. "73%", "$2.4M", "1 in 4").
+4. When the script contains a quote, create a "quote" element with the actual quoted text.
+5. Headlines must contain the actual story headline, not labels like "headline" or "title".
+6. Body text must contain actual narration or story content, not descriptions of what should appear.
 
 STYLE GUIDE — VISUAL DESIGN, ANIMATION & TYPOGRAPHY (MANDATORY):
 Each element MUST include entrance_animation, exit_animation, font_style, and color_theme. Each scene MUST include background_design. Use ONLY the values listed below.
