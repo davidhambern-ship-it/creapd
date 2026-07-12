@@ -70,9 +70,9 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
   const mc = MODE_CONFIG[mode] || MODE_CONFIG.discovery;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black flex items-center justify-center">
+    <div className="relative h-full min-h-full overflow-hidden bg-black flex items-center justify-center">
       <CyberpunkMusicBg variant="eq" />
-      <div className="relative z-10 max-w-2xl w-full px-6 py-8 max-h-screen overflow-y-auto">
+      <div className="relative z-10 max-w-2xl w-full px-6 py-4 max-h-full overflow-y-auto">
         {/* Header */}
         <div className="text-center mb-6">
           <motion.div
