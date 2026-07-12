@@ -40,7 +40,7 @@ export default function CanvasItem({
   const drag = useRef(null);
   const elRef = useRef(null);
 
-  if (!element.visible && !isSelected) return null;
+  if (element.visible === false && !isSelected) return null;
 
   const style = parseStyle(element);
 
