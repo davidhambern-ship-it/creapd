@@ -9,7 +9,6 @@ import CreaprLibrary from '@/components/creapr-library/CreaprLibrary';
 import NerveCenterBackground from '@/components/rpp/lobby/NerveCenterBackground';
 import NerveCenterTopBar from '@/components/rpp/lobby/NerveCenterTopBar';
 import NerveCenterSideRail from '@/components/rpp/lobby/NerveCenterSideRail';
-import NerveCenterBottomConsole from '@/components/rpp/lobby/NerveCenterBottomConsole';
 import ResearchProgressModal from '@/components/research/ResearchProgressModal';
 
 const STAGES = [
@@ -61,7 +60,6 @@ export default function ResearchTopics() {
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'hsl(190 80% 55%)' }} />
           </div>
         </div>
-        <NerveCenterBottomConsole />
       </div>
     );
   }
@@ -94,7 +92,6 @@ export default function ResearchTopics() {
             </div>
           </div>
         </div>
-        <NerveCenterBottomConsole />
       </div>
     );
   }
@@ -351,7 +348,6 @@ export default function ResearchTopics() {
         </div>
         <NerveCenterSideRail side="right" />
       </div>
-      <NerveCenterBottomConsole />
 
       <ResearchProgressModal
         open={!!progressTopic}
