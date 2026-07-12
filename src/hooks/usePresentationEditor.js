@@ -728,19 +728,32 @@ export function usePresentationEditor(presentationId) {
     }
   }, [isTransient, activeSlide, elements, savedElements, slides, presentationId, presentation, loadElements, transientElements, navigate]);
 
-  // ═══ AI Regenerate ═══
+  // ═══ AI Regenerate — re-directs the presentation via APD ═══
   const regenerateSlide = useCallback(async () => {
     if (!activeSlide) return;
-    toast.loading('Regenerating slide...', { id: 'regen' });
+    if (isTransient) {
+      toast.error('Save the presentation before regenerating');
+      return;
+    }
+    // Save pending changes before re-directing
+    if (dirty) await saveAll();
+    toast.loading('Regenerating via APD...', { id: 'regen' });
     try {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Regenerate this presentation slide. Current title: "${activeSlide.title}". Current body: "${activeSlide.body_text || ''}". Return improved JSON with "title" and "body_text".`,
-        response_json_schema: { type: 'object', properties: { title: { type: 'string' }, body_text: { type: 'string' } } },
+      const res = await base44.functions.invoke('directPresentation', {
+        presentation_id: presentationId,
       });
-      updateSlide({ title: res.title, body_text: res.body_text });
-      toast.success('Slide regenerated', { id: 'regen' });
-    } catch { toast.error('Regeneration failed', { id: 'regen' }); }
-  }, [activeSlide, updateSlide]);
+      const result = res.data || res;
+      if (result.error) {
+        toast.error(result.error, { id: 'regen' });
+        return;
+      }
+      // Reload the presentation to pick up the new scene graphs
+      await loadPresentation();
+      toast.success('Presentation re-directed by APD', { id: 'regen' });
+    } catch (err) {
+      toast.error('Regeneration failed: ' + (err?.message || 'unknown'), { id: 'regen' });
+    }
+  }, [activeSlide, isTransient, dirty, saveAll, presentationId, loadPresentation]);
 
   const regenerateElement = useCallback(async () => {
     const el = elements.find(e => e.id === selectedId);
@@ -872,21 +885,21 @@ export function usePresentationEditor(presentationId) {
     if (isTransient || !presentation) return;
     setRegeneratingPres(true);
     try {
-      const packageIds = parseJSON(presentation.story_package_ids, []);
-      if (packageIds.length === 0) { toast.error('Cannot regenerate: source package IDs not found'); return; }
-      const res = await base44.functions.invoke('generateStoriesPresentation', {
-        story_package_ids: packageIds,
-        production_profile: presentation.production_profile || 'news',
-        presentation_title: presentation.title,
+      // Save pending changes before re-directing
+      if (dirty) await saveAll();
+      const res = await base44.functions.invoke('directPresentation', {
+        presentation_id: presentationId,
       });
       const result = res.data || res;
-      if (result.presentation?.id) {
-        toast.success('Presentation regenerated');
-        navigate(`/editor/${result.presentation.id}`);
+      if (result.error) {
+        toast.error(result.error);
+        return;
       }
+      await loadPresentation();
+      toast.success('Presentation re-directed by APD');
     } catch { toast.error('Regeneration failed'); }
     finally { setRegeneratingPres(false); }
-  }, [isTransient, presentation, navigate]);
+  }, [isTransient, presentation, presentationId, dirty, saveAll, loadPresentation]);
 
   // ═══ Playback ═══
   const slideDuration = activeSlide

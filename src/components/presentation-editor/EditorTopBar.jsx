@@ -76,11 +76,11 @@ export default function EditorTopBar({
             )}
           </div>
 
-          <button className="cpe-tool-btn" onClick={onRegenerateSlide}>
+          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Re-direct this presentation via APD — updates scene graphs, timing, and audio sync">
             <RefreshCw className="w-4 h-4" /> Regenerate
           </button>
           {hasSelection && (
-            <button className="cpe-tool-btn" onClick={onRegenerateElement}>
+            <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected element text via AI">
               <RefreshCw className="w-3.5 h-3.5" /> Element
             </button>
           )}

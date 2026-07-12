@@ -19,10 +19,12 @@ function snap(ms) { return Math.round(ms / SNAP_MS) * SNAP_MS; }
 const TRACK_DEFS = [
   { key: 'slide', label: 'Slide', cls: 'cpe-clip-slide', editable: false },
   { key: 'transition', label: 'Trans', cls: 'cpe-clip-transition', editable: false },
-  { key: 'audio', label: 'Audio', cls: 'cpe-clip-audio', editable: true, types: ['audio'] },
+  { key: 'audio', label: 'Audio', cls: 'cpe-clip-audio', editable: false, special: 'voiceover' },
   { key: 'video', label: 'Video', cls: 'cpe-clip-video', editable: true, types: ['video'] },
   { key: 'image', label: 'Image', cls: 'cpe-clip-image', editable: true, types: ['image'] },
   { key: 'text', label: 'Text', cls: 'cpe-clip-text', editable: true, types: ['text', 'lower_third', 'caption'] },
+  { key: 'animation', label: 'Anim', cls: 'cpe-clip-anim', editable: false, special: 'animations' },
+  { key: 'effects', label: 'FX', cls: 'cpe-clip-fx', editable: false, special: 'effects' },
 ];
 
 export default function TransportBar({
@@ -39,6 +41,13 @@ export default function TransportBar({
   const dragRef = useRef(null);
   const [activeDrag, setActiveDrag] = useState(null);
 
+  // Voiceover audio from slide_timeline
+  const slideTimeline = parseTiming(slide?.slide_timeline);
+  const voiceAudioUrl = slideTimeline.voice_audio_url || slideTimeline.audio_url || null;
+  const voiceDuration = slideTimeline.duration_ms || slide?.duration_ms || duration;
+  // Sentence timeline from voice package (passed via slideTiming)
+  const sentenceTimeline = parseTiming(slideTiming.sentence_timeline);
+
   // Build tracks with clip data
   const tracks = TRACK_DEFS.map(t => {
     const items = [];
@@ -48,6 +57,70 @@ export default function TransportBar({
     if (t.key === 'transition') {
       const td = slideTiming.transition_duration || 500;
       items.push({ start: 0, end: td, label: slide?.transition || 'fade', editable: false });
+    }
+    if (t.special === 'voiceover') {
+      // Voiceover master audio clip
+      if (voiceAudioUrl) {
+        items.push({ start: 0, end: voiceDuration, label: 'Voiceover', editable: false });
+      }
+      // Audio elements (sound effects, music)
+      (elements || []).filter(el => el.type === 'audio' && el.content).forEach(el => {
+        const et = parseTiming(el.timing);
+        const start = et.start_ms ?? 0;
+        const end = et.end_ms || duration;
+        items.push({ start, end, label: (el.content || 'Audio').slice(0, 20), editable: true, element: el });
+      });
+      // Sentence markers from voice package for text-audio sync reference
+      if (Array.isArray(sentenceTimeline) && sentenceTimeline.length > 0) {
+        sentenceTimeline.slice(0, 30).forEach((s, i) => {
+          items.push({
+            start: s.start_time || 0,
+            end: s.end_time || (s.start_time || 0) + 500,
+            label: `S${i + 1}`,
+            editable: false,
+          });
+        });
+      }
+    }
+    if (t.special === 'animations') {
+      // Show element entrance animations with delay/duration
+      (elements || []).forEach(el => {
+        const anim = parseTiming(el.animation);
+        if (anim.type && anim.type !== 'none') {
+          const delay = anim.delay_ms || 0;
+          const dur = anim.duration_ms || 500;
+          items.push({
+            start: delay, end: delay + dur,
+            label: anim.type, editable: false,
+          });
+        }
+        // Also show element timing-based animations
+        const et = parseTiming(el.timing);
+        if (et.start_ms != null && et.start_ms > 0) {
+          items.push({
+            start: et.start_ms, end: (et.end_ms || et.start_ms + 500),
+            label: `${el.type}`, editable: false,
+          });
+        }
+      });
+    }
+    if (t.special === 'effects') {
+      // Show elements with special visual effects (lower_thirds, shapes, captions)
+      (elements || []).forEach(el => {
+        const style = parseTiming(el.style);
+        if (style.backgroundColor && style.backgroundColor !== 'transparent') {
+          const et = parseTiming(el.timing);
+          const start = et.start_ms ?? 0;
+          const end = et.end_ms || duration;
+          items.push({ start, end, label: el.type, editable: false });
+        }
+        if (el.type === 'lower_third' || el.type === 'caption' || el.type === 'shape') {
+          const et = parseTiming(el.timing);
+          const start = et.start_ms ?? 0;
+          const end = et.end_ms || duration;
+          items.push({ start, end, label: el.type, editable: false });
+        }
+      });
     }
     if (t.editable) {
       (elements || []).filter(el => t.types.includes(el.type)).forEach(el => {
