@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Play, Pause, Square, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
+import TimelineTrackList from './TimelineTrackList';
 
 function fmt(ms) {
   const s = Math.floor(ms / 1000);
@@ -12,11 +13,10 @@ function parseTiming(str) {
 
 const SNAP_MS = 100;
 const MIN_DURATION = 200;
-const HANDLE_PX = 7;
+const LANE_MIN_WIDTH = 600;
 
 function snap(ms, sentencePoints) {
   let snapped = Math.round(ms / SNAP_MS) * SNAP_MS;
-  // Snap to nearest sentence boundary if within 150ms — text locks to audio
   if (sentencePoints && sentencePoints.length > 0) {
     for (const sp of sentencePoints) {
       if (Math.abs(snapped - sp) < 150) { snapped = sp; break; }
@@ -24,17 +24,6 @@ function snap(ms, sentencePoints) {
   }
   return snapped;
 }
-
-const TRACK_DEFS = [
-  { key: 'slide', label: 'Slide', cls: 'cpe-clip-slide', editable: false },
-  { key: 'transition', label: 'Trans', cls: 'cpe-clip-transition', editable: false },
-  { key: 'audio', label: 'Audio', cls: 'cpe-clip-audio', editable: false, special: 'voiceover' },
-  { key: 'video', label: 'Video', cls: 'cpe-clip-video', editable: true, types: ['video'] },
-  { key: 'image', label: 'Image', cls: 'cpe-clip-image', editable: true, types: ['image'] },
-  { key: 'text', label: 'Text', cls: 'cpe-clip-text', editable: true, types: ['text', 'lower_third', 'caption'] },
-  { key: 'animation', label: 'Anim', cls: 'cpe-clip-anim', editable: false, special: 'animations' },
-  { key: 'effects', label: 'FX', cls: 'cpe-clip-fx', editable: false, special: 'effects' },
-];
 
 export default function TransportBar({
   isPlaying, currentTime, totalTime, scope,
@@ -47,102 +36,35 @@ export default function TransportBar({
   const progress = totalTime > 0 ? (currentTime / totalTime) * 100 : 0;
 
   const laneRef = useRef(null);
+  const scrollRef = useRef(null);
   const dragRef = useRef(null);
   const [activeDrag, setActiveDrag] = useState(null);
+  const [laneWidth, setLaneWidth] = useState(LANE_MIN_WIDTH);
 
-  // Voiceover audio from slide_timeline
+  // Voiceover + sentence data
   const slideTimeline = parseTiming(slide?.slide_timeline);
-  const voiceAudioUrl = slideTimeline.voice_audio_url || slideTimeline.audio_url || null;
   const voiceDuration = slideTimeline.duration_ms || slide?.duration_ms || duration;
-  // Sentence timeline — may be an array (from APD) or a JSON string
   const rawSentences = slideTimeline.sentence_timeline;
   const sentenceTimeline = Array.isArray(rawSentences)
     ? rawSentences
     : (typeof rawSentences === 'string' ? parseTiming(rawSentences) : []);
-  // Sentence boundary snap points — text clips lock to these when dragging
   const sentencePoints = Array.isArray(sentenceTimeline)
     ? sentenceTimeline.map(s => s.start_time || 0)
     : [];
 
-  // Build tracks with clip data
-  const tracks = TRACK_DEFS.map(t => {
-    const items = [];
-    if (t.key === 'slide') {
-      items.push({ start: 0, end: duration, label: slide?.title?.slice(0, 24) || 'Slide', editable: false });
-    }
-    if (t.key === 'transition') {
-      const td = slideTiming.transition_duration || 500;
-      items.push({ start: 0, end: td, label: slide?.transition || 'fade', editable: false });
-    }
-    if (t.special === 'voiceover') {
-      // Voiceover master audio clip
-      if (voiceAudioUrl) {
-        items.push({ start: 0, end: voiceDuration, label: 'Voiceover', editable: false });
-      }
-      // Audio elements (sound effects, music) — editable
-      (elements || []).filter(el => el.type === 'audio' && el.content).forEach(el => {
-        const et = parseTiming(el.timing);
-        const start = et.start_ms ?? 0;
-        const end = et.end_ms || duration;
-        items.push({ start, end, label: (el.content || 'Audio').slice(0, 20), editable: true, element: el, clipType: 'timing' });
-      });
-      // Sentence markers from voice package for text-audio sync reference
-      if (Array.isArray(sentenceTimeline) && sentenceTimeline.length > 0) {
-        sentenceTimeline.slice(0, 30).forEach((s, i) => {
-          items.push({
-            start: s.start_time || 0,
-            end: s.end_time || (s.start_time || 0) + 500,
-            label: `S${i + 1}`,
-            editable: false,
-          });
-        });
-      }
-    }
-    if (t.special === 'animations') {
-      // Editable animation clips — drag to change delay, resize to change duration
-      (elements || []).forEach(el => {
-        const anim = parseTiming(el.animation);
-        if (anim.type && anim.type !== 'none') {
-          const delay = anim.delay_ms || 0;
-          const dur = anim.duration_ms || 500;
-          items.push({
-            start: delay, end: delay + dur,
-            label: anim.type, editable: true,
-            element: el, clipType: 'animation',
-          });
-        }
-      });
-    }
-    if (t.special === 'effects') {
-      // Editable FX clips — lower thirds, captions, shapes, styled elements
-      (elements || []).forEach(el => {
-        const style = parseTiming(el.style);
-        const isFx = (style.backgroundColor && style.backgroundColor !== 'transparent')
-          || el.type === 'lower_third' || el.type === 'caption' || el.type === 'shape';
-        if (isFx) {
-          const et = parseTiming(el.timing);
-          const start = et.start_ms ?? 0;
-          const end = et.end_ms || duration;
-          items.push({ start, end, label: el.type, editable: true, element: el, clipType: 'timing' });
-        }
-      });
-    }
-    if (t.editable) {
-      (elements || []).filter(el => t.types.includes(el.type)).forEach(el => {
-        const et = parseTiming(el.timing);
-        const start = et.start_ms ?? 0;
-        const end = et.end_ms || duration;
-        items.push({
-          start, end,
-          label: (el.content || el.type).slice(0, 20),
-          editable: true,
-          element: el,
-          clipType: 'timing',
-        });
-      });
-    }
-    return { ...t, items };
-  }).filter(t => t.items.length > 0);
+  // Measure available width for the lane area
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const measure = () => {
+      const containerW = scrollRef.current.clientWidth;
+      const usable = containerW - 200; // header width
+      setLaneWidth(Math.max(LANE_MIN_WIDTH, usable));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(scrollRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   // ── Playhead scrub (click + drag ruler) ──
   const handleRulerDown = useCallback((e) => {
@@ -169,7 +91,6 @@ export default function TransportBar({
     e.preventDefault();
     if (!laneRef.current) return;
     const rect = laneRef.current.getBoundingClientRect();
-    // Push undo once at drag start (non-silent call snapshots pre-drag state)
     onUpdateElement?.(element.id, {}, {});
     dragRef.current = {
       mode, elId: element.id,
@@ -208,7 +129,6 @@ export default function TransportBar({
       }
 
       if (d.clipType === 'animation') {
-        // Update animation delay_ms and duration_ms
         const delay = newStart;
         const animDur = newEnd - newStart;
         const anim = d.origAnim;
@@ -221,7 +141,6 @@ export default function TransportBar({
           }),
         }, { silent: true });
       } else {
-        // Update element timing (start_ms, end_ms)
         onUpdateElement?.(d.elId, {
           timing: JSON.stringify({ start_ms: newStart, end_ms: newEnd }),
         }, { silent: true });
@@ -241,78 +160,26 @@ export default function TransportBar({
     };
   }, [onUpdateElement, sentencePoints]);
 
-  // Ruler tick marks
-  const tickCount = Math.min(Math.ceil(duration / 1000), 12);
-  const ticks = Array.from({ length: tickCount + 1 }, (_, i) => i * (duration / tickCount));
-
   return (
     <div className="cpe-transport">
-      {/* ── Timeline ── */}
+      {/* ── Stacked Track Timeline ── */}
       <div className="cpe-timeline-section px-3 py-1.5">
-        <div className="flex items-center justify-between mb-1">
-          <span className="cpe-timeline-label">Timeline</span>
-          <span className="cpe-time-display">{tracks.length} tracks · {fmt(duration)}</span>
-        </div>
-
-        {/* Ruler */}
-        <div className="cpe-ruler-row">
-          <span className="cpe-track-name" />
-          <div className="cpe-ruler" ref={laneRef} onMouseDown={handleRulerDown}>
-            {ticks.map((t, i) => (
-              <div key={i} className="cpe-ruler-tick" style={{ left: `${(t / duration) * 100}%` }}>
-                <span className="cpe-ruler-label">{fmt(t)}</span>
-              </div>
-            ))}
-            {/* Sentence boundary markers — snap points for text-audio sync */}
-            {sentencePoints.map((sp, i) => (
-              <div key={`s${i}`} className="cpe-sentence-marker"
-                style={{ left: `${(sp / duration) * 100}%` }}
-                title={`Sentence ${i + 1} @ ${fmt(sp)}`} />
-            ))}
-            {/* Playhead */}
-            <div className="cpe-playhead cursor-ew-resize" style={{ left: `${progress}%` }}>
-              <div className="cpe-playhead-handle" />
-            </div>
-          </div>
-        </div>
-
-        {/* Tracks */}
-        <div className="space-y-0.5 mt-0.5 max-h-28 overflow-y-auto">
-          {tracks.length === 0 && <p className="cpe-empty-text text-center py-2">No timeline data</p>}
-          {tracks.map(track => (
-            <div key={track.key} className="cpe-track-row">
-              <span className="cpe-track-name">{track.label}</span>
-              <div className="cpe-track-lane">
-                {track.items.map((item, i) => {
-                  const left = (item.start / duration) * 100;
-                  const width = Math.max(((item.end - item.start) / duration) * 100, 1.5);
-                  const isSelected = item.element && selectedId === item.element.id;
-                  const isDragging = activeDrag?.id === item.element?.id;
-
-                  return (
-                    <div
-                      key={i}
-                      className={`cpe-track-clip ${track.cls} ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${item.editable ? 'editable' : ''}`}
-                      style={{ left: `${left}%`, width: `${width}%` }}
-                      onMouseDown={item.editable ? (e) => startClipDrag(e, item.element, item, 'move') : undefined}
-                      title={item.label}
-                    >
-                      {item.editable && (
-                        <>
-                          <div className="cpe-clip-handle cpe-clip-handle-l"
-                            onMouseDown={(e) => startClipDrag(e, item.element, item, 'resize-l')} />
-                          <div className="cpe-clip-handle cpe-clip-handle-r"
-                            onMouseDown={(e) => startClipDrag(e, item.element, item, 'resize-r')} />
-                        </>
-                      )}
-                      <span className="cpe-clip-label">{item.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+        <TimelineTrackList
+          elements={elements}
+          slide={slide}
+          duration={duration}
+          selectedId={selectedId}
+          onSelectElement={onSelectElement}
+          onUpdateElement={onUpdateElement}
+          startClipDrag={startClipDrag}
+          activeDrag={activeDrag}
+          sentencePoints={sentencePoints}
+          laneWidth={laneWidth}
+          laneRef={laneRef}
+          onRulerDown={handleRulerDown}
+          currentTime={currentTime}
+          scrollRef={scrollRef}
+        />
       </div>
 
       {/* ── Transport Controls ── */}
