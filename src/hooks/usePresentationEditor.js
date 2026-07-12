@@ -219,7 +219,14 @@ export function usePresentationEditor(presentationId) {
       const ids = parseJSON(pres.slide_order || pres.story_slide_ids, []);
       const loaded = [];
       for (const sid of ids) {
-        try { loaded.push(await base44.entities.StorySlide.get(sid)); } catch {}
+        try {
+          loaded.push(await base44.entities.StorySlide.get(sid));
+        } catch {
+          try {
+            const slideResults = await base44.entities.StorySlide.filter({ id: sid }, 'slide_number', 1);
+            if (slideResults[0]) loaded.push(slideResults[0]);
+          } catch {}
+        }
       }
       setSlides(loaded);
       if (loaded.length > 0) {
