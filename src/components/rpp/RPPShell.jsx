@@ -15,6 +15,7 @@ function _departmentFromRoute(pathname) {
   if (pathname.includes('/research/dossier')) return 'Dossier';
   if (pathname.includes('/research/assets')) return 'Develop';
   if (pathname.includes('/research/export')) return 'Packet';
+  if (pathname.includes('/research/archive')) return 'Archive';
   return 'Lobby';
 }
 
