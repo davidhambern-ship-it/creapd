@@ -10,6 +10,9 @@ export function usePresentationPlayer(storySlides) {
   const audioRef = useRef(null);
   const rafRef = useRef(null);
   const playingRef = useRef(false);
+  const slideIndexRef = useRef(0);
+  const slideStartsRef = useRef([]);
+  const slideDurationsRef = useRef([]);
 
   const slides = storySlides || [];
 
@@ -65,10 +68,13 @@ export function usePresentationPlayer(storySlides) {
     };
   }, []);
 
-  // Keep playingRef in sync
+  // Keep refs in sync for the RAF loop (avoids re-creating RAF on every slide change)
   useEffect(() => {
     playingRef.current = playing;
-  }, [playing]);
+    slideIndexRef.current = currentSlideIndex;
+    slideStartsRef.current = slideStarts;
+    slideDurationsRef.current = slideDurations;
+  }, [playing, currentSlideIndex, slideStarts, slideDurations]);
 
   // Load audio when slide changes
   useEffect(() => {
@@ -100,27 +106,28 @@ export function usePresentationPlayer(storySlides) {
     }
   }, [currentSlideIndex]);
 
-  // RAF loop — advance visual timeline from audio.currentTime
+  // RAF loop — single continuous loop, reads from refs (no re-creation on slide change)
   useEffect(() => {
     if (!playing) return;
 
     const tick = () => {
       const audio = audioRef.current;
-      const slideStart = slideStarts[currentSlideIndex] || 0;
-      const slideDur = slideDurations[currentSlideIndex] || 0;
+      const idx = slideIndexRef.current;
+      const starts = slideStartsRef.current;
+      const durations = slideDurationsRef.current;
+      const slideStart = starts[idx] || 0;
+      const slideDur = durations[idx] || 0;
 
       if (audio && audio.src && !audio.error) {
-        // Audio is master timeline
         const localMs = (audio.currentTime || 0) * 1000;
         setCurrentTime(slideStart + localMs);
       } else if (audio && !audio.src) {
-        // No audio — timer fallback
         setCurrentTime(prev => {
           const localTime = prev - slideStart;
           if (localTime >= slideDur) {
-            if (currentSlideIndex < slides.length - 1) {
+            if (idx < slides.length - 1) {
               setCurrentSlideIndex(prev => prev + 1);
-              return slideStarts[currentSlideIndex + 1] || 0;
+              return (starts[idx + 1] || 0);
             }
             setPlaying(false);
             return totalDuration;
@@ -133,7 +140,7 @@ export function usePresentationPlayer(storySlides) {
 
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [playing, currentSlideIndex, slideStarts, slideDurations, slides.length, totalDuration]);
+  }, [playing, slides.length, totalDuration]);
 
   // play() calls audio.play() directly — must be in the user gesture, not a useEffect
   const play = useCallback(() => {

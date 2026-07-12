@@ -825,15 +825,7 @@ ENTRANCE ANIMATIONS — Each element MUST include one:
 - "fade_bounce" — fade in with slight bounce at end (playful elements)
 - "dissolve_in" — blur dissolve entrance (emotional transitions)
 - "typewriter" — text types on screen character-by-character (body_text, quotes, talking points — use for dramatic text reveal)
-ANIMATION VARIETY RULE: Never use the same entrance_animation for more than 2 elements in the same scene. Rotate through different animations to create choreographic rhythm. Match animation to element purpose:
-- Headlines: "slide", "slide_up", "scale_bounce"
-- Body text: "fade", "dissolve", "reveal", "typewriter"
-- Statistics: "scale", "scale_bounce", "zoom_in"
-- Images: "float", "fade", "dissolve_in"
-- Quotes: "reveal", "slide_down", "dissolve", "typewriter"
-- Lower thirds: "slide_left", "slide"
-- Callouts: "expand", "scale_bounce", "wipe"
-- Icons: "float", "scale"
+ANIMATION VARIETY RULE: Never use the same entrance_animation for more than 2 elements in the same scene. You decide which animation best fits each element — use your creative judgment to create choreographic rhythm and visual interest.
 
 EXIT ANIMATIONS:
 - "fade_out" — opacity fade-out
@@ -842,38 +834,24 @@ EXIT ANIMATIONS:
 - "scale_out" — zoom out to small
 - "dissolve_out" — blur-to-blur exit
 
-VISUAL EFFECTS — Each element MUST include a visual_effects array with at least 2 effects. This is CRITICAL — slides must look rich and polished, not flat:
-- "glass_panel" — frosted glass background with blur (cards, callouts, statistics, headlines)
-- "glow_border" — glowing colored border (headlines, callouts, statistics, talking_point_card)
-- "neon_shadow" — neon glow text shadow (headlines, statistics, emphasis text)
-- "gradient_border" — subtle gradient border (quotes, premium elements)
-- "drop_shadow" — standard drop shadow for depth (body_text, secondary content)
-- "inner_glow" — inner glow effect (panels, large cards)
-VISUAL EFFECT RULES:
-1. Headlines MUST include: ["glass_panel", "glow_border", "neon_shadow"]
-2. Statistics MUST include: ["glass_panel", "neon_shadow"]
-3. Quotes MUST include: ["glass_panel", "gradient_border"]
-4. Callouts MUST include: ["glass_panel", "glow_border"]
-5. Talking point cards MUST include: ["glass_panel", "glow_border"]
-6. Body text MUST include: ["drop_shadow"]
-7. NEVER leave visual_effects empty — every element needs visual treatment
+VISUAL EFFECTS — Each element can include a visual_effects array. Choose effects that enhance the element's communication — you decide what looks best:
+- "glass_panel" — frosted glass background with blur
+- "glow_border" — glowing colored border
+- "neon_shadow" — neon glow text shadow
+- "gradient_border" — subtle gradient border
+- "drop_shadow" — standard drop shadow for depth
+- "inner_glow" — inner glow effect
+You decide which effects (if any) to apply to each element. Not every element needs visual effects — use them where they enhance communication. An empty array is acceptable for elements that should be clean and simple.
 
-AMBIENT ANIMATIONS — Each element MUST include an ambient_animation (continuous effect that persists AFTER the entrance animation completes). This keeps slides feeling alive and dynamic — never static:
-- "none" — no ambient animation (use sparingly, only for body_text)
-- "pulse" — subtle opacity/brightness pulsing (statistics, emphasis elements)
-- "glow_breathe" — glow intensity breathing in and out (headlines, neon elements)
-- "shimmer" — light sweep across element (premium elements, awards, gold elements)
-- "subtle_float" — very subtle vertical floating (images, cards, quotes)
-- "text_shimmer" — text glow intensity pulsing (headlines, quotes)
-- "border_pulse" — border glow pulsing (callouts, cards)
-AMBIENT ANIMATION RULES:
-1. At least 60% of elements in each scene MUST have a non-"none" ambient_animation
-2. Headlines should use "glow_breathe" or "text_shimmer"
-3. Statistics should use "pulse"
-4. Quotes should use "subtle_float"
-5. Callouts should use "border_pulse"
-6. Body text can use "none" (entrance animation is sufficient)
-7. NEVER make an entire scene static — at least one element should always be moving
+AMBIENT ANIMATIONS — Each element can include an ambient_animation (continuous effect that persists AFTER the entrance animation completes). You decide which elements need ambient motion:
+- "none" — no ambient animation
+- "pulse" — subtle opacity/brightness pulsing
+- "glow_breathe" — glow intensity breathing in and out
+- "shimmer" — light sweep across element
+- "subtle_float" — very subtle vertical floating
+- "text_shimmer" — text glow intensity pulsing
+- "border_pulse" — border glow pulsing
+You decide which ambient_animation (if any) fits each element. Use "none" where stillness is appropriate. Not every element needs ambient motion — use it purposefully.
 
 FONT STYLES:
 - "font-heading" — Poppins, bold (headlines, titles)

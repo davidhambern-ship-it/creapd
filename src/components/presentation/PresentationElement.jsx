@@ -2,7 +2,6 @@ import React from 'react';
 import '@/styles/presentation-animations.css';
 import TypewriterText from '@/components/presentation/TypewriterText';
 
-// Splits text by newlines, renders each line with a staggered reveal animation
 function LineReveal({ text, staggerMs = 120 }) {
   const lines = (text || '').split('\n').filter(l => l.trim() !== '');
   if (lines.length === 0) return null;
@@ -21,7 +20,6 @@ function LineReveal({ text, staggerMs = 120 }) {
   );
 }
 
-// Helper: render text with typewriter or line-reveal based on entrance type
 function renderAnimatedText(content, entranceType, shouldShow, staggerMs = 120) {
   if (entranceType === 'typewriter') {
     return <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />;
@@ -84,47 +82,6 @@ function getColor(colorTheme) {
   return COLOR_MAP[colorTheme] || COLOR_MAP.white;
 }
 
-// Default visual effects per element type — ensures every element is visually rich
-function getDefaultVisualEffects(elementType) {
-  switch (elementType) {
-    case 'headline':       return ['glass_panel', 'glow_border', 'neon_shadow'];
-    case 'statistic':      return ['glass_panel', 'neon_shadow'];
-    case 'quote':          return ['glass_panel', 'gradient_border'];
-    case 'callout':        return ['glass_panel', 'glow_border'];
-    case 'talking_point_card':
-    case 'discussion_response':
-                           return ['glass_panel', 'glow_border'];
-    case 'body_text':      return ['drop_shadow'];
-    default:               return [];
-  }
-}
-
-// Default ambient animation per element type
-function getDefaultAmbient(elementType) {
-  switch (elementType) {
-    case 'headline':  return 'glow_breathe';
-    case 'statistic': return 'pulse';
-    case 'quote':     return 'subtle_float';
-    case 'callout':   return 'border_pulse';
-    case 'talking_point_card':
-    case 'discussion_response':
-                      return 'subtle_float';
-    default:          return 'none';
-  }
-}
-
-// Merge default effects with LLM-specified effects
-function getEffectiveVisualEffects(element) {
-  const defaults = getDefaultVisualEffects(element.element_type);
-  const specified = element.visual_effects || [];
-  return [...new Set([...defaults, ...specified])];
-}
-
-function getEffectiveAmbient(element) {
-  return element.ambient_animation || getDefaultAmbient(element.element_type);
-}
-
-// Build inline CSS from visual_effects array
 function getVisualStyles(effects, color) {
   const styles = {};
   const hasPanel = effects.includes('glass_panel') || effects.includes('glow_border') || effects.includes('gradient_border');
@@ -163,7 +120,6 @@ function getVisualStyles(effects, color) {
   return styles;
 }
 
-// CSS custom properties for ambient border pulse
 function getAmbientVars(color) {
   return {
     '--effect-color': color.border,
@@ -179,9 +135,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
   const endMs = timelineEvent.end_time || 999999;
   const isVisible = slideLocalTime >= startMs && slideLocalTime <= endMs;
 
-  if (!isVisible && !element.visibility) return null;
-
-  const shouldShow = isVisible || element.visibility;
+  // Only render when the element is in its visible time window.
+  // This ensures the entrance animation plays fresh on mount.
+  if (!isVisible) return null;
 
   const entranceAnim = element.entrance_animation?.type || 'fade';
   const fontClass = element.font_style || '';
@@ -191,7 +147,6 @@ export default function PresentationElement({ element, slideLocalTime }) {
     : (ANIMATION_CLASSES[entranceAnim] || 'animate-fade-in');
   const isTypewriter = entranceAnim === 'typewriter';
 
-  // Clamp positions to safe area
   const rawX = element.position?.x ?? 0.5;
   const rawY = element.position?.y ?? 0.5;
   const clampedX = Math.max(0.08, Math.min(0.92, rawX));
@@ -199,9 +154,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
   const clampedScale = Math.max(0.5, Math.min(1.5, element.scale || 1));
 
   const color = getColor(element.color_theme);
-  const visualEffects = getEffectiveVisualEffects(element);
+  const visualEffects = element.visual_effects || [];
   const visualStyles = getVisualStyles(visualEffects, color);
-  const ambientAnim = getEffectiveAmbient(element);
+  const ambientAnim = element.ambient_animation || 'none';
   const ambientClass = AMBIENT_CLASSES[ambientAnim] || '';
   const ambientVars = getAmbientVars(color);
 
@@ -210,17 +165,12 @@ export default function PresentationElement({ element, slideLocalTime }) {
     left: `${clampedX * 100}%`,
     top: `${clampedY * 100}%`,
     transform: `translate(-50%, -50%) scale(${clampedScale})`,
-    opacity: shouldShow ? (element.opacity || 1) : 0,
-    transition: 'opacity 0.3s ease',
+    opacity: element.opacity ?? 1,
     ...ambientVars,
   };
 
   const content = element.content || '';
-  // For typewriter, skip entrance animation class on the wrapper (TypewriterText handles its own reveal)
-  // For other types, apply entrance + ambient
-  const animWrap = shouldShow
-    ? (isTypewriter ? ambientClass : `${entranceClass} ${ambientClass}`.trim())
-    : '';
+  const animWrap = isTypewriter ? ambientClass : `${entranceClass} ${ambientClass}`.trim();
 
   // ── IMAGE ──
   if (element.element_type === 'image') {
@@ -232,13 +182,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     if (isCentered) {
       return (
         <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            opacity: shouldShow ? (element.opacity || 1) : 0,
-            transition: 'opacity 0.5s ease',
-          }}
-          className={animWrap}
+          className={`absolute inset-0 ${animWrap}`}
         >
           <img
             src={imgSrc}
@@ -246,7 +190,6 @@ export default function PresentationElement({ element, slideLocalTime }) {
             className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.85)' }}
           />
-          {/* Subtle vignette + gradient overlay for depth */}
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 40%, hsl(220 30% 4% / 0.6) 100%)', pointerEvents: 'none' }} />
         </div>
       );
@@ -271,7 +214,6 @@ export default function PresentationElement({ element, slideLocalTime }) {
     );
   }
 
-  // Skip icon/chart/logo — no renderer
   if (element.element_type === 'icon' || element.element_type === 'chart' || element.element_type === 'logo') {
     return null;
   }
@@ -285,7 +227,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           style={{ fontSize: '3.2cqw', color: color.text, textShadow: visualStyles.textShadow || `0 0 12px ${color.glow}` }}
         >
           {isTypewriter
-            ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={45} />
+            ? <TypewriterText text={content} shouldStart speedMs={45} />
             : content}
         </h2>
       </div>
@@ -303,7 +245,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           style={{ fontSize: '1.8cqw', maxWidth: '60cqw', color: color.text, textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}
         >
           {isTypewriter ? (
-            <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />
+            <TypewriterText text={content} shouldStart speedMs={35} />
           ) : useLineReveal ? (
             <LineReveal text={content} staggerMs={150} />
           ) : (
@@ -319,7 +261,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
         <div className={`${fontClass || 'font-body'} font-medium`} style={{ fontSize: '1.6cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
-          {renderAnimatedText(content, entranceAnim, shouldShow, 120)}
+          {renderAnimatedText(content, entranceAnim, true, 120)}
         </div>
       </div>
     );
@@ -329,15 +271,8 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'lower_third') {
     return (
       <div
-        style={{
-          position: 'absolute',
-          bottom: '8%',
-          left: '5%',
-          opacity: shouldShow ? 1 : 0,
-          transition: 'opacity 0.3s ease',
-          ...ambientVars,
-        }}
-        className={animWrap}
+        className={`absolute ${animWrap}`}
+        style={{ bottom: '8%', left: '5%', ...ambientVars }}
       >
         <div
           className="backdrop-blur-sm rounded-r-lg"
@@ -345,7 +280,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
         >
           <p className={`${fontClass || 'font-condensed'} font-medium`} style={{ fontSize: '1.4cqw', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
             {isTypewriter
-              ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={30} />
+              ? <TypewriterText text={content} shouldStart speedMs={30} />
               : content}
           </p>
         </div>
@@ -363,7 +298,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
             style={{ fontSize: '5cqw', color: color.text, textShadow: `0 0 16px ${color.glow}, 0 0 32px ${color.glow}` }}
           >
             {isTypewriter
-              ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={50} />
+              ? <TypewriterText text={content} shouldStart speedMs={50} />
               : content}
           </p>
         </div>
@@ -380,7 +315,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           className={`${fontClass || 'font-serif'} italic text-center`}
           style={{ fontSize: '2.2cqw', maxWidth: '55cqw', paddingLeft: '1cqw', borderLeft: `4px solid ${color.text}`, color: color.text, textShadow: `0 0 12px ${color.glow}` }}
         >
-          {renderAnimatedText(`"${quoteText}"`, entranceAnim, shouldShow, 200)}
+          {renderAnimatedText(`"${quoteText}"`, entranceAnim, true, 200)}
         </blockquote>
       </div>
     );
@@ -391,7 +326,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
         <div className={`${fontClass || 'font-body'} font-semibold text-center`} style={{ fontSize: '1.6cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
-          {renderAnimatedText(content, entranceAnim, shouldShow, 120)}
+          {renderAnimatedText(content, entranceAnim, true, 120)}
         </div>
       </div>
     );
@@ -402,7 +337,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
       <p className={`${fontClass || 'font-body'}`} style={{ fontSize: '1.5cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
         {isTypewriter
-          ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />
+          ? <TypewriterText text={content} shouldStart speedMs={35} />
           : content}
       </p>
     </div>
