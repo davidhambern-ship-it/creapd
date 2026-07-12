@@ -3,6 +3,8 @@ import { Outlet } from 'react-router-dom';
 import { getDepartmentThemeFromPath } from '@/lib/rppDepartmentThemes';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
+import RppRoomNavBar from '@/components/rpp/RppRoomNavBar';
+import RppProfileNavBar from '@/components/rpp/RppProfileNavBar';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ResearchLayout() {
@@ -22,11 +24,13 @@ export default function ResearchLayout() {
       <EnvironmentLayer profileKey="research" />
 
       <main className="rpp-workspace flex flex-col min-w-0">
+        <RppRoomNavBar />
         <div className="rpp-workspace-content flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <MobilePageShell>
             <Outlet />
           </MobilePageShell>
         </div>
+        <RppProfileNavBar />
       </main>
     </div>
   );
