@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, CheckCircle2, AlertCircle, Dices, X, OctagonX, Sparkles } from 'lucide-react';
 import WordSearch from '@/components/games/WordSearch';
 import Asteroids from '@/components/games/Asteroids';
+import Tetris from '@/components/games/Tetris';
+import Snake from '@/components/games/Snake';
 
 /**
  * GlobalBreakRoom — a reusable loading/entertainment screen for any
@@ -188,6 +190,22 @@ export default function GlobalBreakRoom({
                     <div className="text-sm font-semibold text-foreground">Asteroids</div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">Blast space rocks</div>
                   </button>
+                  <button
+                    onClick={() => setActiveGame('tetris')}
+                    className="rounded-xl p-4 border border-white/10 bg-gradient-to-br from-berna-purple/10 to-transparent hover:border-berna-purple/40 hover:bg-berna-purple/5 transition-all text-left"
+                  >
+                    <div className="text-2xl mb-2">🧱</div>
+                    <div className="text-sm font-semibold text-foreground">Tetris</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Stack the data blocks</div>
+                  </button>
+                  <button
+                    onClick={() => setActiveGame('snake')}
+                    className="rounded-xl p-4 border border-white/10 bg-gradient-to-br from-berna-emerald/10 to-transparent hover:border-berna-emerald/40 hover:bg-berna-emerald/5 transition-all text-left"
+                  >
+                    <div className="text-2xl mb-2">🐍</div>
+                    <div className="text-sm font-semibold text-foreground">Snake</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Eat & grow</div>
+                  </button>
                 </div>
                 <p className="text-center text-[10px] text-muted-foreground mt-3">
                   Games Brought To You By:{' '}
@@ -225,6 +243,8 @@ export default function GlobalBreakRoom({
                 <div className="flex justify-center">
                   {activeGame === 'wordsearch' && <WordSearch onClose={() => setActiveGame(null)} />}
                   {activeGame === 'asteroids' && <Asteroids onClose={() => setActiveGame(null)} />}
+                  {activeGame === 'tetris' && <Tetris onClose={() => setActiveGame(null)} />}
+                  {activeGame === 'snake' && <Snake onClose={() => setActiveGame(null)} />}
                 </div>
                 <p className="text-center text-[10px] text-muted-foreground mt-3">
                   Games Brought To You By:{' '}
