@@ -172,6 +172,7 @@ Deno.serve(async (req) => {
                   camera_behavior: { type: "string" },
                   camera_target: { type: "string" },
                   motion_intensity: { type: "string" },
+                  background_design: { type: "string" },
                   layers: {
                     type: "array",
                     items: {
@@ -193,6 +194,7 @@ Deno.serve(async (req) => {
                               entrance_animation: { type: "string" },
                               exit_animation: { type: "string" },
                               font_style: { type: "string" },
+                              color_theme: { type: "string" },
                               start_time: { type: "number" },
                               end_time: { type: "number" }
                             }
@@ -235,6 +237,7 @@ Deno.serve(async (req) => {
             intensity: scene.motion_intensity || 'low',
             environmental_effects: []
           },
+          background_design: scene.background_design || 'dark_gradient',
           layers: (scene.layers || []).map((layer, lIdx) => ({
             layer_id: `layer_${i + 1}_${sIdx + 1}_${lIdx}`,
             layer_type: layer.layer_type || 'background',
@@ -262,6 +265,7 @@ Deno.serve(async (req) => {
                 opacity: elem.opacity !== undefined ? elem.opacity : 1.0,
                 visibility: true,
                 font_style: elem.font_style || '',
+                color_theme: elem.color_theme || 'white',
                 entrance_animation: { type: elem.entrance_animation || 'fade', duration_ms: 500 },
                 exit_animation: { type: elem.exit_animation || 'fade', duration_ms: 500 },
                 timeline_events: [{
@@ -580,28 +584,82 @@ Generate a Scene Graph for this Story Slide. Create 2-6 Presentation Scenes base
 For each scene, determine:
 - Camera behavior (static, slow_push, pull_back, pan_left, pan_right, tilt, drift, parallax, focus_shift)
 - Motion intensity (low, medium, high)
+- Background design (choose from the STYLE GUIDE background options — each scene MUST use a different one)
 - Layers with elements (use the layer hierarchy: background, environmental_effects, primary_imagery, secondary_imagery, graphics, text, lower_third, foreground_effects)
 
 Element types: image, headline, body_text, talking_point_card, discussion_response, lower_third, chart, logo, icon, callout, statistic, quote.
 
-STYLE GUIDE — ANIMATION & TYPOGRAPHY (MANDATORY):
-Each element MUST include an entrance_animation and font_style. Use ONLY these values:
+STYLE GUIDE — VISUAL DESIGN, ANIMATION & TYPOGRAPHY (MANDATORY):
+Each element MUST include entrance_animation, exit_animation, font_style, and color_theme. Each scene MUST include background_design. Use ONLY the values listed below.
 
-Entrance Animations:
-- "fade" — opacity fade-in (default for body_text)
-- "slide" — slide in from right (for headline, talking_point_card)
-- "scale" — zoom in from small (for statistic, callout)
-- "reveal" — fade-in with upward motion (for quote)
-- "float" — gentle floating loop (for image, icon)
-- "dissolve" — blur-to-focus fade (for scene transitions)
+COLOR PALETTES — Assign each element a color_theme token:
+- "primary" — deep purple hsl(270 80% 60%) — for headlines, key callouts, branding
+- "accent" — vibrant orange hsl(25 95% 55%) — for statistics, emphasis, highlights
+- "emerald" — teal green hsl(152 60% 45%) — for positive data, success indicators
+- "cyan" — bright cyan hsl(190 80% 55%) — for technical data, charts, metrics
+- "gold" — warm gold hsl(45 95% 55%) — for premium elements, awards, achievements
+- "rose" — rose pink hsl(300 80% 60%) — for quotes, emotional content, features
+- "white" — pure white hsl(0 0% 95%) — for body text, clean readable text
+- "muted" — soft gray hsl(220 10% 65%) — for secondary text, captions, timestamps
+- "crimson" — deep red hsl(0 72% 51%) — for warnings, alerts, breaking content
+COLOR VARIETY RULE: Never assign the same color_theme to more than 60% of elements in a scene. Mix colors to create visual contrast and rhythm.
 
-Font Styles:
-- "font-heading" — Poppins, bold (for headline, title elements)
-- "font-display" — Oswald, condensed (for statistic, large numbers)
-- "font-body" — Inter, regular (for body_text, narration)
-- "font-mono" — JetBrains Mono (for data, technical labels)
+BACKGROUND DESIGNS — Each scene MUST include a background_design:
+- "gradient_orb" — soft drifting radial gradient orbs (purple/orange/emerald)
+- "particle_field" — floating particle dots rising upward
+- "grid_floor" — perspective grid floor at bottom with scan lines
+- "glassmorphism" — frosted glass panels with subtle blur
+- "neon_glow" — dark background with neon glow accents in corners
+- "scan_lines" — horizontal scan line sweep across screen
+- "circuit_pattern" — digital circuit board pattern overlay
+- "data_stream" — binary rain falling effect
+- "energy_rings" — concentric rotating energy rings
+- "gradient_mesh" — multi-color gradient mesh background
+- "dark_gradient" — simple dark gradient (navy to black)
+- "warm_gradient" — warm orange to purple gradient
+BACKGROUND VARIETY RULE: Each scene in a slide MUST use a different background_design. Never repeat the same background across scenes within a slide.
 
-VARIETY RULE: Never use the same entrance_animation for every element in a scene. Vary animations to create visual rhythm. Match font_style to the element's purpose.
+ENTRANCE ANIMATIONS — Each element MUST include one:
+- "fade" — smooth opacity fade-in (body_text, narration)
+- "slide" — slide in from right (headlines, talking_point_card)
+- "slide_left" — slide in from left (lower_third, secondary content)
+- "slide_up" — slide in from bottom (statistics, key numbers)
+- "slide_down" — slide in from top (drop quotes, banners)
+- "scale" — zoom in from small to normal (statistics, callouts)
+- "scale_bounce" — zoom in with elastic bounce (emphasis elements)
+- "reveal" — fade-in with upward drift (quotes, important text)
+- "float" — gentle floating loop, continuous (images, icons)
+- "dissolve" — blur-to-focus transition (scene transitions)
+- "wipe" — left-to-right wipe reveal (data bars, charts)
+- "expand" — expand from center outward (cards, panels)
+- "zoom_in" — quick zoom from large to normal (impact moments)
+- "fade_bounce" — fade in with slight bounce at end (playful elements)
+- "dissolve_in" — blur dissolve entrance (emotional transitions)
+ANIMATION VARIETY RULE: Never use the same entrance_animation for more than 2 elements in the same scene. Rotate through different animations to create choreographic rhythm. Match animation to element purpose:
+- Headlines: "slide", "slide_up", "scale_bounce"
+- Body text: "fade", "dissolve", "reveal"
+- Statistics: "scale", "scale_bounce", "zoom_in"
+- Images: "float", "fade", "dissolve_in"
+- Quotes: "reveal", "slide_down", "dissolve"
+- Lower thirds: "slide_left", "slide"
+- Callouts: "expand", "scale_bounce", "wipe"
+- Icons: "float", "scale"
+
+EXIT ANIMATIONS:
+- "fade_out" — opacity fade-out
+- "slide_out" — slide out to right
+- "slide_out_left" — slide out to left
+- "scale_out" — zoom out to small
+- "dissolve_out" — blur-to-blur exit
+
+FONT STYLES:
+- "font-heading" — Poppins, bold (headlines, titles)
+- "font-display" — Oswald, condensed bold (statistics, large numbers, banners)
+- "font-body" — Inter, regular (body_text, narration)
+- "font-mono" — JetBrains Mono (data, technical labels, timestamps)
+- "font-serif" — Playfair Display, elegant serif (quotes, literary text)
+- "font-condensed" — Archivo, condensed (lower thirds, captions)
+FONT MATCHING RULE: Match font to content purpose. Never use font-body for headlines or font-heading for body text.
 
 Use normalized coordinates (0.0 to 1.0) for element positions. Origin is top-left (0,0), bottom-right is (1,1).
 

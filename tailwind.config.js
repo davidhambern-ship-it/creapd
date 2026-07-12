@@ -47,11 +47,13 @@ module.exports = {
         }
   		},
   		fontFamily: {
-  			heading: ['var(--font-heading)'],
-  			body: ['var(--font-body)'],
-  			display: ['var(--font-display)'],
-  			mono: ['var(--font-mono)']
-  		},
+  					heading: ['var(--font-heading)'],
+  					body: ['var(--font-body)'],
+  					display: ['var(--font-display)'],
+  					mono: ['var(--font-mono)'],
+  					serif: ['"Playfair Display"', 'serif'],
+  					condensed: ['"Archivo"', 'sans-serif']
+  				},
   		keyframes: {
   			'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },
   			'accordion-up': { from: { height: 'var(--radix-accordion-content-height)' }, to: { height: '0' } }
