@@ -348,27 +348,26 @@ Deno.serve(async (req) => {
         slide_id: `slide_${i + 1}`,
         story_package_id: pkg.id,
         voice_package_id: vp.id,
-        scenes: (sceneGraphData.scenes || []).slice(0, 5).map((scene, sIdx) => ({
+        scenes: (sceneGraphData.scenes || []).slice(0, 3).map((scene, sIdx) => ({
           scene_id: scene.scene_id || `scene_${i + 1}_${sIdx + 1}`,
           scene_order: scene.scene_order || sIdx + 1,
           scene_type: scene.scene_type || 'emphasis_text',
-          scene_purpose: (scene.scene_purpose || '').substring(0, 200),
+          scene_purpose: (scene.scene_purpose || '').substring(0, 100),
           scene_start_time: scene.scene_start_time || 0,
           scene_end_time: scene.scene_end_time || totalDurationMs,
           scene_duration: (scene.scene_end_time || totalDurationMs) - (scene.scene_start_time || 0),
           camera_state: {
             behavior: scene.camera_behavior || 'static',
-            target: scene.camera_target || '',
+            target: (scene.camera_target || '').substring(0, 50),
           },
           motion_state: {
             intensity: scene.motion_intensity || 'low',
-            environmental_effects: [],
           },
-          layers: (scene.layers || []).slice(0, 5).map((layer, lIdx) => ({
+          layers: (scene.layers || []).slice(0, 3).map((layer, lIdx) => ({
             layer_id: `layer_${i + 1}_${sIdx + 1}_${lIdx}`,
             layer_type: layer.layer_type || 'background',
             z_order: layer.z_order !== undefined ? layer.z_order : lIdx,
-            elements: (layer.elements || []).slice(0, 4).map((elem, eIdx) => {
+            elements: (layer.elements || []).slice(0, 3).map((elem, eIdx) => {
               let assetRef = null;
               let assetId = null;
               if (elem.element_type === 'image') {
@@ -384,7 +383,7 @@ Deno.serve(async (req) => {
               return {
                 element_id: `elem_${i + 1}_${sIdx + 1}_${lIdx}_${eIdx}`,
                 element_type: elem.element_type || 'body_text',
-                content: (elem.content || '').substring(0, 300),
+                content: (elem.content || '').substring(0, 150),
                 position: { x: elem.position_x !== undefined ? elem.position_x : 0.5, y: elem.position_y !== undefined ? elem.position_y : 0.5 },
                 scale: elem.scale !== undefined ? elem.scale : 1.0,
                 rotation: 0,
@@ -403,29 +402,41 @@ Deno.serve(async (req) => {
             }),
           })),
         })),
-        decision_rationale: (sceneGraphData.decision_rationale || '').substring(0, 500),
+        decision_rationale: (sceneGraphData.decision_rationale || '').substring(0, 200),
         confidence_score: sceneGraphData.confidence_score || 80,
       };
 
-      // ── Hard size limit: if scene graph exceeds 40KB, aggressively truncate ──
+      // ── Hard size limit: keep scene graph under 25KB ──
       let sceneGraphStr = JSON.stringify(sceneGraph);
-      if (sceneGraphStr.length > 40000) {
+      if (sceneGraphStr.length > 25000) {
         for (const scene of sceneGraph.scenes) {
+          scene.scene_purpose = (scene.scene_purpose || '').substring(0, 50);
+          scene.camera_state.target = (scene.camera_state.target || '').substring(0, 20);
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
-              if (elem.content) elem.content = elem.content.substring(0, 100);
+              if (elem.content) elem.content = elem.content.substring(0, 80);
             }
           }
         }
-        sceneGraph.decision_rationale = sceneGraph.decision_rationale.substring(0, 200);
+        sceneGraph.decision_rationale = (sceneGraph.decision_rationale || '').substring(0, 100);
         sceneGraphStr = JSON.stringify(sceneGraph);
       }
-      if (sceneGraphStr.length > 40000) {
-        // Still too large — strip element content entirely, keep structure only
+      if (sceneGraphStr.length > 25000) {
+        // Emergency: strip all non-essential fields, keep only structure
         for (const scene of sceneGraph.scenes) {
+          delete scene.scene_purpose;
+          delete scene.scene_duration;
+          scene.camera_state = { behavior: scene.camera_state?.behavior || 'static' };
+          scene.motion_state = { intensity: scene.motion_state?.intensity || 'low' };
           for (const layer of (scene.layers || [])) {
+            delete layer.layer_id;
             for (const elem of (layer.elements || [])) {
-              if (elem.element_type !== 'image') elem.content = (elem.content || '').substring(0, 50);
+              elem.content = (elem.content || '').substring(0, 30);
+              delete elem.rotation;
+              delete elem.visibility;
+              delete elem.exit_animation;
+              delete elem.asset_id;
+              if (elem.timeline_events) elem.timeline_events = elem.timeline_events.slice(0, 1);
             }
           }
         }
