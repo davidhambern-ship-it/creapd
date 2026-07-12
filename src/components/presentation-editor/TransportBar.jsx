@@ -19,6 +19,7 @@ function snap(ms) { return Math.round(ms / SNAP_MS) * SNAP_MS; }
 const TRACK_DEFS = [
   { key: 'slide', label: 'Slide', cls: 'cpe-clip-slide', editable: false },
   { key: 'transition', label: 'Trans', cls: 'cpe-clip-transition', editable: false },
+  { key: 'audio', label: 'Audio', cls: 'cpe-clip-audio', editable: true, types: ['audio'] },
   { key: 'video', label: 'Video', cls: 'cpe-clip-video', editable: true, types: ['video'] },
   { key: 'image', label: 'Image', cls: 'cpe-clip-image', editable: true, types: ['image'] },
   { key: 'text', label: 'Text', cls: 'cpe-clip-text', editable: true, types: ['text', 'lower_third', 'caption'] },
