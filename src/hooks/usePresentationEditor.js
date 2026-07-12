@@ -41,6 +41,7 @@ export function usePresentationEditor(presentationId) {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [presenting, setPresenting] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   // Transient mode: per-slide element cache (slide temp-id → elements[])
   const [transientElements, setTransientElements] = useState({});
@@ -199,8 +200,21 @@ export function usePresentationEditor(presentationId) {
     }
 
     setLoading(true);
+    setLoadError(null);
     try {
-      const pres = await base44.entities.StoriesPresentation.get(presentationId);
+      let pres;
+      try {
+        pres = await base44.entities.StoriesPresentation.get(presentationId);
+      } catch {
+        // Fallback: filter by ID in case .get() is unavailable
+        const results = await base44.entities.StoriesPresentation.filter({ id: presentationId }, '-created_date', 1);
+        pres = results?.[0];
+      }
+      if (!pres) {
+        setLoadError('Presentation not found in database');
+        setLoading(false);
+        return;
+      }
       setPresentation(pres);
       const ids = parseJSON(pres.slide_order || pres.story_slide_ids, []);
       const loaded = [];
@@ -212,7 +226,8 @@ export function usePresentationEditor(presentationId) {
         setActiveIndex(0);
         await loadElements(loaded[0]);
       }
-    } catch {
+    } catch (err) {
+      setLoadError(err?.message || 'Failed to load presentation');
       toast.error('Failed to load presentation');
     } finally {
       setLoading(false);
@@ -927,7 +942,7 @@ export function usePresentationEditor(presentationId) {
   return {
     CANVAS_W, CANVAS_H,
     presentation, slides, activeSlide, activeIndex, elements, selectedId, selectedElement,
-    zoom, setZoom, mode, setMode, loading, saving, dirty, presenting, setPresenting,
+    zoom, setZoom, mode, setMode, loading, loadError, saving, dirty, presenting, setPresenting,
     isPlaying, currentTime, scope, setScope, totalTime, slideDuration,
     selectSlide, updateElement, deleteElement, duplicateElement, addElement, bringForward, sendBackward,
     updateSlide, updatePresentation, addSlide, duplicateSlide, deleteSlide, reorderSlides,

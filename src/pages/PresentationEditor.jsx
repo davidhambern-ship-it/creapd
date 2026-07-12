@@ -60,6 +60,20 @@ export default function PresentationEditor() {
       <div className="cpe-loading-overlay">
         <div className="cpe-empty">
           <p className="cpe-empty-text">Presentation not found</p>
+          {ed.loadError && (
+            <p className="text-xs text-muted-foreground mt-2 max-w-md">{ed.loadError}</p>
+          )}
+          {id && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Retry
+            </button>
+          )}
+          {!id && (
+            <p className="text-xs text-muted-foreground mt-2">No presentation ID provided</p>
+          )}
         </div>
       </div>
     );
