@@ -38,7 +38,27 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
   if (!element.visible && !isSelected) return null;
 
   const style = parseStyle(element);
+
+  // ── Timeline sync: parse timing & animation config ──
+  const timing = (() => { try { return JSON.parse(element.timing || '{}'); } catch { return {}; } })();
+  const animConfig = (() => { try { return JSON.parse(element.animation || '{}'); } catch { return {}; } })();
+  const startMs = timing.start_ms ?? 0;
+  const endMs = timing.end_ms || 0;
+  const hasTiming = !!element.timing;
+  const animDelayMs = animConfig.delay_ms ?? startMs;
+
+  // Determine visibility based on playhead position
+  const playbackActive = (isPlaying || currentTime > 0) && !previewMode;
+  const beforeEnter = hasTiming && currentTime < animDelayMs;
+  const afterExit = hasTiming && endMs > 0 && currentTime > endMs;
+
+  // Hide element if outside its timing window during playback/scrub
+  if (playbackActive && hasTiming && (beforeEnter || afterExit) && !isSelected) return null;
+
+  // Animation: when playing with timing, element mounts at the right time,
+  // so CSS animation fires on mount — override delay to 0
   const anim = isPlaying ? getAnimStyle(element) : null;
+  const animDelayStr = (isPlaying && hasTiming) ? '0ms' : (anim?.delay || '0ms');
 
   const startDrag = (e, action, handle) => {
     if (element.locked || editing || previewMode) return;
@@ -133,7 +153,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
 
   return (
     <div
-      style={anim ? { ...elStyle, animationDelay: anim.delay, animationFillMode: 'backwards' } : elStyle}
+      style={anim ? { ...elStyle, animationDelay: animDelayStr, animationFillMode: 'backwards' } : elStyle}
       onMouseDown={(e) => startDrag(e, 'drag')}
       onDoubleClick={() => {
         if (TEXT_TYPES.includes(element.type) && !element.locked && !previewMode) setEditing(true);

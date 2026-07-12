@@ -144,12 +144,23 @@ export default function TransportBar({
     return { ...t, items };
   }).filter(t => t.items.length > 0);
 
-  // ── Playhead scrub (click ruler) ──
-  const handleRulerClick = useCallback((e) => {
+  // ── Playhead scrub (click + drag ruler) ──
+  const handleRulerDown = useCallback((e) => {
     if (!laneRef.current) return;
+    e.preventDefault();
     const rect = laneRef.current.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    onScrub(ratio * totalTime);
+    const scrub = (clientX) => {
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      onScrub(ratio * totalTime);
+    };
+    scrub(e.clientX);
+    const onMove = (ev) => scrub(ev.clientX);
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }, [onScrub, totalTime]);
 
   // ── Clip drag start ──
@@ -246,7 +257,7 @@ export default function TransportBar({
         {/* Ruler */}
         <div className="cpe-ruler-row">
           <span className="cpe-track-name" />
-          <div className="cpe-ruler" ref={laneRef} onMouseDown={handleRulerClick}>
+          <div className="cpe-ruler" ref={laneRef} onMouseDown={handleRulerDown}>
             {ticks.map((t, i) => (
               <div key={i} className="cpe-ruler-tick" style={{ left: `${(t / duration) * 100}%` }}>
                 <span className="cpe-ruler-label">{fmt(t)}</span>
@@ -259,7 +270,7 @@ export default function TransportBar({
                 title={`Sentence ${i + 1} @ ${fmt(sp)}`} />
             ))}
             {/* Playhead */}
-            <div className="cpe-playhead" style={{ left: `${progress}%` }}>
+            <div className="cpe-playhead cursor-ew-resize" style={{ left: `${progress}%` }}>
               <div className="cpe-playhead-handle" />
             </div>
           </div>
