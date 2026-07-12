@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Play, Pause, Square, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
+import { Play, Pause, Square, SkipBack, SkipForward, RotateCcw, Repeat, ChevronLeft, ChevronRight, Gauge } from 'lucide-react';
 import TimelineTrackList from './TimelineTrackList';
+import TimelineToolbar from './TimelineToolbar';
+import { PLAYBACK_SPEEDS } from '@/lib/animationPresets';
 
 function fmt(ms) {
   const s = Math.floor(ms / 1000);
@@ -31,7 +33,22 @@ export default function TransportBar({
   slide, elements,
   onUpdateElement, onSelectElement, selectedId,
   timelineMode,
+  playbackSpeed, setPlaybackSpeed,
+  loop, setLoop,
+  onFrameStepForward, onFrameStepBackward,
 }) {
+  const isExpanded = timelineMode === 'expanded';
+
+  // ── Timeline Toolbar state ──
+  const [rippleEnabled, setRippleEnabled] = useState(false);
+  const [tlSnapEnabled, setTlSnapEnabled] = useState(true);
+  const [magnetEnabled, setMagnetEnabled] = useState(true);
+  const [trackHeight, setTrackHeight] = useState('normal'); // compact | normal | tall
+  const [timelineZoom, setTimelineZoom] = useState(1);
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const [collapseAllSignal, setCollapseAllSignal] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [trackFilter, setTrackFilter] = useState('all');
   const slideTiming = parseTiming(slide?.timing);
   const duration = slideTiming.duration_ms || slide?.duration_ms || 5000;
   const progress = totalTime > 0 ? (currentTime / totalTime) * 100 : 0;
@@ -161,8 +178,40 @@ export default function TransportBar({
     };
   }, [onUpdateElement, sentencePoints]);
 
+  const remainingTime = Math.max(0, totalTime - currentTime);
+  const frameCount = Math.floor(currentTime / (1000 / 30));
+
   return (
     <div className="cpe-transport">
+      {/* ── Timeline Toolbar (Animate Mode) ── */}
+      {isExpanded && (
+        <TimelineToolbar
+          rippleEnabled={rippleEnabled}
+          onToggleRipple={() => setRippleEnabled(v => !v)}
+          snapEnabled={tlSnapEnabled}
+          onToggleSnap={() => setTlSnapEnabled(v => !v)}
+          magnetEnabled={magnetEnabled}
+          onToggleMagnet={() => setMagnetEnabled(v => !v)}
+          trackHeight={trackHeight}
+          onTrackHeightChange={() => setTrackHeight(h => h === 'compact' ? 'normal' : h === 'normal' ? 'tall' : 'compact')}
+          onExpandAll={() => setExpandAllSignal(s => s + 1)}
+          onCollapseAll={() => setCollapseAllSignal(s => s + 1)}
+          timelineZoom={timelineZoom}
+          onTimelineZoomChange={setTimelineZoom}
+          onJumpToStart={() => onScrub(0)}
+          onJumpToEnd={() => onScrub(totalTime)}
+          loopEnabled={loop}
+          onToggleLoop={() => setLoop(v => !v)}
+          onFrameStepForward={onFrameStepForward}
+          onFrameStepBackward={onFrameStepBackward}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          trackFilter={trackFilter}
+          onTrackFilterChange={setTrackFilter}
+          onAddMarker={() => {}}
+        />
+      )}
+
       {/* ── Stacked Track Timeline ── */}
       <div className="cpe-timeline-section px-3 py-1.5">
         <TimelineTrackList
@@ -181,22 +230,57 @@ export default function TransportBar({
           currentTime={currentTime}
           scrollRef={scrollRef}
           forcedCompactMode={timelineMode === 'expanded' ? false : timelineMode === 'compact' ? true : undefined}
+          expandAllSignal={expandAllSignal}
+          collapseAllSignal={collapseAllSignal}
+          trackHeightMode={trackHeight}
+          searchQuery={searchQuery}
+          trackFilter={trackFilter}
         />
       </div>
 
       {/* ── Transport Controls ── */}
-      <div className="flex items-center gap-2 px-3 py-2">
+      <div className="cpe-transport-controls">
         <div className="flex items-center gap-0.5">
           <button className="cpe-icon-btn" onClick={onPrev} title="Previous"><SkipBack className="w-4 h-4" /></button>
+          {isExpanded && (
+            <button className="cpe-icon-btn" onClick={onFrameStepBackward} title="Frame Back"><ChevronLeft className="w-4 h-4" /></button>
+          )}
           {isPlaying ? (
             <button className="cpe-play-btn" onClick={onPause} title="Pause"><Pause className="w-5 h-5" /></button>
           ) : (
             <button className="cpe-play-btn" onClick={onPlay} title="Play"><Play className="w-5 h-5" /></button>
           )}
+          {isExpanded && (
+            <button className="cpe-icon-btn" onClick={onFrameStepForward} title="Frame Forward"><ChevronRight className="w-4 h-4" /></button>
+          )}
           <button className="cpe-icon-btn" onClick={onStop} title="Stop"><Square className="w-4 h-4" /></button>
           <button className="cpe-icon-btn" onClick={onRestart} title="Restart"><RotateCcw className="w-4 h-4" /></button>
           <button className="cpe-icon-btn" onClick={onNext} title="Next"><SkipForward className="w-4 h-4" /></button>
+          {isExpanded && (
+            <button
+              className={`cpe-icon-btn ${loop ? 'active' : ''}`}
+              onClick={() => setLoop(v => !v)}
+              title="Loop"
+            >
+              <Repeat className="w-4 h-4" />
+            </button>
+          )}
         </div>
+
+        {isExpanded && (
+          <div className="cpe-playback-speed">
+            <Gauge className="w-3 h-3" />
+            <select
+              value={playbackSpeed}
+              onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+              className="cpe-speed-select"
+            >
+              {PLAYBACK_SPEEDS.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <span className="cpe-time-display w-10 text-right">{fmt(currentTime)}</span>
         <div className="cpe-scrub-bar flex-1">
@@ -208,6 +292,13 @@ export default function TransportBar({
           <div className="cpe-scrub-handle" style={{ left: `calc(${progress}% - 6px)` }} />
         </div>
         <span className="cpe-time-display w-10">{fmt(totalTime)}</span>
+
+        {isExpanded && (
+          <div className="cpe-frame-counter">
+            <span title="Frame Counter">F:{frameCount}</span>
+            <span title="Remaining Time">-{fmt(remainingTime)}</span>
+          </div>
+        )}
 
         <select value={scope} onChange={(e) => onScopeChange(e.target.value)} className="cpe-scope-select">
           <option value="slide">This Slide</option>

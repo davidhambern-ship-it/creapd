@@ -143,8 +143,17 @@ export default function EditorTopBar({
       {showAnimateTools && (
         <>
           <div className="cpe-sep" />
-          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Re-direct via APD">
-            <RefreshCw className="w-4 h-4" /> Regenerate
+          <button className="cpe-tool-btn" title="Suggest Animation" onClick={() => {}}>
+            <Wand2 className="w-4 h-4" /> Suggest
+          </button>
+          <button className="cpe-tool-btn" title="Auto-Choreograph" onClick={() => {}}>
+            <Wand2 className="w-3.5 h-3.5" /> Auto-Choreograph
+          </button>
+          <button className="cpe-tool-btn" title="Match Animation Style" onClick={() => {}}>
+            <Wand2 className="w-3.5 h-3.5" /> Match Style
+          </button>
+          <button className="cpe-tool-btn" title="Auto Sync Timing" onClick={() => {}}>
+            <Wand2 className="w-3.5 h-3.5" /> Sync Timing
           </button>
           {hasSelection && (
             <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected element via AI">

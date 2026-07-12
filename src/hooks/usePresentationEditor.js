@@ -73,6 +73,8 @@ export function usePresentationEditor(presentationId) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [scope, setScope] = useState('slide');
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [loop, setLoop] = useState(false);
   const playRef = useRef(null);
   const audioObjs = useRef([]);
   const isPlayingRef = useRef(false);
@@ -1086,12 +1088,17 @@ export function usePresentationEditor(presentationId) {
     if (!isPlaying) { if (playRef.current) clearInterval(playRef.current); return; }
     playRef.current = setInterval(() => {
       setCurrentTime(t => {
-        if (t >= totalTime) { setIsPlaying(false); return 0; }
-        return t + 100;
+        const next = t + 100 * playbackSpeed;
+        if (next >= totalTime) {
+          if (loop) return 0;
+          setIsPlaying(false);
+          return totalTime;
+        }
+        return next;
       });
     }, 100);
     return () => { if (playRef.current) clearInterval(playRef.current); };
-  }, [isPlaying, totalTime]);
+  }, [isPlaying, totalTime, playbackSpeed, loop]);
 
   // Keep isPlayingRef in sync
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -1135,6 +1142,14 @@ export function usePresentationEditor(presentationId) {
     }
   }, [currentTime, isPlaying, scope]);
 
+  // Frame step (≈33ms at 30fps)
+  const frameStepForward = useCallback(() => {
+    setCurrentTime(t => Math.min(t + (1000 / 30), totalTime));
+  }, [totalTime]);
+  const frameStepBackward = useCallback(() => {
+    setCurrentTime(t => Math.max(t - (1000 / 30), 0));
+  }, []);
+
   const selectedElement = selectedId && !selectedId.startsWith('__')
     ? elements.find(e => e.id === selectedId) : null;
   const selectedElements = selectedIds.filter(id => !id.startsWith('__'))
@@ -1163,5 +1178,7 @@ export function usePresentationEditor(presentationId) {
     stop: () => { audioObjs.current.forEach(a => { a.pause(); a.currentTime = 0; }); setIsPlaying(false); setCurrentTime(0); },
     restart: () => { setCurrentTime(0); setIsPlaying(true); },
     scrub: setCurrentTime,
+    playbackSpeed, setPlaybackSpeed, loop, setLoop,
+    frameStepForward, frameStepBackward,
   };
 }

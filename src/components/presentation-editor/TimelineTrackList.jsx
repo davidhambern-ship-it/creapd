@@ -153,6 +153,8 @@ export default function TimelineTrackList({
   sentencePoints, laneWidth,
   laneRef, onRulerDown, currentTime,
   scrollRef, forcedCompactMode,
+  expandAllSignal, collapseAllSignal,
+  trackHeightMode, searchQuery, trackFilter,
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const [expandedTracks, setExpandedTracks] = useState(new Set());
@@ -165,7 +167,41 @@ export default function TimelineTrackList({
     [elements, slide, duration]
   );
 
-  const hasTimedElements = groups.some(g => g.key !== 'slide' && g.tracks.length > 0);
+  // Filter groups by trackFilter + searchQuery
+  const filteredGroups = useMemo(() => {
+    let result = groups;
+    if (trackFilter && trackFilter !== 'all') {
+      result = result.filter(g => g.key === trackFilter);
+    }
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.map(g => ({
+        ...g,
+        tracks: g.tracks.filter(t => (t.label || '').toLowerCase().includes(q)),
+      })).filter(g => g.tracks.length > 0);
+    }
+    return result;
+  }, [groups, trackFilter, searchQuery]);
+
+  const hasTimedElements = filteredGroups.some(g => g.key !== 'slide' && g.tracks.length > 0);
+
+  // Dynamic row heights
+  const rowH = trackHeightMode === 'tall' ? 48 : trackHeightMode === 'compact' ? 28 : ROW_HEIGHT;
+  const animRowH = trackHeightMode === 'tall' ? 36 : trackHeightMode === 'compact' ? 22 : ANIM_ROW_HEIGHT;
+
+  // Expand all tracks
+  useEffect(() => {
+    if (!expandAllSignal) return;
+    const allIds = new Set();
+    groups.forEach(g => g.tracks.forEach(t => { if (t.elementId) allIds.add(t.elementId); }));
+    setExpandedTracks(allIds);
+  }, [expandAllSignal, groups]);
+
+  // Collapse all tracks
+  useEffect(() => {
+    if (!collapseAllSignal) return;
+    setExpandedTracks(new Set());
+  }, [collapseAllSignal]);
 
   // Auto-expand selected element's track
   useEffect(() => {
@@ -245,7 +281,7 @@ export default function TimelineTrackList({
         </div>
 
         {/* Track groups */}
-        {groups.map(group => {
+        {filteredGroups.map(group => {
           if (group.tracks.length === 0) return null;
           const isCollapsed = collapsedGroups.has(group.key);
 
@@ -281,7 +317,7 @@ export default function TimelineTrackList({
                     <div
                       ref={isSelected ? selectedTrackRef : null}
                       className={`cpe-tl-row cpe-tl-track-row ${isSelected ? 'selected' : ''}`}
-                      style={{ height: ROW_HEIGHT }}
+                      style={{ height: rowH }}
                     >
                       {/* Track header — sticky left */}
                       <div
@@ -376,7 +412,7 @@ export default function TimelineTrackList({
                         <div
                           key={`anim-${ai}`}
                           className="cpe-tl-row cpe-tl-anim-row"
-                          style={{ height: ANIM_ROW_HEIGHT }}
+                          style={{ height: animRowH }}
                         >
                           <div
                             className="cpe-tl-anim-header"

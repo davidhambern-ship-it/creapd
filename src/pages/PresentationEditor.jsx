@@ -16,6 +16,8 @@ import ScriptPanel from '@/components/presentation-editor/ScriptPanel';
 import MediaBrowserPanel from '@/components/presentation-editor/MediaBrowserPanel';
 import PresentRehearsalBar from '@/components/presentation-editor/PresentRehearsalBar';
 import PresentationPlayer from '@/components/presentation/PresentationPlayer';
+import AnimationInspector from '@/components/presentation-editor/AnimationInspector';
+import { useAnimateShortcuts } from '@/hooks/useAnimateShortcuts';
 import '@/components/presentation-editor/cpe.css';
 import '@/components/presentation-editor/workspace.css';
 
@@ -29,6 +31,23 @@ export default function PresentationEditor() {
   const handleWorkspaceChange = useCallback((mode) => {
     changeMode(mode);
   }, [changeMode]);
+
+  // Animate Mode keyboard shortcuts
+  useAnimateShortcuts({
+    active: workspaceMode === 'animate',
+    isPlaying: ed.isPlaying,
+    onPlay: ed.play,
+    onPause: ed.pause,
+    onScrub: ed.scrub,
+    currentTime: ed.currentTime,
+    totalTime: ed.totalTime,
+    onFrameStepForward: ed.frameStepForward,
+    onFrameStepBackward: ed.frameStepBackward,
+    onSplit: () => {},
+    onDuplicate: () => ed.selectedId && ed.duplicateElement(ed.selectedId),
+    onUndo: ed.undo,
+    onRedo: ed.redo,
+  });
 
   const aiPanelOpen = workspaceMode === 'ai';
   const reviewPanelOpen = workspaceMode === 'review';
@@ -82,6 +101,16 @@ export default function PresentationEditor() {
             onUpdateSlide={ed.updateSlide}
           />
         );
+      case 'animation':
+        return ed.activeSlide ? (
+          <AnimationInspector
+            element={ed.selectedElement}
+            slideDuration={ed.slideDuration}
+            onUpdate={ed.updateElement}
+            onDuplicate={ed.duplicateElement}
+            onDelete={ed.deleteElement}
+          />
+        ) : null;
       case 'review':
         return ed.presentation ? (
           <ReviewPanel
@@ -270,6 +299,12 @@ export default function PresentationEditor() {
                 onSelectElement={ed.setSelectedId}
                 selectedId={ed.selectedId}
                 timelineMode={wsConfig.timelineMode}
+                playbackSpeed={ed.playbackSpeed}
+                setPlaybackSpeed={ed.setPlaybackSpeed}
+                loop={ed.loop}
+                setLoop={ed.setLoop}
+                onFrameStepForward={ed.frameStepForward}
+                onFrameStepBackward={ed.frameStepBackward}
               />
             </div>
           ) : null}
