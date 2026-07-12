@@ -30,6 +30,7 @@ export default function TransportBar({
   onPlay, onPause, onStop, onRestart, onPrev, onNext, onScrub, onScopeChange,
   slide, elements,
   onUpdateElement, onSelectElement, selectedId,
+  timelineMode,
 }) {
   const slideTiming = parseTiming(slide?.timing);
   const duration = slideTiming.duration_ms || slide?.duration_ms || 5000;
@@ -179,6 +180,7 @@ export default function TransportBar({
           onRulerDown={handleRulerDown}
           currentTime={currentTime}
           scrollRef={scrollRef}
+          forcedCompactMode={timelineMode === 'expanded' ? false : timelineMode === 'compact' ? true : undefined}
         />
       </div>
 

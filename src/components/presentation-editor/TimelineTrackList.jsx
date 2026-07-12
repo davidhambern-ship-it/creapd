@@ -152,11 +152,12 @@ export default function TimelineTrackList({
   startClipDrag, activeDrag,
   sentencePoints, laneWidth,
   laneRef, onRulerDown, currentTime,
-  scrollRef,
+  scrollRef, forcedCompactMode,
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const [expandedTracks, setExpandedTracks] = useState(new Set());
-  const [compactMode, setCompactMode] = useState(true);
+  const [internalCompactMode, setInternalCompactMode] = useState(true);
+  const compactMode = forcedCompactMode !== undefined ? forcedCompactMode : internalCompactMode;
   const selectedTrackRef = useRef(null);
 
   const groups = useMemo(
@@ -211,8 +212,9 @@ export default function TimelineTrackList({
         <div className="flex-1" />
         <button
           className={`cpe-tl-mode-btn ${compactMode ? '' : 'active'}`}
-          onClick={() => setCompactMode(v => !v)}
+          onClick={() => setInternalCompactMode(v => !v)}
           title={compactMode ? 'Switch to expanded mode' : 'Switch to compact mode'}
+          style={forcedCompactMode !== undefined ? { pointerEvents: 'none', opacity: 0.5 } : {}}
         >
           <Layers className="w-3 h-3" />
           {compactMode ? 'Compact' : 'Expanded'}
