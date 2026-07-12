@@ -34,7 +34,7 @@ function formatTime(ms) {
 
 export default function PresentationPlayer({ storySlides, aspectRatio }) {
   const player = usePresentationPlayer(storySlides);
-  const { currentSlide, slideLocalTime, playing, currentTime, totalDuration, currentSlideIndex, audioError, audioReady } = player;
+  const { currentSlide, slideLocalTime, playing, currentTime, totalDuration, currentSlideIndex, audioError, audioReady, audioStarted } = player;
 
   const sceneGraph = useMemo(() => {
     if (!currentSlide?.scene_graph) return null;
@@ -65,7 +65,7 @@ export default function PresentationPlayer({ storySlides, aspectRatio }) {
         {/* Scene rendering with slide transition */}
         <div key={currentSlideIndex} className={`absolute inset-0 ${transitionClass}`}>
           {activeScene ? (
-            <SceneCanvas scene={activeScene} slideLocalTime={slideLocalTime} />
+            <SceneCanvas scene={activeScene} slideLocalTime={slideLocalTime} audioStarted={audioStarted} />
           ) : (
             <SlideElementCanvas slide={currentSlide} />
           )}

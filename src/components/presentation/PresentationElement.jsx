@@ -127,13 +127,17 @@ function getAmbientVars(color) {
   };
 }
 
-export default function PresentationElement({ element, slideLocalTime }) {
+export default function PresentationElement({ element, slideLocalTime, audioStarted }) {
   const timelineEvent = element.timeline_events?.[0];
   if (!timelineEvent) return null;
 
   const startMs = timelineEvent.start_time || 0;
   const endMs = timelineEvent.end_time || 999999;
   const isVisible = slideLocalTime >= startMs && slideLocalTime <= endMs;
+
+  // Don't render until the audio has actually started playing.
+  // This prevents elements from appearing before the speech begins.
+  if (!audioStarted) return null;
 
   // Only render when the element is in its visible time window.
   // This ensures the entrance animation plays fresh on mount.
@@ -166,7 +170,6 @@ export default function PresentationElement({ element, slideLocalTime }) {
     top: `${clampedY * 100}%`,
     transform: `translate(-50%, -50%) scale(${clampedScale})`,
     opacity: element.opacity ?? 1,
-    animationDelay: isFloat ? '0ms' : '150ms',
     ...ambientVars,
   };
 
@@ -184,7 +187,6 @@ export default function PresentationElement({ element, slideLocalTime }) {
       return (
         <div
           className={`absolute inset-0 ${animWrap}`}
-          style={{ animationDelay: '150ms' }}
         >
           <img
             src={imgSrc}
@@ -274,7 +276,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div
         className={`absolute ${animWrap}`}
-        style={{ bottom: '8%', left: '5%', animationDelay: '150ms', ...ambientVars }}
+        style={{ bottom: '8%', left: '5%', ...ambientVars }}
       >
         <div
           className="backdrop-blur-sm rounded-r-lg"

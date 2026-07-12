@@ -79,7 +79,7 @@ function getCameraStyle(cameraState, sceneProgress) {
   }
 }
 
-export default function SceneCanvas({ scene, slideLocalTime }) {
+export default function SceneCanvas({ scene, slideLocalTime, audioStarted }) {
   if (!scene) return null;
 
   const sceneStart = scene.scene_start_time || 0;
@@ -141,6 +141,7 @@ export default function SceneCanvas({ scene, slideLocalTime }) {
                 key={elem.element_id}
                 element={elem}
                 slideLocalTime={slideLocalTime}
+                audioStarted={audioStarted}
               />
             ))}
           </div>

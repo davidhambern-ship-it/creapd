@@ -7,6 +7,7 @@ export function usePresentationPlayer(storySlides) {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [audioError, setAudioError] = useState(null);
   const [audioReady, setAudioReady] = useState(false);
+  const [audioStarted, setAudioStarted] = useState(false);
   const audioRef = useRef(null);
   const rafRef = useRef(null);
   const playingRef = useRef(false);
@@ -47,6 +48,8 @@ export function usePresentationPlayer(storySlides) {
       setAudioReady(true);
       setAudioError(null);
     };
+    const onPlaying = () => setAudioStarted(true);
+    const onPause = () => setAudioStarted(false);
     const onEnded = () => {
       // Advance to next slide when audio ends — use refs for current values
       const idx = slideIndexRef.current;
@@ -63,10 +66,14 @@ export function usePresentationPlayer(storySlides) {
     };
     audio.addEventListener('error', onError);
     audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('pause', onPause);
     audio.addEventListener('ended', onEnded);
     return () => {
       audio.removeEventListener('error', onError);
       audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ended', onEnded);
       audio.pause();
       audioRef.current = null;
@@ -87,6 +94,7 @@ export function usePresentationPlayer(storySlides) {
     const url = getSlideAudioUrl(currentSlide);
     const audio = audioRef.current;
     setAudioReady(false);
+    setAudioStarted(false);
     if (url) {
       audio.src = url;
       audio.load();
@@ -102,19 +110,14 @@ export function usePresentationPlayer(storySlides) {
     if (audioRef.current) audioRef.current.playbackRate = playbackRate;
   }, [playbackRate]);
 
-  // When slide changes during playback, auto-play the new slide's audio
-  // Delay so the scene transition completes before speech begins — keeps audio and animations in sync
+  // When slide changes during playback, auto-play the new slide's audio.
+  // slideLocalTime tracks audio.currentTime directly, so element animations sync to speech.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !playing) return;
     if (audio.src) {
       audio.currentTime = 0;
-      const timer = setTimeout(() => {
-        if (playingRef.current) {
-          audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
-        }
-      }, 500); // Match scene transition duration
-      return () => clearTimeout(timer);
+      audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
     }
   }, [currentSlideIndex]);
 
@@ -134,6 +137,8 @@ export function usePresentationPlayer(storySlides) {
         const localMs = (audio.currentTime || 0) * 1000;
         setCurrentTime(slideStart + localMs);
       } else if (audio && !audio.src) {
+        // No audio — use timer fallback; mark audioStarted so elements render
+        setAudioStarted(true);
         setCurrentTime(prev => {
           const localTime = prev - slideStart;
           if (localTime >= slideDur) {
@@ -252,6 +257,7 @@ export function usePresentationPlayer(storySlides) {
     restart,
     audioRef,
     audioError,
-    audioReady
+    audioReady,
+    audioStarted
   };
 }
