@@ -18,25 +18,26 @@ export default function ResearchLayout() {
 
   return (
     <div
-      className="rpp-shell"
+      className="flex flex-col h-screen overflow-hidden relative"
       style={{
         ...PRODUCTION_PROFILE_THEMES.research.vars,
         '--dept-accent': activeTheme.accentHsl,
         '--dept-ambient': activeTheme.ambientHsl,
         '--dept-glow': activeTheme.glowHsl,
+        background: '#05080c',
       }}
     >
       <EnvironmentLayer profileKey="research" />
 
-      {/* Desktop top nav — themed to Research PP cyan */}
-      <div className="hidden lg:flex absolute top-3 left-1/2 -translate-x-1/2 z-30">
+      {/* Desktop top nav — themed to Research PP cyan, in normal flow */}
+      <div className="hidden lg:flex justify-center pt-2 pb-1 shrink-0 relative z-30">
         <PPNavBar accentHsl={RESEARCH_ACCENT} />
       </div>
 
-      <main className="rpp-workspace flex flex-col min-w-0">
+      <main className="flex-1 overflow-hidden flex flex-col min-w-0 relative z-10">
         {/* Back-to-lobby link on non-lobby pages */}
         {!isLobby && (
-          <div className="px-4 md:px-6 pt-3 pb-1 shrink-0 lg:pt-12">
+          <div className="px-4 md:px-6 pt-3 pb-1 shrink-0">
             <Link
               to="/research"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -46,7 +47,7 @@ export default function ResearchLayout() {
             </Link>
           </div>
         )}
-        <div className="rpp-workspace-content flex-1 flex flex-col min-w-0 overflow-x-hidden pb-16 lg:pb-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden pb-16 lg:pb-0">
           <MobilePageShell>
             <Outlet />
           </MobilePageShell>
