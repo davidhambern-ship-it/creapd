@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
 import ResearchTrackerBar from '@/components/research/ResearchTrackerBar';
+import GlobalBreakRoom from '@/components/shared/GlobalBreakRoom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { POINT_TYPE_LABELS, POINT_TYPE_COLORS } from '@/lib/researchConstants';
@@ -34,6 +35,60 @@ export default function ResearchManager() {
   const [expanded, setExpanded] = useState(null);
   const [generating, setGenerating] = useState(null);
   const [approving, setApproving] = useState(null);
+  const [breakRoomStatus, setBreakRoomStatus] = useState(null);
+  const [breakRoomError, setBreakRoomError] = useState(null);
+
+  const researchingTopic = useMemo(
+    () => (topics || []).find(t => t.status === 'researching'),
+    [topics]
+  );
+
+  // Poll the dossier for the researching topic to detect completion
+  useEffect(() => {
+    if (!researchingTopic) {
+      setBreakRoomStatus(null);
+      setBreakRoomError(null);
+      return;
+    }
+
+    setBreakRoomStatus('loading');
+    let active = true;
+
+    const poll = async () => {
+      try {
+        const dossiers = await base44.entities.ResearchDossier.filter(
+          { topic_id: researchingTopic.id }, '-created_date', 1
+        );
+        if (!active) return;
+
+        const dossier = dossiers?.[0];
+        if (!dossier) {
+          setTimeout(poll, 3000);
+          return;
+        }
+
+        let meta = {};
+        try { meta = JSON.parse(dossier.orchestration_metadata || '{}'); } catch {}
+
+        if (dossier.status === 'ready' || meta.current_stage === 'complete') {
+          setBreakRoomStatus('ready');
+        } else if (dossier.status === 'failed') {
+          setBreakRoomStatus('failed');
+          const errors = meta.stage_errors || [];
+          setBreakRoomError(
+            errors.length > 0 ? errors[0].error : 'Research pipeline failed. You can retry from the Topics page.'
+          );
+        } else {
+          setTimeout(poll, 3000);
+        }
+      } catch {
+        if (active) setTimeout(poll, 5000);
+      }
+    };
+
+    poll();
+    return () => { active = false; };
+  }, [researchingTopic?.id]);
 
   const filteredPoints = useMemo(() => {
     let result = points;
@@ -63,6 +118,25 @@ export default function ResearchManager() {
           <p className="text-muted-foreground">No production configured.</p>
         </div>
       </div>
+    );
+  }
+
+  // Show the Break Room when a topic is actively researching
+  if (breakRoomStatus && researchingTopic) {
+    return (
+      <GlobalBreakRoom
+        title="Conducting Deep Research"
+        subtitle={researchingTopic.title}
+        status={breakRoomStatus}
+        error={breakRoomError}
+        readyTitle="Research Complete!"
+        readyText="Loading your research dossier..."
+        onComplete={() => {
+          setBreakRoomStatus(null);
+          refresh();
+        }}
+        progressTracker={<ResearchTrackerBar topics={topics} />}
+      />
     );
   }
 
