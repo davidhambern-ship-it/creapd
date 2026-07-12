@@ -4,7 +4,9 @@ import ProducerHeader from './ProducerHeader';
 import ProducerSidebar from './ProducerSidebar';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
+import MobileBottomNav from './MobileBottomNav';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
@@ -31,6 +33,7 @@ export default function ProducerLayout() {
       </div>
       <ProductionFooter variant="news" />
       </div>
+      <MobileBottomNav items={PP_NAV_ITEMS} />
       <MobileNavDrawer
         open={navDrawerOpen}
         onClose={() => setNavDrawerOpen(false)}

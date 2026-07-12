@@ -12,14 +12,7 @@ import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 import { ShowPlaybackProvider } from '@/components/music/ShowPlaybackContext';
 import MiniShowBar from '@/components/music/MiniShowBar';
-
-const MOBILE_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/music/dashboard' },
-  { icon: Compass, label: 'Discovery', path: '/music/configure' },
-  { icon: Search, label: 'Knowledge', path: '/music/research' },
-  { icon: ListMusic, label: 'Blueprint', path: '/music/playlist' },
-  { icon: Sparkles, label: 'Production', path: '/music/assets' },
-];
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Search, ListMusic, Compass, Sparkles
@@ -45,7 +38,7 @@ export default function MusicLayout() {
         <ProductionFooter variant="music" />
         </div>
         <MiniShowBar />
-        <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+        <MobileBottomNav items={PP_NAV_ITEMS} />
 
         <MobileNavDrawer
           open={mobileNavOpen}

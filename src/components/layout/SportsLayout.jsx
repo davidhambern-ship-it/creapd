@@ -16,13 +16,7 @@ import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
-const MOBILE_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/sports/dashboard' },
-  { icon: Compass, label: 'Discovery', path: '/sports/configure' },
-  { icon: Search, label: 'Knowledge', path: '/sports/research' },
-  { icon: Trophy, label: 'Blueprint', path: '/sports/games' },
-  { icon: Sparkles, label: 'Production', path: '/sports/assets' },
-];
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, Trophy, Users,
@@ -63,7 +57,7 @@ export default function SportsLayout() {
 
       <ProductionFooter variant="sports" />
       </div>
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+      <MobileBottomNav items={PP_NAV_ITEMS} />
 
       <MobileNavDrawer
         open={mobileNavOpen}

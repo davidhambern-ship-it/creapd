@@ -16,13 +16,7 @@ import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
-const MOBILE_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/spiritual/dashboard' },
-  { icon: Compass, label: 'Discovery', path: '/spiritual/configure' },
-  { icon: Search, label: 'Knowledge', path: '/spiritual/research' },
-  { icon: GraduationCap, label: 'Blueprint', path: '/spiritual/study' },
-  { icon: Sparkles, label: 'Production', path: '/spiritual/assets' },
-];
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, BookOpen,
@@ -65,7 +59,7 @@ export default function SpiritualLayout() {
 
       <ProductionFooter variant="spiritual" />
       </div>
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+      <MobileBottomNav items={PP_NAV_ITEMS} />
 
       <MobileNavDrawer
         open={mobileNavOpen}

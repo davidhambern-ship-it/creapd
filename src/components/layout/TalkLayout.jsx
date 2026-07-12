@@ -16,13 +16,7 @@ import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
-const MOBILE_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/talk/dashboard' },
-  { icon: Compass, label: 'Discovery', path: '/talk/configure' },
-  { icon: Search, label: 'Knowledge', path: '/talk/research' },
-  { icon: Lightbulb, label: 'Blueprint', path: '/talk/topics' },
-  { icon: Sparkles, label: 'Production', path: '/talk/assets' },
-];
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, Lightbulb, Users,
@@ -64,7 +58,7 @@ export default function TalkLayout() {
 
       <ProductionFooter variant="talk" />
       </div>
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+      <MobileBottomNav items={PP_NAV_ITEMS} />
 
       <MobileNavDrawer
         open={mobileNavOpen}

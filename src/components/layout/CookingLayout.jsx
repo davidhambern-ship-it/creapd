@@ -16,13 +16,7 @@ import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
-const MOBILE_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/cooking/dashboard' },
-  { icon: Compass, label: 'Discovery', path: '/cooking/configure' },
-  { icon: Search, label: 'Knowledge', path: '/cooking/research' },
-  { icon: ChefHat, label: 'Blueprint', path: '/cooking/recipes' },
-  { icon: Sparkles, label: 'Production', path: '/cooking/assets' },
-];
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, ChefHat, Carrot,
@@ -63,7 +57,7 @@ export default function CookingLayout() {
 
       <ProductionFooter variant="cooking" />
       </div>
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+      <MobileBottomNav items={PP_NAV_ITEMS} />
 
       <MobileNavDrawer
         open={mobileNavOpen}

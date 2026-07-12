@@ -16,13 +16,7 @@ import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
-const MOBILE_NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/cosmo/dashboard' },
-  { icon: Compass, label: 'Discovery', path: '/cosmo/configure' },
-  { icon: Search, label: 'Knowledge', path: '/cosmo/research' },
-  { icon: Sparkles, label: 'Blueprint', path: '/cosmo/topics' },
-  { icon: Wand2, label: 'Production', path: '/cosmo/assets' },
-];
+import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Settings2: SlidersHorizontal, Search, Sparkles, Users,
@@ -63,7 +57,7 @@ export default function CosmoLayout() {
 
       <ProductionFooter variant="cosmo" />
       </div>
-      <MobileBottomNav items={MOBILE_NAV_ITEMS} />
+      <MobileBottomNav items={PP_NAV_ITEMS} />
 
       <MobileNavDrawer
         open={mobileNavOpen}
