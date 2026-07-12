@@ -136,28 +136,45 @@ Deno.serve(async (req) => {
         }
       }
       for (const elem of sceneElements) {
-        // Match by content or element_id to existing SlideElement
+        // Clean content of any markup tags the LLM may have injected
+        const cleaned = cleanContent(elem.content || '');
+        const cleanContentStr = cleaned.content;
+
+        // Match by element_id, asset_reference, or content (cleaned)
         const match = elements.find(e =>
           e.id === elem.element_id ||
-          (elem.content && e.content && e.content.trim() === elem.content.trim()) ||
-          (elem.asset_reference && e.content && e.content === elem.asset_reference)
+          (elem.asset_reference && e.content && e.content === elem.asset_reference) ||
+          (cleanContentStr && e.content && e.content.trim() === cleanContentStr) ||
+          (cleanContentStr && e.content && cleanContent(e.content).content.trim() === cleanContentStr)
         );
         if (!match) continue;
 
         const tlEvents = elem.timeline_events || [];
         const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
         const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
-        const animType = elem.entrance_animation?.type || 'fade_in';
+        const animType = cleaned.anim || elem.entrance_animation?.type || 'fade_in';
         const animDelay = elem.entrance_animation?.delay_ms ?? startMs;
         const animDur = elem.entrance_animation?.duration_ms ?? Math.max(500, endMs - startMs);
 
         const updates = {};
+        // If the LLM polluted content with markup, write the cleaned version back
+        if (cleanContentStr && match.content !== cleanContentStr &&
+            cleanContent(match.content).content !== cleanContentStr) {
+          updates.content = cleanContentStr;
+        }
         if (startMs !== 0 || endMs !== 0) {
           updates.timing = JSON.stringify({ start_ms: startMs, end_ms: endMs });
         }
         updates.animation = JSON.stringify({
           type: animType, delay_ms: animDelay, duration_ms: animDur,
         });
+
+        // If the LLM extracted a font directive, apply it to the element style
+        if (cleaned.font) {
+          const existingStyle = parseJSON(match.style, {});
+          updates.style = JSON.stringify({ ...existingStyle, fontFamily: cleaned.font });
+        }
+
         await base44.asServiceRole.entities.SlideElement.update(match.id, updates);
       }
 
@@ -214,6 +231,23 @@ Deno.serve(async (req) => {
 
 function parseJSON(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
+}
+
+// Strip markup tags like <font:Poppins> or <anim:fade_in> from content text.
+// Also extracts font/animation directives and returns them so they can be
+// applied to the element's style/animation properties.
+function cleanContent(raw) {
+  if (!raw || typeof raw !== 'string') return { content: '', font: null, anim: null };
+  let content = raw;
+  let font = null;
+  let anim = null;
+  // Extract <font:Name> directives
+  content = content.replace(/<font:([^>]+)>/gi, (m, name) => { font = name.trim(); return ''; });
+  // Extract <anim:Type> directives
+  content = content.replace(/<anim:([^>]+)>/gi, (m, name) => { anim = name.trim(); return ''; });
+  // Strip any remaining <...> tags
+  content = content.replace(/<[^>]+>/g, '');
+  return { content: content.trim(), font, anim };
 }
 
 // ── APD Core: Direct one slide ──
@@ -333,6 +367,14 @@ Analyze this story package and direct the slide. Produce a scene_graph that:
 6. Animation duration_ms should match the sentence duration — text appears for exactly as long as the sentence is spoken
 7. If the producer has already set timing on an element, PRESERVE it unless it conflicts with the sentence timeline
 8. Varies layout from other slides — avoid repetition
+
+# CRITICAL RULES FOR THE content FIELD
+- The content field MUST contain PLAIN TEXT ONLY — the actual words that will appear on screen.
+- Do NOT include any markup tags, formatting directives, or angle brackets in content.
+- BAD: "<font:Poppins>Welcome to Our Presentation"
+- GOOD: "Welcome to Our Presentation"
+- Font family, animation type, color, etc. go in their respective JSON properties, NOT in the content text.
+- For existing elements, use their EXACT original content — do not modify or add tags to it.
 
 Element types you can use: headline, body_text, image, talking_point_card, discussion_response, lower_third, statistic, quote, caption
 

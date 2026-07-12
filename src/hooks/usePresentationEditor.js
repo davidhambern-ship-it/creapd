@@ -12,6 +12,18 @@ function parseJSON(str, fallback) {
 
 function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
+// Strip markup tags like <font:Poppins> from content, extract directives
+function cleanContent(raw) {
+  if (!raw || typeof raw !== 'string') return { content: '', font: null, anim: null };
+  let content = raw;
+  let font = null;
+  let anim = null;
+  content = content.replace(/<font:([^>]+)>/gi, (m, name) => { font = name.trim(); return ''; });
+  content = content.replace(/<anim:([^>]+)>/gi, (m, name) => { anim = name.trim(); return ''; });
+  content = content.replace(/<[^>]+>/g, '');
+  return { content: content.trim(), font, anim };
+}
+
 function generatePpId() {
   const ts = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -94,7 +106,9 @@ export function usePresentationEditor(presentationId) {
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
-              const elemContent = elem.asset_reference || elem.content || '';
+              const rawContent = elem.asset_reference || elem.content || '';
+              const cleaned = cleanContent(rawContent);
+              const elemContent = cleaned.content || rawContent;
               if (!elemContent) continue;
               const contentKey = elemContent.trim().toLowerCase();
               if (seenContent.has(contentKey)) continue;
@@ -144,7 +158,7 @@ export function usePresentationEditor(presentationId) {
                 opacity: Math.round((elem.opacity ?? 1) * 100),
                 z_index: tempZ++,
                 style: JSON.stringify({
-                  fontSize, fontFamily: 'Inter', color: '#ffffff',
+                  fontSize, fontFamily: cleaned.font || 'Inter', color: '#ffffff',
                   bold: elem.element_type === 'statistic',
                   align: 'center',
                   backgroundColor: elem.element_type === 'talking_point_card' || elem.element_type === 'discussion_response'
@@ -152,7 +166,7 @@ export function usePresentationEditor(presentationId) {
                   borderRadius: elem.element_type === 'talking_point_card' ? 12 : 0,
                   padding: elem.element_type === 'talking_point_card' ? 16 : 4,
                 }),
-                animation: JSON.stringify({ type: animType, duration_ms: 500, delay_ms: startMs }),
+                animation: JSON.stringify({ type: cleaned.anim || animType, duration_ms: 500, delay_ms: startMs }),
                 timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
                 locked: false,
                 visible: true,
