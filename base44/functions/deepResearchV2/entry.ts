@@ -3,9 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const DEFAULT_ROLES = {
   query_expansion: 'gpt_5_mini',
   discovery: 'gemini_3_flash',
-  synthesis: 'claude_sonnet_4_6',
+  synthesis: 'gemini_3_flash',
   verification: 'gemini_3_flash',
-  critical_analysis: 'gpt_5_5'
+  critical_analysis: 'gemini_3_flash'
 };
 
 async function writeStageProgress(base44, dossierId, currentStage, timings, extra = {}) {
@@ -201,12 +201,23 @@ Return JSON:
       });
       sourcesDiscovered = allSources.length;
 
-      // Cache discovery output
+      // Cache discovery output — truncate to fit field size limits
+      const trimmedFindings = allFindings.slice(0, 15).map(f => ({
+        fact: (f.fact || '').substring(0, 300),
+        source_name: (f.source_name || '').substring(0, 100),
+        source_url: (f.source_url || '').substring(0, 200)
+      }));
+      const trimmedSources = allSources.slice(0, 15).map(s => ({
+        name: (s.name || '').substring(0, 100),
+        url: (s.url || '').substring(0, 200),
+        source_type: (s.source_type || '').substring(0, 50),
+        citation: (s.citation || '').substring(0, 150)
+      }));
       await base44.entities.ResearchDossier.update(dossierId, {
         discovery_raw_data: JSON.stringify({
           sub_queries: subQueries,
-          all_findings: allFindings,
-          all_sources: allSources,
+          all_findings: trimmedFindings,
+          all_sources: trimmedSources,
           timings: { query_expansion_ms: timings.query_expansion_ms, discovery_ms: timings.discovery_ms }
         })
       });
@@ -222,7 +233,7 @@ Return JSON:
     let verifiedSources = [];
     try {
       const t2 = Date.now();
-      const topUrls = allSources.slice(0, 8).map(s => s.url).filter(Boolean);
+      const topUrls = allSources.slice(0, 5).map(s => s.url).filter(Boolean);
 
       const fetchPromises = topUrls.map(url =>
         fetchSourceContent(url).then(content => ({
@@ -252,11 +263,15 @@ Return JSON:
 
       const verifiedSourceContext = verifiedSources.length > 0
         ? verifiedSources.map((s, i) =>
-            `--- SOURCE ${i + 1}: ${s.url} ---\n${s.content.substring(0, 3000)}\n`
+            `--- SOURCE ${i + 1}: ${s.url} ---\n${s.content.substring(0, 1500)}\n`
           ).join('\n')
         : '(No sources could be fetched — relying on search-derived findings only)';
 
-      const discoveryContext = JSON.stringify(allFindings);
+      const discoveryContext = JSON.stringify(allFindings.slice(0, 15).map(f => ({
+        fact: (f.fact || '').substring(0, 250),
+        source_name: (f.source_name || ''),
+        source_url: (f.source_url || '')
+      })));
 
       const synPrompt = `You are a senior research analyst synthesizing findings from ${subQueries.length} parallel search queries and ${verifiedSources.length} verified source documents.
 
