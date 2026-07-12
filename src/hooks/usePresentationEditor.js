@@ -104,27 +104,32 @@ export function usePresentationEditor(presentationId) {
 
     const slideObj = typeof slide === 'object' ? slide : null;
 
+    // ── Try to load DB SlideElement records ──
+    // This may THROW (not just return empty) when the user lacks access due to
+    // RLS or the entity is temporarily unavailable. Wrap in its own try/catch
+    // so a failure here doesn't skip the scene_graph fallback below.
+    let dbElements = [];
     try {
-      // Try user-scoped query first
       const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
-      let dbElements = els || [];
-
-      // Fall back to service-role cache if user-scoped query returns empty (RLS)
-      if (dbElements.length === 0 && cachedElementsRef.current[slideId]) {
+      dbElements = els || [];
+      if (dbElements.length === 0 && cachedElementsRef.current[slideId]?.length > 0) {
         dbElements = cachedElementsRef.current[slideId];
       }
+    } catch {
+      dbElements = cachedElementsRef.current[slideId] || [];
+    }
 
-      // DB SlideElement records are the source of truth — the scene_graph is
-      // just a "direction" that autoBuildPacket used to create them. Merging
-      // both onto the canvas causes content duplication. Only fall back to
-      // scene_graph parsing when no DB elements exist yet.
-      if (dbElements.length > 0) {
-        const enriched = ensureTitleBodyElements(dbElements, slideObj);
-        setElements(enriched);
-        setSavedElements(dbElements);
-        return;
-      }
+    // DB elements are the source of truth — scene_graph is just a "direction"
+    // that autoBuildPacket used to create them. Only parse scene_graph when
+    // no DB elements exist yet.
+    if (dbElements.length > 0) {
+      const enriched = ensureTitleBodyElements(dbElements, slideObj);
+      setElements(enriched);
+      setSavedElements(dbElements);
+      return;
+    }
 
+    try {
       const sceneGraph = slideObj ? parseJSON(slideObj.scene_graph, null) : null;
       const merged = [];
 
@@ -246,7 +251,7 @@ export function usePresentationEditor(presentationId) {
       setElements(enriched);
       setSavedElements([]); // Scene graph temp elements — will be created on save
     } catch {
-      // If SlideElement query fails, still derive title/body from slide content
+      // If scene_graph parsing fails, derive title/body from slide content
       const fallback = ensureTitleBodyElements([], slideObj);
       setElements(fallback);
       setSavedElements([]);
