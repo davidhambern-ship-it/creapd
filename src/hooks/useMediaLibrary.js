@@ -85,8 +85,18 @@ function normalizeAsset(el, slide, url) {
       creationDate: el.creation_date || slide?.created_date || null,
     },
     generationPrompt: el.generation_prompt || null,
-    aiWorkerOrigin: el.ai_worker_origin || null,
+    aiWorkerOrigin: el.ai_worker_origin || el.ai_worker || null,
     created_date: slide?.created_date || null,
+    // Production pipeline metadata
+    createdBy: el.created_by || el.ai_worker_origin || null,
+    department: el.department || null,
+    requestedBy: el.requested_by || null,
+    productionName: el.production_name || null,
+    productionTitle: el.production_title || null,
+    reviewedBy: el.reviewed_by || null,
+    approved: el.approved ?? null,
+    status: el.status || (asset_status => asset_status)('active'),
+    slideNumbers: el.slide_numbers || [],
   };
 }
 

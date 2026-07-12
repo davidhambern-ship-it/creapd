@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Tag, Folder, Link2, Accessibility, History, Sparkles, Layers, Image as ImageIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Tag, Folder, Link2, Accessibility, History, Sparkles, Layers, Image as ImageIcon, CheckCircle2, XCircle, Building2, User, Clapperboard } from 'lucide-react';
 
 function Section({ title, icon: Icon, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -46,6 +46,12 @@ export default function AssetInspector({ asset, collections, onAddToCollection, 
       <div className="cpe-media-lib-header">
         <ImageIcon className="w-3.5 h-3.5 text-primary" />
         <span className="cpe-panel-title">Asset Inspector</span>
+        {asset.status && (
+          <span className="cpe-asset-status-badge" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.1875rem', padding: '0.0625rem 0.375rem', borderRadius: '0.5rem', fontSize: '0.5rem', fontWeight: 600, textTransform: 'capitalize', background: 'hsl(152 60% 30% / 0.15)', border: '1px solid hsl(152 60% 40% / 0.3)', color: 'hsl(152 60% 60%)' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'hsl(152 60% 50%)' }} />
+            {asset.status}
+          </span>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -59,12 +65,28 @@ export default function AssetInspector({ asset, collections, onAddToCollection, 
             )}
           </div>
           <p style={{ fontSize: '0.6875rem', fontWeight: 500, color: 'hsl(var(--cpe-text))', marginTop: '0.375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.name}</p>
+          {asset.isAIGenerated && (
+            <div className="cpe-ai-tag-row" style={{ marginTop: '0.25rem' }}>
+              <span className="cpe-ai-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem', background: 'hsl(270 80% 60% / 0.12)', borderColor: 'hsl(270 80% 60% / 0.3)', color: 'hsl(270 80% 70%)' }}>
+                <Sparkles className="w-2 h-2" /> AI Generated
+              </span>
+              {asset.approved === true && (
+                <span className="cpe-ai-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem', background: 'hsl(152 60% 30% / 0.12)', borderColor: 'hsl(152 60% 40% / 0.3)', color: 'hsl(152 60% 60%)' }}>
+                  <CheckCircle2 className="w-2 h-2" /> Approved
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <Section title="Metadata" icon={Layers} defaultOpen>
           <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Asset ID</span><span className="cpe-ai-field-value" style={{ fontSize: '0.5rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.id}</span></div>
           <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Type</span><span className="cpe-ai-field-value capitalize">{asset.type}</span></div>
           <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Source</span><span className="cpe-ai-field-value capitalize">{asset.source}</span></div>
+          {asset.createdBy && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Created By</span><span className="cpe-ai-field-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1875rem' }}><User className="w-2 h-2" /> {asset.createdBy}</span></div>}
+          {asset.department && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Department</span><span className="cpe-ai-field-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1875rem' }}><Building2 className="w-2 h-2" /> {asset.department}</span></div>}
+          {asset.requestedBy && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Requested By</span><span className="cpe-ai-field-value">{asset.requestedBy}</span></div>}
+          {asset.productionName && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Production</span><span className="cpe-ai-field-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1875rem' }}><Clapperboard className="w-2 h-2" /> {asset.productionName}</span></div>}
           {asset.resolution && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Resolution</span><span className="cpe-ai-field-value">{asset.resolution}</span></div>}
           {asset.metadata?.aspectRatio && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Aspect</span><span className="cpe-ai-field-value capitalize">{asset.metadata.aspectRatio}</span></div>}
           {asset.duration && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Duration</span><span className="cpe-ai-field-value">{asset.duration}s</span></div>}
@@ -73,7 +95,12 @@ export default function AssetInspector({ asset, collections, onAddToCollection, 
         </Section>
 
         <Section title="Usage" icon={Link2} defaultOpen>
-          <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Slides Using</span><span className="cpe-ai-field-value">{asset.usedInSlides.length}</span></div>
+          {asset.productionTitle && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Presentation</span><span className="cpe-ai-field-value" style={{ fontSize: '0.5rem', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.productionTitle}</span></div>}
+          {asset.slideNumbers && asset.slideNumbers.length > 0 ? (
+            <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Slides</span><span className="cpe-ai-field-value">{asset.slideNumbers.join(', ')}</span></div>
+          ) : (
+            <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Slides Using</span><span className="cpe-ai-field-value">{asset.usedInSlides.length}</span></div>
+          )}
           <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Usage Count</span><span className="cpe-ai-field-value">{asset.usageCount}</span></div>
           {asset.slideTitle && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Last Slide</span><span className="cpe-ai-field-value" style={{ fontSize: '0.5rem', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.slideTitle}</span></div>}
           {asset.usageCount === 0 && <p className="cpe-ai-hint" style={{ fontSize: '0.5rem', color: 'hsl(var(--cpe-text-dim) / 0.6)' }}>This asset is not currently used in any slide.</p>}
@@ -131,12 +158,20 @@ export default function AssetInspector({ asset, collections, onAddToCollection, 
         </Section>
 
         {asset.isAIGenerated && (
-          <Section title="AI Generation History" icon={Sparkles}>
-            <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Worker</span><span className="cpe-ai-field-value">{asset.aiWorkerOrigin || 'Unknown'}</span></div>
+          <Section title="AI Generation History" icon={Sparkles} defaultOpen>
+            <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Created By</span><span className="cpe-ai-field-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1875rem' }}><User className="w-2 h-2" /> {asset.createdBy || asset.aiWorkerOrigin || 'Unknown'}</span></div>
+            {asset.department && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Department</span><span className="cpe-ai-field-value">{asset.department}</span></div>}
+            {asset.requestedBy && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Requested By</span><span className="cpe-ai-field-value">{asset.requestedBy}</span></div>}
+            {asset.created_date && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Generated</span><span className="cpe-ai-field-value" style={{ fontSize: '0.5rem' }}>{new Date(asset.created_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span></div>}
+            {asset.reviewedBy && (
+              <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Reviewed</span><span className="cpe-ai-field-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1875rem' }}><CheckCircle2 className="w-2 h-2" /> {asset.reviewedBy}</span></div>
+            )}
+            <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Approved</span><span className="cpe-ai-field-value" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1875rem' }}>{asset.approved === true ? <><CheckCircle2 className="w-2.5 h-2.5" style={{ color: 'hsl(152 60% 50%)' }} /> Yes</> : asset.approved === false ? <><XCircle className="w-2.5 h-2.5" style={{ color: 'hsl(0 72% 55%)' }} /> No</> : 'Pending'}</span></div>
+            {asset.productionName && <div className="cpe-ai-field-row"><span className="cpe-ai-field-label">Production</span><span className="cpe-ai-field-value">{asset.productionName}</span></div>}
             {asset.generationPrompt && (
               <div style={{ marginTop: '0.375rem' }}>
                 <span className="cpe-ai-field-label" style={{ display: 'block', marginBottom: '0.1875rem' }}>Prompt</span>
-                <p style={{ fontSize: '0.5rem', color: 'hsl(var(--cpe-text) / 0.7)', lineHeight: 1.4, padding: '0.375rem', background: 'hsl(var(--cpe-bg) / 0.4)', borderRadius: '0.25rem' }}>{asset.generationPrompt}</p>
+                <p style={{ fontSize: '0.5rem', color: 'hsl(var(--cpe-text) / 0.7)', lineHeight: 1.4, padding: '0.375rem', background: 'hsl(var(--cpe-bg) / 0.4)', borderRadius: '0.25rem', fontStyle: 'italic' }}>"{asset.generationPrompt}"</p>
               </div>
             )}
           </Section>
