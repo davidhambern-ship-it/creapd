@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
+import { ensureTitleBodyElements } from '@/lib/canvasUtils';
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
@@ -56,6 +57,13 @@ export function usePresentationEditor(presentationId) {
   const [presenting, setPresenting] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
+  // Canvas viewport state
+  const [zoomMode, setZoomMode] = useState('fit_slide');
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showSafeAreas, setShowSafeAreas] = useState(false);
+
   // Transient mode: per-slide element cache (slide temp-id → elements[])
   const [transientElements, setTransientElements] = useState({});
 
@@ -66,6 +74,15 @@ export function usePresentationEditor(presentationId) {
   const playRef = useRef(null);
   const audioObjs = useRef([]);
   const isPlayingRef = useRef(false);
+
+  // Viewport callbacks
+  const setViewport = useCallback((z, px, py) => {
+    setZoom(z); setPanX(px); setPanY(py);
+  }, []);
+  const zoomIn = useCallback(() => { setZoomMode('manual'); setZoom(z => Math.min(z + 0.1, 4)); }, []);
+  const zoomOut = useCallback(() => { setZoomMode('manual'); setZoom(z => Math.max(z - 0.1, 0.1)); }, []);
+  const zoomFit = useCallback(() => setZoomMode('fit_slide'), []);
+  const zoom100 = useCallback(() => { setZoomMode('100'); setZoom(1); }, []);
 
   // Undo / Redo
   const [undoStack, setUndoStack] = useState([]);
@@ -87,7 +104,9 @@ export function usePresentationEditor(presentationId) {
       // both onto the canvas causes content duplication. Only fall back to
       // scene_graph parsing when no DB elements exist yet.
       if (dbElements.length > 0) {
-        setElements(dbElements);
+        const slideObj = typeof slide === 'object' ? slide : null;
+        const enriched = ensureTitleBodyElements(dbElements, slideObj);
+        setElements(enriched);
         setSavedElements(dbElements);
         return;
       }
@@ -257,7 +276,8 @@ export function usePresentationEditor(presentationId) {
         }
       }
 
-      setElements(merged);
+      const enriched = ensureTitleBodyElements(merged, slideObj);
+      setElements(enriched);
       setSavedElements([]); // Scene graph temp elements — will be created on save
     } catch {
       setElements([]);
@@ -467,28 +487,40 @@ export function usePresentationEditor(presentationId) {
     });
   }, [pushUndo]);
 
+  // ═══ Move selected (keyboard arrows) ═══
+  const moveSelected = useCallback((dx, dy) => {
+    if (selectedIds.length === 0) return;
+    pushUndo();
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.includes(el.id) || el.locked) return el;
+      return { ...el, x: (el.x || 0) + dx, y: (el.y || 0) + dy };
+    }));
+  }, [selectedIds, pushUndo]);
+
   // ═══ Clipboard ═══
   const copyElement = useCallback((elId) => {
     const el = elements.find(e => e.id === elId);
-    if (el) setClipboard(clone(el));
+    if (el) setClipboard([clone(el)]);
   }, [elements]);
 
   const cutElement = useCallback((elId) => {
     const el = elements.find(e => e.id === elId);
-    if (el) { setClipboard(clone(el)); deleteElement(elId); }
+    if (el) { setClipboard([clone(el)]); deleteElement(elId); }
   }, [elements, deleteElement]);
 
   const pasteElement = useCallback(() => {
     if (!clipboard || !activeSlide) return;
     pushUndo();
-    const pasted = {
-      ...clone(clipboard), id: `temp-${Date.now()}`,
+    const items = Array.isArray(clipboard) ? clipboard : [clipboard];
+    const newEls = items.map((item, i) => ({
+      ...clone(item),
+      id: `temp-${Date.now()}-${i}`,
       slide_id: activeSlide.id,
-      x: (clipboard.x || 0) + 30, y: (clipboard.y || 0) + 30,
-      z_index: (elements?.length || 0) + 1,
-    };
-    setElements(prev => [...prev, pasted]);
-    setSelectedId(pasted.id);
+      x: (item.x || 0) + 30, y: (item.y || 0) + 30,
+      z_index: (elements?.length || 0) + i + 1,
+    }));
+    setElements(prev => [...prev, ...newEls]);
+    setSelectedIds(newEls.map(e => e.id));
   }, [clipboard, activeSlide, elements, pushUndo]);
 
   // ═══ Multi-element alignment & distribution ═══
@@ -700,18 +732,45 @@ export function usePresentationEditor(presentationId) {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedId && !selectedId.startsWith('__')) { e.preventDefault(); deleteElement(selectedId); }
+      const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+      if (isInput && e.key !== 'Escape') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        setSelectedIds(elements.filter(el => !el.locked && el.visible !== false).map(el => el.id));
+        return;
       }
-      if (e.key === 'Escape') setSelectedId(null);
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        selectedIds.forEach(id => !id.startsWith('__') && duplicateElement(id));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        const els = elements.filter(el => selectedIds.includes(el.id));
+        if (els.length > 0) setClipboard(els.map(clone));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') { e.preventDefault(); pasteElement(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedIds.length > 0) {
+          e.preventDefault();
+          selectedIds.forEach(id => !id.startsWith('__') && deleteElement(id));
+        }
+        return;
+      }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); moveSelected(-1 * (e.shiftKey ? 10 : 1), 0); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); moveSelected(1 * (e.shiftKey ? 10 : 1), 0); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveSelected(0, -1 * (e.shiftKey ? 10 : 1)); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveSelected(0, 1 * (e.shiftKey ? 10 : 1)); return; }
+      if (e.key === 'Escape') { setSelectedIds([]); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo, selectedId, deleteElement]);
+  }, [undo, redo, saveAll, selectedIds, elements, deleteElement, duplicateElement, pasteElement, moveSelected]);
 
   // ═══ Save ═══
   const saveAll = useCallback(async () => {
@@ -735,13 +794,20 @@ export function usePresentationEditor(presentationId) {
 
         const slideIds = [];
         for (const slide of slides) {
+          // Create elements for this slide
+          const slideEls = allElements[slide.id] || [];
+
+          // Sync title/body from elements
+          const sTitleEl = slideEls.find(e => { try { return JSON.parse(e.style || '{}').role === 'title'; } catch { return false; } });
+          const sBodyEl = slideEls.find(e => { try { return JSON.parse(e.style || '{}').role === 'body'; } catch { return false; } });
+
           const createdSlide = await base44.entities.StorySlide.create({
             stories_presentation_id: created.id,
             pp_id: presentation.pp_id,
             slide_number: slideIds.length + 1,
             slide_type: slide.slide_type || 'blank',
-            title: slide.title || 'New Slide',
-            body_text: slide.body_text || '',
+            title: sTitleEl?.content ?? slide.title ?? 'New Slide',
+            body_text: sBodyEl?.content ?? slide.body_text ?? '',
             speaker_notes: slide.speaker_notes || '',
             transition: slide.transition || 'fade',
             status: 'editing',
@@ -750,8 +816,6 @@ export function usePresentationEditor(presentationId) {
           });
           slideIds.push(createdSlide.id);
 
-          // Create elements for this slide
-          const slideEls = allElements[slide.id] || [];
           for (const el of slideEls) {
             const { id: _id, ...rest } = el;
             await base44.entities.SlideElement.create({
@@ -776,8 +840,13 @@ export function usePresentationEditor(presentationId) {
       }
 
       // ── Existing save logic (persistent mode) ──
+      // Sync title/body from elements back to slide record
+      const titleEl = elements.find(e => { try { return JSON.parse(e.style || '{}').role === 'title'; } catch { return false; } });
+      const bodyEl = elements.find(e => { try { return JSON.parse(e.style || '{}').role === 'body'; } catch { return false; } });
+
       await base44.entities.StorySlide.update(activeSlide.id, {
-        title: activeSlide.title, body_text: activeSlide.body_text,
+        title: titleEl?.content ?? activeSlide.title,
+        body_text: bodyEl?.content ?? activeSlide.body_text,
         speaker_notes: activeSlide.speaker_notes, slide_type: activeSlide.slide_type,
         background: activeSlide.background, transition: activeSlide.transition,
         timing: activeSlide.timing, references: activeSlide.references,
@@ -1073,8 +1142,12 @@ export function usePresentationEditor(presentationId) {
     approvePresentation, rejectPresentation, shareToCreapd, exportMP4, regeneratePresentation,
     approving, exportJob, exportingMP4, sharing, shareResult, regeneratingPres,
     selectedId, setSelectedId, selectedIds, setSelectedIds, toggleSelection, clearSelection,
-    selectedElements, copyElement, cutElement, pasteElement,
+    selectedElements, copyElement, cutElement, pasteElement, moveSelected,
     alignElements, distributeElements,
+    // Viewport
+    zoomMode, setZoomMode, panX, panY, setViewport,
+    zoomIn, zoomOut, zoomFit, zoom100,
+    showGrid, setShowGrid, showSafeAreas, setShowSafeAreas,
     play: () => setIsPlaying(true), pause: () => setIsPlaying(false),
     stop: () => { audioObjs.current.forEach(a => { a.pause(); a.currentTime = 0; }); setIsPlaying(false); setCurrentTime(0); },
     restart: () => { setCurrentTime(0); setIsPlaying(true); },

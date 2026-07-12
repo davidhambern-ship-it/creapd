@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Trash2, Lock, Unlock } from 'lucide-react';
 
 const HANDLES = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
 const TEXT_TYPES = ['text', 'lower_third', 'caption'];
+const ASPECT_TYPES = ['image', 'video'];
 
 const ANIM_CLASS_MAP = {
   fade_in: 'animate-fade-in',
@@ -31,15 +32,19 @@ function getAnimStyle(el) {
   } catch { return null; }
 }
 
-export default function CanvasItem({ element, isSelected, zoom, previewMode, isPlaying, currentTime, onSelect, onUpdate, onDelete }) {
+export default function CanvasItem({
+  element, isSelected, zoom, previewMode, isPlaying, currentTime,
+  onSelect, onToggleSelect, onUpdate, onDelete, onDragGuides, snapEnabled,
+}) {
   const [editing, setEditing] = useState(false);
-  const drag = React.useRef(null);
+  const drag = useRef(null);
+  const elRef = useRef(null);
 
   if (!element.visible && !isSelected) return null;
 
   const style = parseStyle(element);
 
-  // ── Timeline sync: parse timing & animation config ──
+  // ── Timeline sync ──
   const timing = (() => { try { return JSON.parse(element.timing || '{}'); } catch { return {}; } })();
   const animConfig = (() => { try { return JSON.parse(element.animation || '{}'); } catch { return {}; } })();
   const startMs = timing.start_ms ?? 0;
@@ -47,24 +52,28 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
   const hasTiming = !!element.timing;
   const animDelayMs = animConfig.delay_ms ?? startMs;
 
-  // Determine visibility based on playhead position
   const playbackActive = (isPlaying || currentTime > 0) && !previewMode;
   const beforeEnter = hasTiming && currentTime < animDelayMs;
   const afterExit = hasTiming && endMs > 0 && currentTime > endMs;
-
-  // Hide element if outside its timing window during playback/scrub
   if (playbackActive && hasTiming && (beforeEnter || afterExit) && !isSelected) return null;
 
-  // Animation: when playing with timing, element mounts at the right time,
-  // so CSS animation fires on mount — override delay to 0
   const anim = isPlaying ? getAnimStyle(element) : null;
   const animDelayStr = (isPlaying && hasTiming) ? '0ms' : (anim?.delay || '0ms');
+
+  const handleMouseDown = (e) => {
+    if (element.locked || editing || previewMode) return;
+    if (e.shiftKey) {
+      onToggleSelect?.(element.id);
+    } else if (!isSelected) {
+      onSelect?.([element.id]);
+    }
+    startDrag(e, 'drag');
+  };
 
   const startDrag = (e, action, handle) => {
     if (element.locked || editing || previewMode) return;
     e.stopPropagation();
     e.preventDefault();
-    onSelect(element.id);
     drag.current = {
       action, handle,
       sx: e.clientX, sy: e.clientY,
@@ -78,19 +87,58 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
       const dy = (ev.clientY - d.sy) / zoom;
       const opts = { silent: !d.firstMove };
       d.firstMove = false;
+
       if (d.action === 'drag') {
-        onUpdate(element.id, { x: Math.round(d.ox + dx), y: Math.round(d.oy + dy) }, opts);
+        let newX = Math.round(d.ox + dx);
+        let newY = Math.round(d.oy + dy);
+        if (onDragGuides && !ev.altKey) {
+          const { snapX, snapY } = onDragGuides({ x: newX, y: newY, width: d.ow, height: d.oh }, element.id);
+          newX += snapX;
+          newY += snapY;
+        }
+        onUpdate(element.id, { x: newX, y: newY }, opts);
+      } else if (d.action === 'rotate') {
+        if (elRef.current) {
+          const rect = elRef.current.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          let angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI + 90;
+          if (ev.shiftKey) angle = Math.round(angle / 15) * 15;
+          if (angle > 180) angle -= 360;
+          if (angle < -180) angle += 360;
+          onUpdate(element.id, { rotation: Math.round(angle) }, opts);
+        }
       } else {
         let { ox: nx, oy: ny, ow: nw, oh: nh } = d;
         if (d.handle.includes('e')) nw = Math.max(30, d.ow + dx);
         if (d.handle.includes('s')) nh = Math.max(20, d.oh + dy);
-        if (d.handle.includes('w')) { nw = Math.max(30, d.ow - dx); nx = d.ox + dx; }
-        if (d.handle.includes('n')) { nh = Math.max(20, d.oh - dy); ny = d.oy + dy; }
+        if (d.handle.includes('w')) { nw = Math.max(30, d.ow - dx); nx = d.ox + (d.ow - nw); }
+        if (d.handle.includes('n')) { nh = Math.max(20, d.oh - dy); ny = d.oy + (d.oh - nh); }
+
+        // Aspect ratio: images/videos preserve by default, Shift toggles
+        const defaultPreserve = ASPECT_TYPES.includes(element.type);
+        const preserveAspect = defaultPreserve !== ev.shiftKey;
+        if (preserveAspect && ASPECT_TYPES.includes(element.type) && d.handle.length === 2) {
+          const aspect = d.ow / d.oh;
+          const absDx = Math.abs(nw - d.ow);
+          const absDy = Math.abs(nh - d.oh);
+          if (absDx / aspect > absDy) {
+            const newH = nw / aspect;
+            if (d.handle.includes('n')) ny = d.oy + (d.oh - newH);
+            nh = newH;
+          } else {
+            const newW = nh * aspect;
+            if (d.handle.includes('w')) nx = d.ox + (d.ow - newW);
+            nw = newW;
+          }
+        }
+
         onUpdate(element.id, { x: Math.round(nx), y: Math.round(ny), width: Math.round(nw), height: Math.round(nh) }, opts);
       }
     };
     const up = () => {
       drag.current = null;
+      onDragGuides?.(null, null);
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
     };
@@ -156,10 +204,14 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
 
   return (
     <div
+      ref={elRef}
       style={anim ? { ...elStyle, animationDelay: animDelayStr, animationFillMode: 'backwards' } : elStyle}
-      onMouseDown={(e) => startDrag(e, 'drag')}
-      onDoubleClick={() => {
-        if (TEXT_TYPES.includes(element.type) && !element.locked && !previewMode) setEditing(true);
+      onMouseDown={handleMouseDown}
+      onDoubleClick={(e) => {
+        if (TEXT_TYPES.includes(element.type) && !element.locked && !previewMode) {
+          e.stopPropagation();
+          setEditing(true);
+        }
       }}
       className={`${isSelected && !previewMode ? 'ring-2 ring-emerald-400' : 'hover:ring-1 hover:ring-emerald-400/40'} ${anim?.cls || ''}`}
     >
@@ -169,8 +221,10 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
           defaultValue={element.content || ''}
           onBlur={(e) => { onUpdate(element.id, { content: e.target.value }); setEditing(false); }}
           onKeyDown={(e) => {
+            e.stopPropagation();
             if (e.key === 'Escape') { onUpdate(element.id, { content: e.target.value }); setEditing(false); }
           }}
+          onMouseDown={(e) => e.stopPropagation()}
           className="w-full h-full bg-transparent text-inherit resize-none outline-none border border-primary/50 rounded p-1"
           style={{ fontSize: 'inherit', fontFamily: 'inherit', color: 'inherit' }}
         />
@@ -178,6 +232,29 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
 
       {isSelected && !element.locked && !previewMode && (
         <>
+          {/* Rotation handle */}
+          <div
+            onMouseDown={(e) => startDrag(e, 'rotate')}
+            className="absolute"
+            style={{
+              top: -28, left: '50%', transform: 'translateX(-50%)',
+              width: 14, height: 14, borderRadius: '50%',
+              background: 'hsl(152 60% 50%)', border: '2px solid white',
+              cursor: 'grab', zIndex: 100,
+            }}
+          >
+            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', width: 1, height: 14, background: 'hsl(152 60% 50%)' }} />
+          </div>
+
+          {/* Center point */}
+          <div className="absolute" style={{
+            top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 4, height: 4, borderRadius: '50%',
+            background: 'hsl(152 60% 50%)', opacity: 0.6,
+            pointerEvents: 'none',
+          }} />
+
+          {/* Resize handles */}
           {HANDLES.map(h => (
             <div key={h}
               onMouseDown={(e) => startDrag(e, 'resize', h)}
@@ -191,6 +268,7 @@ export default function CanvasItem({ element, isSelected, zoom, previewMode, isP
               }}
             />
           ))}
+
           <button
             onClick={(e) => { e.stopPropagation(); onUpdate(element.id, { locked: !element.locked }); }}
             className="absolute -top-7 left-0 p-0.5 bg-emerald-500 text-white rounded text-[10px]"

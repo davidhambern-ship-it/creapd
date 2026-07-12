@@ -22,13 +22,6 @@ export default function PresentationEditor() {
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
   const aiWorkers = useCpeAiWorkers(ed);
 
-  const handleZoom = (action) => {
-    if (typeof action === 'number') { ed.setZoom(action); return; }
-    if (action === 'in') ed.setZoom(z => Math.min(z + 0.1, 2));
-    if (action === 'out') ed.setZoom(z => Math.max(z - 0.1, 0.2));
-    if (action === 'fit') ed.setZoom(0.5);
-  };
-
   // Present mode overlay
   if (ed.presenting && ed.activeSlide) {
     return (
@@ -132,15 +125,29 @@ export default function PresentationEditor() {
               <EditorCanvas
                 slide={ed.activeSlide}
                 elements={ed.elements}
+                selectedIds={ed.selectedIds}
                 selectedId={ed.selectedId}
                 zoom={ed.zoom}
+                zoomMode={ed.zoomMode}
+                panX={ed.panX}
+                panY={ed.panY}
                 mode={ed.mode}
                 isPlaying={ed.isPlaying}
                 currentTime={ed.currentTime}
-                onSelect={ed.setSelectedId}
+                showGrid={ed.showGrid}
+                showSafeAreas={ed.showSafeAreas}
+                onSelect={ed.setSelectedIds}
+                onToggleSelect={ed.toggleSelection}
                 onUpdate={ed.updateElement}
                 onDelete={ed.deleteElement}
-                onZoom={handleZoom}
+                onViewportChange={ed.setViewport}
+                onZoomModeChange={ed.setZoomMode}
+                onZoomIn={ed.zoomIn}
+                onZoomOut={ed.zoomOut}
+                onZoomFit={ed.zoomFit}
+                onZoom100={ed.zoom100}
+                onToggleGrid={() => ed.setShowGrid(v => !v)}
+                onToggleSafeAreas={() => ed.setShowSafeAreas(v => !v)}
               />
 
               <TransportBar
