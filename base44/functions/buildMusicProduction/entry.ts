@@ -976,34 +976,40 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
         production_profile: 'music',
         configuration_id,
       });
+      const DEPTS = ['discovery', 'knowledge', 'blueprint', 'production', 'assembly'];
+      const stageMap = {
+        discovery: 'planning',
+        knowledge: 'research',
+        blueprint: 'playlist',
+        production: 'assets',
+        assembly: 'rundown',
+      };
+      const pipelineData = {
+        production_profile: 'music',
+        configuration_id,
+        production_name: config.production_name || 'Music Production',
+      };
+      let approvedCount = 0;
+      for (const dept of DEPTS) {
+        const logEntries = buildLog.filter(e => e.stage === stageMap[dept] || e.stage?.includes(stageMap[dept]));
+        const isComplete = logEntries.some(e => e.status === 'complete' || (e.success !== undefined && e.success));
+        const isSkipped = logEntries.some(e => e.status === 'skipped');
+        const deptStatus = isComplete ? 'approved' : isSkipped ? 'skipped' : 'pending';
+        pipelineData[`${dept}_status`] = deptStatus;
+        if (isComplete || isSkipped) {
+          pipelineData[`${dept}_completed_at`] = new Date().toISOString();
+        }
+        if (deptStatus === 'approved' || deptStatus === 'skipped') approvedCount++;
+      }
+      pipelineData.pipeline_progress = Math.round((approvedCount / DEPTS.length) * 100);
+      pipelineData.pipeline_status = pipelineData.pipeline_progress >= 100 ? 'completed' : 'in_progress';
+      pipelineData.current_department = DEPTS.find(d => pipelineData[`${d}_status`] === 'pending') || 'assembly';
+
       if (existingPipelines && existingPipelines.length > 0) {
-        const pp = existingPipelines[0];
-        const pipelineUpdates = {};
-        const DEPTS = ['discovery', 'knowledge', 'blueprint', 'production', 'assembly'];
-        const stageMap = {
-          discovery: 'planning',
-          knowledge: 'research',
-          blueprint: 'playlist',
-          production: 'assets',
-          assembly: 'rundown',
-        };
-        for (const dept of DEPTS) {
-          const logEntries = buildLog.filter(e => e.stage === stageMap[dept] || e.stage?.includes(stageMap[dept]));
-          const isComplete = logEntries.some(e => e.status === 'complete' || (e.success !== undefined && e.success));
-          const isSkipped = logEntries.some(e => e.status === 'skipped');
-          pipelineUpdates[`${dept}_status`] = isComplete ? 'approved' : isSkipped ? 'skipped' : 'pending';
-          if (isComplete || isSkipped) {
-            pipelineUpdates[`${dept}_completed_at`] = new Date().toISOString();
-          }
-        }
-        let approvedCount = 0;
-        for (const dept of DEPTS) {
-          if (pipelineUpdates[`${dept}_status`] === 'approved' || pipelineUpdates[`${dept}_status`] === 'skipped') approvedCount++;
-        }
-        pipelineUpdates.pipeline_progress = Math.round((approvedCount / DEPTS.length) * 100);
-        pipelineUpdates.pipeline_status = pipelineUpdates.pipeline_progress >= 100 ? 'completed' : 'in_progress';
-        pipelineUpdates.current_department = DEPTS.find(d => pipelineUpdates[`${d}_status`] === 'pending') || 'assembly';
-        await base44.asServiceRole.entities.ProductionDepartment.update(pp.id, pipelineUpdates);
+        await base44.asServiceRole.entities.ProductionDepartment.update(existingPipelines[0].id, pipelineData);
+      } else {
+        // Pipeline record doesn't exist yet — create it so the dashboard shows correct statuses
+        await base44.asServiceRole.entities.ProductionDepartment.create(pipelineData);
       }
     } catch (pipelineErr) {
       console.error('Failed to sync department pipeline:', pipelineErr.message);
