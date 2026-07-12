@@ -20,7 +20,8 @@ function generatePpId() {
 
 export function usePresentationEditor(presentationId) {
   const navigate = useNavigate();
-  const isTransient = !presentationId;
+  // Treat literal route-param strings (":id") and "undefined" as no ID
+  const isTransient = !presentationId || presentationId.startsWith(':') || presentationId === 'undefined';
 
   const [presentation, setPresentation] = useState(null);
   const [slides, setSlides] = useState([]);

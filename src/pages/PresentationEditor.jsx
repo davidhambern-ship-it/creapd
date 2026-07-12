@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { usePresentationEditor } from '@/hooks/usePresentationEditor';
 import { useAutoBuild } from '@/hooks/useAutoBuild';
 import { useCpeAiWorkers } from '@/hooks/useCpeAiWorkers';
@@ -71,9 +71,12 @@ export default function PresentationEditor() {
               Retry
             </button>
           )}
-          {!id && (
-            <p className="text-xs text-muted-foreground mt-2">No presentation ID provided</p>
-          )}
+          <Link
+            to="/news/presentations"
+            className="mt-2 text-sm text-primary hover:underline"
+          >
+            Browse Presentations →
+          </Link>
         </div>
       </div>
     );
