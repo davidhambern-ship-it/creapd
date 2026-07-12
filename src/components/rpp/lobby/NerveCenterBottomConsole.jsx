@@ -1,40 +1,40 @@
 import React from 'react';
-import { Home } from 'lucide-react';
-import { PRODUCTION_PROFILES } from '@/lib/productionProfiles';
-import ProfileCard from './ProfileCard';
-
-const HOME_PROFILE = {
-  key: 'home',
-  shortLabel: 'Home',
-  label: 'CREAPD Home',
-  description: 'Your central hub for all production profiles, tools, and quick-launch actions.',
-  icon: Home,
-  path: '/',
-  workflow: [
-    'Browse all production profiles',
-    'Launch into any production workflow',
-    'Access quick actions and tools',
-    'Review showcase productions',
-    'Manage settings and preferences',
-  ],
-};
-
-const ALL_PROFILES = [HOME_PROFILE, ...PRODUCTION_PROFILES];
+import { useNavigate, useLocation } from 'react-router-dom';
+import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
 
 export default function NerveCenterBottomConsole() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const activeDept = RPP_DEPARTMENTS.find(d =>
+    d.path === '/research' ? location.pathname === '/research' : location.pathname.startsWith(d.path)
+  ) || RPP_DEPARTMENTS[0];
+
   const tickerItems = [
-    'PROFILES: 9 ACTIVE',
-    'STATUS: READY',
-    'PIPELINE: ONLINE',
-    'CLICK ANY CARD TO ENTER',
-    'PRODUCTION SUITE: OPERATIONAL',
+    'RESEARCH PP: OPERATIONAL',
+    'DEPARTMENTS: ' + RPP_DEPARTMENTS.length,
+    'ACTIVE: ' + activeDept.name.toUpperCase(),
+    'CLICK A DEPARTMENT TO NAVIGATE',
   ];
+
   return (
     <div className="nc-bottom">
-      <div className="pc-strip">
-        {ALL_PROFILES.map((profile, i) => (
-          <ProfileCard key={profile.key} profile={profile} index={i} />
-        ))}
+      <div className="rpp-nav-strip">
+        {RPP_DEPARTMENTS.map((dept) => {
+          const Icon = dept.icon;
+          const isActive = activeDept.id === dept.id;
+          return (
+            <button
+              key={dept.id}
+              onClick={() => navigate(dept.path)}
+              className={`rpp-nav-btn ${isActive ? 'rpp-nav-btn-active' : ''}`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              <span className="rpp-nav-btn-label">{dept.name}</span>
+              {dept.output && <span className="rpp-nav-btn-output">{dept.output}</span>}
+            </button>
+          );
+        })}
       </div>
       <div className="nc-ticker">
         <div className="nc-ticker-track">
