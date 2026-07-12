@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 /**
  * AI Presentation Director (APD)
@@ -108,11 +108,9 @@ Deno.serve(async (req) => {
           scene_count: (sceneGraph.scenes || []).length,
           story_intent: sceneGraph.story_intent,
           presentation_strategy: sceneGraph.presentation_strategy,
-          // Store sentence timeline + audio URL so the editor timeline can show
-          // sentence snap markers and play the voiceover
-          sentence_timeline: sentenceSummaries,
+          sentence_timeline: sceneGraph.sentence_summaries || [],
           voice_audio_url: vp?.audio_url || vp?.merged_audio_url || null,
-          duration_ms: totalDuration * 1000,
+          duration_ms: sceneGraph.total_duration_ms || (slide.duration_ms || 5000),
         }),
         slide_metadata: JSON.stringify({
           ...parseJSON(slide.slide_metadata, {}),
@@ -152,12 +150,25 @@ Deno.serve(async (req) => {
         const tlEvents = elem.timeline_events || [];
         const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
         const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
-        const animType = cleaned.anim || elem.entrance_animation?.type || 'fade_in';
-        const animDelay = elem.entrance_animation?.delay_ms ?? startMs;
-        const animDur = elem.entrance_animation?.duration_ms ?? Math.max(500, endMs - startMs);
+
+        // Build animation in the categorized format the timeline parses:
+        // { entrance: {type, start_ms, delay_ms, duration_ms}, emphasis: {...}, exit: {...} }
+        const animObj = {};
+        const ent = elem.entrance_animation || {};
+        const emph = elem.emphasis_animation || null;
+        const exit = elem.exit_animation || null;
+        const entType = cleaned.anim || ent.type || 'fade_in';
+        const entDelay = ent.delay_ms ?? startMs;
+        const entDur = ent.duration_ms ?? Math.max(500, endMs - startMs);
+        animObj.entrance = { type: entType, start_ms: entDelay, delay_ms: entDelay, duration_ms: entDur };
+        if (emph && emph.type) {
+          animObj.emphasis = { type: emph.type, start_ms: emph.delay_ms ?? (startMs + entDur), delay_ms: emph.delay_ms ?? (startMs + entDur), duration_ms: emph.duration_ms || 500 };
+        }
+        if (exit && exit.type) {
+          animObj.exit = { type: exit.type, start_ms: exit.delay_ms ?? Math.max(0, endMs - 500), delay_ms: exit.delay_ms ?? Math.max(0, endMs - 500), duration_ms: exit.duration_ms || 500 };
+        }
 
         const updates = {};
-        // If the LLM polluted content with markup, write the cleaned version back
         if (cleanContentStr && match.content !== cleanContentStr &&
             cleanContent(match.content).content !== cleanContentStr) {
           updates.content = cleanContentStr;
@@ -165,14 +176,32 @@ Deno.serve(async (req) => {
         if (startMs !== 0 || endMs !== 0) {
           updates.timing = JSON.stringify({ start_ms: startMs, end_ms: endMs });
         }
-        updates.animation = JSON.stringify({
-          type: animType, delay_ms: animDelay, duration_ms: animDur,
-        });
+        updates.animation = JSON.stringify(animObj);
+
+        // Apply canvas position/size/z_index/opacity from the scene graph
+        if (elem.canvas_position) {
+          if (elem.canvas_position.x != null) updates.x = Math.round(elem.canvas_position.x);
+          if (elem.canvas_position.y != null) updates.y = Math.round(elem.canvas_position.y);
+        }
+        if (elem.canvas_size) {
+          if (elem.canvas_size.w != null) updates.width = Math.round(elem.canvas_size.w);
+          if (elem.canvas_size.h != null) updates.height = Math.round(elem.canvas_size.h);
+        }
+        if (elem.z_order != null) updates.z_index = elem.z_order;
+        if (elem.opacity != null) updates.opacity = Math.round(elem.opacity * 100);
 
         // If the LLM extracted a font directive, apply it to the element style
-        if (cleaned.font) {
-          const existingStyle = parseJSON(match.style, {});
-          updates.style = JSON.stringify({ ...existingStyle, fontFamily: cleaned.font });
+        const existingStyle = parseJSON(match.style, {});
+        const styleUpdates = {};
+        if (cleaned.font) styleUpdates.fontFamily = cleaned.font;
+        if (elem.style_overrides) {
+          if (elem.style_overrides.fontSize) styleUpdates.fontSize = elem.style_overrides.fontSize;
+          if (elem.style_overrides.color) styleUpdates.color = elem.style_overrides.color;
+          if (elem.style_overrides.bold != null) styleUpdates.bold = elem.style_overrides.bold;
+          if (elem.style_overrides.align) styleUpdates.align = elem.style_overrides.align;
+        }
+        if (Object.keys(styleUpdates).length > 0) {
+          updates.style = JSON.stringify({ ...existingStyle, ...styleUpdates });
         }
 
         await base44.asServiceRole.entities.SlideElement.update(match.id, updates);
@@ -251,36 +280,53 @@ function cleanContent(raw) {
 }
 
 // ── APD Core: Direct one slide ──
+// The APD is trained on the actual canvas + timeline data model so its output
+// can be synced directly back to SlideElement records and rendered on the
+// vertically-stacked track timeline.
 async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, totalSlides, presentationTitle }) {
-  // Build the story package context for the LLM
   const sentenceTimeline = parseJSON(vp?.sentence_timeline, '[]');
   const pauseTimeline = parseJSON(vp?.pause_timeline, '[]');
   const totalDuration = vp?.total_duration_seconds || (slide.duration_ms / 1000) || 30;
+  const totalDurationMs = Math.round(totalDuration * 1000);
 
-  // Summarize element assets available — include current timeline state
+  // ── Build full element summaries with canvas + timeline state ──
+  // The APD needs the exact same data the editor timeline shows so it can
+  // produce values that map directly back to SlideElement fields.
   const elementSummary = elements.map(el => {
     const elTiming = parseJSON(el.timing, {});
     const elAnim = parseJSON(el.animation, {});
+    const elStyle = parseJSON(el.style, {});
+    // Flatten animation into the three categories the timeline displays
+    const animCats = {};
+    if (Array.isArray(elAnim)) {
+      elAnim.forEach(a => {
+        if (!a.type || a.type === 'none') return;
+        const cat = a.category || (a.type.includes('out') || a.type.includes('exit') ? 'exit' : a.type.includes('pulse') || a.type.includes('bounce') ? 'emphasis' : 'entrance');
+        animCats[cat] = { type: a.type, start_ms: a.start_ms ?? a.delay_ms ?? 0, duration_ms: a.duration_ms || 500 };
+      });
+    } else if (elAnim.entrance || elAnim.emphasis || elAnim.exit) {
+      if (elAnim.entrance) animCats.entrance = { type: elAnim.entrance.type || 'fade_in', start_ms: elAnim.entrance.start_ms ?? elAnim.entrance.delay_ms ?? 0, duration_ms: elAnim.entrance.duration_ms || 500 };
+      if (elAnim.emphasis) animCats.emphasis = { type: elAnim.emphasis.type || 'pulse', start_ms: elAnim.emphasis.start_ms ?? elAnim.emphasis.delay_ms ?? 0, duration_ms: elAnim.emphasis.duration_ms || 500 };
+      if (elAnim.exit) animCats.exit = { type: elAnim.exit.type || 'fade_out', start_ms: elAnim.exit.start_ms ?? elAnim.exit.delay_ms ?? 0, duration_ms: elAnim.exit.duration_ms || 500 };
+    } else if (elAnim.type && elAnim.type !== 'none') {
+      const cat = elAnim.type.includes('out') || elAnim.type.includes('exit') ? 'exit' : elAnim.type.includes('pulse') || elAnim.type.includes('bounce') ? 'emphasis' : 'entrance';
+      animCats[cat] = { type: elAnim.type, start_ms: elAnim.delay_ms || 0, duration_ms: elAnim.duration_ms || 500 };
+    }
     return {
       id: el.id,
       type: el.type,
-      content_preview: (el.content || '').substring(0, 100),
-      has_media: el.type === 'image' || el.type === 'video',
-      current_position: { x: el.x, y: el.y },
-      current_size: { w: el.width, h: el.height },
-      current_timing: {
-        start_ms: elTiming.start_ms ?? 0,
-        end_ms: elTiming.end_ms ?? 0,
-      },
-      current_animation: {
-        type: elAnim.type || 'fade_in',
-        delay_ms: elAnim.delay_ms ?? 0,
-        duration_ms: elAnim.duration_ms ?? 500,
-      },
+      content: (el.content || '').substring(0, 150),
+      // Canvas state (pixel coordinates — the editor canvas uses these directly)
+      canvas: { x: el.x || 0, y: el.y || 0, width: el.width || 200, height: el.height || 100, z_index: el.z_index || 0, rotation: el.rotation || 0, opacity: el.opacity ?? 100, locked: !!el.locked, visible: el.visible !== false },
+      // Style JSON as the inspector edits it
+      style: { fontSize: elStyle.fontSize || '', fontFamily: elStyle.fontFamily || '', color: elStyle.color || '', bold: !!elStyle.bold, italic: !!elStyle.italic, align: elStyle.align || 'left', role: elStyle.role || '' },
+      // Timeline state — timing clip + animation lanes
+      timing: { start_ms: elTiming.start_ms ?? 0, end_ms: elTiming.end_ms ?? totalDurationMs },
+      animations: animCats,
     };
   });
 
-  // Build sentence summaries for scene timing
+  // ── Sentence summaries for scene timing ──
   const sentenceSummaries = (Array.isArray(sentenceTimeline) ? sentenceTimeline : []).map((s, idx) => ({
     index: idx,
     text: (s.sentence_text || '').substring(0, 120),
@@ -289,7 +335,6 @@ async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, total
     duration: s.duration || 0,
   }));
 
-  // Determine available visual assets from the package
   const imageUrl = pkg?.generated_image_url || '';
   const lowerThird = pkg?.lower_third_text || '';
   const talkingPoints = pkg?.talking_points || '';
@@ -300,7 +345,13 @@ async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, total
   const isTitleSlide = slideIndex === 0;
   const isClosingSlide = slideIndex === totalSlides - 1;
 
+  // Canvas dimensions for positioning (16:9 default: 1920×1080)
+  const CANVAS_W = 1920;
+  const CANVAS_H = 1080;
+
   const prompt = `You are the AI Presentation Director (APD) for CREAPD. Your job is to direct one Story Slide by creating an intelligent scene graph that synchronizes visuals, camera movement, and text with voiceover narration.
+
+You are directing a REAL editor canvas and a REAL multi-track timeline. Your output will be written directly into database records that the editor renders. You must use the exact data structures described below.
 
 # APD DIRECTING PRINCIPLES
 1. Story Before Presentation — every visual decision must support story communication
@@ -319,14 +370,58 @@ async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, total
 4. Motion
 5. Decorative Effects (lowest priority)
 
-# SLIDE CONTEXT
+# ── CANVAS DATA MODEL ──
+The editor canvas is ${CANVAS_W}×${CANVAS_H} pixels (16:9). Every element has:
+- canvas_position: { x, y } — top-left corner in PIXELS (0 to ${CANVAS_W} for x, 0 to ${CANVAS_H} for y)
+- canvas_size: { w, h } — width and height in PIXELS
+- z_order: integer — stacking order (0 = back, higher = front)
+- opacity: 0-1 (1 = fully opaque; the database stores 0-100 but you output 0-1)
+- style_overrides: optional { fontSize, color, bold, align } — font properties for text elements
+
+When repositioning elements, use real pixel coordinates. For example:
+  - Headline at center-top: canvas_position { x: 200, y: 80 }, canvas_size { w: 1520, h: 120 }
+  - Body text at center: canvas_position { x: 300, y: 300 }, canvas_size { w: 1320, h: 400 }
+  - Lower third at bottom: canvas_position { x: 100, y: 900 }, canvas_size { w: 1200, h: 80 }
+  - Full-screen image: canvas_position { x: 0, y: 0 }, canvas_size { w: ${CANVAS_W}, h: ${CANVAS_H} }
+  - Picture-in-picture: canvas_position { x: 1300, y: 80 }, canvas_size { w: 540, h: 360 }
+
+Do NOT use normalized 0-1 positions. Use pixel coordinates.
+
+# ── TIMELINE DATA MODEL ──
+The editor displays a vertically-stacked track timeline. Each SlideElement gets its own track row, with nested animation child lanes. The timeline reads these fields:
+
+TIMING (visibility clip — when the element is visible on canvas):
+  timing: { "start_ms": <number>, "end_ms": <number> }
+  - start_ms: when the element appears (in milliseconds, aligned to voiceover sentences)
+  - end_ms: when the element disappears (in milliseconds)
+  - If an element should be visible for the entire slide: start_ms=0, end_ms=${totalDurationMs}
+
+ANIMATION (three independent lanes — entrance, emphasis, exit):
+  animation: {
+    "entrance": { "type": "<anim_type>", "start_ms": <delay>, "delay_ms": <delay>, "duration_ms": <dur> },
+    "emphasis": { "type": "<anim_type>", "start_ms": <delay>, "delay_ms": <delay>, "duration_ms": <dur> },  // optional
+    "exit":     { "type": "<anim_type>", "start_ms": <delay>, "delay_ms": <delay>, "duration_ms": <dur> }   // optional
+  }
+  - entrance: how the element enters (plays once at start_ms)
+  - emphasis: a mid-visibility emphasis pulse (plays at its own start_ms during the visible window)
+  - exit: how the element leaves (plays once before end_ms)
+  - start_ms and delay_ms should be the same value for each animation.
+  - delay_ms MUST match the sentence start_time from the voiceover timeline.
+  - duration_ms should match the sentence duration.
+
+ANIMATION TYPES (use these exact strings):
+  - Entrance: "fade_in", "slide_in", "scale_in", "zoom_in", "dissolve_in"
+  - Emphasis: "pulse", "bounce", "shake", "gentle_float"
+  - Exit: "fade_out", "slide_out", "scale_out", "dissolve_out"
+
+# ── SLIDE CONTEXT ──
 - Presentation: "${presentationTitle}"
 - Slide ${slideIndex + 1} of ${totalSlides}
 - Slide Type: ${isTitleSlide ? 'title_slide' : (isClosingSlide ? 'closing_slide' : 'content_slide')}
 - Slide Title: "${slide.title || ''}"
-- Slide Duration: ${totalDuration} seconds
+- Slide Duration: ${totalDuration} seconds (${totalDurationMs} ms)
 
-# STORY PACKAGE (source of truth — do NOT alter facts)
+# ── STORY PACKAGE (source of truth — do NOT alter facts) ──
 - Headline: ${slide.title || ''}
 - Story Summary: ${(pkg?.story_summary || '').substring(0, 500)}
 - Teleprompter Script: ${(pkg?.teleprompter_script || slide.body_text || '').substring(0, 800)}
@@ -340,33 +435,32 @@ async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, total
 - Story Image Available: ${imageUrl ? 'YES' : 'NO'}
 - Image URL: ${imageUrl || 'none'}
 
-# VOICE PACKAGE TIMELINE (master clock)
-- Total Duration: ${totalDuration}s
+# ── VOICE PACKAGE TIMELINE (master clock) ──
+- Total Duration: ${totalDuration}s (${totalDurationMs} ms)
 - Sentence Count: ${sentenceSummaries.length}
-- Sentence Timeline: ${JSON.stringify(sentenceSummaries.slice(0, 20))}
+- Sentence Timeline: ${JSON.stringify(sentenceSummaries.slice(0, 25))}
 - Pause Timeline: ${JSON.stringify((Array.isArray(pauseTimeline) ? pauseTimeline : []).slice(0, 10))}
 
-# EXISTING SLIDE ELEMENTS (already placed on canvas — you may reposition)
+# ── EXISTING SLIDE ELEMENTS (already on canvas + timeline — you may reposition and re-time) ──
+Each element below has its current canvas position (pixels), style, timing clip, and animation lanes:
 ${JSON.stringify(elementSummary)}
 
-# CURRENT TIMELINE STATE (producer may have manually edited these — respect them)
-Each element already has timing and animation on the timeline:
-${JSON.stringify(elementSummary.map(e => ({
-  id: e.id, type: e.type,
-  timing: e.current_timing,
-  animation: e.current_animation,
-})))}
-
-# YOUR TASK
+# ── YOUR TASK ──
 Analyze this story package and direct the slide. Produce a scene_graph that:
 1. Divides the slide into 2-5 scenes based on narration content changes (NOT time intervals)
 2. Assigns camera behavior to each scene (static, slow_push, zoom_in, zoom_out, pan_left, pan_right, drift)
-3. Places elements at normalized positions (0-1 scale) within each scene
-4. SYNCHRONIZES element visibility with the voiceover sentence timeline — each text element's timeline_events MUST align with the sentence boundaries above. When a sentence is spoken, the corresponding text should be visible. Use the sentence start_time/end_time as the element's timeline_events.
-5. Applies entrance animations (fade_in, slide_in, scale_in, gentle_float) with delay_ms matching the sentence start_time
-6. Animation duration_ms should match the sentence duration — text appears for exactly as long as the sentence is spoken
-7. If the producer has already set timing on an element, PRESERVE it unless it conflicts with the sentence timeline
-8. Varies layout from other slides — avoid repetition
+3. For EACH element in each scene, provides:
+   - canvas_position: pixel coordinates { x, y } on the ${CANVAS_W}×${CANVAS_H} canvas
+   - canvas_size: pixel dimensions { w, h }
+   - z_order: stacking integer (background=0, text=10+, overlays=20+)
+   - opacity: 0-1
+   - timeline_events: [{ start_time, end_time }] in ms — SYNCHRONIZED to voiceover sentence boundaries
+   - entrance_animation: { type, delay_ms, duration_ms } — delay_ms MUST match the sentence start_time
+   - emphasis_animation: optional { type, delay_ms, duration_ms }
+   - exit_animation: optional { type, delay_ms, duration_ms }
+4. SYNCHRONIZES element visibility with the voiceover sentence timeline — each text element's timeline_events MUST align with the sentence boundaries above. When a sentence is spoken, the corresponding text should be visible.
+5. PRESERVES existing timing if the producer has manually set it — only override if it conflicts with the sentence timeline.
+6. Varies layout from other slides — avoid repetition.
 
 # CRITICAL RULES FOR THE content FIELD
 - The content field MUST contain PLAIN TEXT ONLY — the actual words that will appear on screen.
@@ -381,7 +475,6 @@ Element types you can use: headline, body_text, image, talking_point_card, discu
 For each scene, provide a scene_objective answering: "What should the audience understand during this moment?"
 
 Camera behaviors: static, slow_push, zoom_in, zoom_out, pan_left, pan_right, drift
-Animation types: fade_in, slide_in, scale_in, gentle_float, fade_out, slide_out
 
 Provide your directing decisions with rationale for: presentation_strategy, visual_storytelling, scene_creation, camera_selection, motion_selection, layout_variation, emotional_pacing.`;
 
@@ -439,28 +532,60 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
                       items: {
                         type: 'object',
                         properties: {
-                          element_id: { type: 'string', description: 'Unique ID for this element' },
+                          element_id: { type: 'string', description: 'The existing SlideElement ID from the element list above' },
                           element_type: {
                             type: 'string',
                             enum: ['headline', 'body_text', 'image', 'talking_point_card', 'discussion_response', 'lower_third', 'statistic', 'quote', 'caption'],
                           },
-                          content: { type: 'string', description: 'Text content or image URL' },
-                          position: {
+                          content: { type: 'string', description: 'Plain text content or image URL — NO markup tags' },
+                          canvas_position: {
                             type: 'object',
                             properties: {
-                              x: { type: 'number', description: 'Normalized 0-1' },
-                              y: { type: 'number', description: 'Normalized 0-1' },
+                              x: { type: 'number', description: 'Pixel X (0-' + CANVAS_W + ')' },
+                              y: { type: 'number', description: 'Pixel Y (0-' + CANVAS_H + ')' },
                             },
                           },
-                          scale: { type: 'number', description: '0.5-1.5' },
-                          opacity: { type: 'number', description: '0-1' },
+                          canvas_size: {
+                            type: 'object',
+                            properties: {
+                              w: { type: 'number', description: 'Pixel width' },
+                              h: { type: 'number', description: 'Pixel height' },
+                            },
+                          },
+                          z_order: { type: 'number', description: 'Stacking order (0=back, higher=front)' },
+                          opacity: { type: 'number', description: '0-1 (1=fully opaque)' },
                           asset_reference: { type: 'string', description: 'Image URL if element_type is image' },
+                          style_overrides: {
+                            type: 'object',
+                            properties: {
+                              fontSize: { type: 'string', description: 'CSS font-size, e.g. "48px"' },
+                              color: { type: 'string', description: 'CSS color, e.g. "#FFFFFF"' },
+                              bold: { type: 'boolean' },
+                              align: { type: 'string', enum: ['left', 'center', 'right'] },
+                            },
+                          },
                           entrance_animation: {
                             type: 'object',
                             properties: {
-                              type: { type: 'string', enum: ['fade_in', 'slide_in', 'scale_in', 'gentle_float'] },
-                              delay_ms: { type: 'number', description: 'Delay before animation starts in ms — should match the sentence start_time' },
-                              duration_ms: { type: 'number', description: 'Animation duration in ms — should match the sentence duration' },
+                              type: { type: 'string', enum: ['fade_in', 'slide_in', 'scale_in', 'zoom_in', 'dissolve_in', 'gentle_float'] },
+                              delay_ms: { type: 'number', description: 'When the entrance plays — MUST match the sentence start_time' },
+                              duration_ms: { type: 'number', description: 'Entrance duration in ms' },
+                            },
+                          },
+                          emphasis_animation: {
+                            type: 'object',
+                            properties: {
+                              type: { type: 'string', enum: ['pulse', 'bounce', 'shake', 'gentle_float'] },
+                              delay_ms: { type: 'number', description: 'When the emphasis plays during the visible window' },
+                              duration_ms: { type: 'number' },
+                            },
+                          },
+                          exit_animation: {
+                            type: 'object',
+                            properties: {
+                              type: { type: 'string', enum: ['fade_out', 'slide_out', 'scale_out', 'dissolve_out'] },
+                              delay_ms: { type: 'number', description: 'When the exit plays — near end_ms' },
+                              duration_ms: { type: 'number' },
                             },
                           },
                           timeline_events: {
@@ -468,8 +593,8 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
                             items: {
                               type: 'object',
                               properties: {
-                                start_time: { type: 'number', description: 'ms' },
-                                end_time: { type: 'number', description: 'ms' },
+                                start_time: { type: 'number', description: 'ms — when element becomes visible' },
+                                end_time: { type: 'number', description: 'ms — when element becomes hidden' },
                               },
                             },
                           },
@@ -507,7 +632,7 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
   });
 
   // Ensure scene times are within slide duration
-  const maxMs = totalDuration * 1000;
+  const maxMs = totalDurationMs;
   const scenes = (response.scenes || []).map(s => ({
     ...s,
     scene_start_time: Math.max(0, Math.min(s.scene_start_time || 0, maxMs)),
@@ -529,11 +654,12 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
           element_id: el.id,
           element_type: el.type === 'text' ? 'body_text' : (el.type === 'image' ? 'image' : el.type),
           content: el.content || '',
-          position: { x: 0.5, y: 0.5 },
-          scale: 1,
-          opacity: 1,
+          canvas_position: { x: el.x || 0, y: el.y || 0 },
+          canvas_size: { w: el.width || 200, h: el.height || 100 },
+          z_order: el.z_index || 0,
+          opacity: (el.opacity ?? 100) / 100,
           asset_reference: el.type === 'image' ? el.content : '',
-          entrance_animation: { type: 'fade_in' },
+          entrance_animation: { type: 'fade_in', delay_ms: 0, duration_ms: 500 },
           timeline_events: [{ start_time: 0, end_time: maxMs }],
         })),
       }],
@@ -547,5 +673,7 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
     scenes,
     confidence_score: response.confidence_score || 70,
     decisions: response.decisions || [],
+    sentence_summaries: sentenceSummaries,
+    total_duration_ms: totalDurationMs,
   };
 }
