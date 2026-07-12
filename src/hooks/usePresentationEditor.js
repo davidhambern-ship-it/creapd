@@ -69,6 +69,9 @@ export function usePresentationEditor(presentationId) {
   // Transient mode: per-slide element cache (slide temp-id → elements[])
   const [transientElements, setTransientElements] = useState({});
 
+  // Service-role element cache from loadEditorData (slide_id → elements[])
+  const cachedElementsRef = useRef({});
+
   // Playback
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -102,8 +105,14 @@ export function usePresentationEditor(presentationId) {
     const slideObj = typeof slide === 'object' ? slide : null;
 
     try {
+      // Try user-scoped query first
       const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
-      const dbElements = els || [];
+      let dbElements = els || [];
+
+      // Fall back to service-role cache if user-scoped query returns empty (RLS)
+      if (dbElements.length === 0 && cachedElementsRef.current[slideId]) {
+        dbElements = cachedElementsRef.current[slideId];
+      }
 
       // DB SlideElement records are the source of truth — the scene_graph is
       // just a "direction" that autoBuildPacket used to create them. Merging
@@ -148,7 +157,6 @@ export function usePresentationEditor(presentationId) {
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
         const seenContent = new Set();
         let tempZ = 100;
-        let cascadeIndex = 0;
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
@@ -160,14 +168,15 @@ export function usePresentationEditor(presentationId) {
               if (seenContent.has(contentKey)) continue;
               seenContent.add(contentKey);
 
-              // Position — normalized 0-1 → pixel coords
-              const hasPos = elem.position && typeof elem.position.x === 'number';
-              const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
-              const py = hasPos
-                ? Math.round((elem.position?.y ?? 0.5) * CANVAS_H)
-                : 120 + cascadeIndex * 140;
-
-              const elScale = Math.max(0.5, Math.min(1.5, elem.scale || 1));
+              // Position — scene graph uses canvas_position in 1920x1080 space
+              // Scale to 1280x720 canvas
+              const SG_W = 1920, SG_H = 1080;
+              const scaleX = CANVAS_W / SG_W;
+              const scaleY = CANVAS_H / SG_H;
+              const cp = elem.canvas_position || elem.position || {};
+              const cs = elem.canvas_size || {};
+              const px = Math.round((cp.x ?? 0.5 * SG_W) * (typeof cp.x === 'number' && cp.x > 1 ? scaleX : 1));
+              const py = Math.round((cp.y ?? 0.5 * SG_H) * (typeof cp.y === 'number' && cp.y > 1 ? scaleY : 1));
 
               const typeMap = {
                 headline: 'text', body_text: 'text', image: 'image',
@@ -177,77 +186,31 @@ export function usePresentationEditor(presentationId) {
               };
               const elType = typeMap[elem.element_type] || 'text';
 
-              let w = 600, h = 100;
-              if (elType === 'image') { w = 500; h = 350; }
-              if (elem.element_type === 'statistic') { w = 400; h = 120; }
-              if (elem.element_type === 'quote') { w = 700; h = 150; }
-              if (elType === 'lower_third') { w = 800; h = 50; }
-              w = Math.round(w * elScale);
-              h = Math.round(h * elScale);
+              // Size — prefer canvas_size, fall back to defaults
+              let w = cs.w ? Math.round(cs.w * scaleX) : 600;
+              let h = cs.h ? Math.round(cs.h * scaleY) : 100;
+              if (elType === 'image' && !cs.w) { w = 500; h = 350; }
+              if (elType === 'lower_third' && !cs.w) { w = 800; h = 50; }
+              w = Math.max(30, w);
+              h = Math.max(20, h);
 
-              // Color theme → actual HSL values
-              const color = COLOR_MAP[elem.color_theme] || COLOR_MAP.white;
+              // Style overrides from scene graph
+              const so = elem.style_overrides || {};
+              const fontSizeStr = so.fontSize || '';
+              const fontSizeNum = parseInt(String(fontSizeStr).replace('px', ''), 10);
+              const colorVal = so.color || '#fff';
 
-              // Font style → CSS font family
-              const fontFamily = cleaned.font
-                || FONT_MAP[elem.font_style]
-                || 'Inter, sans-serif';
-
-              const fontSize = FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default;
-
-              // Visual effects → CSS box-shadow, border, etc.
-              const effects = elem.visual_effects || [];
               const styleObj = {
-                fontSize,
-                fontFamily,
-                color: color.text,
-                bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
-                italic: elem.element_type === 'quote',
-                align: 'center',
+                fontSize: fontSizeNum || FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
+                fontFamily: cleaned.font || 'Inter, sans-serif',
+                color: colorVal,
+                bold: so.bold ?? (elem.element_type === 'statistic' || elem.element_type === 'headline'),
+                italic: so.italic ?? (elem.element_type === 'quote'),
+                align: so.align || 'center',
                 backgroundColor: 'transparent',
                 borderRadius: 0,
                 padding: 8,
               };
-
-              if (effects.includes('glass_panel')) {
-                styleObj.backgroundColor = color.bg;
-                styleObj.backdropFilter = 'blur(12px)';
-                styleObj.border = `1px solid ${color.border}`;
-                styleObj.borderRadius = 12;
-                styleObj.padding = 16;
-              }
-              if (effects.includes('glow_border')) {
-                styleObj.border = `1px solid ${color.border}`;
-                styleObj.boxShadow = `0 0 16px ${color.glow}, inset 0 0 12px ${color.glow}`;
-                styleObj.borderRadius = 12;
-                styleObj.padding = 16;
-              }
-              if (effects.includes('neon_shadow')) {
-                styleObj.textShadow = `0 0 8px ${color.text}, 0 0 24px ${color.glow}`;
-              } else {
-                styleObj.textShadow = `0 0 12px ${color.glow}`;
-              }
-              if (effects.includes('drop_shadow')) {
-                styleObj.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))';
-              }
-              if (effects.includes('gradient_border')) {
-                styleObj.border = `1px solid ${color.border}`;
-                styleObj.boxShadow = `0 0 1px ${color.text}, 0 0 12px ${color.glow}`;
-                styleObj.borderRadius = 12;
-              }
-              if (effects.includes('inner_glow')) {
-                const existing = styleObj.boxShadow || '';
-                styleObj.boxShadow = `${existing} inset 0 0 20px ${color.glow}`.trim();
-              }
-
-              // Talking point cards / discussion responses get panel styling
-              if ((elem.element_type === 'talking_point_card' || elem.element_type === 'discussion_response')
-                  && !effects.length) {
-                styleObj.backgroundColor = color.bg;
-                styleObj.borderRadius = 12;
-                styleObj.padding = 16;
-                styleObj.border = `1px solid ${color.border}`;
-              }
 
               // Entrance animation
               const animType = cleaned.anim || elem.entrance_animation?.type || 'fade_in';
@@ -261,20 +224,19 @@ export function usePresentationEditor(presentationId) {
                 slide_id: slideId,
                 type: elType,
                 content: elemContent,
-                x: px - Math.round(w / 2),
-                y: py - Math.round(h / 2),
+                x: px,
+                y: py,
                 width: w,
                 height: h,
                 rotation: elem.rotation || 0,
                 opacity: Math.round((elem.opacity ?? 1) * 100),
-                z_index: tempZ++,
+                z_index: elem.z_order ?? tempZ++,
                 style: JSON.stringify(styleObj),
                 animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
                 timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
                 locked: false,
                 visible: elem.visibility !== false,
               });
-              cascadeIndex++;
             }
           }
         }
@@ -330,36 +292,35 @@ export function usePresentationEditor(presentationId) {
     setLoading(true);
     setLoadError(null);
     try {
-      let pres;
-      try {
-        pres = await base44.entities.StoriesPresentation.get(presentationId);
-      } catch {
-        // Fallback: filter by ID in case .get() is unavailable
-        const results = await base44.entities.StoriesPresentation.filter({ id: presentationId }, '-created_date', 1);
-        pres = results?.[0];
+      // Use service-role backend function to bypass RLS for service-created records
+      const res = await base44.functions.invoke('loadEditorData', { presentation_id: presentationId });
+      const data = res.data || res;
+      if (data.error) {
+        setLoadError(data.error);
+        setLoading(false);
+        return;
       }
+      const { presentation: pres, slides: loaded, elementsBySlide } = data;
       if (!pres) {
         setLoadError('Presentation not found in database');
         setLoading(false);
         return;
       }
       setPresentation(pres);
-      const ids = parseJSON(pres.slide_order || pres.story_slide_ids, []);
-      const loaded = [];
-      for (const sid of ids) {
-        try {
-          loaded.push(await base44.entities.StorySlide.get(sid));
-        } catch {
-          try {
-            const slideResults = await base44.entities.StorySlide.filter({ id: sid }, 'slide_number', 1);
-            if (slideResults[0]) loaded.push(slideResults[0]);
-          } catch {}
-        }
-      }
       setSlides(loaded);
       if (loaded.length > 0) {
         setActiveIndex(0);
-        await loadElements(loaded[0]);
+        // Use pre-loaded elements if available, otherwise fall back to scene_graph parsing
+        // Cache elements for all slides (bypasses RLS for service-created records)
+        cachedElementsRef.current = elementsBySlide || {};
+        const firstSlideEls = elementsBySlide?.[loaded[0].id] || [];
+        if (firstSlideEls.length > 0) {
+          const enriched = ensureTitleBodyElements(firstSlideEls, loaded[0]);
+          setElements(enriched);
+          setSavedElements(firstSlideEls);
+        } else {
+          await loadElements(loaded[0]);
+        }
       }
     } catch (err) {
       setLoadError(err?.message || 'Failed to load presentation');

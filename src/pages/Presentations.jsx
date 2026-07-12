@@ -36,8 +36,11 @@ export default function Presentations() {
 
   const loadPresentations = async () => {
     try {
-      const list = await base44.entities.StoriesPresentation.filter({}, '-created_date', 50);
-      setPresentations(list);
+      // Use service-role backend function — presentations are created by backend
+      // functions as service-owned records, invisible to user-scoped queries (RLS)
+      const res = await base44.functions.invoke('listPresentations', {});
+      const data = res.data || res;
+      setPresentations(data.presentations || []);
     } catch (error) {
       console.error('Failed to load presentations:', error);
     } finally {
@@ -56,6 +59,7 @@ export default function Presentations() {
       setLoadingPackages(false);
     }
   };
+
 
   const togglePackage = (pkgId) => {
     setSelectedPackages(prev =>
