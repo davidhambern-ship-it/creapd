@@ -28,6 +28,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (!isVisible && !element.visibility) return null;
 
   const entranceAnim = element.entrance_animation?.type || 'fade';
+  const fontClass = element.font_style || '';
   const isFloat = entranceAnim === 'gentle_float' || entranceAnim === 'float';
   const animClass = isFloat
     ? ANIMATION_CLASSES['gentle_float']
@@ -67,7 +68,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'headline') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <h2 className="font-heading font-bold text-white text-center drop-shadow-lg" style={{ fontSize: '3.5cqw', padding: '0.5cqw 1cqw' }}>
+        <h2 className={`${fontClass || 'font-heading'} font-bold text-white text-center drop-shadow-lg`} style={{ fontSize: '3.5cqw', padding: '0.5cqw 1cqw' }}>
           {content}
         </h2>
       </div>
@@ -77,7 +78,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'body_text') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <p className="text-white/90 text-center drop-shadow-md" style={{ fontSize: '1.8cqw', maxWidth: '60cqw', padding: '0 1cqw' }}>
+        <p className={`${fontClass} text-white/90 text-center drop-shadow-md`} style={{ fontSize: '1.8cqw', maxWidth: '60cqw', padding: '0 1cqw' }}>
           {content}
         </p>
       </div>
@@ -88,7 +89,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl" style={{ padding: '1cqw 1.5cqw', maxWidth: '45cqw' }}>
-          <p className="text-white/95 font-medium" style={{ fontSize: '1.6cqw' }}>{content}</p>
+          <p className={`${fontClass} text-white/95 font-medium`} style={{ fontSize: '1.6cqw' }}>{content}</p>
         </div>
       </div>
     );
@@ -107,7 +108,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
         className={isVisible ? animClass : ''}
       >
         <div className="bg-primary/80 backdrop-blur-sm rounded-r-lg border-l-4 border-accent" style={{ padding: '0.5cqw 1.5cqw' }}>
-          <p className="text-white font-medium" style={{ fontSize: '1.4cqw' }}>{content}</p>
+          <p className={`${fontClass} text-white font-medium`} style={{ fontSize: '1.4cqw' }}>{content}</p>
         </div>
       </div>
     );
@@ -117,7 +118,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
         <div className="text-center">
-          <p className="font-display font-bold text-accent drop-shadow-lg" style={{ fontSize: '5cqw' }}>{content}</p>
+          <p className={`${fontClass || 'font-display'} font-bold text-accent drop-shadow-lg`} style={{ fontSize: '5cqw' }}>{content}</p>
         </div>
       </div>
     );
@@ -126,7 +127,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   if (element.element_type === 'quote') {
     return (
       <div style={style} className={isVisible ? animClass : ''}>
-        <blockquote className="italic text-white/95 text-center border-l-4 border-primary" style={{ fontSize: '2.2cqw', maxWidth: '60cqw', paddingLeft: '1cqw' }}>
+        <blockquote className={`${fontClass} italic text-white/95 text-center border-l-4 border-primary`} style={{ fontSize: '2.2cqw', maxWidth: '60cqw', paddingLeft: '1cqw' }}>
           "{content}"
         </blockquote>
       </div>
@@ -135,7 +136,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
 
   return (
     <div style={style} className={isVisible ? animClass : ''}>
-      <p className="text-white/80" style={{ fontSize: '1.5cqw' }}>{content}</p>
+      <p className={`${fontClass} text-white/80`} style={{ fontSize: '1.5cqw' }}>{content}</p>
     </div>
   );
 }

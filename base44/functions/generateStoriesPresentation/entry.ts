@@ -192,6 +192,7 @@ Deno.serve(async (req) => {
                               opacity: { type: "number" },
                               entrance_animation: { type: "string" },
                               exit_animation: { type: "string" },
+                              font_style: { type: "string" },
                               start_time: { type: "number" },
                               end_time: { type: "number" }
                             }
@@ -260,6 +261,7 @@ Deno.serve(async (req) => {
                 rotation: 0,
                 opacity: elem.opacity !== undefined ? elem.opacity : 1.0,
                 visibility: true,
+                font_style: elem.font_style || '',
                 entrance_animation: { type: elem.entrance_animation || 'fade', duration_ms: 500 },
                 exit_animation: { type: elem.exit_animation || 'fade', duration_ms: 500 },
                 timeline_events: [{
@@ -581,6 +583,25 @@ For each scene, determine:
 - Layers with elements (use the layer hierarchy: background, environmental_effects, primary_imagery, secondary_imagery, graphics, text, lower_third, foreground_effects)
 
 Element types: image, headline, body_text, talking_point_card, discussion_response, lower_third, chart, logo, icon, callout, statistic, quote.
+
+STYLE GUIDE — ANIMATION & TYPOGRAPHY (MANDATORY):
+Each element MUST include an entrance_animation and font_style. Use ONLY these values:
+
+Entrance Animations:
+- "fade" — opacity fade-in (default for body_text)
+- "slide" — slide in from right (for headline, talking_point_card)
+- "scale" — zoom in from small (for statistic, callout)
+- "reveal" — fade-in with upward motion (for quote)
+- "float" — gentle floating loop (for image, icon)
+- "dissolve" — blur-to-focus fade (for scene transitions)
+
+Font Styles:
+- "font-heading" — Poppins, bold (for headline, title elements)
+- "font-display" — Oswald, condensed (for statistic, large numbers)
+- "font-body" — Inter, regular (for body_text, narration)
+- "font-mono" — JetBrains Mono (for data, technical labels)
+
+VARIETY RULE: Never use the same entrance_animation for every element in a scene. Vary animations to create visual rhythm. Match font_style to the element's purpose.
 
 Use normalized coordinates (0.0 to 1.0) for element positions. Origin is top-left (0,0), bottom-right is (1,1).
 
