@@ -41,7 +41,7 @@ export function ShowPlaybackProvider({ children }) {
 
   // ── YT player ──
   const ytPlayerRef = useRef(null);
-  const ytContainerRef = useRef(null);
+  const ytWrapperRef = useRef(null);
 
   // ── Lookup helpers ──
   const getData = () => showDataRef.current;
@@ -159,9 +159,14 @@ export function ShowPlaybackProvider({ children }) {
         setTimeout(initPlayer, 200);
         return;
       }
-      if (ytPlayerRef.current || !ytContainerRef.current) return;
+      if (ytPlayerRef.current || !ytWrapperRef.current) return;
 
-      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
+      // Create the player container imperatively so React never tries to
+      // manage or remove the node that YouTube replaces with an <iframe>.
+      const playerDiv = document.createElement('div');
+      ytWrapperRef.current.appendChild(playerDiv);
+
+      ytPlayerRef.current = new window.YT.Player(playerDiv, {
         width: '1',
         height: '1',
         playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
@@ -185,6 +190,9 @@ export function ShowPlaybackProvider({ children }) {
       if (ytPlayerRef.current) {
         try { ytPlayerRef.current.destroy(); } catch {}
         ytPlayerRef.current = null;
+      }
+      if (ytWrapperRef.current) {
+        ytWrapperRef.current.innerHTML = '';
       }
     };
   }, []);
@@ -315,9 +323,12 @@ export function ShowPlaybackProvider({ children }) {
   return (
     <ShowPlaybackContext.Provider value={value}>
       {children}
-      {/* Hidden persistent YouTube player — stays mounted across page navigation */}
+      {/* Hidden persistent YouTube player — stays mounted across page navigation.
+          The wrapper div is managed by React; the inner player container is
+          created imperatively so YouTube's iframe replacement doesn't conflict
+          with React's DOM reconciliation. */}
       <div
-        ref={ytContainerRef}
+        ref={ytWrapperRef}
         style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none', top: 0, left: 0 }}
       />
     </ShowPlaybackContext.Provider>
