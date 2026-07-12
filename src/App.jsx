@@ -95,6 +95,7 @@ import ResearchManager from '@/pages/ResearchManager';
 import ResearchDossier from '@/pages/ResearchDossier';
 import ResearchAssets from '@/pages/ResearchAssets';
 import ResearchExport from '@/pages/ResearchExport';
+import ResearchArchive from '@/pages/ResearchArchive';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import Presentations from '@/pages/Presentations';
 import PresentationReview from '@/pages/PresentationReview';
@@ -273,6 +274,7 @@ const AuthenticatedApp = () => {
           <Route path="/research/dossier" element={<ResearchDossier />} />
           <Route path="/research/assets" element={<ResearchAssets />} />
           <Route path="/research/export" element={<ResearchExport />} />
+          <Route path="/research/archive" element={<ResearchArchive />} />
         </Route>
 
         {/* Spiritual Production */}

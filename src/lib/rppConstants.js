@@ -64,6 +64,16 @@ export const RPP_DEPARTMENTS = [
     output: 'Production Packet',
     detailed_description: 'The Assembly Office brings everything together. All approved assets from the Development Studio are collected, organized, and packaged into a single, exportable Production Packet. This is the final deliverable — a complete, ready-to-use production package containing your research dossier, scripts, visual assets, voice packages, and all supporting materials in your chosen export format.',
   },
+  {
+    id: 'archive',
+    name: 'Archive',
+    path: '/research/archive',
+    icon: Archive,
+    description: 'Browse past research productions, dossiers, and packages',
+    subtitle: 'Records Vault',
+    output: 'Historical Records',
+    detailed_description: 'The Records Vault stores all past research productions. Browse completed research configurations, approved dossiers, and generated packages. Search, filter, and revisit any past research work — your full research history in one place.',
+  },
 ];
 
 export const RPP_PROGRESS_STAGES = [
