@@ -90,6 +90,7 @@ export function usePresentationEditor(presentationId) {
         // so each unique asset renders only once on the canvas.
         const seenContent = new Set();
         let tempZ = 100;
+        let cascadeIndex = 0;
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
@@ -99,8 +100,13 @@ export function usePresentationEditor(presentationId) {
               if (seenContent.has(contentKey)) continue;
               seenContent.add(contentKey);
 
+              // If the scene graph doesn't specify a position, cascade elements
+              // vertically so they don't all stack at center (0.5, 0.5)
+              const hasPos = elem.position && typeof elem.position.x === 'number';
               const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
-              const py = Math.round((elem.position?.y ?? 0.5) * CANVAS_H);
+              const py = hasPos
+                ? Math.round((elem.position?.y ?? 0.5) * CANVAS_H)
+                : 120 + cascadeIndex * 140;
 
               const typeMap = {
                 headline: 'text', body_text: 'text', image: 'image',
@@ -151,6 +157,7 @@ export function usePresentationEditor(presentationId) {
                 locked: false,
                 visible: true,
               });
+              cascadeIndex++;
             }
           }
         }
