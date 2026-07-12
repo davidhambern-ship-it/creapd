@@ -156,6 +156,17 @@ export default function GlobalBreakRoom({
                     <div className="text-[10px] text-muted-foreground mt-0.5">Blast space rocks</div>
                   </button>
                 </div>
+                <p className="text-center text-[10px] text-muted-foreground mt-3">
+                  Games Brought To You By:{' '}
+                  <a
+                    href="https://www.texasnomadgames.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    TexasNomadGames.com
+                  </a>
+                </p>
               </motion.div>
             ) : (
               <motion.div
@@ -182,6 +193,17 @@ export default function GlobalBreakRoom({
                   {activeGame === 'wordsearch' && <WordSearch onClose={() => setActiveGame(null)} />}
                   {activeGame === 'asteroids' && <Asteroids onClose={() => setActiveGame(null)} />}
                 </div>
+                <p className="text-center text-[10px] text-muted-foreground mt-3">
+                  Games Brought To You By:{' '}
+                  <a
+                    href="https://www.texasnomadgames.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    TexasNomadGames.com
+                  </a>
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
