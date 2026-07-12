@@ -195,6 +195,8 @@ Deno.serve(async (req) => {
                               exit_animation: { type: "string" },
                               font_style: { type: "string" },
                               color_theme: { type: "string" },
+                              visual_effects: { type: "array", items: { type: "string" } },
+                              ambient_animation: { type: "string" },
                               start_time: { type: "number" },
                               end_time: { type: "number" }
                             }
@@ -266,6 +268,8 @@ Deno.serve(async (req) => {
                 visibility: true,
                 font_style: elem.font_style || '',
                 color_theme: elem.color_theme || 'white',
+                visual_effects: elem.visual_effects || [],
+                ambient_animation: elem.ambient_animation || 'none',
                 entrance_animation: { type: elem.entrance_animation || 'fade', duration_ms: 500 },
                 exit_animation: { type: elem.exit_animation || 'fade', duration_ms: 500 },
                 timeline_events: [{
@@ -590,7 +594,7 @@ For each scene, determine:
 Element types: image, headline, body_text, talking_point_card, discussion_response, lower_third, chart, logo, icon, callout, statistic, quote.
 
 STYLE GUIDE — VISUAL DESIGN, ANIMATION & TYPOGRAPHY (MANDATORY):
-Each element MUST include entrance_animation, exit_animation, font_style, and color_theme. Each scene MUST include background_design. Use ONLY the values listed below.
+Each element MUST include entrance_animation, exit_animation, font_style, color_theme, visual_effects (array), and ambient_animation. Each scene MUST include background_design. Use ONLY the values listed below.
 
 COLOR PALETTES — Assign each element a color_theme token:
 - "primary" — deep purple hsl(270 80% 60%) — for headlines, key callouts, branding
@@ -652,6 +656,39 @@ EXIT ANIMATIONS:
 - "scale_out" — zoom out to small
 - "dissolve_out" — blur-to-blur exit
 
+VISUAL EFFECTS — Each element MUST include a visual_effects array with at least 2 effects. This is CRITICAL — slides must look rich and polished, not flat:
+- "glass_panel" — frosted glass background with blur (cards, callouts, statistics, headlines)
+- "glow_border" — glowing colored border (headlines, callouts, statistics, talking_point_card)
+- "neon_shadow" — neon glow text shadow (headlines, statistics, emphasis text)
+- "gradient_border" — subtle gradient border (quotes, premium elements)
+- "drop_shadow" — standard drop shadow for depth (body_text, secondary content)
+- "inner_glow" — inner glow effect (panels, large cards)
+VISUAL EFFECT RULES:
+1. Headlines MUST include: ["glass_panel", "glow_border", "neon_shadow"]
+2. Statistics MUST include: ["glass_panel", "neon_shadow"]
+3. Quotes MUST include: ["glass_panel", "gradient_border"]
+4. Callouts MUST include: ["glass_panel", "glow_border"]
+5. Talking point cards MUST include: ["glass_panel", "glow_border"]
+6. Body text MUST include: ["drop_shadow"]
+7. NEVER leave visual_effects empty — every element needs visual treatment
+
+AMBIENT ANIMATIONS — Each element MUST include an ambient_animation (continuous effect that persists AFTER the entrance animation completes). This keeps slides feeling alive and dynamic — never static:
+- "none" — no ambient animation (use sparingly, only for body_text)
+- "pulse" — subtle opacity/brightness pulsing (statistics, emphasis elements)
+- "glow_breathe" — glow intensity breathing in and out (headlines, neon elements)
+- "shimmer" — light sweep across element (premium elements, awards, gold elements)
+- "subtle_float" — very subtle vertical floating (images, cards, quotes)
+- "text_shimmer" — text glow intensity pulsing (headlines, quotes)
+- "border_pulse" — border glow pulsing (callouts, cards)
+AMBIENT ANIMATION RULES:
+1. At least 60% of elements in each scene MUST have a non-"none" ambient_animation
+2. Headlines should use "glow_breathe" or "text_shimmer"
+3. Statistics should use "pulse"
+4. Quotes should use "subtle_float"
+5. Callouts should use "border_pulse"
+6. Body text can use "none" (entrance animation is sufficient)
+7. NEVER make an entire scene static — at least one element should always be moving
+
 FONT STYLES:
 - "font-heading" — Poppins, bold (headlines, titles)
 - "font-display" — Oswald, condensed bold (statistics, large numbers, banners)
@@ -668,9 +705,12 @@ CRITICAL: All elements MUST fit within the display screen. Respect the Safe Area
 All timing must be in milliseconds and synchronized with the Voice Package sentence timeline. Elements should appear when their relevant narration begins and disappear when no longer relevant.
 
 Return a JSON object with:
-- scenes: array of scene objects (each with scene_id, scene_order, scene_type, scene_purpose, scene_start_time, scene_end_time, camera_behavior, camera_target, motion_intensity, layers with elements)
+- scenes: array of scene objects (each with scene_id, scene_order, scene_type, scene_purpose, scene_start_time, scene_end_time, camera_behavior, camera_target, motion_intensity, background_design, layers with elements)
+- Each element MUST include: element_type, content, position_x, position_y, scale, opacity, entrance_animation, exit_animation, font_style, color_theme, visual_effects (array of strings), ambient_animation (string), start_time, end_time
 - decision_rationale: explanation of your directing decisions
-- confidence_score: 0-100 confidence that this slide communicates the story effectively`;
+- confidence_score: 0-100 confidence that this slide communicates the story effectively
+
+CRITICAL REMINDER: Every element MUST have visual_effects (at least 2) and ambient_animation. Slides must look visually rich with glass panels, glowing borders, neon shadows, and continuous ambient motion. A slide where text just fades in and sits static is a FAILURE.`;
 }
 
 // ==========================================================
