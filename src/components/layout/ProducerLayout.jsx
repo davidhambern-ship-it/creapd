@@ -5,6 +5,7 @@ import ProducerSidebar from './ProducerSidebar';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
+import PPNavBar from './PPNavBar';
 import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
 import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
@@ -32,6 +33,7 @@ export default function ProducerLayout() {
         </main>
       </div>
       <ProductionFooter variant="news" />
+      <PPNavBar />
       </div>
       <MobileBottomNav items={PP_NAV_ITEMS} />
       <MobileNavDrawer

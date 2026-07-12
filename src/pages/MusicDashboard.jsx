@@ -9,6 +9,7 @@ import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } 
 import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
+import PPNavBar from '@/components/layout/PPNavBar';
 import MusicShowArchive from '@/components/music/MusicShowArchive';
 import RegenerateDropdown from '@/components/music/RegenerateDropdown';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
@@ -703,7 +704,7 @@ export default function MusicDashboard() {
             </div>
           </div>
         </motion.div>
-      <MusicDiscoveryNav />
+      <PPNavBar />
       </div>
 
       {/* Department Detail Panel */}

@@ -12,6 +12,7 @@ import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobileBottomNav from './MobileBottomNav';
+import PPNavBar from './PPNavBar';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
@@ -58,6 +59,7 @@ export default function SpiritualLayout() {
       </div>
 
       <ProductionFooter variant="spiritual" />
+      <PPNavBar />
       </div>
       <MobileBottomNav items={PP_NAV_ITEMS} />
 

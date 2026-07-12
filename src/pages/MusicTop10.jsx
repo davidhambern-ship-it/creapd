@@ -9,6 +9,7 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
+import PPNavBar from '@/components/layout/PPNavBar';
 
 export default function MusicTop10() {
   const [config, setConfig] = useState(null);
@@ -269,7 +270,7 @@ export default function MusicTop10() {
             </div>
           </div>
         )}
-      <MusicDiscoveryNav />
+      <PPNavBar />
       </div>
 
       {/* Add Video Modal */}

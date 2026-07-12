@@ -8,6 +8,7 @@ import { Loader2, Sparkles, CheckCircle2, RefreshCw, Disc3, Edit3, Save, X } fro
 import { ASSET_TYPE_LABELS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
+import PPNavBar from '@/components/layout/PPNavBar';
 
 const TYPE_COLORS = {
   song_intro: '#FF00FF',
@@ -184,7 +185,7 @@ export default function MusicAssets() {
             </Button>
           </div>
         )}
-        <MusicDiscoveryNav />
+        <PPNavBar />
         </div>
         </div>
         );
