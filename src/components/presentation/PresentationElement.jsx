@@ -55,7 +55,11 @@ export default function PresentationElement({ element, slideLocalTime }) {
   const endMs = timelineEvent.end_time || 999999;
   const isVisible = slideLocalTime >= startMs && slideLocalTime <= endMs;
 
+  // Elements with visibility=true are always shown (opacity controlled below)
   if (!isVisible && !element.visibility) return null;
+
+  // If element is marked always-visible, show it regardless of timeline position
+  const shouldShow = isVisible || element.visibility;
 
   const entranceAnim = element.entrance_animation?.type || 'fade';
   const fontClass = element.font_style || '';
@@ -79,12 +83,12 @@ export default function PresentationElement({ element, slideLocalTime }) {
     left: `${clampedX * 100}%`,
     top: `${clampedY * 100}%`,
     transform: `translate(-50%, -50%) scale(${clampedScale})`,
-    opacity: isVisible ? (element.opacity || 1) : 0,
+    opacity: shouldShow ? (element.opacity || 1) : 0,
     transition: 'opacity 0.3s ease',
   };
 
   const content = element.content || '';
-  const animWrap = isVisible ? animClass : '';
+  const animWrap = shouldShow ? animClass : '';
 
   if (element.element_type === 'image') {
     // Only render if there's a real asset URL; otherwise skip (backgrounds are scene-level)
