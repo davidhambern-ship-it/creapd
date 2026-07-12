@@ -1,6 +1,25 @@
 import React from 'react';
 import '@/styles/presentation-animations.css';
 
+// Splits text by newlines, renders each line with a staggered reveal animation
+function LineReveal({ text, className, style, staggerMs = 120 }) {
+  const lines = (text || '').split('\n').filter(l => l.trim() !== '');
+  if (lines.length === 0) return null;
+  return (
+    <>
+      {lines.map((line, i) => (
+        <span
+          key={i}
+          className="animate-line-reveal"
+          style={{ ...style, animationDelay: `${i * staggerMs}ms` }}
+        >
+          {line.trim()}
+        </span>
+      ))}
+    </>
+  );
+}
+
 const ANIMATION_CLASSES = {
   // Entrance
   fade: 'animate-fade-in',
@@ -91,15 +110,43 @@ export default function PresentationElement({ element, slideLocalTime }) {
   const animWrap = shouldShow ? animClass : '';
 
   if (element.element_type === 'image') {
-    // Only render if there's a real asset URL; otherwise skip (backgrounds are scene-level)
-    if (!element.asset_reference || element.asset_reference === '') return null;
+    // Use asset_reference, or fall back to content if it's a URL
+    const imgSrc = element.asset_reference || (content.startsWith('http') ? content : '');
+    if (!imgSrc) return null;
+
+    // Detect if this is a full-bleed background image (positioned near center)
+    const isCentered = rawX >= 0.35 && rawX <= 0.65 && rawY >= 0.35 && rawY <= 0.65;
+
+    if (isCentered) {
+      // Full-bleed background image covering the entire scene
+      return (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            opacity: shouldShow ? (element.opacity || 1) : 0,
+            transition: 'opacity 0.5s ease',
+          }}
+          className={animWrap}
+        >
+          <img
+            src={imgSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ filter: 'brightness(0.85)' }}
+          />
+        </div>
+      );
+    }
+
+    // Content image — larger and more visible
     return (
       <div style={style} className={animWrap}>
         <img
-          src={element.asset_reference}
+          src={imgSrc}
           alt={content}
-          className="rounded-lg shadow-2xl object-contain"
-          style={{ maxWidth: '50cqw', maxHeight: '50cqh' }}
+          className="rounded-xl shadow-2xl object-contain"
+          style={{ maxWidth: '70cqw', maxHeight: '70cqh' }}
         />
       </div>
     );
@@ -124,28 +171,39 @@ export default function PresentationElement({ element, slideLocalTime }) {
   }
 
   if (element.element_type === 'body_text') {
+    const lines = content.split('\n').filter(l => l.trim());
+    const useLineReveal = lines.length > 1 || content.length > 80;
     return (
-      <div style={style} className={animWrap}>
-        <p
-          className={`${fontClass || 'font-body'} text-center`}
-          style={{ fontSize: '1.8cqw', maxWidth: '60cqw', padding: '0 1cqw', color: color.text, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
-        >
-          {content}
-        </p>
+      <div style={style} className={useLineReveal ? '' : animWrap}>
+        {useLineReveal ? (
+          <div
+            className={`${fontClass || 'font-body'} text-center`}
+            style={{ fontSize: '1.8cqw', maxWidth: '60cqw', padding: '0 1cqw', color: color.text, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+          >
+            <LineReveal text={content} staggerMs={150} />
+          </div>
+        ) : (
+          <p
+            className={`${fontClass || 'font-body'} text-center`}
+            style={{ fontSize: '1.8cqw', maxWidth: '60cqw', padding: '0 1cqw', color: color.text, textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+          >
+            {content}
+          </p>
+        )}
       </div>
     );
   }
 
   if (element.element_type === 'talking_point_card' || element.element_type === 'discussion_response') {
     return (
-      <div style={style} className={animWrap}>
+      <div style={style}>
         <div
           className="backdrop-blur-md rounded-xl"
           style={{ padding: '1cqw 1.5cqw', maxWidth: '45cqw', background: `${color.text}1a`, border: `1px solid ${color.text}66`, boxShadow: glowShadow }}
         >
-          <p className={`${fontClass || 'font-body'} font-medium`} style={{ fontSize: '1.6cqw', color: color.text }}>
-            {content}
-          </p>
+          <div className={`${fontClass || 'font-body'} font-medium`} style={{ fontSize: '1.6cqw', color: color.text }}>
+            <LineReveal text={content} staggerMs={120} />
+          </div>
         </div>
       </div>
     );
@@ -158,7 +216,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           position: 'absolute',
           bottom: '8%',
           left: '5%',
-          opacity: isVisible ? 1 : 0,
+          opacity: shouldShow ? 1 : 0,
           transition: 'opacity 0.3s ease',
         }}
         className={animWrap}
@@ -191,13 +249,14 @@ export default function PresentationElement({ element, slideLocalTime }) {
   }
 
   if (element.element_type === 'quote') {
+    const quoteText = content.replace(/^[""]|[""]$/g, '');
     return (
-      <div style={style} className={animWrap}>
+      <div style={style}>
         <blockquote
           className={`${fontClass || 'font-serif'} italic text-center`}
           style={{ fontSize: '2.2cqw', maxWidth: '60cqw', paddingLeft: '1cqw', borderLeft: `4px solid ${color.text}`, color: color.text, textShadow: glowShadow }}
         >
-          "{content}"
+          <LineReveal text={`"${quoteText}"`} staggerMs={200} />
         </blockquote>
       </div>
     );
@@ -205,14 +264,14 @@ export default function PresentationElement({ element, slideLocalTime }) {
 
   if (element.element_type === 'callout') {
     return (
-      <div style={style} className={animWrap}>
+      <div style={style}>
         <div
           className="backdrop-blur-md rounded-xl"
           style={{ padding: '0.75cqw 1.25cqw', background: `${color.text}1a`, border: `1px solid ${color.text}55`, boxShadow: glowShadow }}
         >
-          <p className={`${fontClass || 'font-body'} font-semibold text-center`} style={{ fontSize: '1.6cqw', color: color.text }}>
-            {content}
-          </p>
+          <div className={`${fontClass || 'font-body'} font-semibold text-center`} style={{ fontSize: '1.6cqw', color: color.text }}>
+            <LineReveal text={content} staggerMs={120} />
+          </div>
         </div>
       </div>
     );
