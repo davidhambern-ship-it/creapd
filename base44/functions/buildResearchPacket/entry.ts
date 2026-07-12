@@ -145,15 +145,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Delete old slides for this presentation (if updating) ──
-    const oldSlides = await base44.asServiceRole.entities.StorySlide.filter(
+    // ── Resumable: fetch existing slides (don't delete — skip ones with scene graphs) ──
+    const existingSlides = await base44.asServiceRole.entities.StorySlide.filter(
       { stories_presentation_id: presentation.id },
       'story_order'
     );
-    if (oldSlides && oldSlides.length > 0) {
-      await Promise.all(oldSlides.map(s =>
-        base44.asServiceRole.entities.StorySlide.delete(s.id)
-      ));
+
+    // Map: package_id -> existing slide (with scene graph already generated)
+    const slidesByPackage = {};
+    for (const s of (existingSlides || [])) {
+      if (s.story_package_id && s.scene_graph) {
+        slidesByPackage[s.story_package_id] = s;
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -162,6 +165,7 @@ Deno.serve(async (req) => {
     const slideIds = [];
     let cumulativeStartMs = 0;
     const masterTimelineEvents = [];
+    let slidesProcessed = 0;
 
     for (let i = 0; i < packages.length; i++) {
       const pkg = packages[i];
@@ -169,6 +173,21 @@ Deno.serve(async (req) => {
       const scriptText = pkg.teleprompter_script || pkg.story_summary || point?.content || '';
 
       if (!scriptText) {
+        continue;
+      }
+
+      // ── Skip if slide already has a scene graph (resumable) ──
+      if (slidesByPackage[pkg.id]) {
+        const existingSlide = slidesByPackage[pkg.id];
+        slideIds.push(existingSlide.id);
+        cumulativeStartMs += existingSlide.duration_ms || 0;
+        masterTimelineEvents.push({
+          event_type: 'slide_start',
+          slide_id: existingSlide.id,
+          start_time: cumulativeStartMs - (existingSlide.duration_ms || 0),
+          end_time: cumulativeStartMs,
+        });
+        slidesProcessed++;
         continue;
       }
 
@@ -323,17 +342,17 @@ Deno.serve(async (req) => {
 
       const sceneGraphData = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
 
-      // Build the complete scene graph
+      // Build the complete scene graph — limit scenes to 5 and truncate content to stay under field size limit
       let imgIdx = 0;
       const sceneGraph = {
         slide_id: `slide_${i + 1}`,
         story_package_id: pkg.id,
         voice_package_id: vp.id,
-        scenes: (sceneGraphData.scenes || []).map((scene, sIdx) => ({
+        scenes: (sceneGraphData.scenes || []).slice(0, 5).map((scene, sIdx) => ({
           scene_id: scene.scene_id || `scene_${i + 1}_${sIdx + 1}`,
           scene_order: scene.scene_order || sIdx + 1,
           scene_type: scene.scene_type || 'emphasis_text',
-          scene_purpose: scene.scene_purpose || '',
+          scene_purpose: (scene.scene_purpose || '').substring(0, 200),
           scene_start_time: scene.scene_start_time || 0,
           scene_end_time: scene.scene_end_time || totalDurationMs,
           scene_duration: (scene.scene_end_time || totalDurationMs) - (scene.scene_start_time || 0),
@@ -345,11 +364,11 @@ Deno.serve(async (req) => {
             intensity: scene.motion_intensity || 'low',
             environmental_effects: [],
           },
-          layers: (scene.layers || []).map((layer, lIdx) => ({
+          layers: (scene.layers || []).slice(0, 5).map((layer, lIdx) => ({
             layer_id: `layer_${i + 1}_${sIdx + 1}_${lIdx}`,
             layer_type: layer.layer_type || 'background',
             z_order: layer.z_order !== undefined ? layer.z_order : lIdx,
-            elements: (layer.elements || []).map((elem, eIdx) => {
+            elements: (layer.elements || []).slice(0, 4).map((elem, eIdx) => {
               let assetRef = null;
               let assetId = null;
               if (elem.element_type === 'image') {
@@ -365,7 +384,7 @@ Deno.serve(async (req) => {
               return {
                 element_id: `elem_${i + 1}_${sIdx + 1}_${lIdx}_${eIdx}`,
                 element_type: elem.element_type || 'body_text',
-                content: elem.content || '',
+                content: (elem.content || '').substring(0, 300),
                 position: { x: elem.position_x !== undefined ? elem.position_x : 0.5, y: elem.position_y !== undefined ? elem.position_y : 0.5 },
                 scale: elem.scale !== undefined ? elem.scale : 1.0,
                 rotation: 0,
@@ -384,9 +403,34 @@ Deno.serve(async (req) => {
             }),
           })),
         })),
-        decision_rationale: sceneGraphData.decision_rationale || '',
+        decision_rationale: (sceneGraphData.decision_rationale || '').substring(0, 500),
         confidence_score: sceneGraphData.confidence_score || 80,
       };
+
+      // ── Hard size limit: if scene graph exceeds 40KB, aggressively truncate ──
+      let sceneGraphStr = JSON.stringify(sceneGraph);
+      if (sceneGraphStr.length > 40000) {
+        for (const scene of sceneGraph.scenes) {
+          for (const layer of (scene.layers || [])) {
+            for (const elem of (layer.elements || [])) {
+              if (elem.content) elem.content = elem.content.substring(0, 100);
+            }
+          }
+        }
+        sceneGraph.decision_rationale = sceneGraph.decision_rationale.substring(0, 200);
+        sceneGraphStr = JSON.stringify(sceneGraph);
+      }
+      if (sceneGraphStr.length > 40000) {
+        // Still too large — strip element content entirely, keep structure only
+        for (const scene of sceneGraph.scenes) {
+          for (const layer of (scene.layers || [])) {
+            for (const elem of (layer.elements || [])) {
+              if (elem.element_type !== 'image') elem.content = (elem.content || '').substring(0, 50);
+            }
+          }
+        }
+        sceneGraphStr = JSON.stringify(sceneGraph);
+      }
 
       // Build slide timeline
       const slideTimeline = {
@@ -418,7 +462,7 @@ Deno.serve(async (req) => {
         story_order: i,
         slide_number: i,
         voice_package_id: vp.id,
-        scene_graph: JSON.stringify(sceneGraph),
+        scene_graph: sceneGraphStr,
         slide_timeline: JSON.stringify(slideTimeline),
         slide_metadata: JSON.stringify(slideMetadata),
         slide_start_ms: cumulativeStartMs,
@@ -429,6 +473,13 @@ Deno.serve(async (req) => {
       });
 
       slideIds.push(slide.id);
+      slidesProcessed++;
+
+      // ── Save progress after each slide (resumable on timeout) ──
+      await base44.asServiceRole.entities.StoriesPresentation.update(
+        presentation.id,
+        { story_slide_ids: JSON.stringify(slideIds), story_count: slideIds.length }
+      );
 
       // Record AI decision
       await base44.asServiceRole.entities.APDDecisionRecord.create({
@@ -538,6 +589,23 @@ Deno.serve(async (req) => {
       }
     );
 
+    // ── If not all slides processed, return partial status (frontend will retry) ──
+    const allProcessed = slidesProcessed >= packages.filter(p => {
+      const pt = points.find(pt => pt.id === p.source_entity_id);
+      return p.teleprompter_script || p.story_summary || pt?.content;
+    }).length;
+
+    if (!allProcessed) {
+      return Response.json({
+        presentation,
+        slides_created: slideIds.length,
+        slide_ids: slideIds,
+        packages_total: packages.length,
+        completed: false,
+        message: `Processed ${slideIds.length}/${packages.length} slides. Retrying to continue...`,
+      });
+    }
+
     return Response.json({
       presentation,
       slides_created: slideIds.length,
@@ -548,6 +616,7 @@ Deno.serve(async (req) => {
       total_runtime_ms: cumulativeStartMs,
       confidence_score: confidenceScore,
       qa_result: qaResult,
+      completed: true,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

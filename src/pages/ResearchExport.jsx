@@ -33,13 +33,30 @@ export default function ResearchExport() {
     setAssembling(true);
     setError(null);
     try {
-      const res = await base44.functions.invoke('buildResearchPacket', {
-        configuration_id: config.id,
-        presentation_title: `${config.production_name} — Research Presentation`,
-      });
-      setPacket(res.data.presentation);
+      let completed = false;
+      let retries = 0;
+      let result = null;
+      while (!completed && retries < 5) {
+        const res = await base44.functions.invoke('buildResearchPacket', {
+          configuration_id: config.id,
+          presentation_title: `${config.production_name} — Research Presentation`,
+        });
+        result = res.data;
+        completed = res.data?.completed !== false;
+        retries++;
+      }
+      if (result?.presentation) {
+        setPacket(result.presentation);
+      } else if (!completed) {
+        setError('Assembly timed out after multiple attempts. Try again to continue from where it left off.');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to assemble packet');
+      const msg = err.response?.data?.error || err.message || 'Failed to assemble packet';
+      if (msg.includes('Cloudflare') || msg.includes('timeout') || msg.includes('overloaded')) {
+        setError('The server timed out during assembly. Click Reassemble to continue from where it left off — slides already processed are saved.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setAssembling(false);
     }
