@@ -12,11 +12,11 @@ export default function EditorCanvas({
   slide, elements, selectedIds, selectedId,
   zoom, zoomMode, panX, panY,
   mode, isPlaying, currentTime,
-  showGrid, showSafeAreas,
+  showGrid, showSafeAreas, showGuides, snapEnabled,
   onSelect, onToggleSelect, onUpdate, onDelete,
   onViewportChange, onZoomModeChange,
   onZoomIn, onZoomOut, onZoomFit, onZoom100,
-  onToggleGrid, onToggleSafeAreas,
+  onToggleGrid, onToggleSafeAreas, onToggleGuides, onToggleSnap,
 }) {
   const previewMode = mode === 'preview';
   const sorted = [...(elements || [])].sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
@@ -26,10 +26,14 @@ export default function EditorCanvas({
   const handleDragGuides = useCallback((dragRect, excludeId) => {
     if (!dragRect) { setActiveGuides([]); return { snapX: 0, snapY: 0 }; }
     if (previewMode) return { snapX: 0, snapY: 0 };
-    const { guides, snapX, snapY } = calculateSnapGuides(dragRect, elements || [], excludeId, true);
-    setActiveGuides(guides);
+    const { guides, snapX, snapY } = calculateSnapGuides(dragRect, elements || [], excludeId, snapEnabled);
+    if (showGuides) {
+      setActiveGuides(guides);
+    } else {
+      setActiveGuides([]);
+    }
     return { snapX, snapY };
-  }, [elements, previewMode]);
+  }, [elements, previewMode, snapEnabled, showGuides]);
 
   return (
     <div className="cpe-canvas-area flex-1 flex flex-col overflow-hidden">
@@ -39,12 +43,16 @@ export default function EditorCanvas({
         mode={mode}
         showGrid={showGrid}
         showSafeAreas={showSafeAreas}
+        showGuides={showGuides}
+        snapEnabled={snapEnabled}
         onZoomIn={onZoomIn}
         onZoomOut={onZoomOut}
         onZoomFit={onZoomFit}
         onZoom100={onZoom100}
         onToggleGrid={onToggleGrid}
         onToggleSafeAreas={onToggleSafeAreas}
+        onToggleGuides={onToggleGuides}
+        onToggleSnap={onToggleSnap}
       />
 
       <CanvasViewport
@@ -91,7 +99,7 @@ export default function EditorCanvas({
             />
           ))}
 
-          {!previewMode && <SmartGuideLayer guides={activeGuides} />}
+          {!previewMode && showGuides && <SmartGuideLayer guides={activeGuides} />}
           {!previewMode && (showGrid || showSafeAreas) && (
             <SafeAreaLayer showGrid={showGrid} showSafeAreas={showSafeAreas} />
           )}

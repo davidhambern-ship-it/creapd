@@ -4,16 +4,50 @@ import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown,
   AlignLeft, Captions, Wand2, FolderOpen, Cpu, ClipboardCheck,
-  Video, Music,
+  Video, Music, PenTool, Shapes, BarChart3, Table as TableIcon,
+  Minus, MessageSquare, Quote, Code, Sigma, QrCode, Box,
 } from 'lucide-react';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 
-const ADD_OPTIONS = [
-  { type: 'text', label: 'Text Box', icon: Type },
-  { type: 'image', label: 'Image', icon: ImageIcon },
-  { type: 'shape', label: 'Shape', icon: Square },
-  { type: 'lower_third', label: 'Lower Third', icon: AlignLeft },
-  { type: 'caption', label: 'Caption', icon: Captions },
+const ADD_GROUPS = [
+  {
+    label: 'Content',
+    items: [
+      { type: 'text', label: 'Text', icon: Type },
+      { type: 'quote', label: 'Quote', icon: Quote },
+      { type: 'code_block', label: 'Code Block', icon: Code },
+      { type: 'equation', label: 'Equation', icon: Sigma },
+    ],
+  },
+  {
+    label: 'Media',
+    items: [
+      { type: 'image', label: 'Image', icon: ImageIcon },
+      { type: 'video', label: 'Video', icon: Video },
+      { type: 'audio', label: 'Audio', icon: Music },
+      { type: 'svg', label: 'SVG', icon: PenTool },
+      { type: 'icon', label: 'Icon', icon: Shapes },
+      { type: 'qr_code', label: 'QR Code', icon: QrCode },
+    ],
+  },
+  {
+    label: 'Layout',
+    items: [
+      { type: 'shape', label: 'Shape', icon: Square },
+      { type: 'divider', label: 'Divider', icon: Minus },
+      { type: 'table', label: 'Table', icon: TableIcon },
+      { type: 'chart', label: 'Chart', icon: BarChart3 },
+      { type: 'callout', label: 'Callout', icon: MessageSquare },
+      { type: 'placeholder', label: 'Placeholder', icon: Box },
+    ],
+  },
+  {
+    label: 'Broadcast',
+    items: [
+      { type: 'lower_third', label: 'Lower Third', icon: AlignLeft },
+      { type: 'caption', label: 'Caption', icon: Captions },
+    ],
+  },
 ];
 
 const MEDIA_ADD_OPTIONS = [
@@ -80,11 +114,16 @@ export default function EditorTopBar({
             </button>
             {addOpen && (
               <Dropdown onClose={() => setAddOpen(false)}>
-                {ADD_OPTIONS.map(({ type, label, icon: Icon }) => (
-                  <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }}
-                    className="cpe-dropdown-item">
-                    <Icon className="w-4 h-4" /> {label}
-                  </button>
+                {ADD_GROUPS.map((group, gi) => (
+                  <div key={group.label} className={gi > 0 ? 'mt-1 pt-1 border-t border-white/5' : ''}>
+                    <div className="cpe-dropdown-group-label">{group.label}</div>
+                    {group.items.map(({ type, label, icon: Icon }) => (
+                      <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }}
+                        className="cpe-dropdown-item">
+                        <Icon className="w-4 h-4" /> {label}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </Dropdown>
             )}

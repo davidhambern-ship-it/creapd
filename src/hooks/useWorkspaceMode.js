@@ -9,7 +9,7 @@ export const WORKSPACE_MODES = {
     focus: 'Visual composition',
     canvasFlex: 7,
     timelineFlex: 2,
-    sidePanelWidth: 320,
+    sidePanelWidth: 280,
     timelineMode: 'compact',
     showSlideRail: true,
     sidePanel: 'inspector',

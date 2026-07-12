@@ -217,6 +217,8 @@ export default function PresentationEditor() {
               currentTime={ed.currentTime}
               showGrid={ed.showGrid}
               showSafeAreas={ed.showSafeAreas}
+              showGuides={ed.showGuides}
+              snapEnabled={ed.snapEnabled}
               onSelect={ed.setSelectedIds}
               onToggleSelect={ed.toggleSelection}
               onUpdate={ed.updateElement}
@@ -229,6 +231,8 @@ export default function PresentationEditor() {
               onZoom100={ed.zoom100}
               onToggleGrid={() => ed.setShowGrid(v => !v)}
               onToggleSafeAreas={() => ed.setShowSafeAreas(v => !v)}
+              onToggleGuides={() => ed.setShowGuides(v => !v)}
+              onToggleSnap={() => ed.setSnapEnabled(v => !v)}
             />
           </div>
 

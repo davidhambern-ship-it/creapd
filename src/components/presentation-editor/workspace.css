@@ -47,6 +47,17 @@
   .cpe-ws-btn { padding: 0.25rem 0.375rem; }
 }
 
+/* ── Add Menu Group Labels ── */
+.cpe-dropdown-group-label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--cpe-text-dim));
+  padding: 0.375rem 0.625rem 0.125rem;
+  user-select: none;
+}
+
 /* ── Side Panel Container ── */
 .cpe-ws-side-panel {
   border-left: 1px solid hsl(var(--cpe-border));

@@ -63,6 +63,8 @@ export function usePresentationEditor(presentationId) {
   const [panY, setPanY] = useState(0);
   const [showGrid, setShowGrid] = useState(false);
   const [showSafeAreas, setShowSafeAreas] = useState(false);
+  const [showGuides, setShowGuides] = useState(true);
+  const [snapEnabled, setSnapEnabled] = useState(true);
 
   // Transient mode: per-slide element cache (slide temp-id → elements[])
   const [transientElements, setTransientElements] = useState({});
@@ -447,6 +449,14 @@ export function usePresentationEditor(presentationId) {
       table: { width: 500, height: 200, content: JSON.stringify({ rows: 3, cols: 3 }) },
       lower_third: { width: 800, height: 80, content: 'Lower third text', x: 240, y: 600 },
       caption: { width: 600, height: 40, content: 'Caption text', x: 340, y: 660 },
+      svg: { width: 200, height: 200, content: '' },
+      divider: { width: 800, height: 4, content: '', x: 240, y: 358 },
+      callout: { width: 400, height: 120, content: 'Callout text' },
+      quote: { width: 600, height: 150, content: '“Inspiring quote text”' },
+      code_block: { width: 500, height: 200, content: '// Your code here' },
+      equation: { width: 300, height: 80, content: 'E = mc²' },
+      qr_code: { width: 150, height: 150, content: 'https://example.com' },
+      placeholder: { width: 300, height: 200, content: 'Placeholder' },
     };
     const def = presets[type] || { width: 200, height: 100, content: '' };
     const newEl = {
@@ -1148,6 +1158,7 @@ export function usePresentationEditor(presentationId) {
     zoomMode, setZoomMode, panX, panY, setViewport,
     zoomIn, zoomOut, zoomFit, zoom100,
     showGrid, setShowGrid, showSafeAreas, setShowSafeAreas,
+    showGuides, setShowGuides, snapEnabled, setSnapEnabled,
     play: () => setIsPlaying(true), pause: () => setIsPlaying(false),
     stop: () => { audioObjs.current.forEach(a => { a.pause(); a.currentTime = 0; }); setIsPlaying(false); setCurrentTime(0); },
     restart: () => { setCurrentTime(0); setIsPlaying(true); },
