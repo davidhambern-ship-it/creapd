@@ -8,6 +8,7 @@ import DepartmentCabinet from '@/components/rpp/lobby/DepartmentCabinet';
 import NerveCenterBackground from '@/components/rpp/lobby/NerveCenterBackground';
 import NerveCenterTopBar from '@/components/rpp/lobby/NerveCenterTopBar';
 import NerveCenterSideRail from '@/components/rpp/lobby/NerveCenterSideRail';
+import NerveCenterBottomConsole from '@/components/rpp/lobby/NerveCenterBottomConsole';
 
 function getDeptStatus(deptId, topics, points, packages, dossiers) {
   const researchingTopics = topics.filter(t => t.status === 'researching');
@@ -100,6 +101,7 @@ export default function RPPLobby() {
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'hsl(190 80% 55%)' }} />
           </div>
         </div>
+        <NerveCenterBottomConsole />
       </div>
     );
   }
@@ -196,6 +198,7 @@ export default function RPPLobby() {
         </div>
         <NerveCenterSideRail side="right" />
       </div>
+      <NerveCenterBottomConsole />
     </div>
   );
 }
