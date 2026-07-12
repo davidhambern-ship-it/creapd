@@ -37,6 +37,8 @@ export default function ResearchManager() {
   const [approving, setApproving] = useState(null);
   const [breakRoomStatus, setBreakRoomStatus] = useState(null);
   const [breakRoomError, setBreakRoomError] = useState(null);
+  const [breakRoomTitle, setBreakRoomTitle] = useState('Generating...');
+  const [breakRoomSubtitle, setBreakRoomSubtitle] = useState('');
 
   const researchingTopic = useMemo(
     () => (topics || []).find(t => t.status === 'researching'),
@@ -52,6 +54,8 @@ export default function ResearchManager() {
     }
 
     setBreakRoomStatus('loading');
+    setBreakRoomTitle('Conducting Deep Research');
+    setBreakRoomSubtitle(researchingTopic.title);
     let active = true;
 
     const poll = async () => {
@@ -121,21 +125,23 @@ export default function ResearchManager() {
     );
   }
 
-  // Show the Break Room when a topic is actively researching
-  if (breakRoomStatus && researchingTopic) {
+  // Show the Break Room during deep research or package generation
+  if (breakRoomStatus) {
+    const isResearch = breakRoomTitle === 'Conducting Deep Research';
     return (
       <GlobalBreakRoom
-        title="Conducting Deep Research"
-        subtitle={researchingTopic.title}
+        title={breakRoomTitle}
+        subtitle={breakRoomSubtitle}
         status={breakRoomStatus}
         error={breakRoomError}
-        readyTitle="Research Complete!"
-        readyText="Loading your research dossier..."
+        readyTitle={isResearch ? 'Research Complete!' : 'Package Generated!'}
+        readyText={isResearch ? 'Loading your research dossier...' : 'Loading your production package...'}
         onComplete={() => {
           setBreakRoomStatus(null);
+          setBreakRoomError(null);
           refresh();
         }}
-        progressTracker={<ResearchTrackerBar topics={topics} />}
+        progressTracker={isResearch ? <ResearchTrackerBar topics={topics} /> : null}
       />
     );
   }
@@ -209,6 +215,10 @@ export default function ResearchManager() {
 
   const handleGeneratePackage = async (point) => {
     setGenerating(point.id);
+    setBreakRoomTitle('Generating Package');
+    setBreakRoomSubtitle(point.title || 'Multi-model synthesis pipeline');
+    setBreakRoomStatus('loading');
+    setBreakRoomError(null);
     try {
       const preferredModels = safeParse(config.preferred_models, ['gemini_3_flash', 'gpt_5_mini', 'claude_sonnet_4_6']);
       await base44.functions.invoke('buildResearchProduction', {
@@ -219,9 +229,11 @@ export default function ResearchManager() {
         target_runtime: `${config.total_show_runtime} Minutes`,
         preferred_models: preferredModels
       });
-      refresh();
+      setBreakRoomStatus('ready');
     } catch (err) {
       console.error('Package generation failed:', err);
+      setBreakRoomStatus('failed');
+      setBreakRoomError(err?.message || 'Package generation failed. You can retry from the Point Manager.');
     } finally {
       setGenerating(null);
     }
