@@ -96,10 +96,33 @@ export function usePresentationEditor(presentationId) {
       const sceneGraph = slideObj ? parseJSON(slideObj.scene_graph, null) : null;
       const merged = [];
 
+      // ── Scene graph style mappings (mirrors PresentationElement) ──
+      const FONT_MAP = {
+        'font-heading': 'Poppins, sans-serif',
+        'font-body': 'Inter, sans-serif',
+        'font-display': 'Oswald, sans-serif',
+        'font-mono': '"JetBrains Mono", monospace',
+        'font-condensed': 'Archivo, sans-serif',
+        'font-serif': '"Playfair Display", serif',
+      };
+      const COLOR_MAP = {
+        primary:  { text: 'hsl(270 80% 65%)', glow: 'hsl(270 80% 60% / 0.4)',  border: 'hsl(270 80% 60% / 0.5)',  bg: 'hsl(270 80% 60% / 0.08)' },
+        accent:   { text: 'hsl(25 95% 60%)',  glow: 'hsl(25 95% 55% / 0.4)',   border: 'hsl(25 95% 55% / 0.5)',   bg: 'hsl(25 95% 55% / 0.08)' },
+        emerald:  { text: 'hsl(152 60% 50%)', glow: 'hsl(152 60% 45% / 0.4)',  border: 'hsl(152 60% 45% / 0.5)',  bg: 'hsl(152 60% 45% / 0.08)' },
+        cyan:     { text: 'hsl(190 80% 55%)', glow: 'hsl(190 80% 55% / 0.4)',  border: 'hsl(190 80% 55% / 0.5)',  bg: 'hsl(190 80% 55% / 0.08)' },
+        gold:     { text: 'hsl(45 95% 55%)',  glow: 'hsl(45 95% 55% / 0.4)',   border: 'hsl(45 95% 55% / 0.5)',   bg: 'hsl(45 95% 55% / 0.08)' },
+        rose:     { text: 'hsl(300 80% 65%)', glow: 'hsl(300 80% 60% / 0.4)',  border: 'hsl(300 80% 60% / 0.5)',  bg: 'hsl(300 80% 60% / 0.08)' },
+        white:    { text: 'hsl(0 0% 95%)',    glow: 'hsl(0 0% 95% / 0.2)',     border: 'hsl(0 0% 100% / 0.15)',   bg: 'hsl(0 0% 100% / 0.05)' },
+        muted:    { text: 'hsl(220 10% 65%)', glow: 'hsl(220 10% 65% / 0.2)',  border: 'hsl(220 10% 30% / 0.4)',  bg: 'hsl(220 10% 20% / 0.1)' },
+        crimson:  { text: 'hsl(0 72% 55%)',   glow: 'hsl(0 72% 51% / 0.4)',    border: 'hsl(0 72% 51% / 0.5)',    bg: 'hsl(0 72% 51% / 0.08)' },
+      };
+      const FONT_SIZE_MAP = {
+        headline: 48, body_text: 24, statistic: 72, quote: 28,
+        callout: 22, talking_point_card: 22, discussion_response: 22,
+        lower_third: 20, caption: 18, default: 20,
+      };
+
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
-        // Scenes are timeline segments, not simultaneous layers — the same
-        // image/text often appears in multiple scenes. Deduplicate by content
-        // so each unique asset renders only once on the canvas.
         const seenContent = new Set();
         let tempZ = 100;
         let cascadeIndex = 0;
@@ -114,19 +137,20 @@ export function usePresentationEditor(presentationId) {
               if (seenContent.has(contentKey)) continue;
               seenContent.add(contentKey);
 
-              // If the scene graph doesn't specify a position, cascade elements
-              // vertically so they don't all stack at center (0.5, 0.5)
+              // Position — normalized 0-1 → pixel coords
               const hasPos = elem.position && typeof elem.position.x === 'number';
               const px = Math.round((elem.position?.x ?? 0.5) * CANVAS_W);
               const py = hasPos
                 ? Math.round((elem.position?.y ?? 0.5) * CANVAS_H)
                 : 120 + cascadeIndex * 140;
 
+              const elScale = Math.max(0.5, Math.min(1.5, elem.scale || 1));
+
               const typeMap = {
                 headline: 'text', body_text: 'text', image: 'image',
                 talking_point_card: 'text', discussion_response: 'text',
                 lower_third: 'lower_third', statistic: 'text', quote: 'text',
-                caption: 'caption',
+                callout: 'text', caption: 'caption',
               };
               const elType = typeMap[elem.element_type] || 'text';
 
@@ -135,12 +159,76 @@ export function usePresentationEditor(presentationId) {
               if (elem.element_type === 'statistic') { w = 400; h = 120; }
               if (elem.element_type === 'quote') { w = 700; h = 150; }
               if (elType === 'lower_third') { w = 800; h = 50; }
+              w = Math.round(w * elScale);
+              h = Math.round(h * elScale);
 
-              const fontSize = elem.element_type === 'statistic' ? 56
-                : elem.element_type === 'quote' ? 24
-                : 18;
+              // Color theme → actual HSL values
+              const color = COLOR_MAP[elem.color_theme] || COLOR_MAP.white;
 
-              const animType = elem.entrance_animation?.type || 'fade_in';
+              // Font style → CSS font family
+              const fontFamily = cleaned.font
+                || FONT_MAP[elem.font_style]
+                || 'Inter, sans-serif';
+
+              const fontSize = FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default;
+
+              // Visual effects → CSS box-shadow, border, etc.
+              const effects = elem.visual_effects || [];
+              const styleObj = {
+                fontSize,
+                fontFamily,
+                color: color.text,
+                bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
+                italic: elem.element_type === 'quote',
+                align: 'center',
+                backgroundColor: 'transparent',
+                borderRadius: 0,
+                padding: 8,
+              };
+
+              if (effects.includes('glass_panel')) {
+                styleObj.backgroundColor = color.bg;
+                styleObj.backdropFilter = 'blur(12px)';
+                styleObj.border = `1px solid ${color.border}`;
+                styleObj.borderRadius = 12;
+                styleObj.padding = 16;
+              }
+              if (effects.includes('glow_border')) {
+                styleObj.border = `1px solid ${color.border}`;
+                styleObj.boxShadow = `0 0 16px ${color.glow}, inset 0 0 12px ${color.glow}`;
+                styleObj.borderRadius = 12;
+                styleObj.padding = 16;
+              }
+              if (effects.includes('neon_shadow')) {
+                styleObj.textShadow = `0 0 8px ${color.text}, 0 0 24px ${color.glow}`;
+              } else {
+                styleObj.textShadow = `0 0 12px ${color.glow}`;
+              }
+              if (effects.includes('drop_shadow')) {
+                styleObj.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))';
+              }
+              if (effects.includes('gradient_border')) {
+                styleObj.border = `1px solid ${color.border}`;
+                styleObj.boxShadow = `0 0 1px ${color.text}, 0 0 12px ${color.glow}`;
+                styleObj.borderRadius = 12;
+              }
+              if (effects.includes('inner_glow')) {
+                const existing = styleObj.boxShadow || '';
+                styleObj.boxShadow = `${existing} inset 0 0 20px ${color.glow}`.trim();
+              }
+
+              // Talking point cards / discussion responses get panel styling
+              if ((elem.element_type === 'talking_point_card' || elem.element_type === 'discussion_response')
+                  && !effects.length) {
+                styleObj.backgroundColor = color.bg;
+                styleObj.borderRadius = 12;
+                styleObj.padding = 16;
+                styleObj.border = `1px solid ${color.border}`;
+              }
+
+              // Entrance animation
+              const animType = cleaned.anim || elem.entrance_animation?.type || 'fade_in';
+              const animDur = elem.entrance_animation?.duration_ms || 500;
               const tlEvents = elem.timeline_events || [];
               const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
               const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
@@ -154,22 +242,14 @@ export function usePresentationEditor(presentationId) {
                 y: py - Math.round(h / 2),
                 width: w,
                 height: h,
-                rotation: 0,
+                rotation: elem.rotation || 0,
                 opacity: Math.round((elem.opacity ?? 1) * 100),
                 z_index: tempZ++,
-                style: JSON.stringify({
-                  fontSize, fontFamily: cleaned.font || 'Inter', color: '#ffffff',
-                  bold: elem.element_type === 'statistic',
-                  align: 'center',
-                  backgroundColor: elem.element_type === 'talking_point_card' || elem.element_type === 'discussion_response'
-                    ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  borderRadius: elem.element_type === 'talking_point_card' ? 12 : 0,
-                  padding: elem.element_type === 'talking_point_card' ? 16 : 4,
-                }),
-                animation: JSON.stringify({ type: cleaned.anim || animType, duration_ms: 500, delay_ms: startMs }),
+                style: JSON.stringify(styleObj),
+                animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
                 timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
                 locked: false,
-                visible: true,
+                visible: elem.visibility !== false,
               });
               cascadeIndex++;
             }
