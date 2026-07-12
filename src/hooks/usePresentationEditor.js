@@ -729,49 +729,6 @@ export function usePresentationEditor(presentationId) {
     setRedoStack(r => r.slice(0, -1));
   }, [redoStack, snapshot]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e) => {
-      const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
-      if (isInput && e.key !== 'Escape') return;
-
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        setSelectedIds(elements.filter(el => !el.locked && el.visible !== false).map(el => el.id));
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
-        e.preventDefault();
-        selectedIds.forEach(id => !id.startsWith('__') && duplicateElement(id));
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-        e.preventDefault();
-        const els = elements.filter(el => selectedIds.includes(el.id));
-        if (els.length > 0) setClipboard(els.map(clone));
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'v') { e.preventDefault(); pasteElement(); return; }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedIds.length > 0) {
-          e.preventDefault();
-          selectedIds.forEach(id => !id.startsWith('__') && deleteElement(id));
-        }
-        return;
-      }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); moveSelected(-1 * (e.shiftKey ? 10 : 1), 0); return; }
-      if (e.key === 'ArrowRight') { e.preventDefault(); moveSelected(1 * (e.shiftKey ? 10 : 1), 0); return; }
-      if (e.key === 'ArrowUp') { e.preventDefault(); moveSelected(0, -1 * (e.shiftKey ? 10 : 1)); return; }
-      if (e.key === 'ArrowDown') { e.preventDefault(); moveSelected(0, 1 * (e.shiftKey ? 10 : 1)); return; }
-      if (e.key === 'Escape') { setSelectedIds([]); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo, saveAll, selectedIds, elements, deleteElement, duplicateElement, pasteElement, moveSelected]);
-
   // ═══ Save ═══
   const saveAll = useCallback(async () => {
     if (!activeSlide) return;
@@ -890,6 +847,49 @@ export function usePresentationEditor(presentationId) {
       setSaving(false);
     }
   }, [isTransient, activeSlide, elements, savedElements, slides, presentationId, presentation, loadElements, transientElements, navigate]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
+      if (isInput && e.key !== 'Escape') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        setSelectedIds(elements.filter(el => !el.locked && el.visible !== false).map(el => el.id));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        selectedIds.forEach(id => !id.startsWith('__') && duplicateElement(id));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        const els = elements.filter(el => selectedIds.includes(el.id));
+        if (els.length > 0) setClipboard(els.map(clone));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') { e.preventDefault(); pasteElement(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedIds.length > 0) {
+          e.preventDefault();
+          selectedIds.forEach(id => !id.startsWith('__') && deleteElement(id));
+        }
+        return;
+      }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); moveSelected(-1 * (e.shiftKey ? 10 : 1), 0); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); moveSelected(1 * (e.shiftKey ? 10 : 1), 0); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveSelected(0, -1 * (e.shiftKey ? 10 : 1)); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveSelected(0, 1 * (e.shiftKey ? 10 : 1)); return; }
+      if (e.key === 'Escape') { setSelectedIds([]); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo, saveAll, selectedIds, elements, deleteElement, duplicateElement, pasteElement, moveSelected]);
 
   // ═══ AI Regenerate — re-directs the presentation via APD ═══
   const regenerateSlide = useCallback(async () => {
