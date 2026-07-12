@@ -13,43 +13,43 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
-.animate-pp-fade-in { animation: pp-fade-in 0.9s var(--pp-ease) both; }
+.animate-pp-fade-in { animation: pp-fade-in 0.4s var(--pp-ease) both; }
 
 @keyframes pp-slide-in {
   from { opacity: 0; transform: translateX(60px); }
   to { opacity: 1; transform: translateX(0); }
 }
-.animate-pp-slide-in { animation: pp-slide-in 0.8s var(--pp-ease) both; }
+.animate-pp-slide-in { animation: pp-slide-in 0.45s var(--pp-ease) both; }
 
 @keyframes pp-slide-in-left {
   from { opacity: 0; transform: translateX(-60px); }
   to { opacity: 1; transform: translateX(0); }
 }
-.animate-pp-slide-in-left { animation: pp-slide-in-left 0.8s var(--pp-ease) both; }
+.animate-pp-slide-in-left { animation: pp-slide-in-left 0.45s var(--pp-ease) both; }
 
 @keyframes pp-slide-up {
   from { opacity: 0; transform: translateY(50px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-pp-slide-up { animation: pp-slide-up 0.8s var(--pp-ease) both; }
+.animate-pp-slide-up { animation: pp-slide-up 0.45s var(--pp-ease) both; }
 
 @keyframes pp-slide-down {
   from { opacity: 0; transform: translateY(-50px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-pp-slide-down { animation: pp-slide-down 0.8s var(--pp-ease) both; }
+.animate-pp-slide-down { animation: pp-slide-down 0.45s var(--pp-ease) both; }
 
 @keyframes pp-zoom-in {
   from { opacity: 0; transform: scale(1.12); }
   to { opacity: 1; transform: scale(1); }
 }
-.animate-pp-zoom-in { animation: pp-zoom-in 0.9s var(--pp-ease) both; }
+.animate-pp-zoom-in { animation: pp-zoom-in 0.4s var(--pp-ease) both; }
 
 @keyframes pp-dissolve-in {
   from { opacity: 0; filter: blur(10px); }
   to { opacity: 1; filter: blur(0); }
 }
-.animate-pp-dissolve-in { animation: pp-dissolve-in 1s var(--pp-ease) both; }
+.animate-pp-dissolve-in { animation: pp-dissolve-in 0.5s var(--pp-ease) both; }
 
 @keyframes pp-gentle-float {
   0%, 100% { transform: translateY(0); }
@@ -63,32 +63,32 @@
   80% { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
-.animate-pp-scale-bounce { animation: pp-scale-bounce 0.9s var(--pp-ease-bounce) both; }
+.animate-pp-scale-bounce { animation: pp-scale-bounce 0.45s var(--pp-ease-bounce) both; }
 
 @keyframes pp-reveal {
   from { opacity: 0; transform: translateY(24px); filter: blur(5px); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
-.animate-pp-reveal { animation: pp-reveal 0.9s var(--pp-ease) both; }
+.animate-pp-reveal { animation: pp-reveal 0.45s var(--pp-ease) both; }
 
 @keyframes pp-wipe {
   from { clip-path: inset(0 100% 0 0); opacity: 0; }
   to { clip-path: inset(0 0 0 0); opacity: 1; }
 }
-.animate-pp-wipe { animation: pp-wipe 0.9s var(--pp-ease) both; }
+.animate-pp-wipe { animation: pp-wipe 0.4s var(--pp-ease) both; }
 
 @keyframes pp-expand {
   from { opacity: 0; transform: scale(0); }
   to { opacity: 1; transform: scale(1); }
 }
-.animate-pp-expand { animation: pp-expand 0.8s var(--pp-ease-bounce) both; }
+.animate-pp-expand { animation: pp-expand 0.4s var(--pp-ease-bounce) both; }
 
 @keyframes pp-fade-bounce {
   0% { opacity: 0; transform: scale(0.8); }
   60% { opacity: 1; transform: scale(1.04); }
   100% { transform: scale(1); }
 }
-.animate-pp-fade-bounce { animation: pp-fade-bounce 0.8s var(--pp-ease) both; }
+.animate-pp-fade-bounce { animation: pp-fade-bounce 0.4s var(--pp-ease) both; }
 
 /* ═══ Exit Animations ═══ */
 
@@ -138,7 +138,7 @@
 }
 .animate-pp-line-reveal {
   display: block;
-  animation: pp-line-reveal 0.8s var(--pp-ease-soft) both;
+  animation: pp-line-reveal 0.4s var(--pp-ease-soft) both;
 }
 
 /* ═══ Scene Background Designs ═══ */

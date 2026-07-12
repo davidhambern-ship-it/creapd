@@ -9,6 +9,7 @@ export function usePresentationPlayer(storySlides) {
   const [audioReady, setAudioReady] = useState(false);
   const [audioStarted, setAudioStarted] = useState(false);
   const audioRef = useRef(null);
+  const preloadAudioRef = useRef(null);
   const rafRef = useRef(null);
   const playingRef = useRef(false);
   const slideIndexRef = useRef(0);
@@ -39,6 +40,7 @@ export function usePresentationPlayer(storySlides) {
   // Initialize audio element once
   useEffect(() => {
     audioRef.current = new Audio();
+    audioRef.current.preload = 'auto';
     const audio = audioRef.current;
     const onError = () => {
       setAudioError('Failed to load voiceover audio for this slide');
@@ -97,6 +99,7 @@ export function usePresentationPlayer(storySlides) {
     setAudioStarted(false);
     if (url) {
       audio.src = url;
+      audio.preload = 'auto';
       audio.load();
       setAudioError(null);
     } else {
@@ -105,19 +108,41 @@ export function usePresentationPlayer(storySlides) {
     }
   }, [currentSlideIndex, currentSlide, getSlideAudioUrl]);
 
+  // Preload NEXT slide's audio while current slide plays — eliminates inter-slide gap
+  useEffect(() => {
+    if (currentSlideIndex >= slides.length - 1) return;
+    const nextSlide = slides[currentSlideIndex + 1];
+    const nextUrl = getSlideAudioUrl(nextSlide);
+    if (!nextUrl) return;
+    if (!preloadAudioRef.current) {
+      preloadAudioRef.current = new Audio();
+      preloadAudioRef.current.preload = 'auto';
+    }
+    preloadAudioRef.current.src = nextUrl;
+    preloadAudioRef.current.load();
+  }, [currentSlideIndex, slides, getSlideAudioUrl]);
+
   // Sync playback rate
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = playbackRate;
   }, [playbackRate]);
 
   // When slide changes during playback, auto-play the new slide's audio.
-  // slideLocalTime tracks audio.currentTime directly, so element animations sync to speech.
+  // Wait for metadata to load before seeking to 0 — prevents silent seek failures.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !playing) return;
-    if (audio.src) {
-      audio.currentTime = 0;
+    if (!audio.src) return;
+
+    const startPlayback = () => {
+      try { audio.currentTime = 0; } catch { /* metadata not ready, will seek on play */ }
       audio.play().catch(() => setAudioError('Failed to play voiceover audio'));
+    };
+
+    if (audio.readyState >= 1) {
+      startPlayback();
+    } else {
+      audio.addEventListener('loadedmetadata', startPlayback, { once: true });
     }
   }, [currentSlideIndex]);
 
