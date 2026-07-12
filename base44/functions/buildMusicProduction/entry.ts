@@ -263,126 +263,62 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
         await base44.entities.PlaylistItem.bulkCreate(playlistData);
 
         // YouTube lookup — find real YouTube video IDs for each playlist track
+        // Uses direct YouTube search page fetch instead of LLM (faster, more reliable)
         try {
           const createdItems = await base44.entities.PlaylistItem.filter({ configuration_id });
           const updates = [];
-          const resolvedKeys = new Set();
-          const failedVideoIds = new Set();
 
-          const ytSchema = {
-            type: 'object',
-            properties: {
-              results: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    song_title: { type: 'string' },
-                    artist: { type: 'string' },
-                    youtube_url: { type: 'string' }
-                  }
-                }
-              }
-            }
-          };
-
-          // Process songs in batches of 3 to avoid LLM timeout on large web-search calls
-          const unresolved = createdItems.filter(item =>
-            !resolvedKeys.has(`${item.song_title}|||${item.artist}`)
-          );
-          const BATCH_SIZE = 3;
-          for (let batchStart = 0; batchStart < unresolved.length; batchStart += BATCH_SIZE) {
-            const batch = unresolved.slice(batchStart, batchStart + BATCH_SIZE);
-            const batchSongList = batch.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n');
-            const failedHint = failedVideoIds.size > 0
-              ? `\n\nDo NOT use these video IDs — they are unavailable:\n${[...failedVideoIds].join(', ')}`
-              : '';
-
-            const batchPrompt = `You are a music librarian. For each song below, find its REAL YouTube video URL.
-
-STRICT RULES:
-- NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
-- ONLY official music videos, Vevo uploads, or official artist/label channel uploads.
-- Each URL must point to a working, publicly available video.
-
-SONGS TO FIND:
-${batchSongList}${failedHint}
-
-Return a JSON object with key "results" containing an array of objects, each with:
-- song_title (exact match from the list above)
-- artist (exact match from the list above)
-- youtube_url (full YouTube URL: https://www.youtube.com/watch?v=VIDEO_ID)
-
-Only include songs where you found a real, working YouTube URL.`;
-
-            let batchResults = [];
+          // Process all songs in parallel — each is a simple HTTP fetch
+          const ytResults = await Promise.all(createdItems.map(async (item) => {
             try {
-              const batchResult = await base44.integrations.Core.InvokeLLM({
-                prompt: batchPrompt,
-                add_context_from_internet: true,
-                response_json_schema: ytSchema,
-                model: 'gemini_3_flash'
+              const query = encodeURIComponent(`${item.song_title} ${item.artist} official`);
+              const searchUrl = `https://www.youtube.com/results?search_query=${query}`;
+              const resp = await fetch(searchUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
               });
-              batchResults = batchResult.results || [];
-            } catch (batchErr) {
-              console.error(`YouTube lookup batch failed (songs ${batchStart + 1}-${batchStart + batch.length}):`, batchErr.message);
-              buildLog.push({ stage: 'youtube_lookup_batch', success: false, error: batchErr.message, batch: `${batchStart + 1}-${batchStart + batch.length}`, timestamp: new Date().toISOString() });
-              continue;
-            }
+              if (!resp.ok) return null;
+              const html = await resp.text();
 
-            if (batchResults.length === 0) continue;
+              // Extract video IDs from YouTube search results HTML
+              const videoIds = [];
+              const regex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
+              let match;
+              while ((match = regex.exec(html)) !== null) {
+                if (!videoIds.includes(match[1])) videoIds.push(match[1]);
+              }
 
-            const oembedResults = (await Promise.all(batchResults.map(async (result) => {
-              const videoId = extractVideoId(result.youtube_url || '');
-              if (!videoId || failedVideoIds.has(videoId)) return null;
+              if (videoIds.length === 0) return null;
 
-              const matchedItem = batch.find(item =>
-                item.song_title === result.song_title && item.artist === result.artist
-              );
-              if (!matchedItem) return null;
-
-              try {
-                const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-                if (!oembedResp.ok) {
-                  failedVideoIds.add(videoId);
-                  return null;
+              // Validate the first video ID via OEmbed
+              for (const vid of videoIds.slice(0, 3)) {
+                try {
+                  const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`);
+                  if (!oembedResp.ok) continue;
+                  const oembed = await oembedResp.json();
+                  return {
+                    id: item.id,
+                    youtube_video_id: vid,
+                    thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${vid}/mqdefault.jpg`,
+                    channel_name: oembed.author_name || ''
+                  };
+                } catch {
+                  continue;
                 }
-                const oembed = await oembedResp.json();
-                return {
-                  matchedItem,
-                  videoId,
-                  thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-                  channel_name: oembed.author_name || ''
-                };
-              } catch {
-                failedVideoIds.add(videoId);
-                return null;
               }
-            }))).filter(Boolean);
-
-            for (const r of oembedResults) {
-              updates.push({
-                id: r.matchedItem.id,
-                youtube_video_id: r.videoId,
-                thumbnail_url: r.thumbnail_url,
-                channel_name: r.channel_name
-              });
-              resolvedKeys.add(`${r.matchedItem.song_title}|||${r.matchedItem.artist}`);
+              return null;
+            } catch {
+              return null;
             }
+          }));
 
-            // Save progress after each batch so partial results persist even if later batches fail
-            if (updates.length > 0) {
-              try {
-                await base44.entities.PlaylistItem.bulkUpdate(updates.slice());
-              } catch (e) {
-                console.error('Partial bulkUpdate failed:', e.message);
-              }
-            }
+          for (const r of ytResults) {
+            if (r) updates.push(r);
           }
 
           if (updates.length > 0) {
             await base44.entities.PlaylistItem.bulkUpdate(updates);
           }
+          buildLog.push({ stage: 'youtube_lookup', success: true, resolved: updates.length, total: createdItems.length, timestamp: new Date().toISOString() });
         } catch (e) {
           console.error('YouTube lookup for playlist failed:', e.message);
           buildLog.push({ stage: 'youtube_lookup', success: false, error: e.message, timestamp: new Date().toISOString() });
