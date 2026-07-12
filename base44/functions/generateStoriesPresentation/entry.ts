@@ -216,7 +216,19 @@ Deno.serve(async (req) => {
         model: 'gpt_5_4'
       });
 
-      const sceneGraphData = enforceAnimationVariety(typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse);
+      // ── Calculate TRUE audio duration from sentence timeline ──
+      // The sentence timeline is the ground truth — vp.total_duration_seconds can be a rough estimate
+      const sentenceEnds = sentenceTimeline.map(s => (s.end_time || 0) * 1000);
+      const trueAudioDurationMs = sentenceEnds.length > 0
+        ? Math.max(...sentenceEnds, totalDurationMs)
+        : totalDurationMs;
+
+      let sceneGraphData = enforceAnimationVariety(typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse);
+
+      // ── Sync scene graph to actual audio timeline ──
+      // This is the critical step: the audio is the master clock, so we snap
+      // scene boundaries and element times to sentence boundaries
+      sceneGraphData = syncSceneGraphToAudio(sceneGraphData, sentenceTimeline, trueAudioDurationMs);
 
       let imgIdx = 0;
       // Build the complete scene graph object
@@ -230,8 +242,8 @@ Deno.serve(async (req) => {
           scene_type: scene.scene_type || 'emphasis_text',
           scene_purpose: scene.scene_purpose || '',
           scene_start_time: scene.scene_start_time || 0,
-          scene_end_time: scene.scene_end_time || totalDurationMs,
-          scene_duration: (scene.scene_end_time || totalDurationMs) - (scene.scene_start_time || 0),
+          scene_end_time: scene.scene_end_time || trueAudioDurationMs,
+          scene_duration: (scene.scene_end_time || trueAudioDurationMs) - (scene.scene_start_time || 0),
           camera_state: {
             behavior: scene.camera_behavior || 'static',
             target: scene.camera_target || ''
@@ -277,7 +289,7 @@ Deno.serve(async (req) => {
                 timeline_events: [{
                   event_type: 'appear',
                   start_time: elem.start_time || 0,
-                  end_time: elem.end_time || totalDurationMs
+                  end_time: elem.end_time || trueAudioDurationMs
                 }],
                 asset_reference: assetRef,
                 asset_id: assetId,
@@ -315,8 +327,8 @@ Deno.serve(async (req) => {
       // Build slide timeline from voice package
       const slideTimeline = {
         slide_start_ms: cumulativeStartMs,
-        slide_end_ms: cumulativeStartMs + totalDurationMs,
-        slide_duration_ms: totalDurationMs,
+        slide_end_ms: cumulativeStartMs + trueAudioDurationMs,
+        slide_duration_ms: trueAudioDurationMs,
         sentence_count: sentenceTimeline.length,
         paragraph_count: paragraphTimeline.length,
         pause_count: pauseTimeline.length,
@@ -334,13 +346,13 @@ Deno.serve(async (req) => {
         slide_metadata: JSON.stringify({
           headline: pkg.headline_suggestions || pkg.article_id || `Story ${i + 1}`,
           story_summary: pkg.story_summary || '',
-          duration_ms: totalDurationMs,
+          duration_ms: trueAudioDurationMs,
           scene_count: sceneGraph.scenes.length,
           element_count: sceneGraph.scenes.reduce((acc, s) => acc + s.layers.reduce((la, l) => la + l.elements.length, 0), 0),
           voice_package_reference: vp.id
         }),
         slide_start_ms: cumulativeStartMs,
-        duration_ms: totalDurationMs,
+        duration_ms: trueAudioDurationMs,
         status: 'generated',
         version: 1
       });
@@ -356,7 +368,7 @@ Deno.serve(async (req) => {
           headline: pkg.headline_suggestions || pkg.article_id || '',
           story_summary: (pkg.story_summary || '').substring(0, 500),
           tone: pkg.tone,
-          voice_duration_ms: totalDurationMs,
+          voice_duration_ms: trueAudioDurationMs,
           sentence_count: sentenceTimeline.length
         }),
         decision_rationale: sceneGraphData.decision_rationale || 'APD generated scene graph based on story analysis',
@@ -368,14 +380,14 @@ Deno.serve(async (req) => {
       });
 
       // Evaluate deterministic QA for this slide
-      const slideQA = evaluateDeterministicQA(sceneGraph, vp, totalDurationMs);
+      const slideQA = evaluateDeterministicQA(sceneGraph, vp, trueAudioDurationMs);
 
       // Update slide with QA results in metadata
       await base44.asServiceRole.entities.StorySlide.update(slide.id, {
         slide_metadata: JSON.stringify({
           headline: pkg.headline_suggestions || pkg.article_id || `Story ${i + 1}`,
           story_summary: pkg.story_summary || '',
-          duration_ms: totalDurationMs,
+          duration_ms: trueAudioDurationMs,
           scene_count: sceneGraph.scenes.length,
           element_count: sceneGraph.scenes.reduce((acc, s) => acc + s.layers.reduce((la, l) => la + l.elements.length, 0), 0),
           voice_package_reference: vp.id,
@@ -388,10 +400,10 @@ Deno.serve(async (req) => {
         event_type: 'slide_start',
         slide_id: slide.id,
         start_time: cumulativeStartMs,
-        end_time: cumulativeStartMs + totalDurationMs
+        end_time: cumulativeStartMs + trueAudioDurationMs
       });
 
-      cumulativeStartMs += totalDurationMs;
+      cumulativeStartMs += trueAudioDurationMs;
     }
 
     // ==========================================================
@@ -605,6 +617,14 @@ STORY PACKAGE DATA:
 VOICE PACKAGE SENTENCE TIMELINE (timing in milliseconds from slide start):
 ${JSON.stringify(sentences.slice(0, 30), null, 2)}
 
+CRITICAL TIMING RULES:
+- The sentence timeline above is the MASTER CLOCK. Total audio duration: ${totalDurationMs}ms.
+- Scene boundaries MUST align with sentence boundaries. A scene should start when a new topic/idea begins in the narration.
+- Each scene's scene_start_time should match a sentence's start_time, and scene_end_time should match a sentence's end_time.
+- Element start_time values should match the sentence start_time when that element's content is being discussed.
+- NEVER create a scene that extends beyond ${totalDurationMs}ms — the audio IS the timeline.
+- The LAST scene must end at exactly ${totalDurationMs}ms so no audio is left uncovered.
+
 AVAILABLE IMAGE ASSET: ${pkg.generated_image_url || 'None'}
 
 INSTRUCTIONS:
@@ -731,6 +751,137 @@ Return a JSON object with:
 - confidence_score: 0-100 confidence that this slide communicates the story effectively
 
 CRITICAL REMINDER: Every element MUST have visual_effects (at least 2) and ambient_animation. Slides must look visually rich with glass panels, glowing borders, neon shadows, and continuous ambient motion. A slide where text just fades in and sits static is a FAILURE.`;
+}
+
+// ==========================================================
+// AUDIO SYNC — Snap scene graph timing to voice package timeline
+// ==========================================================
+
+/**
+ * Post-processes the LLM-generated scene graph to enforce audio-first timing.
+ *
+ * The voice package sentence timeline is the master clock. This function:
+ * 1. Clamps all scene/element times to the actual audio duration
+ * 2. Snaps scene boundaries to sentence boundaries (so scenes start/end
+ *    when narration sentences start/end)
+ * 3. Snaps element start_times to the nearest sentence start_time
+ * 4. Extends the last scene to cover the full audio duration
+ * 5. Removes gaps where no scene covers a portion of audio
+ */
+function syncSceneGraphToAudio(sceneGraphData, sentenceTimeline, trueAudioDurationMs) {
+  if (!sceneGraphData || !sceneGraphData.scenes) return sceneGraphData;
+
+  const sentences = Array.isArray(sentenceTimeline) ? sentenceTimeline : [];
+  const sentenceStartsMs = sentences.map(s => (s.start_time || 0) * 1000);
+  const sentenceEndsMs = sentences.map(s => (s.end_time || 0) * 1000);
+
+  // Sort scenes by start time
+  const scenes = (sceneGraphData.scenes || []).slice().sort(
+    (a, b) => (a.scene_start_time || 0) - (b.scene_start_time || 0)
+  );
+
+  if (scenes.length === 0) return sceneGraphData;
+
+  // ── Step 1: Snap scene boundaries to sentence boundaries ──
+  for (let i = 0; i < scenes.length; i++) {
+    const scene = scenes[i];
+    const rawStart = scene.scene_start_time || 0;
+    const rawEnd = scene.scene_end_time || trueAudioDurationMs;
+
+    // First scene always starts at 0
+    if (i === 0) {
+      scene.scene_start_time = 0;
+    } else {
+      // Snap start to nearest sentence boundary
+      scene.scene_start_time = snapToNearest(rawStart, sentenceStartsMs, 2000);
+    }
+
+    // Last scene always ends at true audio duration
+    if (i === scenes.length - 1) {
+      scene.scene_end_time = trueAudioDurationMs;
+    } else {
+      // Snap end to nearest sentence boundary
+      scene.scene_end_time = snapToNearest(rawEnd, sentenceEndsMs, 2000);
+    }
+
+    // Ensure no zero-duration scenes
+    if (scene.scene_end_time <= scene.scene_start_time) {
+      scene.scene_end_time = scene.scene_start_time + 2000;
+    }
+
+    // Update scene_duration
+    scene.scene_duration = scene.scene_end_time - scene.scene_start_time;
+
+    // ── Step 2: Clamp and snap element times within each scene ──
+    const sceneStart = scene.scene_start_time;
+    const sceneEnd = scene.scene_end_time;
+
+    for (const layer of (scene.layers || [])) {
+      for (const elem of (layer.elements || [])) {
+        // Elements use start_time/end_time at the top level (from LLM)
+        let elemStart = elem.start_time || sceneStart;
+        let elemEnd = elem.end_time || sceneEnd;
+
+        // Clamp to scene boundaries
+        elemStart = Math.max(sceneStart, Math.min(elemStart, sceneEnd - 500));
+        elemEnd = Math.max(elemEnd, elemStart + 500);
+        elemEnd = Math.min(elemEnd, sceneEnd);
+
+        // Snap element start to nearest sentence start (within 1.5s tolerance)
+        // This makes elements appear exactly when the relevant narration begins
+        const snappedStart = snapToNearest(elemStart, sentenceStartsMs, 1500);
+        if (snappedStart >= sceneStart && snappedStart <= sceneEnd) {
+          elemStart = snappedStart;
+        }
+
+        elem.start_time = elemStart;
+        elem.end_time = elemEnd;
+      }
+    }
+  }
+
+  // ── Step 3: Fix gaps between scenes ──
+  // If there's a gap > 1s between scene[i].end and scene[i+1].start,
+  // extend scene[i].end to scene[i+1].start
+  for (let i = 0; i < scenes.length - 1; i++) {
+    const gap = scenes[i + 1].scene_start_time - scenes[i].scene_end_time;
+    if (gap > 1000) {
+      // Extend elements in scene[i] to cover the gap
+      scenes[i].scene_end_time = scenes[i + 1].scene_start_time;
+      scenes[i].scene_duration = scenes[i].scene_end_time - scenes[i].scene_start_time;
+      for (const layer of (scenes[i].layers || [])) {
+        for (const elem of (layer.elements || [])) {
+          if (elem.end_time < scenes[i].scene_end_time) {
+            elem.end_time = scenes[i].scene_end_time;
+          }
+        }
+      }
+    }
+  }
+
+  sceneGraphData.scenes = scenes;
+  return sceneGraphData;
+}
+
+/**
+ * Snaps a time value to the nearest value in a list of snap points.
+ * Only snaps if within `toleranceMs` of a snap point.
+ */
+function snapToNearest(value, snapPoints, toleranceMs) {
+  if (!snapPoints || snapPoints.length === 0) return value;
+
+  let nearest = snapPoints[0];
+  let minDist = Math.abs(value - nearest);
+
+  for (const point of snapPoints) {
+    const dist = Math.abs(value - point);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = point;
+    }
+  }
+
+  return minDist <= toleranceMs ? nearest : value;
 }
 
 // ==========================================================
