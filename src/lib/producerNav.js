@@ -74,7 +74,7 @@ export const PRODUCTION_MODES = [
   { key: 'cooking', label: 'Cooking', icon: ChefHat, path: '/cooking/dashboard' },
   { key: 'sports', label: 'Sports', icon: Trophy, path: '/sports/dashboard' },
   { key: 'cosmo', label: 'Cosmo', icon: Brush, path: '/cosmo/dashboard' },
-  { key: 'radio', label: 'Radio', icon: Radio, path: '/music/dashboard' },
+  { key: 'radio', label: 'Radio', icon: Radio, path: '/music/configure' },
   { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
 ];
 

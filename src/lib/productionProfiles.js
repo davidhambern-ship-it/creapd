@@ -82,7 +82,7 @@ export const PRODUCTION_PROFILES = [
     description: 'Radio shows, music shows, playlist-based livestreams, countdown shows, and artist spotlights.',
     icon: Music,
     available: true,
-    path: '/music/dashboard',
+    path: '/music/configure',
     gradient: 'from-purple-500/20 to-indigo-500/10',
     accent: 'text-purple-400',
     accentBg: 'bg-purple-500/10',
