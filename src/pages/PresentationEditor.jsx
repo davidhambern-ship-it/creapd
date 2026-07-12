@@ -11,6 +11,7 @@ import TransportBar from '@/components/presentation-editor/TransportBar';
 import AutoBuildModal from '@/components/presentation-editor/AutoBuildModal';
 import CpeAiPanel from '@/components/presentation-editor/CpeAiPanel';
 import ReviewPanel from '@/components/presentation-editor/ReviewPanel';
+import PresentationPlayer from '@/components/presentation/PresentationPlayer';
 import '@/components/presentation-editor/cpe.css';
 
 export default function PresentationEditor() {
@@ -102,67 +103,80 @@ export default function PresentationEditor() {
         />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <EditorCanvas
-            slide={ed.activeSlide}
-            elements={ed.elements}
-            selectedId={ed.selectedId}
-            zoom={ed.zoom}
-            mode={ed.mode}
-            isPlaying={ed.isPlaying}
-            currentTime={ed.currentTime}
-            onSelect={ed.setSelectedId}
-            onUpdate={ed.updateElement}
-            onDelete={ed.deleteElement}
-            onZoom={handleZoom}
-          />
+          {ed.mode === 'preview' && ed.slides.length > 0 ? (
+            <div className="flex-1 overflow-y-auto p-4">
+              <PresentationPlayer
+                storySlides={ed.slides}
+                aspectRatio={ed.presentation.aspect_ratio || (() => { try { return JSON.parse(ed.presentation.playback_settings || '{}').aspect_ratio; } catch { return '16:9'; } })()}
+              />
+            </div>
+          ) : (
+            <>
+              <EditorCanvas
+                slide={ed.activeSlide}
+                elements={ed.elements}
+                selectedId={ed.selectedId}
+                zoom={ed.zoom}
+                mode={ed.mode}
+                isPlaying={ed.isPlaying}
+                currentTime={ed.currentTime}
+                onSelect={ed.setSelectedId}
+                onUpdate={ed.updateElement}
+                onDelete={ed.deleteElement}
+                onZoom={handleZoom}
+              />
 
-          <TransportBar
-            isPlaying={ed.isPlaying}
-            currentTime={ed.currentTime}
-            totalTime={ed.totalTime}
-            scope={ed.scope}
-            onPlay={ed.play}
-            onPause={ed.pause}
-            onStop={ed.stop}
-            onRestart={ed.restart}
-            onPrev={() => { if (ed.activeIndex > 0) ed.selectSlide(ed.activeIndex - 1); }}
-            onNext={() => { if (ed.activeIndex < ed.slides.length - 1) ed.selectSlide(ed.activeIndex + 1); }}
-            onScrub={ed.scrub}
-            onScopeChange={ed.setScope}
-            slide={ed.activeSlide}
-            elements={ed.elements}
-            onUpdateElement={ed.updateElement}
-            onSelectElement={ed.setSelectedId}
-            selectedId={ed.selectedId}
-          />
+              <TransportBar
+                isPlaying={ed.isPlaying}
+                currentTime={ed.currentTime}
+                totalTime={ed.totalTime}
+                scope={ed.scope}
+                onPlay={ed.play}
+                onPause={ed.pause}
+                onStop={ed.stop}
+                onRestart={ed.restart}
+                onPrev={() => { if (ed.activeIndex > 0) ed.selectSlide(ed.activeIndex - 1); }}
+                onNext={() => { if (ed.activeIndex < ed.slides.length - 1) ed.selectSlide(ed.activeIndex + 1); }}
+                onScrub={ed.scrub}
+                onScopeChange={ed.setScope}
+                slide={ed.activeSlide}
+                elements={ed.elements}
+                onUpdateElement={ed.updateElement}
+                onSelectElement={ed.setSelectedId}
+                selectedId={ed.selectedId}
+              />
+            </>
+          )}
         </div>
 
-        <PropertiesPanel
-          presentation={ed.presentation}
-          slide={ed.activeSlide}
-          selectedId={ed.selectedId}
-          selectedElement={ed.selectedElement}
-          selectedElements={ed.selectedElements}
-          zoom={ed.zoom}
-          onUpdatePresentation={ed.updatePresentation}
-          onUpdateSlide={ed.updateSlide}
-          onUpdateElement={ed.updateElement}
-          onDeleteElement={ed.deleteElement}
-          onRegenerateElement={ed.regenerateElement}
-          onDuplicateElement={ed.duplicateElement}
-          onBringForward={ed.bringForward}
-          onSendBackward={ed.sendBackward}
-          onDuplicateSlide={ed.duplicateSlide}
-          onDeleteSlide={ed.deleteSlide}
-          onMoveSlideForward={() => ed.selectSlide(Math.min(ed.activeIndex + 1, ed.slides.length - 1))}
-          onMoveSlideBackward={() => ed.selectSlide(Math.max(ed.activeIndex - 1, 0))}
-          onCopy={ed.copyElement}
-          onCut={ed.cutElement}
-          onPaste={ed.pasteElement}
-          onAlign={ed.alignElements}
-          onDistribute={ed.distributeElements}
-          onZoom={ed.setZoom}
-        />
+        {ed.mode === 'edit' && (
+          <PropertiesPanel
+            presentation={ed.presentation}
+            slide={ed.activeSlide}
+            selectedId={ed.selectedId}
+            selectedElement={ed.selectedElement}
+            selectedElements={ed.selectedElements}
+            zoom={ed.zoom}
+            onUpdatePresentation={ed.updatePresentation}
+            onUpdateSlide={ed.updateSlide}
+            onUpdateElement={ed.updateElement}
+            onDeleteElement={ed.deleteElement}
+            onRegenerateElement={ed.regenerateElement}
+            onDuplicateElement={ed.duplicateElement}
+            onBringForward={ed.bringForward}
+            onSendBackward={ed.sendBackward}
+            onDuplicateSlide={ed.duplicateSlide}
+            onDeleteSlide={ed.deleteSlide}
+            onMoveSlideForward={() => ed.selectSlide(Math.min(ed.activeIndex + 1, ed.slides.length - 1))}
+            onMoveSlideBackward={() => ed.selectSlide(Math.max(ed.activeIndex - 1, 0))}
+            onCopy={ed.copyElement}
+            onCut={ed.cutElement}
+            onPaste={ed.pasteElement}
+            onAlign={ed.alignElements}
+            onDistribute={ed.distributeElements}
+            onZoom={ed.setZoom}
+          />
+        )}
 
         {aiPanelOpen && (
           <CpeAiPanel aiWorkers={aiWorkers} onClose={() => setAiPanelOpen(false)} />
