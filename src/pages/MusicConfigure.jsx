@@ -353,12 +353,12 @@ export default function MusicConfigure() {
     setSaving(true);
     setSaveStatus(null);
     try {
-      let savedId = editConfigId;
+      // Strip built-in read-only fields that break update calls
+      const { id: _id, created_date: _cd, updated_date: _ud, created_by_id: _cb, ...payload } = config;
       if (editConfigId) {
-        await base44.entities.MusicProductionConfiguration.update(editConfigId, config);
+        await base44.entities.MusicProductionConfiguration.update(editConfigId, payload);
       } else {
-        const saved = await base44.entities.MusicProductionConfiguration.create(config);
-        savedId = saved.id;
+        const saved = await base44.entities.MusicProductionConfiguration.create(payload);
         navigate(`/music/configure?config_id=${saved.id}`, { replace: true });
       }
       setSaveStatus('saved');
@@ -368,8 +368,9 @@ export default function MusicConfigure() {
         handleModuleComplete(openRoom);
       }
     } catch (err) {
+      console.error('Save failed:', err?.message || err);
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus(null), 3000);
+      setTimeout(() => setSaveStatus(null), 4000);
     } finally {
       setSaving(false);
     }
