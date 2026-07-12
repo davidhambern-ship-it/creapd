@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
 import Asteroids from '@/components/games/Asteroids';
+import BuildStageTracker from '@/components/music/BuildStageTracker';
 
 const STATUS_MESSAGES = {
   planning: 'Planning production requirements...',
@@ -198,6 +199,13 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Build Stage Tracker — shows pipeline progress + crash details */}
+        {configId && (
+          <div className="mt-3">
+            <BuildStageTracker configId={configId} />
+          </div>
+        )}
       </div>
     </div>
   );
