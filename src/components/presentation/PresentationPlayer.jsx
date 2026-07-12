@@ -5,9 +5,12 @@ import SceneCanvas from '@/components/presentation/SceneCanvas';
 import SlideElementCanvas from '@/components/presentation/SlideElementCanvas';
 
 const TRANSITION_CLASSES = {
-  fade: 'animate-fade-in',
-  slide_left: 'animate-slide-left',
-  dissolve: 'animate-dissolve-transition',
+  fade: 'animate-scene-fade',
+  slide_left: 'animate-scene-slide-left',
+  slide_right: 'animate-scene-slide-right',
+  zoom: 'animate-scene-zoom',
+  dissolve: 'animate-scene-dissolve',
+  cut: 'animate-scene-fade',
 };
 
 const SCENE_TYPE_LABELS = {

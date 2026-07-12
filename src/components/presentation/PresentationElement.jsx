@@ -2,7 +2,7 @@ import React from 'react';
 import '@/styles/presentation-animations.css';
 import TypewriterText from '@/components/presentation/TypewriterText';
 
-function LineReveal({ text, staggerMs = 120 }) {
+function LineReveal({ text, staggerMs = 200 }) {
   const lines = (text || '').split('\n').filter(l => l.trim() !== '');
   if (lines.length === 0) return null;
   return (
@@ -10,7 +10,7 @@ function LineReveal({ text, staggerMs = 120 }) {
       {lines.map((line, i) => (
         <span
           key={i}
-          className="animate-line-reveal"
+          className="animate-pp-line-reveal"
           style={{ animationDelay: `${i * staggerMs}ms` }}
         >
           {line.trim()}
@@ -20,40 +20,40 @@ function LineReveal({ text, staggerMs = 120 }) {
   );
 }
 
-function renderAnimatedText(content, entranceType, shouldShow, staggerMs = 120) {
+function renderAnimatedText(content, entranceType, shouldShow, staggerMs = 200) {
   if (entranceType === 'typewriter') {
-    return <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />;
+    return <TypewriterText text={content} shouldStart={shouldShow} speedMs={50} />;
   }
   return <LineReveal text={content} staggerMs={staggerMs} />;
 }
 
 const ANIMATION_CLASSES = {
-  fade: 'animate-fade-in',
-  fade_in: 'animate-fade-in',
-  fade_bounce: 'animate-fade-bounce',
-  slide: 'animate-slide-in',
-  slide_in: 'animate-slide-in',
-  slide_left: 'animate-slide-in-left',
-  slide_up: 'animate-slide-up',
-  slide_down: 'animate-slide-down',
-  scale: 'animate-zoom-in',
-  scale_in: 'animate-zoom-in',
-  scale_bounce: 'animate-scale-bounce',
-  zoom_in: 'animate-zoom-in',
-  reveal: 'animate-reveal',
-  wipe: 'animate-wipe',
-  expand: 'animate-expand',
-  float: 'animate-gentle-float',
-  gentle_float: 'animate-gentle-float',
-  dissolve: 'animate-dissolve-in',
-  dissolve_in: 'animate-dissolve-in',
-  fade_out: 'animate-fade-out',
-  slide_out: 'animate-slide-out',
-  slide_out_left: 'animate-slide-out-left',
-  scale_out: 'animate-scale-out',
-  dissolve_out: 'animate-dissolve-out',
-  collapse: 'animate-fade-in',
-  typewriter: 'animate-fade-in',
+  fade: 'animate-pp-fade-in',
+  fade_in: 'animate-pp-fade-in',
+  fade_bounce: 'animate-pp-fade-bounce',
+  slide: 'animate-pp-slide-in',
+  slide_in: 'animate-pp-slide-in',
+  slide_left: 'animate-pp-slide-in-left',
+  slide_up: 'animate-pp-slide-up',
+  slide_down: 'animate-pp-slide-down',
+  scale: 'animate-pp-zoom-in',
+  scale_in: 'animate-pp-zoom-in',
+  scale_bounce: 'animate-pp-scale-bounce',
+  zoom_in: 'animate-pp-zoom-in',
+  reveal: 'animate-pp-reveal',
+  wipe: 'animate-pp-wipe',
+  expand: 'animate-pp-expand',
+  float: 'animate-pp-gentle-float',
+  gentle_float: 'animate-pp-gentle-float',
+  dissolve: 'animate-pp-dissolve-in',
+  dissolve_in: 'animate-pp-dissolve-in',
+  fade_out: 'animate-pp-fade-out',
+  slide_out: 'animate-pp-slide-out',
+  slide_out_left: 'animate-pp-slide-out-left',
+  scale_out: 'animate-pp-scale-out',
+  dissolve_out: 'animate-pp-dissolve-out',
+  collapse: 'animate-pp-fade-in',
+  typewriter: 'animate-pp-fade-in',
 };
 
 const AMBIENT_CLASSES = {
@@ -227,7 +227,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           style={{ fontSize: '3.2cqw', color: color.text, textShadow: visualStyles.textShadow || `0 0 12px ${color.glow}` }}
         >
           {isTypewriter
-            ? <TypewriterText text={content} shouldStart speedMs={45} />
+            ? <TypewriterText text={content} shouldStart speedMs={55} />
             : content}
         </h2>
       </div>
@@ -245,9 +245,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
           style={{ fontSize: '1.8cqw', maxWidth: '60cqw', color: color.text, textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}
         >
           {isTypewriter ? (
-            <TypewriterText text={content} shouldStart speedMs={35} />
+            <TypewriterText text={content} shouldStart speedMs={50} />
           ) : useLineReveal ? (
-            <LineReveal text={content} staggerMs={150} />
+            <LineReveal text={content} staggerMs={200} />
           ) : (
             <p>{content}</p>
           )}
@@ -280,7 +280,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
         >
           <p className={`${fontClass || 'font-condensed'} font-medium`} style={{ fontSize: '1.4cqw', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
             {isTypewriter
-              ? <TypewriterText text={content} shouldStart speedMs={30} />
+              ? <TypewriterText text={content} shouldStart speedMs={45} />
               : content}
           </p>
         </div>
@@ -298,7 +298,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
             style={{ fontSize: '5cqw', color: color.text, textShadow: `0 0 16px ${color.glow}, 0 0 32px ${color.glow}` }}
           >
             {isTypewriter
-              ? <TypewriterText text={content} shouldStart speedMs={50} />
+              ? <TypewriterText text={content} shouldStart speedMs={55} />
               : content}
           </p>
         </div>
@@ -315,7 +315,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           className={`${fontClass || 'font-serif'} italic text-center`}
           style={{ fontSize: '2.2cqw', maxWidth: '55cqw', paddingLeft: '1cqw', borderLeft: `4px solid ${color.text}`, color: color.text, textShadow: `0 0 12px ${color.glow}` }}
         >
-          {renderAnimatedText(`"${quoteText}"`, entranceAnim, true, 200)}
+          {renderAnimatedText(`"${quoteText}"`, entranceAnim, true, 280)}
         </blockquote>
       </div>
     );
@@ -337,7 +337,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
       <p className={`${fontClass || 'font-body'}`} style={{ fontSize: '1.5cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
         {isTypewriter
-          ? <TypewriterText text={content} shouldStart speedMs={35} />
+          ? <TypewriterText text={content} shouldStart speedMs={50} />
           : content}
       </p>
     </div>
