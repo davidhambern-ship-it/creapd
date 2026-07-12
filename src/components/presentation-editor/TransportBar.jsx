@@ -14,7 +14,16 @@ const SNAP_MS = 100;
 const MIN_DURATION = 200;
 const HANDLE_PX = 7;
 
-function snap(ms) { return Math.round(ms / SNAP_MS) * SNAP_MS; }
+function snap(ms, sentencePoints) {
+  let snapped = Math.round(ms / SNAP_MS) * SNAP_MS;
+  // Snap to nearest sentence boundary if within 150ms — text locks to audio
+  if (sentencePoints && sentencePoints.length > 0) {
+    for (const sp of sentencePoints) {
+      if (Math.abs(snapped - sp) < 150) { snapped = sp; break; }
+    }
+  }
+  return snapped;
+}
 
 const TRACK_DEFS = [
   { key: 'slide', label: 'Slide', cls: 'cpe-clip-slide', editable: false },
@@ -45,8 +54,15 @@ export default function TransportBar({
   const slideTimeline = parseTiming(slide?.slide_timeline);
   const voiceAudioUrl = slideTimeline.voice_audio_url || slideTimeline.audio_url || null;
   const voiceDuration = slideTimeline.duration_ms || slide?.duration_ms || duration;
-  // Sentence timeline from voice package (passed via slideTiming)
-  const sentenceTimeline = parseTiming(slideTiming.sentence_timeline);
+  // Sentence timeline — may be an array (from APD) or a JSON string
+  const rawSentences = slideTimeline.sentence_timeline;
+  const sentenceTimeline = Array.isArray(rawSentences)
+    ? rawSentences
+    : (typeof rawSentences === 'string' ? parseTiming(rawSentences) : []);
+  // Sentence boundary snap points — text clips lock to these when dragging
+  const sentencePoints = Array.isArray(sentenceTimeline)
+    ? sentenceTimeline.map(s => s.start_time || 0)
+    : [];
 
   // Build tracks with clip data
   const tracks = TRACK_DEFS.map(t => {
@@ -63,12 +79,12 @@ export default function TransportBar({
       if (voiceAudioUrl) {
         items.push({ start: 0, end: voiceDuration, label: 'Voiceover', editable: false });
       }
-      // Audio elements (sound effects, music)
+      // Audio elements (sound effects, music) — editable
       (elements || []).filter(el => el.type === 'audio' && el.content).forEach(el => {
         const et = parseTiming(el.timing);
         const start = et.start_ms ?? 0;
         const end = et.end_ms || duration;
-        items.push({ start, end, label: (el.content || 'Audio').slice(0, 20), editable: true, element: el });
+        items.push({ start, end, label: (el.content || 'Audio').slice(0, 20), editable: true, element: el, clipType: 'timing' });
       });
       // Sentence markers from voice package for text-audio sync reference
       if (Array.isArray(sentenceTimeline) && sentenceTimeline.length > 0) {
@@ -83,7 +99,7 @@ export default function TransportBar({
       }
     }
     if (t.special === 'animations') {
-      // Show element entrance animations with delay/duration
+      // Editable animation clips — drag to change delay, resize to change duration
       (elements || []).forEach(el => {
         const anim = parseTiming(el.animation);
         if (anim.type && anim.type !== 'none') {
@@ -91,34 +107,23 @@ export default function TransportBar({
           const dur = anim.duration_ms || 500;
           items.push({
             start: delay, end: delay + dur,
-            label: anim.type, editable: false,
-          });
-        }
-        // Also show element timing-based animations
-        const et = parseTiming(el.timing);
-        if (et.start_ms != null && et.start_ms > 0) {
-          items.push({
-            start: et.start_ms, end: (et.end_ms || et.start_ms + 500),
-            label: `${el.type}`, editable: false,
+            label: anim.type, editable: true,
+            element: el, clipType: 'animation',
           });
         }
       });
     }
     if (t.special === 'effects') {
-      // Show elements with special visual effects (lower_thirds, shapes, captions)
+      // Editable FX clips — lower thirds, captions, shapes, styled elements
       (elements || []).forEach(el => {
         const style = parseTiming(el.style);
-        if (style.backgroundColor && style.backgroundColor !== 'transparent') {
+        const isFx = (style.backgroundColor && style.backgroundColor !== 'transparent')
+          || el.type === 'lower_third' || el.type === 'caption' || el.type === 'shape';
+        if (isFx) {
           const et = parseTiming(el.timing);
           const start = et.start_ms ?? 0;
           const end = et.end_ms || duration;
-          items.push({ start, end, label: el.type, editable: false });
-        }
-        if (el.type === 'lower_third' || el.type === 'caption' || el.type === 'shape') {
-          const et = parseTiming(el.timing);
-          const start = et.start_ms ?? 0;
-          const end = et.end_ms || duration;
-          items.push({ start, end, label: el.type, editable: false });
+          items.push({ start, end, label: el.type, editable: true, element: el, clipType: 'timing' });
         }
       });
     }
@@ -132,6 +137,7 @@ export default function TransportBar({
           label: (el.content || el.type).slice(0, 20),
           editable: true,
           element: el,
+          clipType: 'timing',
         });
       });
     }
@@ -158,6 +164,8 @@ export default function TransportBar({
       mode, elId: element.id,
       origStart: clip.start, origEnd: clip.end,
       startX: e.clientX, laneW: rect.width, duration,
+      clipType: clip.clipType || 'timing',
+      origAnim: parseTiming(element.animation),
     };
     setActiveDrag({ id: element.id, mode });
     onSelectElement?.(element.id);
@@ -177,20 +185,36 @@ export default function TransportBar({
 
       if (d.mode === 'move') {
         const clipDur = d.origEnd - d.origStart;
-        newStart = snap(Math.max(0, d.origStart + dxMs));
+        newStart = snap(Math.max(0, d.origStart + dxMs), sentencePoints);
         newEnd = newStart + clipDur;
         if (newEnd > d.duration) { newEnd = d.duration; newStart = newEnd - clipDur; }
       } else if (d.mode === 'resize-l') {
-        newStart = snap(Math.max(0, Math.min(d.origEnd - MIN_DURATION, d.origStart + dxMs)));
+        newStart = snap(Math.max(0, Math.min(d.origEnd - MIN_DURATION, d.origStart + dxMs)), sentencePoints);
         newEnd = d.origEnd;
       } else if (d.mode === 'resize-r') {
-        newEnd = snap(Math.min(d.duration, Math.max(d.origStart + MIN_DURATION, d.origEnd + dxMs)));
+        newEnd = snap(Math.min(d.duration, Math.max(d.origStart + MIN_DURATION, d.origEnd + dxMs)), sentencePoints);
         newStart = d.origStart;
       }
 
-      onUpdateElement?.(d.elId, {
-        timing: JSON.stringify({ start_ms: newStart, end_ms: newEnd }),
-      }, { silent: true });
+      if (d.clipType === 'animation') {
+        // Update animation delay_ms and duration_ms
+        const delay = newStart;
+        const animDur = newEnd - newStart;
+        const anim = d.origAnim;
+        onUpdateElement?.(d.elId, {
+          animation: JSON.stringify({
+            ...anim,
+            type: anim.type || 'fade_in',
+            delay_ms: delay,
+            duration_ms: animDur,
+          }),
+        }, { silent: true });
+      } else {
+        // Update element timing (start_ms, end_ms)
+        onUpdateElement?.(d.elId, {
+          timing: JSON.stringify({ start_ms: newStart, end_ms: newEnd }),
+        }, { silent: true });
+      }
     };
 
     const onUp = () => {
@@ -204,7 +228,7 @@ export default function TransportBar({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [onUpdateElement]);
+  }, [onUpdateElement, sentencePoints]);
 
   // Ruler tick marks
   const tickCount = Math.min(Math.ceil(duration / 1000), 12);
@@ -227,6 +251,12 @@ export default function TransportBar({
               <div key={i} className="cpe-ruler-tick" style={{ left: `${(t / duration) * 100}%` }}>
                 <span className="cpe-ruler-label">{fmt(t)}</span>
               </div>
+            ))}
+            {/* Sentence boundary markers — snap points for text-audio sync */}
+            {sentencePoints.map((sp, i) => (
+              <div key={`s${i}`} className="cpe-sentence-marker"
+                style={{ left: `${(sp / duration) * 100}%` }}
+                title={`Sentence ${i + 1} @ ${fmt(sp)}`} />
             ))}
             {/* Playhead */}
             <div className="cpe-playhead" style={{ left: `${progress}%` }}>

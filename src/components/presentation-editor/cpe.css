@@ -365,6 +365,16 @@
   background: hsl(var(--cpe-border));
   pointer-events: none;
 }
+/* Sentence boundary snap markers on ruler */
+.cpe-sentence-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: hsl(200 60% 55% / 0.4);
+  pointer-events: none;
+  z-index: 3;
+}
 .cpe-ruler-label {
   position: absolute;
   top: 1px;

@@ -108,6 +108,11 @@ Deno.serve(async (req) => {
           scene_count: (sceneGraph.scenes || []).length,
           story_intent: sceneGraph.story_intent,
           presentation_strategy: sceneGraph.presentation_strategy,
+          // Store sentence timeline + audio URL so the editor timeline can show
+          // sentence snap markers and play the voiceover
+          sentence_timeline: sentenceSummaries,
+          voice_audio_url: vp?.audio_url || vp?.merged_audio_url || null,
+          duration_ms: totalDuration * 1000,
         }),
         slide_metadata: JSON.stringify({
           ...parseJSON(slide.slide_metadata, {}),
@@ -117,6 +122,44 @@ Deno.serve(async (req) => {
         }),
         status: 'approved',
       });
+
+      // ── Sync APD timing back to SlideElement records ──
+      // The scene graph contains timing + animation for each element.
+      // Write those back to the SlideElement records so the editor timeline
+      // reflects the APD's direction.
+      const sceneElements = [];
+      for (const scene of (sceneGraph.scenes || [])) {
+        for (const layer of (scene.layers || [])) {
+          for (const elem of (layer.elements || [])) {
+            sceneElements.push(elem);
+          }
+        }
+      }
+      for (const elem of sceneElements) {
+        // Match by content or element_id to existing SlideElement
+        const match = elements.find(e =>
+          e.id === elem.element_id ||
+          (elem.content && e.content && e.content.trim() === elem.content.trim()) ||
+          (elem.asset_reference && e.content && e.content === elem.asset_reference)
+        );
+        if (!match) continue;
+
+        const tlEvents = elem.timeline_events || [];
+        const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
+        const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
+        const animType = elem.entrance_animation?.type || 'fade_in';
+        const animDelay = elem.entrance_animation?.delay_ms ?? startMs;
+        const animDur = elem.entrance_animation?.duration_ms ?? Math.max(500, endMs - startMs);
+
+        const updates = {};
+        if (startMs !== 0 || endMs !== 0) {
+          updates.timing = JSON.stringify({ start_ms: startMs, end_ms: endMs });
+        }
+        updates.animation = JSON.stringify({
+          type: animType, delay_ms: animDelay, duration_ms: animDur,
+        });
+        await base44.asServiceRole.entities.SlideElement.update(match.id, updates);
+      }
 
       // ── Create APDDecisionRecords ──
       for (const decision of (sceneGraph.decisions || [])) {
@@ -180,15 +223,28 @@ async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, total
   const pauseTimeline = parseJSON(vp?.pause_timeline, '[]');
   const totalDuration = vp?.total_duration_seconds || (slide.duration_ms / 1000) || 30;
 
-  // Summarize element assets available
-  const elementSummary = elements.map(el => ({
-    id: el.id,
-    type: el.type,
-    content_preview: (el.content || '').substring(0, 100),
-    has_media: el.type === 'image' || el.type === 'video',
-    current_position: { x: el.x, y: el.y },
-    current_size: { w: el.width, h: el.height },
-  }));
+  // Summarize element assets available — include current timeline state
+  const elementSummary = elements.map(el => {
+    const elTiming = parseJSON(el.timing, {});
+    const elAnim = parseJSON(el.animation, {});
+    return {
+      id: el.id,
+      type: el.type,
+      content_preview: (el.content || '').substring(0, 100),
+      has_media: el.type === 'image' || el.type === 'video',
+      current_position: { x: el.x, y: el.y },
+      current_size: { w: el.width, h: el.height },
+      current_timing: {
+        start_ms: elTiming.start_ms ?? 0,
+        end_ms: elTiming.end_ms ?? 0,
+      },
+      current_animation: {
+        type: elAnim.type || 'fade_in',
+        delay_ms: elAnim.delay_ms ?? 0,
+        duration_ms: elAnim.duration_ms ?? 500,
+      },
+    };
+  });
 
   // Build sentence summaries for scene timing
   const sentenceSummaries = (Array.isArray(sentenceTimeline) ? sentenceTimeline : []).map((s, idx) => ({
@@ -259,14 +315,24 @@ async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, total
 # EXISTING SLIDE ELEMENTS (already placed on canvas — you may reposition)
 ${JSON.stringify(elementSummary)}
 
+# CURRENT TIMELINE STATE (producer may have manually edited these — respect them)
+Each element already has timing and animation on the timeline:
+${JSON.stringify(elementSummary.map(e => ({
+  id: e.id, type: e.type,
+  timing: e.current_timing,
+  animation: e.current_animation,
+})))}
+
 # YOUR TASK
 Analyze this story package and direct the slide. Produce a scene_graph that:
 1. Divides the slide into 2-5 scenes based on narration content changes (NOT time intervals)
 2. Assigns camera behavior to each scene (static, slow_push, zoom_in, zoom_out, pan_left, pan_right, drift)
 3. Places elements at normalized positions (0-1 scale) within each scene
-4. Synchronizes element visibility with the voiceover sentence timeline
-5. Applies entrance animations (fade_in, slide_in, scale_in, gentle_float)
-6. Varies layout from other slides — avoid repetition
+4. SYNCHRONIZES element visibility with the voiceover sentence timeline — each text element's timeline_events MUST align with the sentence boundaries above. When a sentence is spoken, the corresponding text should be visible. Use the sentence start_time/end_time as the element's timeline_events.
+5. Applies entrance animations (fade_in, slide_in, scale_in, gentle_float) with delay_ms matching the sentence start_time
+6. Animation duration_ms should match the sentence duration — text appears for exactly as long as the sentence is spoken
+7. If the producer has already set timing on an element, PRESERVE it unless it conflicts with the sentence timeline
+8. Varies layout from other slides — avoid repetition
 
 Element types you can use: headline, body_text, image, talking_point_card, discussion_response, lower_third, statistic, quote, caption
 
@@ -351,6 +417,8 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
                             type: 'object',
                             properties: {
                               type: { type: 'string', enum: ['fade_in', 'slide_in', 'scale_in', 'gentle_float'] },
+                              delay_ms: { type: 'number', description: 'Delay before animation starts in ms — should match the sentence start_time' },
+                              duration_ms: { type: 'number', description: 'Animation duration in ms — should match the sentence duration' },
                             },
                           },
                           timeline_events: {
