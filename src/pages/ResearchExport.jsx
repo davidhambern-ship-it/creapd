@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
 import { base44 } from '@/api/base44Client';
-import { Loader2, FlaskConical, Download, Package, CheckCircle2, Layers, FileText, Archive, AlertCircle } from 'lucide-react';
+import { Loader2, FlaskConical, Download, Package, CheckCircle2, Layers, FileText, Archive, AlertCircle, Eye } from 'lucide-react';
 
 export default function ResearchExport() {
   const researchData = useResearchProduction();
   const { config, topics, points, packages, dossiers, loading } = researchData;
+  const navigate = useNavigate();
   const [assembling, setAssembling] = useState(false);
   const [packet, setPacket] = useState(null);
   const [error, setError] = useState(null);
@@ -205,17 +207,41 @@ export default function ResearchExport() {
         </button>
 
         {packet && (
-          <button
-            onClick={handleJsonExport}
-            className="flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-all"
-            style={{
-              background: 'hsl(220 15% 14% / 0.3)',
-              border: '1px solid hsl(220 15% 22% / 0.4)',
-              color: 'hsl(0 0% 70%)',
-            }}
-          >
-            <Download className="w-4 h-4 mr-2" /> Export JSON
-          </button>
+          <>
+            <button
+              onClick={() => navigate(`/news/presentations/${packet.id}`)}
+              className="flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-all"
+              style={{
+                background: 'linear-gradient(135deg, hsl(152 50% 15% / 0.3), hsl(152 40% 8% / 0.15))',
+                border: '1px solid hsl(152 50% 28% / 0.4)',
+                color: 'hsl(152 60% 50%)',
+              }}
+            >
+              <Eye className="w-4 h-4 mr-2" /> View Presentation
+            </button>
+            <button
+              onClick={() => navigate(`/editor/${packet.id}`)}
+              className="flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-all"
+              style={{
+                background: 'linear-gradient(135deg, hsl(270 50% 15% / 0.3), hsl(270 40% 8% / 0.15))',
+                border: '1px solid hsl(270 50% 28% / 0.4)',
+                color: 'hsl(270 80% 65%)',
+              }}
+            >
+              <Layers className="w-4 h-4 mr-2" /> Open in Editor
+            </button>
+            <button
+              onClick={handleJsonExport}
+              className="flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-all"
+              style={{
+                background: 'hsl(220 15% 14% / 0.3)',
+                border: '1px solid hsl(220 15% 22% / 0.4)',
+                color: 'hsl(0 0% 70%)',
+              }}
+            >
+              <Download className="w-4 h-4 mr-2" /> Export JSON
+            </button>
+          </>
         )}
       </div>
 
