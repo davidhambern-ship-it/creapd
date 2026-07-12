@@ -340,24 +340,12 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
       'festival_lineup', 'album_review', 'interview', 'music_industry',
       'streaming', 'local_concert', 'genre_spotlight', 'classic_track'
     ];
-    const ARTICLE_STATUSES = ['approved', 'available', 'selected', 'bernas_pick', 'saved_for_later'];
 
     if (autoResearch) {
-      // 3a: Query existing Article records for music categories
+      // Fetch music news via web search — stored ONLY as MusicResearchItem
+      // NEVER writes to the Article entity (that belongs to the News PP)
       try {
-        const allRecent = await base44.asServiceRole.entities.Article.list('-published_at', 60);
-        musicArticles = allRecent.filter(
-          a => MUSIC_ARTICLE_CATEGORIES.includes(a.category) && ARTICLE_STATUSES.includes(a.status)
-        );
-      } catch (e) {
-        console.error('Article query failed:', e.message);
-        buildLog.push({ stage: 'article_query', success: false, error: e.message, timestamp: new Date().toISOString() });
-      }
-
-      // 3b: If no music articles in DB, fetch via web search and persist as Article records
-      if (musicArticles.length === 0) {
-        try {
-          const newsPrompt = `Search for current music news. Find real, recent articles about:
+        const newsPrompt = `Search for current music news. Find real, recent articles about:
 - New album/single releases
 - Artist news and announcements
 - Chart movements (Billboard, streaming platforms)
@@ -370,62 +358,59 @@ For each article, provide: title, source_name (publication), summary (2-3 senten
 
 Find up to 20 recent articles.`;
 
-          const newsSchema = {
-            type: 'object',
-            properties: {
-              articles: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    title: { type: 'string' },
-                    source_name: { type: 'string' },
-                    summary: { type: 'string' },
-                    category: { type: 'string' },
-                    published_at: { type: 'string' },
-                    url: { type: 'string' },
-                    suggested_angle: { type: 'string' }
-                  }
+        const newsSchema = {
+          type: 'object',
+          properties: {
+            articles: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  source_name: { type: 'string' },
+                  summary: { type: 'string' },
+                  category: { type: 'string' },
+                  published_at: { type: 'string' },
+                  url: { type: 'string' },
+                  suggested_angle: { type: 'string' }
                 }
               }
             }
-          };
-
-          const newsResult = await base44.integrations.Core.InvokeLLM({
-            prompt: newsPrompt,
-            add_context_from_internet: true,
-            response_json_schema: newsSchema,
-            model: 'gemini_3_flash'
-          });
-
-          const newArticleRecords = (newsResult.articles || []).map(a => ({
-            title: a.title || 'Untitled',
-            source_name: a.source_name || '',
-            summary: a.summary || '',
-            category: MUSIC_ARTICLE_CATEGORIES.includes(a.category) ? a.category : 'artist_news',
-            published_at: a.published_at || new Date().toISOString(),
-            url: a.url || '',
-            suggested_angle: a.suggested_angle || '',
-            status: 'approved',
-            content_type: 'text'
-          }));
-
-          if (newArticleRecords.length > 0) {
-            musicArticles = await base44.asServiceRole.entities.Article.bulkCreate(newArticleRecords);
           }
-        } catch (e) {
-          console.error('Music news fetch failed:', e.message);
-          buildLog.push({ stage: 'music_news_fetch', success: false, error: e.message, timestamp: new Date().toISOString() });
-        }
+        };
+
+        const newsResult = await base44.integrations.Core.InvokeLLM({
+          prompt: newsPrompt,
+          add_context_from_internet: true,
+          response_json_schema: newsSchema,
+          model: 'gemini_3_flash'
+        });
+
+        // Keep LLM results in local variable for topic context — do NOT persist to Article entity
+        musicArticles = (newsResult.articles || []).map(a => ({
+          title: a.title || 'Untitled',
+          source_name: a.source_name || '',
+          summary: a.summary || '',
+          category: MUSIC_ARTICLE_CATEGORIES.includes(a.category) ? a.category : 'artist_news',
+          published_at: a.published_at || new Date().toISOString(),
+          url: a.url || '',
+          suggested_angle: a.suggested_angle || '',
+          body_content: a.summary || ''
+        }));
+      } catch (e) {
+        console.error('Music news fetch failed:', e.message);
+        buildLog.push({ stage: 'music_news_fetch', success: false, error: e.message, timestamp: new Date().toISOString() });
       }
 
-      // 3c: Create MusicResearchItem records directly from articles
+      // Create MusicResearchItem records directly — stays within Music PP
       researchData = musicArticles.map(a => ({
         configuration_id,
         title: a.title || '',
         source: a.source_name || '',
         category: a.category || '',
         summary: a.summary || '',
+        url: a.url || '',
+        suggested_angle: a.suggested_angle || '',
         date: a.published_at ? new Date(a.published_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         relevance: 'high'
       }));

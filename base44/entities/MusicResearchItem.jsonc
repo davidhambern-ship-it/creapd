@@ -18,6 +18,14 @@
     "summary": {
       "type": "string"
     },
+    "url": {
+      "type": "string",
+      "description": "Source URL for the research item"
+    },
+    "suggested_angle": {
+      "type": "string",
+      "description": "Suggested coverage angle for the music show"
+    },
     "date": {
       "type": "string"
     },
