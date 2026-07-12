@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
+import ResearchTrackerBar from '@/components/research/ResearchTrackerBar';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { POINT_TYPE_LABELS, POINT_TYPE_COLORS } from '@/lib/researchConstants';
@@ -179,6 +180,9 @@ export default function ResearchManager() {
           </div>
         </div>
       </div>
+
+      {/* Research Tracker */}
+      <ResearchTrackerBar topics={topics} />
 
       {/* Stats Row */}
       <div className="px-4 md:px-6 pb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
