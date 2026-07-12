@@ -39,6 +39,7 @@ export default function ResearchManager() {
   const [breakRoomError, setBreakRoomError] = useState(null);
   const [breakRoomTitle, setBreakRoomTitle] = useState('Generating...');
   const [breakRoomSubtitle, setBreakRoomSubtitle] = useState('');
+  const [currentGeneratingPointId, setCurrentGeneratingPointId] = useState(null);
 
   const researchingTopic = useMemo(
     () => (topics || []).find(t => t.status === 'researching'),
@@ -125,27 +126,6 @@ export default function ResearchManager() {
     );
   }
 
-  // Show the Break Room during deep research or package generation
-  if (breakRoomStatus) {
-    const isResearch = breakRoomTitle === 'Conducting Deep Research';
-    return (
-      <GlobalBreakRoom
-        title={breakRoomTitle}
-        subtitle={breakRoomSubtitle}
-        status={breakRoomStatus}
-        error={breakRoomError}
-        readyTitle={isResearch ? 'Research Complete!' : 'Package Generated!'}
-        readyText={isResearch ? 'Loading your research dossier...' : 'Loading your production package...'}
-        onComplete={() => {
-          setBreakRoomStatus(null);
-          setBreakRoomError(null);
-          refresh();
-        }}
-        progressTracker={isResearch ? <ResearchTrackerBar topics={topics} /> : null}
-      />
-    );
-  }
-
   const handleStatusChange = async (point, newStatus) => {
     if (newStatus !== 'approved') {
       await base44.entities.ResearchPoint.update(point.id, { status: newStatus });
@@ -215,6 +195,7 @@ export default function ResearchManager() {
 
   const handleGeneratePackage = async (point) => {
     setGenerating(point.id);
+    setCurrentGeneratingPointId(point.id);
     setBreakRoomTitle('Generating Package');
     setBreakRoomSubtitle(point.title || 'Multi-model synthesis pipeline');
     setBreakRoomStatus('loading');
@@ -238,6 +219,35 @@ export default function ResearchManager() {
       setGenerating(null);
     }
   };
+
+  // Find the next approved point to generate (excluding the one just done)
+  const nextPoint = (!breakRoomStatus || breakRoomTitle !== 'Generating Package')
+    ? null
+    : points.find(p => p.id !== currentGeneratingPointId && p.status === 'approved');
+
+  // Show the Break Room during deep research or package generation
+  if (breakRoomStatus) {
+    const isResearch = breakRoomTitle === 'Conducting Deep Research';
+    return (
+      <GlobalBreakRoom
+        title={breakRoomTitle}
+        subtitle={breakRoomSubtitle}
+        status={breakRoomStatus}
+        error={breakRoomError}
+        readyTitle={isResearch ? 'Research Complete!' : 'Package Generated!'}
+        readyText={isResearch ? 'Loading your research dossier...' : 'Loading your production package...'}
+        onComplete={() => {
+          setBreakRoomStatus(null);
+          setBreakRoomError(null);
+          setCurrentGeneratingPointId(null);
+          refresh();
+        }}
+        onGenerateNext={!isResearch && nextPoint ? () => handleGeneratePackage(nextPoint) : undefined}
+        nextPointTitle={!isResearch && nextPoint ? nextPoint.title : undefined}
+        progressTracker={isResearch ? <ResearchTrackerBar topics={topics} /> : null}
+      />
+    );
+  }
 
   const selectedTopic = topicFilter ? topics.find(t => t.id === topicFilter) : null;
 

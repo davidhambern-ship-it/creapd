@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, CheckCircle2, AlertCircle, Dices, X, OctagonX } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Dices, X, OctagonX, Sparkles } from 'lucide-react';
 import WordSearch from '@/components/games/WordSearch';
 import Asteroids from '@/components/games/Asteroids';
 
@@ -29,6 +29,8 @@ export default function GlobalBreakRoom({
   readyText = 'Taking you there...',
   onComplete,
   onCancel,
+  onGenerateNext,
+  nextPointTitle,
   progressTracker,
 }) {
   const [activeGame, setActiveGame] = useState(null);
@@ -119,8 +121,39 @@ export default function GlobalBreakRoom({
         </div>
 
         {/* Break Room games — only while loading */}
-        {isReady && onComplete && (
+        {isReady && onComplete && !onGenerateNext && (
           <CompleteTrigger onComplete={onComplete} />
+        )}
+
+        {/* Ready actions — Generate Next Package (only when onGenerateNext provided) */}
+        {isReady && onGenerateNext && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col items-center gap-3 mt-4"
+          >
+            {nextPointTitle && (
+              <p className="text-xs text-muted-foreground">
+                Next up: <span className="text-foreground font-medium">{nextPointTitle}</span>
+              </p>
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onGenerateNext}
+                className="inline-flex items-center gap-1.5 text-sm px-5 py-2.5 rounded-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+              >
+                <Sparkles className="w-4 h-4" />
+                Generate Next Package
+              </button>
+              <button
+                onClick={onComplete}
+                className="inline-flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-lg border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all"
+              >
+                Done
+              </button>
+            </div>
+          </motion.div>
         )}
 
         {!isReady && !isFailed && (
