@@ -88,6 +88,5 @@ export function getDepartmentThemeFromPath(pathname) {
   if (pathname.includes('/research/dossier')) return DEPARTMENT_THEMES.dossier;
   if (pathname.includes('/research/assets')) return DEPARTMENT_THEMES.develop;
   if (pathname.includes('/research/export')) return DEPARTMENT_THEMES.packet;
-  if (pathname.includes('/research/archive')) return DEPARTMENT_THEMES.lobby;
   return DEPARTMENT_THEMES.lobby;
 }
