@@ -17,6 +17,7 @@ import MediaBrowserPanel from '@/components/presentation-editor/MediaBrowserPane
 import PresentRehearsalBar from '@/components/presentation-editor/PresentRehearsalBar';
 import PresentationPlayer from '@/components/presentation/PresentationPlayer';
 import AnimationInspector from '@/components/presentation-editor/AnimationInspector';
+import MediaModeLayout from '@/components/presentation-editor/media/MediaModeLayout';
 import { useAnimateShortcuts } from '@/hooks/useAnimateShortcuts';
 import '@/components/presentation-editor/cpe.css';
 import '@/components/presentation-editor/workspace.css';
@@ -187,6 +188,56 @@ export default function PresentationEditor() {
             Browse Presentations →
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  // Media Mode renders a full DAM workspace, replacing the standard editor layout
+  if (workspaceMode === 'media') {
+    return (
+      <div className="cpe-shell flex flex-col h-screen">
+        <EditorTopBar
+          saving={ed.saving}
+          dirty={ed.dirty}
+          canUndo={ed.undoStack.length > 0}
+          canRedo={ed.redoStack.length > 0}
+          hasSelection={!!ed.selectedElement}
+          title={ed.presentation.title}
+          onSave={ed.saveAll}
+          onUndo={ed.undo}
+          onRedo={ed.redo}
+          onExport={ed.exportPresentation}
+          onRegenerateSlide={ed.regenerateSlide}
+          onRegenerateElement={ed.regenerateElement}
+          onRunQA={ed.runQA}
+          onAddElement={ed.addElement}
+          onAutoBuild={autoBuild.open}
+          onToggleAiPanel={() => handleWorkspaceChange(aiPanelOpen ? 'design' : 'ai')}
+          aiPanelOpen={aiPanelOpen}
+          onToggleReviewPanel={() => handleWorkspaceChange(reviewPanelOpen ? 'design' : 'review')}
+          reviewPanelOpen={reviewPanelOpen}
+          workspaceMode={workspaceMode}
+          onWorkspaceModeChange={handleWorkspaceChange}
+        />
+        <MediaModeLayout ed={ed} />
+        <AutoBuildModal
+          isOpen={autoBuild.isOpen}
+          onClose={autoBuild.close}
+          prompt={autoBuild.prompt}
+          onPromptChange={autoBuild.setPrompt}
+          stages={autoBuild.stages}
+          stageStatuses={autoBuild.stageStatuses}
+          detail={autoBuild.detail}
+          error={autoBuild.error}
+          failedStage={autoBuild.failedStage}
+          onRetry={autoBuild.retry}
+          running={autoBuild.running}
+          needsConfirmation={autoBuild.needsConfirmation}
+          clarificationQuestion={autoBuild.clarificationQuestion}
+          inferredParams={autoBuild.inferredParams}
+          onStart={autoBuild.start}
+          onConfirmProceed={autoBuild.confirmAndProceed}
+        />
       </div>
     );
   }
