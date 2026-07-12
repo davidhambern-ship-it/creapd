@@ -286,18 +286,19 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
             }
           };
 
-          for (let attempt = 0; attempt < 3; attempt++) {
-            const remaining = createdItems.filter(item =>
-              !resolvedKeys.has(`${item.song_title}|||${item.artist}`)
-            );
-            if (remaining.length === 0) break;
-
-            const songList = remaining.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n');
+          // Process songs in batches of 3 to avoid LLM timeout on large web-search calls
+          const unresolved = createdItems.filter(item =>
+            !resolvedKeys.has(`${item.song_title}|||${item.artist}`)
+          );
+          const BATCH_SIZE = 3;
+          for (let batchStart = 0; batchStart < unresolved.length; batchStart += BATCH_SIZE) {
+            const batch = unresolved.slice(batchStart, batchStart + BATCH_SIZE);
+            const batchSongList = batch.map((s, i) => `${i + 1}. "${s.song_title}" by ${s.artist}`).join('\n');
             const failedHint = failedVideoIds.size > 0
               ? `\n\nDo NOT use these video IDs — they are unavailable:\n${[...failedVideoIds].join(', ')}`
               : '';
 
-            const ytPrompt = `You are a music librarian. For each song below, find its REAL YouTube video URL.
+            const batchPrompt = `You are a music librarian. For each song below, find its REAL YouTube video URL.
 
 STRICT RULES:
 - NO cover versions, lyric videos, fan-made videos, or live covers. Official recordings only.
@@ -305,7 +306,7 @@ STRICT RULES:
 - Each URL must point to a working, publicly available video.
 
 SONGS TO FIND:
-${songList}${failedHint}
+${batchSongList}${failedHint}
 
 Return a JSON object with key "results" containing an array of objects, each with:
 - song_title (exact match from the list above)
@@ -314,21 +315,28 @@ Return a JSON object with key "results" containing an array of objects, each wit
 
 Only include songs where you found a real, working YouTube URL.`;
 
-            const ytResult = await base44.integrations.Core.InvokeLLM({
-              prompt: ytPrompt,
-              add_context_from_internet: true,
-              response_json_schema: ytSchema,
-              model: 'gemini_3_flash'
-            });
+            let batchResults = [];
+            try {
+              const batchResult = await base44.integrations.Core.InvokeLLM({
+                prompt: batchPrompt,
+                add_context_from_internet: true,
+                response_json_schema: ytSchema,
+                model: 'gemini_3_flash'
+              });
+              batchResults = batchResult.results || [];
+            } catch (batchErr) {
+              console.error(`YouTube lookup batch failed (songs ${batchStart + 1}-${batchStart + batch.length}):`, batchErr.message);
+              buildLog.push({ stage: 'youtube_lookup_batch', success: false, error: batchErr.message, batch: `${batchStart + 1}-${batchStart + batch.length}`, timestamp: new Date().toISOString() });
+              continue;
+            }
 
-            const ytResults = ytResult.results || [];
-            if (ytResults.length === 0) break;
+            if (batchResults.length === 0) continue;
 
-            const oembedResults = (await Promise.all(ytResults.map(async (result) => {
+            const oembedResults = (await Promise.all(batchResults.map(async (result) => {
               const videoId = extractVideoId(result.youtube_url || '');
               if (!videoId || failedVideoIds.has(videoId)) return null;
 
-              const matchedItem = createdItems.find(item =>
+              const matchedItem = batch.find(item =>
                 item.song_title === result.song_title && item.artist === result.artist
               );
               if (!matchedItem) return null;
@@ -351,6 +359,7 @@ Only include songs where you found a real, working YouTube URL.`;
                 return null;
               }
             }))).filter(Boolean);
+
             for (const r of oembedResults) {
               updates.push({
                 id: r.matchedItem.id,
@@ -359,6 +368,15 @@ Only include songs where you found a real, working YouTube URL.`;
                 channel_name: r.channel_name
               });
               resolvedKeys.add(`${r.matchedItem.song_title}|||${r.matchedItem.artist}`);
+            }
+
+            // Save progress after each batch so partial results persist even if later batches fail
+            if (updates.length > 0) {
+              try {
+                await base44.entities.PlaylistItem.bulkUpdate(updates.slice());
+              } catch (e) {
+                console.error('Partial bulkUpdate failed:', e.message);
+              }
             }
           }
 
