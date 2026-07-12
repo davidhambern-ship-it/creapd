@@ -44,6 +44,15 @@ const BACKGROUND_STYLES = {
   },
 };
 
+const SCENE_TRANSITIONS = {
+  fade: 'animate-scene-fade',
+  dissolve: 'animate-scene-dissolve',
+  slide_left: 'animate-scene-slide-left',
+  slide_right: 'animate-scene-slide-right',
+  zoom: 'animate-scene-zoom',
+  cut: '',
+};
+
 function getCameraStyle(cameraState, sceneProgress) {
   const behavior = cameraState?.behavior || 'static';
   const p = Math.max(0, Math.min(1, sceneProgress));
@@ -84,8 +93,10 @@ export default function SceneCanvas({ scene, slideLocalTime }) {
   const bgStyle = BACKGROUND_STYLES[scene.background_design] || BACKGROUND_STYLES.dark_gradient;
   const layers = [...(scene.layers || [])].sort((a, b) => (a.z_order || 0) - (b.z_order || 0));
 
+  const transitionClass = SCENE_TRANSITIONS[scene.transition_type || 'dissolve'] || SCENE_TRANSITIONS.dissolve;
+
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div key={scene.scene_id} className={`absolute inset-0 overflow-hidden ${transitionClass}`}>
       <div className="absolute inset-0" style={bgStyle} />
       {/* Decorative background overlays for designs that need extra visual elements */}
       {(scene.background_design === 'grid_floor' || scene.background_design === 'scan_lines' || scene.background_design === 'data_stream' || scene.background_design === 'energy_rings' || scene.background_design === 'neon_glow') && (

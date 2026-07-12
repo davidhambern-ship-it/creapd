@@ -1,5 +1,6 @@
 import React from 'react';
 import '@/styles/presentation-animations.css';
+import TypewriterText from '@/components/presentation/TypewriterText';
 
 // Splits text by newlines, renders each line with a staggered reveal animation
 function LineReveal({ text, staggerMs = 120 }) {
@@ -18,6 +19,14 @@ function LineReveal({ text, staggerMs = 120 }) {
       ))}
     </>
   );
+}
+
+// Helper: render text with typewriter or line-reveal based on entrance type
+function renderAnimatedText(content, entranceType, shouldShow, staggerMs = 120) {
+  if (entranceType === 'typewriter') {
+    return <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />;
+  }
+  return <LineReveal text={content} staggerMs={staggerMs} />;
 }
 
 const ANIMATION_CLASSES = {
@@ -46,6 +55,7 @@ const ANIMATION_CLASSES = {
   scale_out: 'animate-scale-out',
   dissolve_out: 'animate-dissolve-out',
   collapse: 'animate-fade-in',
+  typewriter: 'animate-fade-in',
 };
 
 const AMBIENT_CLASSES = {
@@ -179,6 +189,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
   const entranceClass = isFloat
     ? ANIMATION_CLASSES['gentle_float']
     : (ANIMATION_CLASSES[entranceAnim] || 'animate-fade-in');
+  const isTypewriter = entranceAnim === 'typewriter';
 
   // Clamp positions to safe area
   const rawX = element.position?.x ?? 0.5;
@@ -205,7 +216,11 @@ export default function PresentationElement({ element, slideLocalTime }) {
   };
 
   const content = element.content || '';
-  const animWrap = shouldShow ? `${entranceClass} ${ambientClass}`.trim() : '';
+  // For typewriter, skip entrance animation class on the wrapper (TypewriterText handles its own reveal)
+  // For other types, apply entrance + ambient
+  const animWrap = shouldShow
+    ? (isTypewriter ? ambientClass : `${entranceClass} ${ambientClass}`.trim())
+    : '';
 
   // ── IMAGE ──
   if (element.element_type === 'image') {
@@ -269,7 +284,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
           className={`${fontClass || 'font-heading'} font-bold text-center`}
           style={{ fontSize: '3.2cqw', color: color.text, textShadow: visualStyles.textShadow || `0 0 12px ${color.glow}` }}
         >
-          {content}
+          {isTypewriter
+            ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={45} />
+            : content}
         </h2>
       </div>
     );
@@ -280,12 +297,14 @@ export default function PresentationElement({ element, slideLocalTime }) {
     const lines = content.split('\n').filter(l => l.trim());
     const useLineReveal = lines.length > 1 || content.length > 80;
     return (
-      <div style={{ ...baseStyle, ...visualStyles }} className={useLineReveal ? ambientClass : animWrap}>
+      <div style={{ ...baseStyle, ...visualStyles }} className={isTypewriter || useLineReveal ? ambientClass : animWrap}>
         <div
           className={`${fontClass || 'font-body'} text-center`}
           style={{ fontSize: '1.8cqw', maxWidth: '60cqw', color: color.text, textShadow: '0 1px 6px rgba(0,0,0,0.6)' }}
         >
-          {useLineReveal ? (
+          {isTypewriter ? (
+            <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />
+          ) : useLineReveal ? (
             <LineReveal text={content} staggerMs={150} />
           ) : (
             <p>{content}</p>
@@ -300,7 +319,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
         <div className={`${fontClass || 'font-body'} font-medium`} style={{ fontSize: '1.6cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
-          <LineReveal text={content} staggerMs={120} />
+          {renderAnimatedText(content, entranceAnim, shouldShow, 120)}
         </div>
       </div>
     );
@@ -325,7 +344,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
           style={{ padding: '0.5cqw 1.5cqw', background: `${color.text}cc`, borderLeft: `4px solid ${color.text}`, boxShadow: `0 4px 16px rgba(0,0,0,0.4), 0 0 12px ${color.glow}` }}
         >
           <p className={`${fontClass || 'font-condensed'} font-medium`} style={{ fontSize: '1.4cqw', color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>
-            {content}
+            {isTypewriter
+              ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={30} />
+              : content}
           </p>
         </div>
       </div>
@@ -341,7 +362,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
             className={`${fontClass || 'font-display'} font-bold`}
             style={{ fontSize: '5cqw', color: color.text, textShadow: `0 0 16px ${color.glow}, 0 0 32px ${color.glow}` }}
           >
-            {content}
+            {isTypewriter
+              ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={50} />
+              : content}
           </p>
         </div>
       </div>
@@ -357,7 +380,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
           className={`${fontClass || 'font-serif'} italic text-center`}
           style={{ fontSize: '2.2cqw', maxWidth: '55cqw', paddingLeft: '1cqw', borderLeft: `4px solid ${color.text}`, color: color.text, textShadow: `0 0 12px ${color.glow}` }}
         >
-          <LineReveal text={`"${quoteText}"`} staggerMs={200} />
+          {renderAnimatedText(`"${quoteText}"`, entranceAnim, shouldShow, 200)}
         </blockquote>
       </div>
     );
@@ -368,7 +391,7 @@ export default function PresentationElement({ element, slideLocalTime }) {
     return (
       <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
         <div className={`${fontClass || 'font-body'} font-semibold text-center`} style={{ fontSize: '1.6cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
-          <LineReveal text={content} staggerMs={120} />
+          {renderAnimatedText(content, entranceAnim, shouldShow, 120)}
         </div>
       </div>
     );
@@ -378,7 +401,9 @@ export default function PresentationElement({ element, slideLocalTime }) {
   return (
     <div style={{ ...baseStyle, ...visualStyles }} className={animWrap}>
       <p className={`${fontClass || 'font-body'}`} style={{ fontSize: '1.5cqw', color: color.text, textShadow: `0 0 8px ${color.glow}` }}>
-        {content}
+        {isTypewriter
+          ? <TypewriterText text={content} shouldStart={shouldShow} speedMs={35} />
+          : content}
       </p>
     </div>
   );

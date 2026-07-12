@@ -303,6 +303,7 @@ Deno.serve(async (req) => {
                   camera_target: { type: 'string' },
                   motion_intensity: { type: 'string' },
                   background_design: { type: 'string' },
+                  transition_type: { type: 'string' },
                   layers: {
                     type: 'array',
                     items: {
@@ -342,10 +343,10 @@ Deno.serve(async (req) => {
             confidence_score: { type: 'number' },
           },
         },
-        model: 'gpt_5_mini',
+        model: 'gpt_5_4',
       });
 
-      const sceneGraphData = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
+      const sceneGraphData = enforceAnimationVariety(typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse);
 
       // Build the complete scene graph — limit scenes to 5 and truncate content to stay under field size limit
       let imgIdx = 0;
@@ -369,6 +370,7 @@ Deno.serve(async (req) => {
             intensity: scene.motion_intensity || 'low',
           },
           background_design: scene.background_design || 'dark_gradient',
+          transition_type: scene.transition_type || 'dissolve',
           layers: (scene.layers || []).slice(0, 3).map((layer, lIdx) => ({
             layer_id: `layer_${i + 1}_${sIdx + 1}_${lIdx}`,
             layer_type: layer.layer_type || 'background',
@@ -645,6 +647,31 @@ Deno.serve(async (req) => {
 });
 
 // ═════════════════════════════════════════════════════════════════
+// ANIMATION VARIETY ENFORCER
+// ═════════════════════════════════════════════════════════════════
+function enforceAnimationVariety(sceneGraphData) {
+  const ALT_POOL = ['dissolve', 'reveal', 'slide_up', 'scale_bounce', 'expand', 'zoom_in', 'fade_bounce', 'wipe', 'typewriter'];
+  for (const scene of (sceneGraphData.scenes || [])) {
+    const counts = {};
+    let altIdx = 0;
+    for (const layer of (scene.layers || [])) {
+      for (const elem of (layer.elements || [])) {
+        const anim = elem.entrance_animation || 'fade';
+        counts[anim] = (counts[anim] || 0) + 1;
+        if (counts[anim] > 2) {
+          const replacement = ALT_POOL[altIdx % ALT_POOL.length];
+          counts[replacement] = (counts[replacement] || 0) + 1;
+          counts[anim]--;
+          elem.entrance_animation = replacement;
+          altIdx++;
+        }
+      }
+    }
+  }
+  return sceneGraphData;
+}
+
+// ═════════════════════════════════════════════════════════════════
 // SCENE GRAPH PROMPT BUILDER
 // ═════════════════════════════════════════════════════════════════
 function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, slideIndex, totalSlides, screenResolution, screenAspectRatio) {
@@ -724,6 +751,7 @@ For each scene, determine:
 - Camera behavior (static, slow_push, pull_back, pan_left, pan_right, tilt, drift, parallax, focus_shift)
 - Motion intensity (low, medium, high)
 - Background design (choose from the STYLE GUIDE background options — each scene MUST use a different one)
+- Transition type (how this scene transitions IN from the previous scene: "fade", "dissolve", "slide_left", "slide_right", "zoom", "cut") — the FIRST scene of each slide should use "dissolve" or "fade"; vary transitions between scenes
 - Layers with elements (use the layer hierarchy: background, environmental_effects, primary_imagery, secondary_imagery, graphics, text, lower_third, foreground_effects)
 
 Element types: headline, body_text, talking_point_card, discussion_response, lower_third, callout, statistic, quote.
@@ -767,6 +795,19 @@ BACKGROUND DESIGNS — Each scene MUST include a background_design:
 - "warm_gradient" — warm orange to purple gradient
 BACKGROUND VARIETY RULE: Each scene in a slide MUST use a different background_design. Never repeat the same background across scenes within a slide.
 
+SCENE TRANSITIONS — Each scene MUST include a transition_type (how it transitions IN from the previous scene):
+- "fade" — smooth opacity fade-in
+- "dissolve" — blur-to-focus dissolve (DEFAULT for first scene of each slide)
+- "slide_left" — slide in from right
+- "slide_right" — slide in from left
+- "zoom" — quick zoom from large to normal
+- "cut" — instant cut (no transition — use for rapid scene changes)
+TRANSITION RULES:
+1. The FIRST scene of each slide should use "dissolve" or "fade" (smooth entrance)
+2. NEVER use the same transition_type on consecutive scenes — vary them
+3. Match transition to scene energy: "zoom" for high-energy, "dissolve" for emotional, "cut" for urgency, "slide_left" for informational
+4. "cut" should be used sparingly — max once per slide
+
 ENTRANCE ANIMATIONS — Each element MUST include one:
 - "fade" — smooth opacity fade-in (body_text, narration)
 - "slide" — slide in from right (headlines, talking_point_card)
@@ -783,12 +824,13 @@ ENTRANCE ANIMATIONS — Each element MUST include one:
 - "zoom_in" — quick zoom from large to normal (impact moments)
 - "fade_bounce" — fade in with slight bounce at end (playful elements)
 - "dissolve_in" — blur dissolve entrance (emotional transitions)
+- "typewriter" — text types on screen character-by-character (body_text, quotes, talking points — use for dramatic text reveal)
 ANIMATION VARIETY RULE: Never use the same entrance_animation for more than 2 elements in the same scene. Rotate through different animations to create choreographic rhythm. Match animation to element purpose:
 - Headlines: "slide", "slide_up", "scale_bounce"
-- Body text: "fade", "dissolve", "reveal"
+- Body text: "fade", "dissolve", "reveal", "typewriter"
 - Statistics: "scale", "scale_bounce", "zoom_in"
 - Images: "float", "fade", "dissolve_in"
-- Quotes: "reveal", "slide_down", "dissolve"
+- Quotes: "reveal", "slide_down", "dissolve", "typewriter"
 - Lower thirds: "slide_left", "slide"
 - Callouts: "expand", "scale_bounce", "wipe"
 - Icons: "float", "scale"
@@ -849,7 +891,7 @@ CRITICAL: All elements MUST fit within the display screen. Respect the Safe Area
 All timing must be in milliseconds and synchronized with the Voice Package sentence timeline. Elements should appear when their relevant narration begins and disappear when no longer relevant.
 
 Return a JSON object with:
-- scenes: array of scene objects (each with scene_id, scene_order, scene_type, scene_purpose, scene_start_time, scene_end_time, camera_behavior, camera_target, motion_intensity, background_design, layers with elements)
+- scenes: array of scene objects (each with scene_id, scene_order, scene_type, scene_purpose, scene_start_time, scene_end_time, camera_behavior, camera_target, motion_intensity, background_design, transition_type, layers with elements)
 - Each element MUST include: element_type, content, position_x, position_y, scale, opacity, entrance_animation, exit_animation, font_style, color_theme, visual_effects (array of strings), ambient_animation (string), start_time, end_time
 - decision_rationale: explanation of your directing decisions
 - confidence_score: 0-100 confidence that this slide communicates the story effectively

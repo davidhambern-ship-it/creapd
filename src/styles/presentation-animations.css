@@ -283,3 +283,45 @@
   50% { border-color: var(--effect-color, hsl(270 80% 60% / 0.7)); box-shadow: 0 0 20px var(--effect-glow, hsl(270 80% 60% / 0.3)); }
 }
 .animate-ambient-border-pulse { animation: ambient-border-pulse 3s ease-in-out infinite; }
+
+/* ═══ Typewriter Cursor ═══ */
+
+@keyframes typewriter-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-typewriter-cursor {
+  animation: typewriter-cursor-blink 0.7s ease-in-out infinite;
+}
+
+/* ═══ Scene Transitions (applied when active scene changes) ═══ */
+
+@keyframes scene-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-scene-fade { animation: scene-fade-in 0.5s ease-out; }
+
+@keyframes scene-dissolve-in {
+  from { opacity: 0; filter: blur(12px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.animate-scene-dissolve { animation: scene-dissolve-in 0.7s ease-out; }
+
+@keyframes scene-slide-left-in {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-scene-slide-left { animation: scene-slide-left-in 0.5s ease-out; }
+
+@keyframes scene-slide-right-in {
+  from { opacity: 0; transform: translateX(-60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-scene-slide-right { animation: scene-slide-right-in 0.5s ease-out; }
+
+@keyframes scene-zoom-in {
+  from { opacity: 0; transform: scale(1.15); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-scene-zoom { animation: scene-zoom-in 0.6s ease-out; }
