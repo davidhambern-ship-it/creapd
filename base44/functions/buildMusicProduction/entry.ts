@@ -580,6 +580,8 @@ Return a JSON object with key "topics" containing an array of at least 5 topic o
     // social captions, hashtags, thumbnail/video prompts, production notes
     // ═══════════════════════════════════════════════════════
 
+    let llmAssets = null;
+
     if (autoDevelop) {
       const playlistSummary = playlistData.map((s, i) =>
         `${i + 1}. "${s.song_title}" by ${s.artist} (${Math.round((s.length_seconds || 180) / 60)} min, ${s.genre})`
@@ -703,7 +705,7 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         });
       }, assetsPrompt);
       buildLog.push({ stage: 'assets_generation', success: assetsHealResult.success, error: assetsHealResult.error, attempts: assetsHealResult.attempts });
-      const llmAssets = assetsHealResult.success ? assetsHealResult.result : { host_banter: '', song_intros: [], song_outros: [], video_prompt: '', production_notes: '' };
+      llmAssets = assetsHealResult.success ? assetsHealResult.result : { host_banter: '', song_intros: [], song_outros: [], artist_bios: [], music_trivia: [], tour_dates: [], concert_news: [], video_prompt: '', production_notes: '' };
 
       // Create AI assets
       if (llmAssets.host_banter) {
