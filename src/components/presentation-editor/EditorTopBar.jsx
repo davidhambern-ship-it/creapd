@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown, Edit3, Eye,
-  AlignLeft, Captions, Wand2, FolderOpen, Cpu,
+  AlignLeft, Captions, Wand2, FolderOpen, Cpu, ClipboardCheck,
 } from 'lucide-react';
 
 const ADD_OPTIONS = [
@@ -21,6 +21,7 @@ export default function EditorTopBar({
   onSave, onUndo, onRedo, onToggleMode, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
   onAutoBuild, onToggleAiPanel, aiPanelOpen,
+  onToggleReviewPanel, reviewPanelOpen,
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -93,6 +94,14 @@ export default function EditorTopBar({
       )}
 
       <div className="flex-1" />
+
+      <button
+        className={`cpe-tool-btn ${reviewPanelOpen ? 'active' : ''}`}
+        onClick={onToggleReviewPanel}
+        title="Review & Production"
+      >
+        <ClipboardCheck className="w-4 h-4" /> Review
+      </button>
 
       {onAutoBuild && (
         <button className="cpe-autobuild-btn" onClick={onAutoBuild}>

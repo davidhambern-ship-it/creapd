@@ -771,6 +771,93 @@ export function usePresentationEditor(presentationId) {
     } catch { toast.error('Export failed', { id: 'export' }); }
   }, [dirty, saveAll, presentationId, isTransient]);
 
+  // ═══ Review: Approve / Reject / Share / Export MP4 / Regenerate ═══
+  const [approving, setApproving] = useState(false);
+  const [exportJob, setExportJob] = useState(null);
+  const [exportingMP4, setExportingMP4] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareResult, setShareResult] = useState(null);
+  const [regeneratingPres, setRegeneratingPres] = useState(false);
+
+  const approvePresentation = useCallback(async () => {
+    if (isTransient) { toast.error('Save the presentation before approving'); return; }
+    setApproving(true);
+    try {
+      await base44.entities.StoriesPresentation.update(presentationId, {
+        status: 'approved',
+        producer_metadata: JSON.stringify({
+          review_state: 'approved',
+          approval_status: 'approved',
+          approval_timestamp: new Date().toISOString(),
+          locked: true,
+        }),
+      });
+      setPresentation(prev => prev ? { ...prev, status: 'approved' } : prev);
+      toast.success('Presentation approved');
+    } catch { toast.error('Approval failed'); }
+    finally { setApproving(false); }
+  }, [isTransient, presentationId]);
+
+  const rejectPresentation = useCallback(async () => {
+    if (isTransient) return;
+    try {
+      await base44.entities.StoriesPresentation.update(presentationId, {
+        status: 'reviewing',
+        producer_metadata: JSON.stringify({
+          review_state: 'changes_requested',
+          approval_status: 'rejected',
+          locked: false,
+        }),
+      });
+      setPresentation(prev => prev ? { ...prev, status: 'reviewing' } : prev);
+      toast.success('Changes requested');
+    } catch { toast.error('Failed to request changes'); }
+  }, [isTransient, presentationId]);
+
+  const shareToCreapd = useCallback(async () => {
+    if (isTransient) return;
+    setSharing(true);
+    try {
+      const res = await base44.functions.invoke('sharePresentation', { presentation_id: presentationId });
+      const result = res.data || res;
+      if (result.showcase) setShareResult(result.showcase);
+      toast.success('Shared to CREAPD Showcase');
+    } catch { toast.error('Share failed'); }
+    finally { setSharing(false); }
+  }, [isTransient, presentationId]);
+
+  const exportMP4 = useCallback(async () => {
+    if (isTransient) return;
+    setExportingMP4(true);
+    try {
+      const res = await base44.functions.invoke('createExportJob', { presentation_id: presentationId });
+      const result = res.data || res;
+      if (result.export_job) setExportJob(result.export_job);
+      toast.success('Export job created');
+    } catch { toast.error('Export failed'); }
+    finally { setExportingMP4(false); }
+  }, [isTransient, presentationId]);
+
+  const regeneratePresentation = useCallback(async () => {
+    if (isTransient || !presentation) return;
+    setRegeneratingPres(true);
+    try {
+      const packageIds = parseJSON(presentation.story_package_ids, []);
+      if (packageIds.length === 0) { toast.error('Cannot regenerate: source package IDs not found'); return; }
+      const res = await base44.functions.invoke('generateStoriesPresentation', {
+        story_package_ids: packageIds,
+        production_profile: presentation.production_profile || 'news',
+        presentation_title: presentation.title,
+      });
+      const result = res.data || res;
+      if (result.presentation?.id) {
+        toast.success('Presentation regenerated');
+        navigate(`/editor/${result.presentation.id}`);
+      }
+    } catch { toast.error('Regeneration failed'); }
+    finally { setRegeneratingPres(false); }
+  }, [isTransient, presentation, navigate]);
+
   // ═══ Playback ═══
   const slideDuration = activeSlide
     ? parseJSON(activeSlide.timing, {}).duration_ms || activeSlide.duration_ms || 5000
@@ -846,6 +933,8 @@ export function usePresentationEditor(presentationId) {
     updateSlide, updatePresentation, addSlide, duplicateSlide, deleteSlide, reorderSlides,
     undo, redo, undoStack, redoStack, saveAll,
     regenerateSlide, regenerateElement, runQA, exportPresentation,
+    approvePresentation, rejectPresentation, shareToCreapd, exportMP4, regeneratePresentation,
+    approving, exportJob, exportingMP4, sharing, shareResult, regeneratingPres,
     selectedId, setSelectedId, selectedIds, setSelectedIds, toggleSelection, clearSelection,
     selectedElements, copyElement, cutElement, pasteElement,
     alignElements, distributeElements,

@@ -179,7 +179,7 @@ export default function Presentations() {
               key={pres.id}
               className="group bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors"
             >
-              <Link to={`/news/presentations/${pres.id}`}>
+              <Link to={`/editor/${pres.id}`}>
                 <div className="aspect-video bg-gradient-to-br from-berna-navy to-black rounded-lg mb-3 flex items-center justify-center relative overflow-hidden">
                   <Film className="w-10 h-10 text-white/20 group-hover:text-primary/40 transition-colors" />
                   <div className="absolute top-2 right-2">

@@ -98,7 +98,6 @@ import ResearchExport from '@/pages/ResearchExport';
 import ResearchArchive from '@/pages/ResearchArchive';
 import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
 import Presentations from '@/pages/Presentations';
-import PresentationReview from '@/pages/PresentationReview';
 import PresentationEditor from '@/pages/PresentationEditor';
 import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
@@ -191,7 +190,7 @@ const AuthenticatedApp = () => {
           <Route path="/news/checklist" element={<AcceptanceChecklist />} />
           <Route path="/news/settings" element={<SettingsPage />} />
           <Route path="/news/presentations" element={<Presentations />} />
-          <Route path="/news/presentations/:id" element={<PresentationReview />} />
+          <Route path="/news/presentations/:id" element={<Navigate to="/editor/:id" replace />} />
         </Route>
 
         {/* CREAPD Presentation Editor — standalone full-screen */}

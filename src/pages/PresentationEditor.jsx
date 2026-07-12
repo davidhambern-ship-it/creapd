@@ -10,6 +10,7 @@ import PropertiesPanel from '@/components/presentation-editor/PropertiesPanel';
 import TransportBar from '@/components/presentation-editor/TransportBar';
 import AutoBuildModal from '@/components/presentation-editor/AutoBuildModal';
 import CpeAiPanel from '@/components/presentation-editor/CpeAiPanel';
+import ReviewPanel from '@/components/presentation-editor/ReviewPanel';
 import '@/components/presentation-editor/cpe.css';
 
 export default function PresentationEditor() {
@@ -17,6 +18,7 @@ export default function PresentationEditor() {
   const ed = usePresentationEditor(id);
   const autoBuild = useAutoBuild();
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
   const aiWorkers = useCpeAiWorkers(ed);
 
   const handleZoom = (action) => {
@@ -84,6 +86,8 @@ export default function PresentationEditor() {
         onAutoBuild={autoBuild.open}
         onToggleAiPanel={() => setAiPanelOpen(v => !v)}
         aiPanelOpen={aiPanelOpen}
+        onToggleReviewPanel={() => setReviewPanelOpen(v => !v)}
+        reviewPanelOpen={reviewPanelOpen}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -162,6 +166,24 @@ export default function PresentationEditor() {
 
         {aiPanelOpen && (
           <CpeAiPanel aiWorkers={aiWorkers} onClose={() => setAiPanelOpen(false)} />
+        )}
+
+        {reviewPanelOpen && ed.presentation && (
+          <ReviewPanel
+            presentation={ed.presentation}
+            onClose={() => setReviewPanelOpen(false)}
+            onApprove={ed.approvePresentation}
+            onReject={ed.rejectPresentation}
+            onShare={ed.shareToCreapd}
+            onExportMP4={ed.exportMP4}
+            onRegenerate={ed.regeneratePresentation}
+            approving={ed.approving}
+            sharing={ed.sharing}
+            exporting={ed.exportingMP4}
+            regenerating={ed.regeneratingPres}
+            exportJob={ed.exportJob}
+            shareResult={ed.shareResult}
+          />
         )}
       </div>
 
