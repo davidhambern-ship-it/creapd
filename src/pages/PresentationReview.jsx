@@ -40,6 +40,7 @@ export default function PresentationReview() {
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareResult, setShareResult] = useState(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     loadPresentation();
@@ -117,6 +118,35 @@ export default function PresentationReview() {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (!confirm('Regenerate this presentation with the latest APD engine? This will create new slides with improved animations, transitions, and variety. The old slides will be replaced.')) return;
+    setRegenerating(true);
+    try {
+      const packageIds = (() => {
+        try { return JSON.parse(presentation.story_package_ids || '[]'); }
+        catch { return []; }
+      })();
+      if (packageIds.length === 0) {
+        alert('Cannot regenerate: source story package IDs not found.');
+        return;
+      }
+      const response = await base44.functions.invoke('generateStoriesPresentation', {
+        story_package_ids: packageIds,
+        production_profile: presentation.production_profile || 'news',
+        presentation_title: presentation.title,
+      });
+      const result = response.data || response;
+      if (result.presentation?.id) {
+        navigate(`/news/presentations/${result.presentation.id}`);
+      }
+    } catch (error) {
+      console.error('Regeneration failed:', error);
+      alert('Regeneration failed: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const handleShare = async () => {
     setSharing(true);
     try {
@@ -165,6 +195,19 @@ export default function PresentationReview() {
           </Button>
           <Button variant="default" size="sm" className="gap-1.5" onClick={() => navigate(`/editor/${id}`)}>
             <Pencil className="w-4 h-4" /> Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleRegenerate}
+            disabled={regenerating}
+          >
+            {regenerating ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Regenerating...</>
+            ) : (
+              <><RefreshCw className="w-4 h-4" /> Regenerate</>
+            )}
           </Button>
           <div>
             <h1 className="text-2xl font-heading font-bold">{presentation.title}</h1>
