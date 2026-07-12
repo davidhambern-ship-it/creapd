@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Play, Pause, Square, SkipBack, SkipForward, RotateCcw, AlertCircle } from 'lucide-react';
 import { usePresentationPlayer } from '@/hooks/usePresentationPlayer';
 import SceneCanvas from '@/components/presentation/SceneCanvas';
 import SlideElementCanvas from '@/components/presentation/SlideElementCanvas';
+import SceneTimelineStrip from '@/components/presentation/SceneTimelineStrip';
+import { base44 } from '@/api/base44Client';
 
 const TRANSITION_CLASSES = {
   fade: 'animate-scene-fade',
@@ -40,6 +42,23 @@ export default function PresentationPlayer({ storySlides, aspectRatio }) {
     if (!currentSlide?.scene_graph) return null;
     try { return JSON.parse(currentSlide.scene_graph); } catch { return null; }
   }, [currentSlide]);
+
+  // Fetch voice package sentence timeline for the timeline strip
+  const [sentenceTimeline, setSentenceTimeline] = useState(null);
+  useEffect(() => {
+    if (!currentSlide?.voice_package_id) { setSentenceTimeline(null); return; }
+    let cancelled = false;
+    base44.entities.VoicePackage.get(currentSlide.voice_package_id)
+      .then(vp => {
+        if (cancelled) return;
+        if (vp?.sentence_timeline) {
+          try { setSentenceTimeline(JSON.parse(vp.sentence_timeline)); }
+          catch { setSentenceTimeline(null); }
+        } else { setSentenceTimeline(null); }
+      })
+      .catch(() => setSentenceTimeline(null));
+    return () => { cancelled = true; };
+  }, [currentSlide?.voice_package_id]);
 
   const scenes = sceneGraph?.scenes || [];
   const activeScene = scenes.find(s => {
@@ -210,6 +229,15 @@ export default function PresentationPlayer({ storySlides, aspectRatio }) {
           );
         })}
       </div>
+
+      {/* Scene Timeline Debug Strip */}
+      <SceneTimelineStrip
+        sceneGraph={sceneGraph}
+        sentenceTimeline={sentenceTimeline}
+        slideLocalTime={slideLocalTime}
+        totalDurationMs={currentSlide?.duration_ms || totalDuration}
+        audioStarted={audioStarted}
+      />
     </div>
   );
 }
