@@ -4,6 +4,7 @@ import { Disc3, Dices, X, CheckCircle2, AlertCircle, OctagonX } from 'lucide-rea
 import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
+import Asteroids from '@/components/games/Asteroids';
 
 const STATUS_MESSAGES = {
   planning: 'Planning production requirements...',
@@ -150,7 +151,7 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
                 <h3 className="text-sm font-heading font-semibold text-white">Break Room</h3>
                 <span className="text-[11px] text-gray-500">— Play while CREAPD works</span>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setActiveGame('wordsearch')}
                   className="rounded-xl p-4 border border-white/10 bg-gradient-to-br from-berna-emerald/10 to-transparent hover:border-berna-emerald/40 hover:bg-berna-emerald/5 transition-all text-left"
@@ -158,6 +159,14 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
                   <div className="text-2xl mb-2">🧩</div>
                   <div className="text-sm font-semibold text-white">Word Search</div>
                   <div className="text-[10px] text-gray-500 mt-0.5">Find the hidden words</div>
+                </button>
+                <button
+                  onClick={() => setActiveGame('asteroids')}
+                  className="rounded-xl p-4 border border-white/10 bg-gradient-to-br from-berna-purple/10 to-transparent hover:border-berna-purple/40 hover:bg-berna-purple/5 transition-all text-left"
+                >
+                  <div className="text-2xl mb-2">🚀</div>
+                  <div className="text-sm font-semibold text-white">Asteroids</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">Blast space rocks</div>
                 </button>
               </div>
             </motion.div>
@@ -184,6 +193,7 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
               </div>
               <div className="flex justify-center">
                 {activeGame === 'wordsearch' && <WordSearch onClose={() => setActiveGame(null)} />}
+                {activeGame === 'asteroids' && <Asteroids onClose={() => setActiveGame(null)} />}
               </div>
             </motion.div>
           )}
