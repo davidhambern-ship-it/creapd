@@ -99,6 +99,8 @@ export function usePresentationEditor(presentationId) {
     const slideId = typeof slide === 'string' ? slide : slide?.id;
     if (!slideId) { setElements([]); setSavedElements([]); return; }
 
+    const slideObj = typeof slide === 'object' ? slide : null;
+
     try {
       const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
       const dbElements = els || [];
@@ -108,14 +110,12 @@ export function usePresentationEditor(presentationId) {
       // both onto the canvas causes content duplication. Only fall back to
       // scene_graph parsing when no DB elements exist yet.
       if (dbElements.length > 0) {
-        const slideObj = typeof slide === 'object' ? slide : null;
         const enriched = ensureTitleBodyElements(dbElements, slideObj);
         setElements(enriched);
         setSavedElements(dbElements);
         return;
       }
 
-      const slideObj = typeof slide === 'object' ? slide : null;
       const sceneGraph = slideObj ? parseJSON(slideObj.scene_graph, null) : null;
       const merged = [];
 
@@ -284,7 +284,9 @@ export function usePresentationEditor(presentationId) {
       setElements(enriched);
       setSavedElements([]); // Scene graph temp elements — will be created on save
     } catch {
-      setElements([]);
+      // If SlideElement query fails, still derive title/body from slide content
+      const fallback = ensureTitleBodyElements([], slideObj);
+      setElements(fallback);
       setSavedElements([]);
     }
   }, []);
