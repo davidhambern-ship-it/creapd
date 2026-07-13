@@ -19,15 +19,73 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
     callout: 'text', caption: 'caption',
   };
 
+  const FONT_MAP = {
+    'font-heading': 'Poppins, sans-serif',
+    'font-body': 'Inter, sans-serif',
+    'font-display': 'Oswald, sans-serif',
+    'font-mono': '"JetBrains Mono", monospace',
+    'font-condensed': 'Archivo, sans-serif',
+    'font-serif': '"Playfair Display", serif',
+  };
+
+  const COLOR_MAP = {
+    primary:   { text: 'hsl(270 80% 65%)', glow: 'hsl(270 80% 60% / 0.4)',  border: 'hsl(270 80% 60% / 0.5)',  bg: 'hsl(270 80% 60% / 0.08)' },
+    accent:    { text: 'hsl(25 95% 60%)',  glow: 'hsl(25 95% 55% / 0.4)',   border: 'hsl(25 95% 55% / 0.5)',   bg: 'hsl(25 95% 55% / 0.08)' },
+    emerald:   { text: 'hsl(152 60% 50%)', glow: 'hsl(152 60% 45% / 0.4)',  border: 'hsl(152 60% 45% / 0.5)',  bg: 'hsl(152 60% 45% / 0.08)' },
+    cyan:      { text: 'hsl(190 80% 55%)', glow: 'hsl(190 80% 55% / 0.4)',  border: 'hsl(190 80% 55% / 0.5)',  bg: 'hsl(190 80% 55% / 0.08)' },
+    gold:      { text: 'hsl(45 95% 55%)',  glow: 'hsl(45 95% 55% / 0.4)',   border: 'hsl(45 95% 55% / 0.5)',   bg: 'hsl(45 95% 55% / 0.08)' },
+    rose:      { text: 'hsl(300 80% 65%)', glow: 'hsl(300 80% 60% / 0.4)',  border: 'hsl(300 80% 60% / 0.5)',  bg: 'hsl(300 80% 60% / 0.08)' },
+    white:     { text: 'hsl(0 0% 95%)',    glow: 'hsl(0 0% 95% / 0.2)',     border: 'hsl(0 0% 100% / 0.15)',   bg: 'hsl(0 0% 100% / 0.05)' },
+    muted:     { text: 'hsl(220 10% 65%)', glow: 'hsl(220 10% 65% / 0.2)',  border: 'hsl(220 10% 30% / 0.4)',  bg: 'hsl(220 10% 20% / 0.1)' },
+    crimson:   { text: 'hsl(0 72% 55%)',   glow: 'hsl(0 72% 51% / 0.4)',    border: 'hsl(0 72% 51% / 0.5)',    bg: 'hsl(0 72% 51% / 0.08)' },
+  };
+
   const FONT_SIZE_MAP = {
     headline: 48, body_text: 24, statistic: 72, quote: 28,
     callout: 22, talking_point_card: 22, discussion_response: 22,
     lower_third: 20, caption: 18, default: 20,
   };
 
-  const SG_W = 1920, SG_H = 1080;
-  const scaleX = CANVAS_W / SG_W;
-  const scaleY = CANVAS_H / SG_H;
+  const TYPE_SIZES = {
+    headline: { w: 800, h: 100 }, body_text: { w: 900, h: 200 },
+    statistic: { w: 600, h: 150 }, quote: { w: 700, h: 150 },
+    talking_point_card: { w: 500, h: 120 }, discussion_response: { w: 500, h: 120 },
+    lower_third: { w: 900, h: 60 }, callout: { w: 500, h: 100 },
+    caption: { w: 600, h: 40 }, image: { w: 500, h: 350 },
+    default: { w: 600, h: 100 },
+  };
+
+  function getVisualStyles(effects, color) {
+    const styles = {};
+    const fx = effects || [];
+    if (fx.includes('glass_panel')) {
+      styles.backgroundColor = color.bg;
+      styles.backdropFilter = 'blur(12px)';
+      styles.borderRadius = '12px';
+      styles.border = `1px solid ${color.border}`;
+    }
+    if (fx.includes('glow_border')) {
+      styles.border = `1px solid ${color.border}`;
+      styles.boxShadow = `0 0 16px ${color.glow}, inset 0 0 12px ${color.glow}`;
+      styles.borderRadius = '12px';
+    }
+    if (fx.includes('neon_shadow')) {
+      styles.textShadow = `0 0 8px ${color.text}, 0 0 24px ${color.glow}`;
+    }
+    if (fx.includes('drop_shadow')) {
+      styles.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))';
+    }
+    if (fx.includes('gradient_border')) {
+      styles.border = `1px solid ${color.border}`;
+      styles.boxShadow = `0 0 1px ${color.text}, 0 0 12px ${color.glow}`;
+      styles.borderRadius = '12px';
+    }
+    if (fx.includes('inner_glow')) {
+      const existing = styles.boxShadow || '';
+      styles.boxShadow = `${existing} inset 0 0 20px ${color.glow}`.trim();
+    }
+    return styles;
+  }
 
   for (const scene of sg.scenes) {
     for (const layer of (scene.layers || [])) {
@@ -44,34 +102,47 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
         if (seenContent.has(contentKey)) continue;
         seenContent.add(contentKey);
 
-        const cp = elem.canvas_position || elem.position || {};
-        const cs = elem.canvas_size || {};
-        // Position can be normalized (0-1) or pixel coords in 1920x1080 space
-        const px = Math.round(cp.x != null ? (cp.x > 1 ? cp.x * scaleX : cp.x * CANVAS_W) : CANVAS_W / 2);
-        const py = Math.round(cp.y != null ? (cp.y > 1 ? cp.y * scaleY : cp.y * CANVAS_H) : CANVAS_H / 2);
-
         const elType = typeMap[elem.element_type] || 'text';
-        let w = cs.w ? Math.round(cs.w * scaleX) : 600;
-        let h = cs.h ? Math.round(cs.h * scaleY) : 100;
-        if (elType === 'image' && !cs.w) { w = 500; h = 350; }
-        if (elType === 'lower_third' && !cs.w) { w = 800; h = 50; }
-        w = Math.max(30, w);
-        h = Math.max(20, h);
+        const scaleFactor = Math.max(0.5, Math.min(1.5, elem.scale || 1));
 
-        const so = elem.style_overrides || {};
-        const fontSizeStr = so.fontSize || '';
-        const fontSizeNum = parseInt(String(fontSizeStr).replace('px', ''), 10);
+        // Derive size from element type × scale
+        const baseSize = TYPE_SIZES[elem.element_type] || TYPE_SIZES.default;
+        let w = Math.max(30, Math.round(baseSize.w * scaleFactor));
+        let h = Math.max(20, Math.round(baseSize.h * scaleFactor));
+
+        // Position — scene graph uses normalized 0-1 CENTER coordinates
+        const cp = elem.position || {};
+        const rawX = cp.x != null ? Math.max(0.05, Math.min(0.95, cp.x)) : 0.5;
+        const rawY = cp.y != null ? Math.max(0.05, Math.min(0.95, cp.y)) : 0.5;
+        // Convert center position to top-left corner for absolute positioning
+        const px = Math.round(rawX * CANVAS_W - w / 2);
+        const py = Math.round(rawY * CANVAS_H - h / 2);
+
+        // Map color theme
+        const color = COLOR_MAP[elem.color_theme] || COLOR_MAP.white;
+
+        // Map font style
+        const fontFamily = FONT_MAP[elem.font_style] || 'Inter, sans-serif';
+
+        // Map visual effects to CSS styles
+        const fxStyles = getVisualStyles(elem.visual_effects || [], color);
 
         const styleObj = {
-          fontSize: fontSizeNum || FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
-          fontFamily: 'Inter, sans-serif',
-          color: so.color || '#fff',
-          bold: so.bold ?? (elem.element_type === 'statistic' || elem.element_type === 'headline'),
-          italic: so.italic ?? (elem.element_type === 'quote'),
-          align: so.align || 'center',
-          backgroundColor: 'transparent',
-          borderRadius: 0,
-          padding: 8,
+          fontSize: FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
+          fontFamily,
+          color: color.text,
+          bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
+          italic: elem.element_type === 'quote',
+          align: 'center',
+          backgroundColor: fxStyles.backgroundColor || 'transparent',
+          borderRadius: fxStyles.borderRadius || 0,
+          border: fxStyles.border || 'none',
+          boxShadow: fxStyles.boxShadow || 'none',
+          textShadow: fxStyles.textShadow || 'none',
+          filter: fxStyles.filter || 'none',
+          backdropFilter: fxStyles.backdropFilter || 'none',
+          padding: 12,
+          ambientAnimation: elem.ambient_animation || 'none',
         };
 
         const animType = elem.entrance_animation?.type || 'fade_in';

@@ -8,13 +8,24 @@ const ASPECT_TYPES = ['image', 'video'];
 const ANIM_CLASS_MAP = {
   fade_in: 'animate-fade-in',
   fade: 'animate-fade-in',
+  fade_bounce: 'animate-fade-in',
   slide_in: 'animate-slide-in',
   slide_left: 'animate-slide-in',
   slide: 'animate-slide-in',
+  slide_up: 'animate-slide-in',
+  slide_down: 'animate-slide-in',
   zoom_in: 'animate-zoom-in',
   zoom: 'animate-zoom-in',
+  scale: 'animate-zoom-in',
+  scale_bounce: 'animate-zoom-in',
+  expand: 'animate-zoom-in',
   dissolve_in: 'animate-dissolve-in',
   dissolve: 'animate-dissolve-in',
+  reveal: 'animate-fade-in',
+  wipe: 'animate-fade-in',
+  typewriter: 'animate-fade-in',
+  float: 'animate-gentle-float',
+  gentle_float: 'animate-gentle-float',
 };
 
 function parseStyle(el) {

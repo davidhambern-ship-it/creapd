@@ -159,6 +159,53 @@ export function usePresentationEditor(presentationId) {
         lower_third: 20, caption: 18, default: 20,
       };
 
+      const typeMap = {
+        headline: 'text', body_text: 'text', image: 'image',
+        talking_point_card: 'text', discussion_response: 'text',
+        lower_third: 'lower_third', statistic: 'text', quote: 'text',
+        callout: 'text', caption: 'caption',
+      };
+      const TYPE_SIZES = {
+        headline: { w: 800, h: 100 }, body_text: { w: 900, h: 200 },
+        statistic: { w: 600, h: 150 }, quote: { w: 700, h: 150 },
+        talking_point_card: { w: 500, h: 120 }, discussion_response: { w: 500, h: 120 },
+        lower_third: { w: 900, h: 60 }, callout: { w: 500, h: 100 },
+        caption: { w: 600, h: 40 }, image: { w: 500, h: 350 },
+        default: { w: 600, h: 100 },
+      };
+
+      function getVisualStyles(effects, color) {
+        const styles = {};
+        const fx = effects || [];
+        if (fx.includes('glass_panel')) {
+          styles.backgroundColor = color.bg;
+          styles.backdropFilter = 'blur(12px)';
+          styles.borderRadius = '12px';
+          styles.border = `1px solid ${color.border}`;
+        }
+        if (fx.includes('glow_border')) {
+          styles.border = `1px solid ${color.border}`;
+          styles.boxShadow = `0 0 16px ${color.glow}, inset 0 0 12px ${color.glow}`;
+          styles.borderRadius = '12px';
+        }
+        if (fx.includes('neon_shadow')) {
+          styles.textShadow = `0 0 8px ${color.text}, 0 0 24px ${color.glow}`;
+        }
+        if (fx.includes('drop_shadow')) {
+          styles.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))';
+        }
+        if (fx.includes('gradient_border')) {
+          styles.border = `1px solid ${color.border}`;
+          styles.boxShadow = `0 0 1px ${color.text}, 0 0 12px ${color.glow}`;
+          styles.borderRadius = '12px';
+        }
+        if (fx.includes('inner_glow')) {
+          const existing = styles.boxShadow || '';
+          styles.boxShadow = `${existing} inset 0 0 20px ${color.glow}`.trim();
+        }
+        return styles;
+      }
+
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
         const seenContent = new Set();
         let idCounter = 0;
@@ -173,49 +220,46 @@ export function usePresentationEditor(presentationId) {
               if (seenContent.has(contentKey)) continue;
               seenContent.add(contentKey);
 
-              // Position — scene graph uses canvas_position in 1920x1080 space
-              // Scale to 1280x720 canvas
-              const SG_W = 1920, SG_H = 1080;
-              const scaleX = CANVAS_W / SG_W;
-              const scaleY = CANVAS_H / SG_H;
-              const cp = elem.canvas_position || elem.position || {};
-              const cs = elem.canvas_size || {};
-              // Position can be normalized (0-1) or pixel coords in 1920x1080 space
-              const px = Math.round(cp.x != null ? (cp.x > 1 ? cp.x * scaleX : cp.x * CANVAS_W) : CANVAS_W / 2);
-              const py = Math.round(cp.y != null ? (cp.y > 1 ? cp.y * scaleY : cp.y * CANVAS_H) : CANVAS_H / 2);
-
-              const typeMap = {
-                headline: 'text', body_text: 'text', image: 'image',
-                talking_point_card: 'text', discussion_response: 'text',
-                lower_third: 'lower_third', statistic: 'text', quote: 'text',
-                callout: 'text', caption: 'caption',
-              };
               const elType = typeMap[elem.element_type] || 'text';
+              const scaleFactor = Math.max(0.5, Math.min(1.5, elem.scale || 1));
 
-              // Size — prefer canvas_size, fall back to defaults
-              let w = cs.w ? Math.round(cs.w * scaleX) : 600;
-              let h = cs.h ? Math.round(cs.h * scaleY) : 100;
-              if (elType === 'image' && !cs.w) { w = 500; h = 350; }
-              if (elType === 'lower_third' && !cs.w) { w = 800; h = 50; }
-              w = Math.max(30, w);
-              h = Math.max(20, h);
+              // Derive size from element type × scale
+              const baseSize = TYPE_SIZES[elem.element_type] || TYPE_SIZES.default;
+              const w = Math.max(30, Math.round(baseSize.w * scaleFactor));
+              const h = Math.max(20, Math.round(baseSize.h * scaleFactor));
 
-              // Style overrides from scene graph
-              const so = elem.style_overrides || {};
-              const fontSizeStr = so.fontSize || '';
-              const fontSizeNum = parseInt(String(fontSizeStr).replace('px', ''), 10);
-              const colorVal = so.color || '#fff';
+              // Position — scene graph uses normalized 0-1 CENTER coordinates
+              const cp = elem.position || {};
+              const rawX = cp.x != null ? Math.max(0.05, Math.min(0.95, cp.x)) : 0.5;
+              const rawY = cp.y != null ? Math.max(0.05, Math.min(0.95, cp.y)) : 0.5;
+              // Convert center position to top-left corner
+              const px = Math.round(rawX * CANVAS_W - w / 2);
+              const py = Math.round(rawY * CANVAS_H - h / 2);
+
+              // Map color theme and font style from scene graph
+              const colorKey = elem.color_theme || 'white';
+              const color = COLOR_MAP[colorKey] || COLOR_MAP.white;
+              const fontFamily = cleaned.font || FONT_MAP[elem.font_style] || 'Inter, sans-serif';
+
+              // Map visual effects to CSS styles
+              const fxStyles = getVisualStyles(elem.visual_effects || [], color);
 
               const styleObj = {
-                fontSize: fontSizeNum || FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
-                fontFamily: cleaned.font || 'Inter, sans-serif',
-                color: colorVal,
-                bold: so.bold ?? (elem.element_type === 'statistic' || elem.element_type === 'headline'),
-                italic: so.italic ?? (elem.element_type === 'quote'),
-                align: so.align || 'center',
-                backgroundColor: 'transparent',
-                borderRadius: 0,
-                padding: 8,
+                fontSize: FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
+                fontFamily,
+                color: color.text,
+                bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
+                italic: elem.element_type === 'quote',
+                align: 'center',
+                backgroundColor: fxStyles.backgroundColor || 'transparent',
+                borderRadius: fxStyles.borderRadius || 0,
+                border: fxStyles.border || 'none',
+                boxShadow: fxStyles.boxShadow || 'none',
+                textShadow: fxStyles.textShadow || 'none',
+                filter: fxStyles.filter || 'none',
+                backdropFilter: fxStyles.backdropFilter || 'none',
+                padding: 12,
+                ambientAnimation: elem.ambient_animation || 'none',
               };
 
               // Entrance animation
