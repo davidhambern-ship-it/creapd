@@ -359,6 +359,87 @@ Deno.serve(async (req) => {
 
       storySlideIds.push(slide.id);
 
+      // ==========================================================
+      // STEP 3.5: PERSIST SLIDE ELEMENTS (Database-First Architecture)
+      // Create persistent SlideElement records with first-class animation/effect/timing fields
+      // so the Editor can query and update them directly without parsing scene_graph JSON.
+      // ==========================================================
+      const dbElements = [];
+      for (const scene of (sceneGraph.scenes || [])) {
+        for (const layer of (scene.layers || [])) {
+          for (const elem of (layer.elements || [])) {
+            const elType = (typeMapFn || (e => 'text'))(elem.element_type);
+            const color = (COLOR_MAP_DB || {})[elem.color_theme] || (COLOR_MAP_DB || {}).white;
+            const fxStyles = getDbVisualStyles(elem.visual_effects || [], color);
+
+            const styleObj = {
+              fontSize: FONT_SIZE_MAP_DB[elem.element_type] || FONT_SIZE_MAP_DB.default,
+              fontFamily: FONT_MAP_DB[elem.font_style] || 'Inter, sans-serif',
+              color: color.text,
+              bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
+              italic: elem.element_type === 'quote',
+              align: 'center',
+              role: elem.element_type === 'headline' ? 'title' : elem.element_type === 'body_text' ? 'body' : undefined,
+              backgroundColor: fxStyles.backgroundColor || 'transparent',
+              borderRadius: fxStyles.borderRadius || 0,
+              border: fxStyles.border || 'none',
+              boxShadow: fxStyles.boxShadow || 'none',
+              textShadow: fxStyles.textShadow || 'none',
+              filter: fxStyles.filter || 'none',
+              backdropFilter: fxStyles.backdropFilter || 'none',
+              padding: 12,
+            };
+
+            // Compute position using same logic as loadEditorData
+            const pos = computeElementPosition(elem, elem.element_type, dbElements.length);
+
+            const tlEvents = elem.timeline_events || [];
+            const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
+            const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
+
+            try {
+              const created = await base44.asServiceRole.entities.SlideElement.create({
+                slide_id: slide.id,
+                presentation_id: presentation.id,
+                pp_id: presentation.pp_id || null,
+                type: elType,
+                content: elem.asset_reference || elem.content || '',
+                x: pos.x,
+                y: pos.y,
+                width: pos.w,
+                height: pos.h,
+                rotation: elem.rotation || 0,
+                opacity: Math.round((elem.opacity ?? 1) * 100),
+                z_index: elem.z_order ?? dbElements.length,
+                style: JSON.stringify(styleObj),
+                // ── First-class animation fields ──
+                entrance_type: elem.entrance_animation?.type || 'fade_in',
+                entrance_duration: elem.entrance_animation?.duration_ms || 500,
+                entrance_delay: startMs,
+                exit_type: elem.exit_animation?.type || null,
+                ambient_animation: elem.ambient_animation || 'none',
+                // ── First-class visual effect fields ──
+                visual_effects: JSON.stringify(elem.visual_effects || []),
+                color_theme: elem.color_theme || 'white',
+                font_style: elem.font_style || 'font-body',
+                // ── First-class timing fields ──
+                start_ms: startMs,
+                end_ms: endMs,
+                // Legacy JSON fields (kept for backward compatibility)
+                animation: JSON.stringify({ type: elem.entrance_animation?.type || 'fade_in', duration_ms: elem.entrance_animation?.duration_ms || 500, delay_ms: startMs }),
+                timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
+                locked: false,
+                visible: elem.visibility !== false,
+                version: 1,
+              });
+              dbElements.push(created);
+            } catch (e) {
+              // Non-fatal: element persistence failure shouldn't break presentation generation
+            }
+          }
+        }
+      }
+
       // Record AI Decision
       await base44.asServiceRole.entities.APDDecisionRecord.create({
         stories_presentation_id: presentation.id,
@@ -516,6 +597,129 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
+// ==========================================================
+// ELEMENT POSITION COMPUTATION (mirrors loadEditorData layout)
+// ==========================================================
+const CANVAS_W_DB = 1280;
+const CANVAS_H_DB = 720;
+
+const FONT_MAP_DB = {
+  'font-heading': 'Poppins, sans-serif',
+  'font-body': 'Inter, sans-serif',
+  'font-display': 'Oswald, sans-serif',
+  'font-mono': '"JetBrains Mono", monospace',
+  'font-condensed': 'Archivo, sans-serif',
+  'font-serif': '"Playfair Display", serif',
+};
+
+const COLOR_MAP_DB = {
+  primary:   { text: 'hsl(270 80% 65%)', glow: 'hsl(270 80% 60% / 0.4)',  border: 'hsl(270 80% 60% / 0.5)',  bg: 'hsl(270 80% 60% / 0.08)' },
+  accent:    { text: 'hsl(25 95% 60%)',  glow: 'hsl(25 95% 55% / 0.4)',   border: 'hsl(25 95% 55% / 0.5)',   bg: 'hsl(25 95% 55% / 0.08)' },
+  emerald:   { text: 'hsl(152 60% 50%)', glow: 'hsl(152 60% 45% / 0.4)',  border: 'hsl(152 60% 45% / 0.5)',  bg: 'hsl(152 60% 45% / 0.08)' },
+  cyan:      { text: 'hsl(190 80% 55%)', glow: 'hsl(190 80% 55% / 0.4)',  border: 'hsl(190 80% 55% / 0.5)',  bg: 'hsl(190 80% 55% / 0.08)' },
+  gold:      { text: 'hsl(45 95% 55%)',  glow: 'hsl(45 95% 55% / 0.4)',   border: 'hsl(45 95% 55% / 0.5)',   bg: 'hsl(45 95% 55% / 0.08)' },
+  rose:      { text: 'hsl(300 80% 65%)', glow: 'hsl(300 80% 60% / 0.4)',  border: 'hsl(300 80% 60% / 0.5)',  bg: 'hsl(300 80% 60% / 0.08)' },
+  white:     { text: 'hsl(0 0% 95%)',    glow: 'hsl(0 0% 95% / 0.2)',     border: 'hsl(0 0% 100% / 0.15)',   bg: 'hsl(0 0% 100% / 0.05)' },
+  muted:     { text: 'hsl(220 10% 65%)', glow: 'hsl(220 10% 65% / 0.2)',  border: 'hsl(220 10% 30% / 0.4)',  bg: 'hsl(220 10% 20% / 0.1)' },
+  crimson:   { text: 'hsl(0 72% 55%)',   glow: 'hsl(0 72% 51% / 0.4)',    border: 'hsl(0 72% 51% / 0.5)',    bg: 'hsl(0 72% 51% / 0.08)' },
+};
+
+const FONT_SIZE_MAP_DB = {
+  headline: 48, body_text: 24, statistic: 72, quote: 28,
+  callout: 22, talking_point_card: 22, discussion_response: 22,
+  lower_third: 20, caption: 18, icon: 16, chart: 16, graphic: 16, default: 20,
+};
+
+const TYPE_SIZES_DB = {
+  headline: { w: 800, h: 100 }, body_text: { w: 900, h: 200 },
+  statistic: { w: 600, h: 150 }, quote: { w: 700, h: 150 },
+  talking_point_card: { w: 500, h: 120 }, discussion_response: { w: 500, h: 120 },
+  lower_third: { w: 900, h: 60 }, callout: { w: 500, h: 100 },
+  caption: { w: 600, h: 40 }, image: { w: 500, h: 350 },
+  icon: { w: 80, h: 80 }, chart: { w: 400, h: 300 }, graphic: { w: 500, h: 350 },
+  default: { w: 600, h: 100 },
+};
+
+function typeMapFn(elementType) {
+  const map = {
+    headline: 'text', body_text: 'text', image: 'image',
+    talking_point_card: 'text', discussion_response: 'text',
+    lower_third: 'lower_third', statistic: 'text', quote: 'text',
+    callout: 'text', caption: 'caption',
+    icon: 'icon', chart: 'chart', graphic: 'image',
+  };
+  return map[elementType] || 'text';
+}
+
+function getDbVisualStyles(effects, color) {
+  const styles = {};
+  const fx = effects || [];
+  if (fx.includes('glass_panel')) {
+    styles.backgroundColor = color.bg;
+    styles.backdropFilter = 'blur(12px)';
+    styles.borderRadius = '12px';
+    styles.border = `1px solid ${color.border}`;
+  }
+  if (fx.includes('glow_border')) {
+    styles.border = `1px solid ${color.border}`;
+    styles.boxShadow = `0 0 16px ${color.glow}, inset 0 0 12px ${color.glow}`;
+    styles.borderRadius = '12px';
+  }
+  if (fx.includes('neon_shadow')) {
+    styles.textShadow = `0 0 8px ${color.text}, 0 0 24px ${color.glow}`;
+  }
+  if (fx.includes('drop_shadow')) {
+    styles.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))';
+  }
+  if (fx.includes('gradient_border')) {
+    styles.border = `1px solid ${color.border}`;
+    styles.boxShadow = `0 0 1px ${color.text}, 0 0 12px ${color.glow}`;
+    styles.borderRadius = '12px';
+  }
+  if (fx.includes('inner_glow')) {
+    const existing = styles.boxShadow || '';
+    styles.boxShadow = `${existing} inset 0 0 20px ${color.glow}`.trim();
+  }
+  return styles;
+}
+
+function computeElementPosition(elem, elementType, idx) {
+  const baseSize = TYPE_SIZES_DB[elementType] || TYPE_SIZES_DB.default;
+  // Position priority: canvas_position (absolute px) > position (normalized 0-1) > vertical layout
+  if (elem.canvas_position && elem.canvas_size) {
+    return {
+      x: Math.round(elem.canvas_position.x || 0),
+      y: Math.round(elem.canvas_position.y || 0),
+      w: Math.round(elem.canvas_size.w || baseSize.w),
+      h: Math.round(elem.canvas_size.h || baseSize.h),
+    };
+  }
+  if (elem.position) {
+    const scaleFactor = Math.max(0.5, Math.min(1.5, elem.scale || 1));
+    const w = Math.max(30, Math.round(baseSize.w * scaleFactor));
+    const h = Math.max(20, Math.round(baseSize.h * scaleFactor));
+    const rawX = Math.max(0.05, Math.min(0.95, elem.position.x ?? 0.5));
+    const rawY = Math.max(0.05, Math.min(0.95, elem.position.y ?? 0.5));
+    return {
+      x: Math.round(rawX * CANVAS_W_DB - w / 2),
+      y: Math.round(rawY * CANVAS_H_DB - h / 2),
+      w, h,
+    };
+  }
+  // Vertical layout fallback — distribute by type
+  const cursorY = 40 + idx * 120;
+  if (elementType === 'lower_third') {
+    return { x: 190, y: CANVAS_H_DB - 80, w: 900, h: 60 };
+  }
+  if (elementType === 'caption') {
+    return { x: 340, y: CANVAS_H_DB - 50, w: 600, h: 40 };
+  }
+  if (elementType === 'headline') {
+    return { x: 240, y: 40, w: 800, h: 100 };
+  }
+  return { x: 340, y: cursorY, w: baseSize.w, h: baseSize.h };
+}
 
 // ==========================================================
 // ANIMATION VARIETY ENFORCER

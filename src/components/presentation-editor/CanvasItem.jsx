@@ -30,10 +30,44 @@ const ANIM_CLASS_MAP = {
 };
 
 function parseStyle(el) {
-  try { return JSON.parse(el.style || '{}'); } catch { return {}; }
+  // First-class fields take precedence over legacy JSON 'style' blob
+  const base = (() => { try { return JSON.parse(el?.style || '{}'); } catch { return {}; } })();
+  if (el?.color_theme && !base.color) {
+    const COLOR_MAP = {
+      primary: 'hsl(270 80% 65%)', accent: 'hsl(25 95% 60%)', emerald: 'hsl(152 60% 50%)',
+      cyan: 'hsl(190 80% 55%)', gold: 'hsl(45 95% 55%)', rose: 'hsl(300 80% 65%)',
+      white: 'hsl(0 0% 95%)', muted: 'hsl(220 10% 65%)', crimson: 'hsl(0 72% 55%)',
+    };
+    base.color = COLOR_MAP[el.color_theme] || base.color;
+  }
+  if (el?.font_style && !base.fontFamily) {
+    const FONT_MAP = {
+      'font-heading': 'Poppins, sans-serif', 'font-body': 'Inter, sans-serif',
+      'font-display': 'Oswald, sans-serif', 'font-mono': '"JetBrains Mono", monospace',
+      'font-condensed': 'Archivo, sans-serif', 'font-serif': '"Playfair Display", serif',
+    };
+    base.fontFamily = FONT_MAP[el.font_style] || base.fontFamily;
+  }
+  if (el?.visual_effects) {
+    try {
+      const fx = JSON.parse(el.visual_effects);
+      if (Array.isArray(fx) && fx.length > 0) base.ambientAnimation = base.ambientAnimation || 'none';
+    } catch {}
+  }
+  return base;
 }
 
 function getAnimStyle(el) {
+  // Prefer first-class entrance_type field, fall back to legacy JSON
+  const animType = el?.entrance_type;
+  if (animType) {
+    const cls = ANIM_CLASS_MAP[animType] || ANIM_CLASS_MAP[animType.toLowerCase()];
+    if (cls) {
+      const delay = el.entrance_delay ? `${el.entrance_delay}ms` : '0ms';
+      return { cls, delay };
+    }
+  }
+  // Legacy fallback
   try {
     const anim = JSON.parse(el.animation || '{}');
     if (!anim.type) return null;

@@ -289,6 +289,18 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
       opacity: Math.round((elem.opacity ?? 1) * 100),
       z_index: elem.z_order ?? idCounter,
       style: JSON.stringify(styleObj),
+      // ── First-class fields (populated from scene graph for DB-less fallback) ──
+      entrance_type: animType,
+      entrance_duration: animDur,
+      entrance_delay: startMs,
+      exit_type: elem.exit_animation?.type || null,
+      ambient_animation: elem.ambient_animation || 'none',
+      visual_effects: JSON.stringify(elem.visual_effects || []),
+      color_theme: elem.color_theme || 'white',
+      font_style: elem.font_style || 'font-body',
+      start_ms: startMs,
+      end_ms: endMs,
+      // Legacy JSON fields (kept for backward compatibility)
       animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
       timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
       locked: false,

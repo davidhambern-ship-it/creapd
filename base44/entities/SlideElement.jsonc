@@ -76,11 +76,56 @@
     },
     "animation": {
       "type": "string",
-      "description": "JSON: entrance animation type, duration, delay"
+      "description": "JSON: entrance animation type, duration, delay (legacy \u2014 prefer first-class fields)"
     },
     "timing": {
       "type": "string",
-      "description": "JSON: start_ms, end_ms for timed element visibility"
+      "description": "JSON: start_ms, end_ms for timed element visibility (legacy \u2014 prefer first-class fields)"
+    },
+    "entrance_type": {
+      "type": "string",
+      "description": "Entrance animation identifier \u2014 e.g. 'fade_in', 'slide_up', 'zoom_in', 'scale_bounce'"
+    },
+    "entrance_duration": {
+      "type": "number",
+      "default": 500,
+      "description": "Entrance animation duration in milliseconds"
+    },
+    "entrance_delay": {
+      "type": "number",
+      "default": 0,
+      "description": "Entrance animation delay in milliseconds (offset from slide start)"
+    },
+    "exit_type": {
+      "type": "string",
+      "description": "Exit animation identifier \u2014 e.g. 'fade_out', 'slide_out', 'dissolve_out'"
+    },
+    "ambient_animation": {
+      "type": "string",
+      "default": "none",
+      "description": "Continuous ambient effect \u2014 'none', 'pulse', 'glow_breathe', 'shimmer', 'subtle_float', 'text_shimmer', 'border_pulse'"
+    },
+    "visual_effects": {
+      "type": "string",
+      "description": "JSON array of enabled visual effects \u2014 e.g. [\"glass_panel\", \"glow_border\", \"neon_shadow\"]"
+    },
+    "color_theme": {
+      "type": "string",
+      "description": "Color theme token \u2014 'primary', 'accent', 'emerald', 'cyan', 'gold', 'rose', 'white', 'muted', 'crimson'"
+    },
+    "font_style": {
+      "type": "string",
+      "description": "Font style token \u2014 'font-heading', 'font-body', 'font-display', 'font-mono', 'font-serif', 'font-condensed'"
+    },
+    "start_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Element visible-from time in milliseconds (relative to slide start)"
+    },
+    "end_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Element visible-until time in milliseconds (0 = persist until slide end)"
     },
     "locked": {
       "type": "boolean",

@@ -407,6 +407,18 @@ export function usePresentationEditor(presentationId) {
             opacity: Math.round((elem.opacity ?? 1) * 100),
             z_index: elem.z_order ?? idCounter,
             style: JSON.stringify(styleObj),
+            // ── First-class fields (populated from scene graph fallback) ──
+            entrance_type: animType,
+            entrance_duration: animDur,
+            entrance_delay: startMs,
+            exit_type: elem.exit_animation?.type || null,
+            ambient_animation: elem.ambient_animation || 'none',
+            visual_effects: JSON.stringify(elem.visual_effects || []),
+            color_theme: elem.color_theme || 'white',
+            font_style: elem.font_style || 'font-body',
+            start_ms: startMs,
+            end_ms: endMs,
+            // Legacy JSON fields (kept for backward compatibility)
             animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
             timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
             locked: false,
@@ -609,6 +621,20 @@ export function usePresentationEditor(presentationId) {
       rotation: 0, opacity: 100,
       z_index: (elements?.length || 0) + 1,
       style: JSON.stringify({ fontSize: type === 'text' ? 28 : 16, color: '#ffffff', align: 'left' }),
+      // ── First-class fields (defaults for manually-created elements) ──
+      entrance_type: 'fade_in',
+      entrance_duration: 500,
+      entrance_delay: 0,
+      exit_type: null,
+      ambient_animation: 'none',
+      visual_effects: JSON.stringify([]),
+      color_theme: 'white',
+      font_style: 'font-body',
+      start_ms: 0,
+      end_ms: 0,
+      // Legacy JSON for backward compatibility
+      animation: JSON.stringify({ type: 'fade_in', duration_ms: 500, delay_ms: 0 }),
+      timing: null,
       locked: false, visible: true,
     };
     setElements(prev => [...prev, newEl]);
