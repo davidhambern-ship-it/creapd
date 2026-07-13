@@ -141,10 +141,13 @@ export default function Presentations() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Film className="w-8 h-8 text-primary" />
+          <Link to="/" className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1">
+            ← Home
+          </Link>
+          <Film className="w-8 h-8 text-primary ml-2" />
           <div>
-            <h1 className="text-2xl font-heading font-bold">Stories Presentations</h1>
-            <p className="text-sm text-muted-foreground">AI Presentation Director productions</p>
+            <h1 className="text-2xl font-heading font-bold">Presentations</h1>
+            <p className="text-sm text-muted-foreground">All production profiles · AI Presentation Director</p>
           </div>
         </div>
         <Button onClick={openGenerateDialog} className="bg-primary">

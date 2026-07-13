@@ -197,11 +197,15 @@ const AuthenticatedApp = () => {
           <Route path="/news/settings" element={<SettingsPage />} />
           <Route path="/news/presentations" element={<Presentations />} />
           <Route path="/news/presentations/:id" element={<RedirectToEditor />} />
-        </Route>
+          </Route>
 
-        {/* CREAPD Presentation Editor — standalone full-screen */}
-        <Route path="/editor" element={<PresentationEditor />} />
-        <Route path="/editor/:id" element={<PresentationEditor />} />
+          {/* ── Unified Presentations — accessible from any production profile ── */}
+          <Route path="/presentations" element={<Presentations />} />
+          <Route path="/presentations/:id" element={<RedirectToEditor />} />
+
+          {/* CREAPD Presentation Editor — standalone full-screen */}
+          <Route path="/editor" element={<PresentationEditor />} />
+          <Route path="/editor/:id" element={<PresentationEditor />} />
 
         {/* Onboarding & Production Type Selection */}
         <Route path="/onboarding" element={<Onboarding />} />
