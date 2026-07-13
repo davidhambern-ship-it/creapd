@@ -27,6 +27,7 @@
 .cpe-canvas-area {
   min-height: 0;
   height: 100%;
+  background: hsl(25 80% 12%);
 }
 
 /* ── Top Bar (Creative Toolbar) ── */
