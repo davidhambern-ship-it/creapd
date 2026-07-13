@@ -14,6 +14,11 @@ import ShowStartupModal from '@/components/profiles/ShowStartupModal';
 import { logActivity } from '@/lib/activityUtils';
 import CreapdLoading from '@/components/shared/CreapdLoading';
 
+function safeParse(str, fallback) {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
 function getSelectedStoryIds() {
   try {
     return JSON.parse(localStorage.getItem('selectedStoryIds') || '[]');
@@ -119,9 +124,9 @@ export default function StoryManager() {
       if (prods.length > 0) {
         const prod = prods[0];
         setProduction(prod);
-        setStoryOrder(JSON.parse(prod.story_order || '[]'));
+        setStoryOrder(safeParse(prod.story_order, []));
         setGlobalNotes(prod.global_notes || '');
-        setChecklist({ ...DEFAULT_CHECKLIST, ...JSON.parse(prod.checklist || '{}') });
+        setChecklist({ ...DEFAULT_CHECKLIST, ...safeParse(prod.checklist, {}) });
         await loadRundownData(prod, pkgs);
       }
     } catch (e) {
@@ -133,7 +138,7 @@ export default function StoryManager() {
   };
 
   const loadRundownData = async (prod, existingPkgs) => {
-    const order = JSON.parse(prod.story_order || '[]');
+    const order = safeParse(prod.story_order, []);
     if (order.length === 0) {
       setPackages([]);
       setNotesMap({});

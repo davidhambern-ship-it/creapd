@@ -10,6 +10,11 @@ import { CATEGORIES, stringifyJSON } from '@/lib/weeklyConstants';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 
+function safeParse(str, fallback) {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
 export default function ChangeDirectionModal({ open, currentFocus, onClose }) {
   const [newFocus, setNewFocus] = useState('');
   const [addTopics, setAddTopics] = useState(stringifyJSON([]));
@@ -58,7 +63,7 @@ export default function ChangeDirectionModal({ open, currentFocus, onClose }) {
   };
 
   const toggleSection = (key) => {
-    const list = JSON.parse(regenSections || '[]');
+    const list = safeParse(regenSections, []);
     setRegenSections(stringifyJSON(list.includes(key) ? list.filter(s => s !== key) : [...list, key]));
   };
 
@@ -161,7 +166,7 @@ export default function ChangeDirectionModal({ open, currentFocus, onClose }) {
             {regenMode === 'sections' && (
               <div className="mt-3 grid grid-cols-2 lg:grid-cols-3 gap-1.5">
                 {CATEGORIES.map(c => {
-                  const list = JSON.parse(regenSections || '[]');
+                  const list = safeParse(regenSections, []);
                   const checked = list.includes(c.key);
                   return (
                     <label key={c.key} className="flex items-center gap-2 p-1.5 rounded-md bg-white/[0.02] cursor-pointer">
