@@ -156,7 +156,7 @@ export function usePresentationEditor(presentationId) {
       const FONT_SIZE_MAP = {
         headline: 48, body_text: 24, statistic: 72, quote: 28,
         callout: 22, talking_point_card: 22, discussion_response: 22,
-        lower_third: 20, caption: 18, default: 20,
+        lower_third: 20, caption: 18, icon: 16, chart: 16, graphic: 16, default: 20,
       };
 
       const typeMap = {
@@ -164,6 +164,7 @@ export function usePresentationEditor(presentationId) {
         talking_point_card: 'text', discussion_response: 'text',
         lower_third: 'lower_third', statistic: 'text', quote: 'text',
         callout: 'text', caption: 'caption',
+        icon: 'icon', chart: 'chart', graphic: 'image',
       };
       const TYPE_SIZES = {
         headline: { w: 800, h: 100 }, body_text: { w: 900, h: 200 },
@@ -171,6 +172,7 @@ export function usePresentationEditor(presentationId) {
         talking_point_card: { w: 500, h: 120 }, discussion_response: { w: 500, h: 120 },
         lower_third: { w: 900, h: 60 }, callout: { w: 500, h: 100 },
         caption: { w: 600, h: 40 }, image: { w: 500, h: 350 },
+        icon: { w: 80, h: 80 }, chart: { w: 400, h: 300 }, graphic: { w: 500, h: 350 },
         default: { w: 600, h: 100 },
       };
 
@@ -216,10 +218,11 @@ export function usePresentationEditor(presentationId) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
               const rawContent = elem.asset_reference || elem.content || '';
-              const cleaned = cleanContent(rawContent);
-              const elemContent = cleaned.content || rawContent;
-              if (!elemContent) continue;
-              const contentKey = elemContent.trim().toLowerCase();
+              const isVisualType = ['icon', 'chart', 'graphic', 'image'].includes(elem.element_type);
+              const cleaned = cleanContent(rawContent || '');
+              const elemContent = cleaned.content || (isVisualType ? (rawContent || elem.element_type) : '');
+              if (!elemContent && !isVisualType) continue;
+              const contentKey = (elemContent || elem.element_id || '').trim().toLowerCase();
               if (seenContent.has(contentKey)) continue;
               seenContent.add(contentKey);
               rawElems.push({ elem, elemContent, cleaned, idx: rawElems.length });
@@ -312,7 +315,31 @@ export function usePresentationEditor(presentationId) {
         // Second pass: create elements with computed positions
         for (const { elem, elemContent, cleaned, idx } of rawElems) {
           const elType = typeMap[elem.element_type] || 'text';
-          const pos = layoutPositions[idx] || { x: 340, y: 40 + idx * 120, w: 600, h: 100 };
+
+          // Position priority: canvas_position (absolute px) > position (normalized 0-1) > layout algorithm
+          let pos;
+          if (elem.canvas_position && elem.canvas_size) {
+            pos = {
+              x: elem.canvas_position.x || 0,
+              y: elem.canvas_position.y || 0,
+              w: elem.canvas_size.w || (TYPE_SIZES[elem.element_type] || TYPE_SIZES.default).w,
+              h: elem.canvas_size.h || (TYPE_SIZES[elem.element_type] || TYPE_SIZES.default).h,
+            };
+          } else if (elem.position) {
+            const scaleFactor = Math.max(0.5, Math.min(1.5, elem.scale || 1));
+            const baseSize = TYPE_SIZES[elem.element_type] || TYPE_SIZES.default;
+            const w = Math.max(30, Math.round(baseSize.w * scaleFactor));
+            const h = Math.max(20, Math.round(baseSize.h * scaleFactor));
+            const rawX = Math.max(0.05, Math.min(0.95, elem.position.x ?? 0.5));
+            const rawY = Math.max(0.05, Math.min(0.95, elem.position.y ?? 0.5));
+            pos = {
+              x: Math.round(rawX * CANVAS_W - w / 2),
+              y: Math.round(rawY * CANVAS_H - h / 2),
+              w, h,
+            };
+          } else {
+            pos = layoutPositions[idx] || { x: 340, y: 40 + idx * 120, w: 600, h: 100 };
+          }
 
           const colorKey = elem.color_theme || 'white';
           const color = COLOR_MAP[colorKey] || COLOR_MAP.white;
@@ -336,6 +363,17 @@ export function usePresentationEditor(presentationId) {
             padding: 12,
             ambientAnimation: elem.ambient_animation || 'none',
           };
+
+          // Merge style_overrides from scene graph (direct CSS values take precedence)
+          if (elem.style_overrides) {
+            let overrides = elem.style_overrides;
+            if (typeof overrides === 'string') { try { overrides = JSON.parse(overrides); } catch { overrides = {}; } }
+            if (overrides.fontSize) {
+              const m = String(overrides.fontSize).match(/(\d+)/);
+              if (m) overrides.fontSize = parseInt(m[1]);
+            }
+            Object.assign(styleObj, overrides);
+          }
 
           const animType = cleaned.anim || elem.entrance_animation?.type || 'fade_in';
           const animDur = elem.entrance_animation?.duration_ms || 500;
