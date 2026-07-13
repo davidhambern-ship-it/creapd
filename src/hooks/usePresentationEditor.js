@@ -161,7 +161,7 @@ export function usePresentationEditor(presentationId) {
 
       if (sceneGraph && Array.isArray(sceneGraph.scenes)) {
         const seenContent = new Set();
-        let tempZ = 100;
+        let idCounter = 0;
         for (const scene of sceneGraph.scenes) {
           for (const layer of (scene.layers || [])) {
             for (const elem of (layer.elements || [])) {
@@ -225,7 +225,7 @@ export function usePresentationEditor(presentationId) {
               const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
 
               merged.push({
-                id: `sg-${tempZ}`,
+                id: elem.element_id || `sg-${slideId}-${idCounter++}`,
                 slide_id: slideId,
                 type: elType,
                 content: elemContent,
@@ -235,7 +235,7 @@ export function usePresentationEditor(presentationId) {
                 height: h,
                 rotation: elem.rotation || 0,
                 opacity: Math.round((elem.opacity ?? 1) * 100),
-                z_index: elem.z_order ?? tempZ++,
+                z_index: elem.z_order ?? idCounter,
                 style: JSON.stringify(styleObj),
                 animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
                 timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
