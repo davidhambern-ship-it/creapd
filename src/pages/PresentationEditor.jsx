@@ -269,8 +269,6 @@ export default function PresentationEditor() {
         reviewPanelOpen={reviewPanelOpen}
         workspaceMode={workspaceMode}
         onWorkspaceModeChange={handleWorkspaceChange}
-        _debugElements={ed.elements?.length}
-        _debugWorkspaceMode={workspaceMode}
       />
 
       <div className="flex flex-1 overflow-hidden">

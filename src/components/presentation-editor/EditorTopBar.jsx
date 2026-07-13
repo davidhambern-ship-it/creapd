@@ -60,9 +60,7 @@ const MEDIA_ADD_OPTIONS = [
 const EXPORT_OPTIONS = ['Google Slides (PPTX)', 'PDF', 'PowerPoint', 'Video', 'Present Mode'];
 
 export default function EditorTopBar({
-  // TEMP DEBUG
-  _debugElements, _debugWorkspaceMode,
-  // END TEMP DEBUG
+
   saving, dirty, canUndo, canRedo, hasSelection, title,
   onSave, onUndo, onRedo, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
@@ -82,11 +80,7 @@ export default function EditorTopBar({
 
   return (
     <div className="cpe-topbar flex items-center gap-1 px-3 py-2">
-      {/* TEMP DEBUG */}
-      <div className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-mono z-[9999]">
-        MODE: {_debugWorkspaceMode} | ELS: {_debugElements}
-      </div>
-      {/* END TEMP DEBUG */}
+
       <div className="flex items-center gap-2 mr-2 min-w-0">
         <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD</span>
         <span className="cpe-title-text text-sm truncate max-w-[180px]">{title || 'Presentation Editor'}</span>
