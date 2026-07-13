@@ -124,20 +124,11 @@ export function useCpeAiWorkers(editorCtx) {
       addHistory({ event: 'execution_complete', detail: `${executed.filter(c => c.status === 'executed').length}/${executed.length} succeeded` });
 
       // ═══ Phase 4: Quality Specialist Review ═══
-      // Re-serialize with updated state (elements have been mutated)
-      // We need to wait a tick for React state to settle, but since we have
-      // the command results, we can send the original data + commands as context
       setStatus(WORKER_STATUS.REVIEWING);
       addHistory({ event: 'quality_specialist_started' });
 
-      // Build updated presentation data reflecting the executed commands
-      const updatedElements = elements.map(el => {
-        const cmd = cPlan.find(c => c.target_element === el.id);
-        if (!cmd) return el;
-        // Approximate the updated state for the quality specialist
-        return { ...el };
-      });
-      const updatedData = serializePresentation(presentation, slides, updatedElements, activeIndex);
+      // Re-serialize with current state for the quality specialist
+      const updatedData = serializePresentation(presentation, slides, elements, activeIndex);
 
       const reviewRes = await base44.functions.invoke('cpeController', {
         action: 'review',

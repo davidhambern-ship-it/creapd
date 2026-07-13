@@ -604,13 +604,6 @@ Deno.serve(async (req) => {
         design,
         script,
         voice,
-        visualTrajectoryEntry: {
-          slide_index: i,
-          layout_template: design.layout_template || 'unknown',
-          color_primary: design.color_scheme?.primary || 'white',
-          transition: design.transition_suggestion || 'fade',
-          duration_ms: durationMs,
-        },
       });
 
       cumulativeStartMs += durationMs;

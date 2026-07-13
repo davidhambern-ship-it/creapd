@@ -15,7 +15,6 @@ import ReviewPanel from '@/components/presentation-editor/ReviewPanel';
 import ScriptPanel from '@/components/presentation-editor/ScriptPanel';
 import MediaBrowserPanel from '@/components/presentation-editor/MediaBrowserPanel';
 import PresentRehearsalBar from '@/components/presentation-editor/PresentRehearsalBar';
-import PresentationPlayer from '@/components/presentation/PresentationPlayer';
 import AnimationInspector from '@/components/presentation-editor/AnimationInspector';
 import MediaModeLayout from '@/components/presentation-editor/media/MediaModeLayout';
 import { useAnimateShortcuts } from '@/hooks/useAnimateShortcuts';
@@ -222,9 +221,6 @@ export default function PresentationEditor() {
           reviewPanelOpen={reviewPanelOpen}
           workspaceMode={workspaceMode}
           onWorkspaceModeChange={handleWorkspaceChange}
-          _debugElements={ed.elements?.length}
-          _debugWorkspaceMode={workspaceMode}
-          _debugFirstEl={ed.elements?.[0]}
         />
         <MediaModeLayout ed={ed} />
         <AutoBuildModal

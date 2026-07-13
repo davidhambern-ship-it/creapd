@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  AlertTriangle, CheckCircle2, Loader2, Sparkles,
-  ChevronLeft, ChevronRight, FileText, Eye, Brain,
+  AlertTriangle, Loader2, Sparkles,
+  FileText, Eye, Brain,
 } from 'lucide-react';
 
 // ════════════════════════════════════════════════════════
