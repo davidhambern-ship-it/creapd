@@ -353,6 +353,7 @@ export function usePresentationEditor(presentationId) {
             bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
             italic: elem.element_type === 'quote',
             align: 'center',
+            role: elem.element_type === 'headline' ? 'title' : elem.element_type === 'body_text' ? 'body' : undefined,
             backgroundColor: fxStyles.backgroundColor || 'transparent',
             borderRadius: fxStyles.borderRadius || 0,
             border: fxStyles.border || 'none',

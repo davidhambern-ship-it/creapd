@@ -17,6 +17,7 @@ const ANIM_CLASS_MAP = {
   zoom_in: 'animate-zoom-in',
   zoom: 'animate-zoom-in',
   scale: 'animate-zoom-in',
+  scale_in: 'animate-zoom-in',
   scale_bounce: 'animate-zoom-in',
   expand: 'animate-zoom-in',
   dissolve_in: 'animate-dissolve-in',
@@ -68,8 +69,8 @@ export default function CanvasItem({
   const afterExit = hasTiming && endMs > 0 && currentTime > endMs;
   if (playbackActive && hasTiming && (beforeEnter || afterExit) && !isSelected) return null;
 
-  const anim = isPlaying ? getAnimStyle(element) : null;
-  const animDelayStr = (isPlaying && hasTiming) ? '0ms' : (anim?.delay || '0ms');
+  const anim = getAnimStyle(element);
+  const animDelayStr = isPlaying ? ((isPlaying && hasTiming) ? '0ms' : (anim?.delay || '0ms')) : '0ms';
 
   const handleMouseDown = (e) => {
     if (element.locked || editing || previewMode) return;
