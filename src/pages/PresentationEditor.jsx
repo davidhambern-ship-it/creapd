@@ -220,6 +220,7 @@ export default function PresentationEditor() {
           onWorkspaceModeChange={handleWorkspaceChange}
           _debugElements={ed.elements?.length}
           _debugWorkspaceMode={workspaceMode}
+          _debugFirstEl={ed.elements?.[0]}
         />
         <MediaModeLayout ed={ed} />
         <AutoBuildModal
@@ -270,6 +271,7 @@ export default function PresentationEditor() {
         onWorkspaceModeChange={handleWorkspaceChange}
         _debugElements={ed.elements?.length}
         _debugWorkspaceMode={workspaceMode}
+        _debugFirstEl={ed.elements?.[0]}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -286,7 +288,12 @@ export default function PresentationEditor() {
         )}
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div style={{ flex: wsConfig.canvasFlex }} className="overflow-hidden min-h-0">
+          <div style={{ flex: wsConfig.canvasFlex }} className="overflow-hidden min-h-0 relative">
+            {/* TEMP DEBUG: canvas container probe */}
+            <div className="absolute top-1 right-1 bg-blue-600 text-white text-[10px] px-2 py-1 rounded font-mono z-[9999] pointer-events-none">
+              CANVAS CONTAINER | zoom={ed.zoom} panX={ed.panX} panY={ed.panY} zoomMode={ed.zoomMode}
+            </div>
+            {/* END TEMP DEBUG */}
             <EditorCanvas
               slide={ed.activeSlide}
               elements={ed.elements}

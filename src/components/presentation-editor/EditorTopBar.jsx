@@ -61,7 +61,7 @@ const EXPORT_OPTIONS = ['Google Slides (PPTX)', 'PDF', 'PowerPoint', 'Video', 'P
 
 export default function EditorTopBar({
   // TEMP DEBUG
-  _debugElements, _debugWorkspaceMode,
+  _debugElements, _debugWorkspaceMode, _debugFirstEl,
   // END TEMP DEBUG
   saving, dirty, canUndo, canRedo, hasSelection, title,
   onSave, onUndo, onRedo, onExport,
@@ -83,8 +83,8 @@ export default function EditorTopBar({
   return (
     <div className="cpe-topbar flex items-center gap-1 px-3 py-2">
       {/* TEMP DEBUG */}
-      <div className="bg-red-600 text-white text-[10px] px-2 py-1 rounded font-mono z-[9999]">
-        MODE: {_debugWorkspaceMode} | ELS: {_debugElements}
+      <div className="bg-red-600 text-white text-[10px] px-2 py-1 rounded font-mono z-[9999] max-w-[600px] truncate">
+        MODE: {_debugWorkspaceMode} | ELS: {_debugElements} | EL0: {_debugFirstEl ? `x=${_debugFirstEl.x} y=${_debugFirstEl.y} w=${_debugFirstEl.width} h=${_debugFirstEl.height} type=${_debugFirstEl.type} vis=${_debugFirstEl.visible} op=${_debugFirstEl.opacity}` : 'none'}
       </div>
       {/* END TEMP DEBUG */}
       <div className="flex items-center gap-2 mr-2 min-w-0">
