@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { story_package_ids, production_profile, presentation_title, resolution, aspect_ratio } = body;
+    const { story_package_ids, production_profile, presentation_title, resolution, aspect_ratio, presentation_id: existing_presentation_id } = body;
 
     const screenResolution = resolution || '1920x1080';
     const screenAspectRatio = aspect_ratio || '16:9';
@@ -17,6 +17,48 @@ Deno.serve(async (req) => {
     }
     if (!production_profile) {
       return Response.json({ error: 'Production Profile is required' }, { status: 400 });
+    }
+
+    // ==========================================================
+    // REGENERATION: Load existing manually-edited elements for preservation
+    // If presentation_id is provided, this is a regeneration. We load all
+    // existing SlideElements and build a preservation map of elements the
+    // producer has manually edited (version > 1 or qa_status === 'approved').
+    // These overrides are merged into the new APD-generated elements.
+    // ==========================================================
+    const overrideMap = {}; // key: `${story_package_id}::${content}` → element fields
+    let isRegeneration = false;
+    if (existing_presentation_id) {
+      isRegeneration = true;
+      let existingSlides = [];
+      try {
+        existingSlides = await base44.asServiceRole.entities.StorySlide.filter(
+          { stories_presentation_id: existing_presentation_id }, 'slide_number', 100
+        );
+      } catch {}
+      for (const slide of existingSlides) {
+        let existingEls = [];
+        try {
+          existingEls = await base44.asServiceRole.entities.SlideElement.filter({ slide_id: slide.id });
+        } catch {}
+        for (const el of (existingEls || [])) {
+          if (el.qa_status === 'approved' || (el.version || 1) > 1) {
+            const key = `${slide.story_package_id}::${(el.content || '').trim()}`;
+            overrideMap[key] = {
+              x: el.x, y: el.y, width: el.width, height: el.height,
+              rotation: el.rotation, opacity: el.opacity, z_index: el.z_index,
+              style: el.style,
+              entrance_type: el.entrance_type, entrance_duration: el.entrance_duration,
+              entrance_delay: el.entrance_delay, exit_type: el.exit_type,
+              ambient_animation: el.ambient_animation, visual_effects: el.visual_effects,
+              color_theme: el.color_theme, font_style: el.font_style,
+              animation: el.animation,
+              locked: el.locked, visible: el.visible,
+              qa_status: el.qa_status, version: el.version,
+            };
+          }
+        }
+      }
     }
 
     // ==========================================================
@@ -63,25 +105,69 @@ Deno.serve(async (req) => {
     }
 
     // ==========================================================
-    // STEP 2: CREATE STORIES PRESENTATION
+    // STEP 2: CREATE OR UPDATE STORIES PRESENTATION
     // ==========================================================
     const title = presentation_title || `${production_profile.toUpperCase()} Presentation — ${new Date().toLocaleDateString()}`;
 
-    const presentation = await base44.asServiceRole.entities.StoriesPresentation.create({
-      title,
-      production_profile,
-      story_slide_ids: JSON.stringify([]),
-      story_package_ids: JSON.stringify(storyPackages.map(p => p.id)),
-      master_timeline: JSON.stringify({ events: [], total_duration_ms: 0 }),
-      presentation_metadata: JSON.stringify({
+    let presentation;
+    if (isRegeneration) {
+      // Regeneration mode — update existing presentation, preserve manual overrides
+      try {
+        presentation = await base44.asServiceRole.entities.StoriesPresentation.get(existing_presentation_id);
+      } catch {
+        presentation = await base44.asServiceRole.entities.StoriesPresentation.update(existing_presentation_id, {
+          title: presentation_title || title,
+          status: 'generating',
+        });
+      }
+      // Clean up old slides and elements (manual overrides already captured in overrideMap)
+      let oldSlides = [];
+      try {
+        oldSlides = await base44.asServiceRole.entities.StorySlide.filter(
+          { stories_presentation_id: existing_presentation_id }, 'slide_number', 100
+        );
+      } catch {}
+      for (const oldSlide of oldSlides) {
+        try {
+          await base44.asServiceRole.entities.SlideElement.deleteMany({ slide_id: oldSlide.id });
+        } catch {}
+        try {
+          await base44.asServiceRole.entities.StorySlide.delete(oldSlide.id);
+        } catch {}
+      }
+      // Reset presentation state for regeneration
+      presentation = await base44.asServiceRole.entities.StoriesPresentation.update(existing_presentation_id, {
+        title: presentation_title || title,
+        story_package_ids: JSON.stringify(storyPackages.map(p => p.id)),
+        master_timeline: JSON.stringify({ events: [], total_duration_ms: 0 }),
+        status: 'generating',
+        presentation_metadata: JSON.stringify({
+          title: presentation_title || title,
+          production_profile,
+          creator: user.full_name || user.email,
+          creator_id: user.id,
+          generation_timestamp: new Date().toISOString(),
+          apd_version: '1.0',
+          presentation_version: (presentation.presentation_version || 1) + 1,
+          regenerated: true,
+        }),
+      });
+    } else {
+      presentation = await base44.asServiceRole.entities.StoriesPresentation.create({
         title,
         production_profile,
-        creator: user.full_name || user.email,
-        creator_id: user.id,
-        generation_timestamp: new Date().toISOString(),
-        apd_version: '1.0',
-        presentation_version: 1
-      }),
+        story_slide_ids: JSON.stringify([]),
+        story_package_ids: JSON.stringify(storyPackages.map(p => p.id)),
+        master_timeline: JSON.stringify({ events: [], total_duration_ms: 0 }),
+        presentation_metadata: JSON.stringify({
+          title,
+          production_profile,
+          creator: user.full_name || user.email,
+          creator_id: user.id,
+          generation_timestamp: new Date().toISOString(),
+          apd_version: '1.0',
+          presentation_version: 1
+        }),
       playback_settings: JSON.stringify({
         resolution: screenResolution,
         aspect_ratio: screenAspectRatio,
@@ -119,6 +205,7 @@ Deno.serve(async (req) => {
       total_runtime_ms: 0,
       story_count: storyPackages.length
     });
+    }
 
     // ==========================================================
     // STEP 3: GENERATE STORY SLIDES (one per Story Package)
@@ -398,39 +485,47 @@ Deno.serve(async (req) => {
             const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
 
             try {
+              // ── MANUAL OVERRIDE PRESERVATION ──
+              // Check if the producer manually edited this element in a previous
+              // generation. If so, preserve their position/style/animation overrides
+              // and only take timing from the new APD scene graph.
+              const contentKey = `${pkg.id}::${(elem.asset_reference || elem.content || '').trim()}`;
+              const override = overrideMap[contentKey];
+
               const created = await base44.asServiceRole.entities.SlideElement.create({
                 slide_id: slide.id,
                 presentation_id: presentation.id,
                 pp_id: presentation.pp_id || null,
                 type: elType,
                 content: elem.asset_reference || elem.content || '',
-                x: pos.x,
-                y: pos.y,
-                width: pos.w,
-                height: pos.h,
-                rotation: elem.rotation || 0,
-                opacity: Math.round((elem.opacity ?? 1) * 100),
-                z_index: elem.z_order ?? dbElements.length,
-                style: JSON.stringify(styleObj),
+                x: override ? override.x : pos.x,
+                y: override ? override.y : pos.y,
+                width: override ? override.width : pos.w,
+                height: override ? override.height : pos.h,
+                rotation: override ? override.rotation : (elem.rotation || 0),
+                opacity: override ? override.opacity : Math.round((elem.opacity ?? 1) * 100),
+                z_index: override ? override.z_index : (elem.z_order ?? dbElements.length),
+                style: override ? override.style : JSON.stringify(styleObj),
                 // ── First-class animation fields ──
-                entrance_type: elem.entrance_animation?.type || 'fade_in',
-                entrance_duration: elem.entrance_animation?.duration_ms || 500,
-                entrance_delay: startMs,
-                exit_type: elem.exit_animation?.type || null,
-                ambient_animation: elem.ambient_animation || 'none',
+                entrance_type: override ? override.entrance_type : (elem.entrance_animation?.type || 'fade_in'),
+                entrance_duration: override ? override.entrance_duration : (elem.entrance_animation?.duration_ms || 500),
+                entrance_delay: override ? override.entrance_delay : startMs,
+                exit_type: override ? override.exit_type : (elem.exit_animation?.type || null),
+                ambient_animation: override ? override.ambient_animation : (elem.ambient_animation || 'none'),
                 // ── First-class visual effect fields ──
-                visual_effects: JSON.stringify(elem.visual_effects || []),
-                color_theme: elem.color_theme || 'white',
-                font_style: elem.font_style || 'font-body',
+                visual_effects: override ? override.visual_effects : JSON.stringify(elem.visual_effects || []),
+                color_theme: override ? override.color_theme : (elem.color_theme || 'white'),
+                font_style: override ? override.font_style : (elem.font_style || 'font-body'),
                 // ── First-class timing fields ──
                 start_ms: startMs,
                 end_ms: endMs,
                 // Legacy JSON fields (kept for backward compatibility)
-                animation: JSON.stringify({ type: elem.entrance_animation?.type || 'fade_in', duration_ms: elem.entrance_animation?.duration_ms || 500, delay_ms: startMs }),
+                animation: override ? override.animation : JSON.stringify({ type: elem.entrance_animation?.type || 'fade_in', duration_ms: elem.entrance_animation?.duration_ms || 500, delay_ms: startMs }),
                 timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
-                locked: false,
-                visible: elem.visibility !== false,
-                version: 1,
+                locked: override ? override.locked : false,
+                visible: override ? override.visible : (elem.visibility !== false),
+                version: override ? (override.version || 1) : 1,
+                qa_status: override ? override.qa_status : 'not_reviewed',
               });
               dbElements.push(created);
             } catch (e) {

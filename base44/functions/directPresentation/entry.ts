@@ -147,6 +147,28 @@ Deno.serve(async (req) => {
         );
         if (!match) continue;
 
+        // ── MANUAL OVERRIDE PRESERVATION ──
+        // If the producer has manually edited this element (version > 1 or
+        // qa_status === 'approved'), preserve position, style, and animation
+        // overrides. Only update timing fields so the APD can still sync
+        // element visibility to the voiceover timeline.
+        const isManuallyEdited = match.qa_status === 'approved' || (match.version || 1) > 1;
+        if (isManuallyEdited) {
+          const tlEventsSafe = elem.timeline_events || [];
+          const safeStartMs = tlEventsSafe.length > 0 ? tlEventsSafe[0].start_time : 0;
+          const safeEndMs = tlEventsSafe.length > 0 ? tlEventsSafe[0].end_time : 0;
+          const safeUpdates = {};
+          if (safeStartMs !== 0 || safeEndMs !== 0) {
+            safeUpdates.timing = JSON.stringify({ start_ms: safeStartMs, end_ms: safeEndMs });
+            safeUpdates.start_ms = safeStartMs;
+            safeUpdates.end_ms = safeEndMs;
+          }
+          if (Object.keys(safeUpdates).length > 0) {
+            await base44.asServiceRole.entities.SlideElement.update(match.id, safeUpdates);
+          }
+          continue;
+        }
+
         const tlEvents = elem.timeline_events || [];
         const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
         const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
