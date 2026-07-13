@@ -116,6 +116,10 @@ export default function PresentationEditor() {
         return ed.presentation ? (
           <ReviewPanel
             presentation={ed.presentation}
+            slides={ed.slides}
+            activeIndex={ed.activeIndex}
+            activeSlide={ed.activeSlide}
+            aiWorkers={aiWorkers}
             onClose={() => handleWorkspaceChange('design')}
             onApprove={ed.approvePresentation}
             onReject={ed.rejectPresentation}

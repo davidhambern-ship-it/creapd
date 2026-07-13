@@ -14,14 +14,18 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { presentation_points, configuration_id, brand_profile } = await req.json();
+    const { presentation_points, configuration_id, brand_profile, visual_trajectory } = await req.json();
     if (!presentation_points) {
       return Response.json({ error: 'presentation_points is required' }, { status: 400 });
     }
 
+    const trajectoryBlock = visual_trajectory && visual_trajectory.length > 0
+      ? `\n\nCROSS-SLIDE VISUAL TRAJECTORY (stylistic choices already used on preceding slides):\n${JSON.stringify(visual_trajectory, null, 2)}\n\nCRITICAL: You MUST avoid repeating the same layout_template on consecutive slides. If the previous slide used "split", choose "title_bullets" or "full_image" next. Vary color schemes to create visual rhythm — contrast high-energy slides with calmer ones.\n`
+      : '';
+
     const prompt = `You are the Presentation Design Worker in the CREAPD Develop Department (RPP-AI-001 §7).
 
-Your mission: Create layout and design recommendations for each slide.
+Your mission: Create layout and design recommendations for each slide.${trajectoryBlock}
 
 PRESENTATION POINTS:
 ${JSON.stringify(presentation_points, null, 2)}

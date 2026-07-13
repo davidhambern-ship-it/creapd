@@ -46,6 +46,7 @@ export function useCpeAiWorkers(editorCtx) {
   const [revisionCount, setRevisionCount] = useState(0);
   const [error, setError] = useState(null);
   const [history, setHistory] = useState([]);
+  const [revisionContext, setRevisionContext] = useState(null);
   const snapshotRef = useRef(null);
 
   const reset = useCallback(() => {
@@ -57,6 +58,7 @@ export function useCpeAiWorkers(editorCtx) {
     setRevisionCount(0);
     setError(null);
     setHistory([]);
+    setRevisionContext(null);
     snapshotRef.current = null;
   }, []);
 
@@ -88,6 +90,7 @@ export function useCpeAiWorkers(editorCtx) {
       const improveRes = await base44.functions.invoke('cpeController', {
         action: 'improve',
         presentation_data: presentationData,
+        revision_context: revisionContext,
         revision_count: revisionCount,
       });
 
@@ -176,7 +179,7 @@ export function useCpeAiWorkers(editorCtx) {
       addHistory({ event: 'error', detail: err.message });
       toast.error('AI Workers: ' + (err.message || 'Failed'));
     }
-  }, [status, presentation, slides, elements, activeIndex, revisionCount, qualityReport, updateElement, updateSlide, addSlide, deleteSlide, duplicateSlide, reorderSlides, runQA, addHistory]);
+  }, [status, presentation, slides, elements, activeIndex, revisionCount, qualityReport, revisionContext, updateElement, updateSlide, addSlide, deleteSlide, duplicateSlide, reorderSlides, runQA, addHistory]);
 
   // ── Continue revision cycle ──
   const continueRevision = useCallback(async () => {
@@ -203,6 +206,8 @@ export function useCpeAiWorkers(editorCtx) {
     maxRevisions: MAX_REVISIONS,
     error,
     history,
+    revisionContext,
+    setRevisionContext,
     run,
     continueRevision,
     revert,

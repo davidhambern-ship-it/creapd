@@ -316,6 +316,30 @@ Deno.serve(async (req) => {
       prebuilt_assets: s.prebuilt_assets || {},
     }));
 
+    // ── PHASE 1.5: Semantic Asset Fetching — query AssetRegistry before generating images ──
+    const semanticAssetMap = {};
+    if (flags.generate_images !== false) {
+      for (const pp of presentationPoints) {
+        const keywords = [pp.title, pp.key_message, pp.content_summary, pp.section].filter(Boolean).join(' ');
+        if (!keywords.trim()) continue;
+        try {
+          const found = await base44.asServiceRole.entities.AssetRegistry.filter(
+            { resource_type: 'image', is_active: true, keywords: { $regex: keywords.split(' ').slice(0, 5).join('|'), $options: 'i' } },
+            '-updated_date', 5
+          ).catch(() => []);
+          if (found && found.length > 0) {
+            const best = found[0];
+            semanticAssetMap[(pp.title || '').toLowerCase()] = {
+              image_url: best.cached_file_url || best.preview_url || best.thumbnail_url || '',
+              asset_registry_id: best.id,
+              source: 'semantic_library',
+              title: best.title,
+            };
+          }
+        } catch {}
+      }
+    }
+
     // ── PHASE 2: Fan out (Script + Design + Image + Video in parallel) ──
     const workerPromises = [];
 
@@ -340,14 +364,22 @@ Deno.serve(async (req) => {
           presentation_points: presentationPoints,
           configuration_id: presMeta.production_profile,
           brand_profile: brand_profile || null,
+          visual_trajectory: [],
         }).then(r => ({ worker: 'design', result: r }))
       );
     }
 
     if (flags.generate_images !== false) {
+      const pointsWithLibraryAssets = presentationPoints.map(pp => {
+        const libAsset = semanticAssetMap[(pp.title || '').toLowerCase()];
+        if (libAsset?.image_url) {
+          return { ...pp, prebuilt_assets: { ...pp.prebuilt_assets, generated_image_url: libAsset.image_url, asset_source: 'semantic_library' } };
+        }
+        return pp;
+      });
       workerPromises.push(
         invokeWorker(base44, 'developImageWorker', {
-          presentation_points: presentationPoints,
+          presentation_points: pointsWithLibraryAssets,
           configuration_id: presMeta.production_profile,
         }).then(r => ({ worker: 'image', result: r }))
       );
@@ -438,10 +470,15 @@ Deno.serve(async (req) => {
       const video = videoAssets[titleKey] || {};
       const voice = voiceSpecs[titleKey] || {};
 
-      // Determine slide duration
+      // ── TEMPORAL FLUIDITY: Dynamic slide duration based on content complexity ──
       const voiceData = slide.voice || {};
-      const durationSeconds = voiceData.duration_seconds || voice.estimated_duration_seconds || 30;
-      const durationMs = Math.round(durationSeconds * 1000);
+      const baseSeconds = voiceData.duration_seconds || voice.estimated_duration_seconds || 25;
+      const durationText = script.teleprompter_script || slide.prebuilt_assets?.teleprompter_script || slide.content_summary || '';
+      const wordCount = durationText.split(/\s+/).filter(Boolean).length;
+      const talkingPointCount = (script.talking_points || parseArray(slide.prebuilt_assets?.talking_points) || []).length;
+      const hasImage = !!(image.image_url || image.generated_image_url || slide.prebuilt_assets?.generated_image_url);
+      const complexitySeconds = Math.max(0, (wordCount - 30) / 10) * 0.2 + talkingPointCount * 0.4 + (hasImage ? 1.5 : 0);
+      const durationMs = Math.round(Math.min(90, Math.max(12, baseSeconds + complexitySeconds)) * 1000);
 
       // Build raw elements from all sources
       const rawElems = [];
@@ -503,8 +540,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Image element
-      const imageUrl = image.image_url || image.generated_image_url || slide.prebuilt_assets?.generated_image_url;
+      // Image element — prefer semantic library asset over generated
+      const semAsset = semanticAssetMap[titleKey];
+      const imageUrl = semAsset?.image_url || image.image_url || image.generated_image_url || slide.prebuilt_assets?.generated_image_url;
       if (imageUrl) {
         rawElems.push({
           element_type: 'image',
@@ -566,6 +604,13 @@ Deno.serve(async (req) => {
         design,
         script,
         voice,
+        visualTrajectoryEntry: {
+          slide_index: i,
+          layout_template: design.layout_template || 'unknown',
+          color_primary: design.color_scheme?.primary || 'white',
+          transition: design.transition_suggestion || 'fade',
+          duration_ms: durationMs,
+        },
       });
 
       cumulativeStartMs += durationMs;

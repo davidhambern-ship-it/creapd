@@ -35,10 +35,10 @@ Deno.serve(async (req) => {
 
     if (action === 'improve') {
       // ═══ Phase 1: Design Specialist ═══
-      const designReport = await runDesignSpecialist(presentation_data, base44);
+      const designReport = await runDesignSpecialist(presentation_data, revision_context, base44);
 
       // ═══ Phase 2: Operator ═══
-      const commandPlan = await runOperator(designReport, presentation_data, base44);
+      const commandPlan = await runOperator(designReport, presentation_data, revision_context, base44);
 
       return Response.json({
         design_report: designReport,
@@ -70,7 +70,11 @@ Deno.serve(async (req) => {
 // Determines HOW the presentation should look.
 // Never edits slides. Produces a Design Direction Report.
 // ════════════════════════════════════════════════════════
-async function runDesignSpecialist(presentationData, base44) {
+async function runDesignSpecialist(presentationData, revisionContext, base44) {
+  const revisionBlock = revisionContext
+    ? `\n## PRODUCER DIRECTIVE — Director's Critique (HIGHEST PRIORITY)\nThe producer has reviewed the presentation and provided the following per-slide feedback.\nYou MUST address every item before applying global design rules.\n\n${JSON.stringify(revisionContext, null, 1)}\n`
+    : '';
+
   const prompt = `You are the Presentation Design Specialist for the CREAPD Presentation Editor (CPE).
 
 Your role: determine HOW the presentation should look.
@@ -81,7 +85,7 @@ layout design, grid systems, animation principles, transition principles, storyt
 presentation psychology, accessibility, brand design, motion design, CREAPD Design Language.
 
 The canvas is ${CANVAS_W}x${CANVAS_H} pixels (16:9).
-
+${revisionBlock}
 Analyze this presentation and create a comprehensive Design Direction Report:
 
 ${JSON.stringify(presentationData, null, 1)}
@@ -173,7 +177,11 @@ Create a Design Direction Report that includes:
 // Converts Design Direction into executable editor commands.
 // Never decides what looks good. Executes via CPE Command API only.
 // ════════════════════════════════════════════════════════
-async function runOperator(designReport, presentationData, base44) {
+async function runOperator(designReport, presentationData, revisionContext, base44) {
+  const revisionBlock = revisionContext
+    ? `\n## PRODUCER DIRECTIVE — Director's Critique (HIGHEST PRIORITY)\nThe producer has flagged the following per-slide issues. Every command you generate MUST resolve these.\n\n${JSON.stringify(revisionContext, null, 1)}\n`
+    : '';
+
   const prompt = `You are the Presentation Editor Operator Worker for the CREAPD Presentation Editor (CPE).
 
 Your role: convert Design Direction into executable editor commands.
@@ -181,7 +189,7 @@ You NEVER decide what looks good. You EXECUTE the design specialist's direction.
 You communicate EXCLUSIVELY through the CPE Command API.
 
 Canvas: ${CANVAS_W}x${CANVAS_H} pixels (16:9).
-
+${revisionBlock}
 ## Design Direction Report
 ${JSON.stringify(designReport, null, 1)}
 
