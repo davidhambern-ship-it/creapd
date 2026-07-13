@@ -87,6 +87,8 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
     return styles;
   }
 
+  // First pass: collect all raw elements in order
+  const rawElems = [];
   for (const scene of sg.scenes) {
     for (const layer of (scene.layers || [])) {
       for (const elem of (layer.elements || [])) {
@@ -101,76 +103,144 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
         const contentKey = content.toLowerCase();
         if (seenContent.has(contentKey)) continue;
         seenContent.add(contentKey);
-
-        const elType = typeMap[elem.element_type] || 'text';
-        const scaleFactor = Math.max(0.5, Math.min(1.5, elem.scale || 1));
-
-        // Derive size from element type × scale
-        const baseSize = TYPE_SIZES[elem.element_type] || TYPE_SIZES.default;
-        let w = Math.max(30, Math.round(baseSize.w * scaleFactor));
-        let h = Math.max(20, Math.round(baseSize.h * scaleFactor));
-
-        // Position — scene graph uses normalized 0-1 CENTER coordinates
-        const cp = elem.position || {};
-        const rawX = cp.x != null ? Math.max(0.05, Math.min(0.95, cp.x)) : 0.5;
-        const rawY = cp.y != null ? Math.max(0.05, Math.min(0.95, cp.y)) : 0.5;
-        // Convert center position to top-left corner for absolute positioning
-        const px = Math.round(rawX * CANVAS_W - w / 2);
-        const py = Math.round(rawY * CANVAS_H - h / 2);
-
-        // Map color theme
-        const color = COLOR_MAP[elem.color_theme] || COLOR_MAP.white;
-
-        // Map font style
-        const fontFamily = FONT_MAP[elem.font_style] || 'Inter, sans-serif';
-
-        // Map visual effects to CSS styles
-        const fxStyles = getVisualStyles(elem.visual_effects || [], color);
-
-        const styleObj = {
-          fontSize: FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
-          fontFamily,
-          color: color.text,
-          bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
-          italic: elem.element_type === 'quote',
-          align: 'center',
-          backgroundColor: fxStyles.backgroundColor || 'transparent',
-          borderRadius: fxStyles.borderRadius || 0,
-          border: fxStyles.border || 'none',
-          boxShadow: fxStyles.boxShadow || 'none',
-          textShadow: fxStyles.textShadow || 'none',
-          filter: fxStyles.filter || 'none',
-          backdropFilter: fxStyles.backdropFilter || 'none',
-          padding: 12,
-          ambientAnimation: elem.ambient_animation || 'none',
-        };
-
-        const animType = elem.entrance_animation?.type || 'fade_in';
-        const animDur = elem.entrance_animation?.duration_ms || 500;
-        const tlEvents = elem.timeline_events || [];
-        const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
-        const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
-
-        merged.push({
-          id: elem.element_id || `sg-${slideId}-${idCounter++}`,
-          slide_id: slideId,
-          type: elType,
-          content,
-          x: px,
-          y: py,
-          width: w,
-          height: h,
-          rotation: elem.rotation || 0,
-          opacity: Math.round((elem.opacity ?? 1) * 100),
-          z_index: elem.z_order ?? idCounter,
-          style: JSON.stringify(styleObj),
-          animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
-          timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
-          locked: false,
-          visible: elem.visibility !== false,
-        });
+        rawElems.push({ elem, content, idx: rawElems.length });
       }
     }
+  }
+
+  // Layout algorithm — distribute elements across canvas by type
+  const layoutPositions = (() => {
+    const pos = {};
+    let cursorY = 40;
+
+    const headline = rawElems.find(r => r.elem.element_type === 'headline');
+    const bodyTexts = rawElems.filter(r => r.elem.element_type === 'body_text');
+    const cards = rawElems.filter(r => r.elem.element_type === 'talking_point_card' || r.elem.element_type === 'discussion_response');
+    const lowerThirds = rawElems.filter(r => r.elem.element_type === 'lower_third');
+    const captions = rawElems.filter(r => r.elem.element_type === 'caption');
+    const statistics = rawElems.filter(r => r.elem.element_type === 'statistic');
+    const quotes = rawElems.filter(r => r.elem.element_type === 'quote');
+    const callouts = rawElems.filter(r => r.elem.element_type === 'callout');
+    const images = rawElems.filter(r => r.elem.element_type === 'image');
+
+    if (headline) {
+      pos[headline.idx] = { x: 240, y: cursorY, w: 800, h: 100 };
+      cursorY += 120;
+    }
+    for (const bt of bodyTexts) {
+      pos[bt.idx] = { x: 190, y: cursorY, w: 900, h: 200 };
+      cursorY += 220;
+    }
+    for (const stat of statistics) {
+      pos[stat.idx] = { x: 340, y: cursorY, w: 600, h: 150 };
+      cursorY += 170;
+    }
+    for (const q of quotes) {
+      pos[q.idx] = { x: 290, y: cursorY, w: 700, h: 150 };
+      cursorY += 170;
+    }
+
+    if (cards.length > 0) {
+      const cardW = 500, cardH = 120, gap = 20;
+      const cols = cards.length <= 1 ? 1 : cards.length === 2 ? 2 : cards.length <= 4 ? 2 : 3;
+      const rows = Math.ceil(cards.length / cols);
+      const totalW = cols * cardW + (cols - 1) * gap;
+      const startX = Math.round((CANVAS_W - totalW) / 2);
+      const bottomReserve = (lowerThirds.length > 0 || captions.length > 0) ? 100 : 40;
+      const availH = CANVAS_H - cursorY - bottomReserve;
+      const totalH = rows * cardH + (rows - 1) * gap;
+      let actualH = cardH;
+      if (totalH > availH && rows > 0) {
+        actualH = Math.max(60, Math.floor((availH - (rows - 1) * gap) / rows));
+      }
+      const startY = cursorY + Math.max(0, Math.round((availH - rows * actualH - (rows - 1) * gap) / 2));
+      cards.forEach((card, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        pos[card.idx] = {
+          x: startX + col * (cardW + gap),
+          y: startY + row * (actualH + gap),
+          w: cardW, h: actualH,
+        };
+      });
+      cursorY = startY + rows * actualH + (rows - 1) * gap + 20;
+    }
+
+    for (const c of callouts) {
+      pos[c.idx] = { x: 390, y: cursorY, w: 500, h: 100 };
+      cursorY += 120;
+    }
+    for (const img of images) {
+      pos[img.idx] = { x: 390, y: cursorY, w: 500, h: 350 };
+      cursorY += 370;
+    }
+    for (const lt of lowerThirds) {
+      pos[lt.idx] = { x: 190, y: CANVAS_H - 80, w: 900, h: 60 };
+    }
+    for (const cap of captions) {
+      pos[cap.idx] = { x: 340, y: CANVAS_H - 50, w: 600, h: 40 };
+    }
+    const laid = new Set(Object.keys(pos).map(Number));
+    for (const r of rawElems) {
+      if (!laid.has(r.idx)) {
+        pos[r.idx] = { x: 340, y: cursorY, w: 600, h: 100 };
+        cursorY += 120;
+      }
+    }
+    return pos;
+  })();
+
+  // Second pass: create elements with computed positions
+  for (const { elem, content, idx } of rawElems) {
+    const elType = typeMap[elem.element_type] || 'text';
+    const pos = layoutPositions[idx] || { x: 340, y: 40 + idx * 120, w: 600, h: 100 };
+
+    const color = COLOR_MAP[elem.color_theme] || COLOR_MAP.white;
+    const fontFamily = FONT_MAP[elem.font_style] || 'Inter, sans-serif';
+    const fxStyles = getVisualStyles(elem.visual_effects || [], color);
+
+    const styleObj = {
+      fontSize: FONT_SIZE_MAP[elem.element_type] || FONT_SIZE_MAP.default,
+      fontFamily,
+      color: color.text,
+      bold: elem.element_type === 'statistic' || elem.element_type === 'headline',
+      italic: elem.element_type === 'quote',
+      align: 'center',
+      backgroundColor: fxStyles.backgroundColor || 'transparent',
+      borderRadius: fxStyles.borderRadius || 0,
+      border: fxStyles.border || 'none',
+      boxShadow: fxStyles.boxShadow || 'none',
+      textShadow: fxStyles.textShadow || 'none',
+      filter: fxStyles.filter || 'none',
+      backdropFilter: fxStyles.backdropFilter || 'none',
+      padding: 12,
+      ambientAnimation: elem.ambient_animation || 'none',
+    };
+
+    const animType = elem.entrance_animation?.type || 'fade_in';
+    const animDur = elem.entrance_animation?.duration_ms || 500;
+    const tlEvents = elem.timeline_events || [];
+    const startMs = tlEvents.length > 0 ? tlEvents[0].start_time : 0;
+    const endMs = tlEvents.length > 0 ? tlEvents[0].end_time : 0;
+
+    merged.push({
+      id: elem.element_id || `sg-${slideId}-${idCounter++}`,
+      slide_id: slideId,
+      type: elType,
+      content,
+      x: pos.x,
+      y: pos.y,
+      width: pos.w,
+      height: pos.h,
+      rotation: elem.rotation || 0,
+      opacity: Math.round((elem.opacity ?? 1) * 100),
+      z_index: elem.z_order ?? idCounter,
+      style: JSON.stringify(styleObj),
+      animation: JSON.stringify({ type: animType, duration_ms: animDur, delay_ms: startMs }),
+      timing: tlEvents.length > 0 ? JSON.stringify({ start_ms: startMs, end_ms: endMs }) : null,
+      locked: false,
+      visible: elem.visibility !== false,
+    });
   }
 
   return merged;
