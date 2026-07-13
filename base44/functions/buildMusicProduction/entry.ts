@@ -143,7 +143,6 @@ Deno.serve(async (req) => {
     const autoResearch = aiAutomation.includes('Auto Research');
     const autoBuildPlaylist = aiAutomation.includes('Auto Build Playlist');
     const autoDevelop = aiAutomation.includes('Auto Develop');
-    const autoGenerateImages = aiAutomation.includes('Auto Generate Images');
     const autoAssemblePacket = aiAutomation.includes('Auto Assemble Packet');
 
 
@@ -1019,23 +1018,6 @@ Analyze what went wrong and provide a fix. Return JSON with:
 function safeParse(str, fallback) {
   if (!str) return fallback;
   try { return JSON.parse(str); } catch { return fallback; }
-}
-
-function extractVideoId(url) {
-  if (!url) return null;
-  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-    /(?:music\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
-  ];
-  for (const p of patterns) {
-    const m = url.match(p);
-    if (m) return m[1];
-  }
-  return null;
 }
 
 function parseTimeToSeconds(timeStr) {

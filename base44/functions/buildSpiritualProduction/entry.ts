@@ -518,13 +518,6 @@ Return a JSON object with exactly these keys: message_sections (array), title_sl
   }
 });
 
-function parseRuntimeToSeconds(runtimeStr) {
-  if (!runtimeStr) return 1800;
-  const match = String(runtimeStr).match(/(\d+)\s*Minute/i);
-  if (match) return parseInt(match[1]) * 60;
-  return 1800;
-}
-
 function safeParse(str, fallback) {
   if (!str) return fallback;
   let result = str;
