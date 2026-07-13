@@ -113,6 +113,18 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
     }
   }
 
+  // Detect source canvas dimensions — APD may generate coordinates for a larger canvas (e.g., 1920×1080)
+  let srcCanvasW = CANVAS_W, srcCanvasH = CANVAS_H;
+  for (const { elem } of rawElems) {
+    if (elem.canvas_position && elem.canvas_size) {
+      const right = (elem.canvas_position.x || 0) + (elem.canvas_size.w || 0);
+      const bottom = (elem.canvas_position.y || 0) + (elem.canvas_size.h || 0);
+      if (right > srcCanvasW) srcCanvasW = right;
+      if (bottom > srcCanvasH) srcCanvasH = bottom;
+    }
+  }
+  const coordScale = Math.min(CANVAS_W / srcCanvasW, CANVAS_H / srcCanvasH);
+
   // Layout algorithm — distribute elements across canvas by type
   const layoutPositions = (() => {
     const pos = {};
@@ -199,14 +211,14 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
   for (const { elem, content, idx } of rawElems) {
     const elType = typeMap[elem.element_type] || 'text';
 
-    // Position priority: canvas_position (absolute px) > position (normalized 0-1) > layout algorithm
+    // Position priority: canvas_position (absolute px, may need scaling) > position (normalized 0-1) > layout algorithm
     let pos;
     if (elem.canvas_position && elem.canvas_size) {
       pos = {
-        x: elem.canvas_position.x || 0,
-        y: elem.canvas_position.y || 0,
-        w: elem.canvas_size.w || (TYPE_SIZES[elem.element_type] || TYPE_SIZES.default).w,
-        h: elem.canvas_size.h || (TYPE_SIZES[elem.element_type] || TYPE_SIZES.default).h,
+        x: Math.round((elem.canvas_position.x || 0) * coordScale),
+        y: Math.round((elem.canvas_position.y || 0) * coordScale),
+        w: Math.round((elem.canvas_size.w || (TYPE_SIZES[elem.element_type] || TYPE_SIZES.default).w) * coordScale),
+        h: Math.round((elem.canvas_size.h || (TYPE_SIZES[elem.element_type] || TYPE_SIZES.default).h) * coordScale),
       };
     } else if (elem.position) {
       const scaleFactor = Math.max(0.5, Math.min(1.5, elem.scale || 1));
