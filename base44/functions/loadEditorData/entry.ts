@@ -46,8 +46,9 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
 
         const cp = elem.canvas_position || elem.position || {};
         const cs = elem.canvas_size || {};
-        const px = Math.round((cp.x ?? 0.5 * SG_W) * (typeof cp.x === 'number' && cp.x > 1 ? scaleX : 1));
-        const py = Math.round((cp.y ?? 0.5 * SG_H) * (typeof cp.y === 'number' && cp.y > 1 ? scaleY : 1));
+        // Position can be normalized (0-1) or pixel coords in 1920x1080 space
+        const px = Math.round(cp.x != null ? (cp.x > 1 ? cp.x * scaleX : cp.x * CANVAS_W) : CANVAS_W / 2);
+        const py = Math.round(cp.y != null ? (cp.y > 1 ? cp.y * scaleY : cp.y * CANVAS_H) : CANVAS_H / 2);
 
         const elType = typeMap[elem.element_type] || 'text';
         let w = cs.w ? Math.round(cs.w * scaleX) : 600;
