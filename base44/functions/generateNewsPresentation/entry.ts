@@ -276,11 +276,268 @@ Return a JSON object with:
       }, { status: 500 });
     }
 
+    // ==========================================================
+    // STEP 2: CREATE UNIFIED STORIES PRESENTATION (Database-First Architecture)
+    // Create StoriesPresentation + StorySlide + SlideElement records so the
+    // unified Editor can open and edit this presentation alongside all other
+    // production profiles.
+    // ==========================================================
+    const ppId = `PP-NEWS-${Date.now().toString(36).toUpperCase()}`;
+    const presentationTitle = `News Presentation — ${new Date().toLocaleDateString()}`;
+    let cumulativeStartMs = 0;
+    const storySlideIds = [];
+
+    const unifiedPresentation = await base44.asServiceRole.entities.StoriesPresentation.create({
+      title: presentationTitle,
+      production_profile: 'news',
+      pp_id: ppId,
+      story_slide_ids: JSON.stringify([]),
+      story_package_ids: JSON.stringify(packages.map(p => p.id)),
+      master_timeline: JSON.stringify({ events: [], total_duration_ms: 0 }),
+      presentation_metadata: JSON.stringify({
+        title: presentationTitle,
+        production_profile: 'news',
+        creator: user.full_name || user.email,
+        creator_id: user.id,
+        generation_timestamp: new Date().toISOString(),
+        apd_version: '2.0',
+        presentation_version: 1,
+      }),
+      playback_settings: JSON.stringify({
+        resolution: '1920x1080',
+        aspect_ratio: '16:9',
+        frame_rate: 30,
+        playback_mode: 'interactive',
+        transition_defaults: 'fade',
+        motion_defaults: 'subtle',
+        export_options: ['mp4'],
+        theme_version: '1.0',
+      }),
+      presentation_version: 1,
+      status: 'generating',
+      producer_id: user.id,
+      qa_scores: JSON.stringify({}),
+      confidence_score: 0,
+      qa_result: 'pending',
+      showcase_status: 'none',
+      total_runtime_ms: 0,
+      story_count: packages.length,
+    });
+
+    const masterTimelineEvents = [];
+
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      const pkg = packages[i];
+      const summary = packageSummaries[i];
+      const slideDurationMs = Math.round((summary?.slide_duration_seconds || 30) * 1000);
+
+      // Parse text_elements and image_elements JSON strings from the scene
+      let textEls = [];
+      let imageEls = [];
+      try { textEls = JSON.parse(scene.text_elements || '[]'); } catch {}
+      try { imageEls = JSON.parse(scene.image_elements || '[]'); } catch {}
+
+      // Create the StorySlide record
+      const slide = await base44.asServiceRole.entities.StorySlide.create({
+        stories_presentation_id: unifiedPresentation.id,
+        story_package_id: pkg.id,
+        story_order: i,
+        slide_number: i + 1,
+        slide_type: i === 0 ? 'title_slide' : (i === scenes.length - 1 ? 'closing_slide' : 'content_slide'),
+        title: scene.slide_title || summary?.article_title || `Story ${i + 1}`,
+        body_text: pkg.story_summary || '',
+        speaker_notes: scene.speaker_notes || '',
+        transition: scene.transition_plan || 'fade',
+        slide_start_ms: cumulativeStartMs,
+        duration_ms: slideDurationMs,
+        slide_timeline: JSON.stringify({
+          slide_start_ms: cumulativeStartMs,
+          slide_end_ms: cumulativeStartMs + slideDurationMs,
+          slide_duration_ms: slideDurationMs,
+          voice_audio_url: summary?.has_voiceover ? (vpMap[pkg.voice_package_id]?.voice_audio_url || '') : '',
+        }),
+        slide_metadata: JSON.stringify({
+          headline: scene.slide_title || summary?.article_title || `Story ${i + 1}`,
+          story_summary: pkg.story_summary || '',
+          duration_ms: slideDurationMs,
+          scene_count: 1,
+          voice_package_reference: pkg.voice_package_id || null,
+        }),
+        status: 'generated',
+        version: 1,
+      });
+
+      storySlideIds.push(slide.id);
+      masterTimelineEvents.push({
+        event_type: 'slide_start',
+        slide_id: slide.id,
+        start_time: cumulativeStartMs,
+        end_time: cumulativeStartMs + slideDurationMs,
+      });
+
+      // ── Create SlideElement records for text elements ──
+      const FONT_MAP_NEWS = {
+        'font-heading': 'Poppins, sans-serif', 'font-body': 'Inter, sans-serif',
+        'font-display': 'Oswald, sans-serif', 'font-mono': '"JetBrains Mono", monospace',
+        'font-condensed': 'Archivo, sans-serif', 'font-serif': '"Playfair Display", serif',
+      };
+      const COLOR_MAP_NEWS = {
+        primary: 'hsl(270 80% 65%)', accent: 'hsl(25 95% 60%)', emerald: 'hsl(152 60% 50%)',
+        cyan: 'hsl(190 80% 55%)', gold: 'hsl(45 95% 55%)', rose: 'hsl(300 80% 65%)',
+        white: 'hsl(0 0% 95%)', muted: 'hsl(220 10% 65%)', crimson: 'hsl(0 72% 55%)',
+      };
+      const TYPE_MAP_NEWS = {
+        headline: { type: 'text', w: 800, h: 100, fontSize: 48, font: 'font-heading' },
+        body_text: { type: 'text', w: 900, h: 200, fontSize: 24, font: 'font-body' },
+        lower_third: { type: 'lower_third', w: 900, h: 60, fontSize: 20, font: 'font-condensed' },
+        statistic: { type: 'text', w: 600, h: 150, fontSize: 72, font: 'font-display' },
+        quote: { type: 'text', w: 700, h: 150, fontSize: 28, font: 'font-serif' },
+        caption: { type: 'caption', w: 600, h: 40, fontSize: 18, font: 'font-body' },
+        talking_point_card: { type: 'text', w: 500, h: 120, fontSize: 22, font: 'font-body' },
+        default: { type: 'text', w: 600, h: 100, fontSize: 20, font: 'font-body' },
+      };
+
+      let elIdx = 0;
+      for (const te of textEls) {
+        const elemType = te.element_type || 'body_text';
+        const config = TYPE_MAP_NEWS[elemType] || TYPE_MAP_NEWS.default;
+        const startMs = Math.round((te.start_time || 0) * 1000);
+        const endMs = Math.round((te.end_time || slideDurationMs / 1000) * 1000);
+        const animType = te.animation_in || 'fade_in';
+        const exitType = te.animation_out || null;
+        const colorTheme = te.priority === 'high' ? 'accent' : elemType === 'headline' ? 'primary' : 'white';
+        const colorVal = COLOR_MAP_NEWS[colorTheme] || COLOR_MAP_NEWS.white;
+
+        // Position by element type — vertical layout
+        const pos = (() => {
+          if (elemType === 'lower_third') return { x: 190, y: 640, w: config.w, h: config.h };
+          if (elemType === 'caption') return { x: 340, y: 670, w: config.w, h: config.h };
+          if (elemType === 'headline') return { x: 240, y: 40 + elIdx * 120, w: config.w, h: config.h };
+          return { x: 190, y: 160 + elIdx * 120, w: config.w, h: config.h };
+        })();
+
+        try {
+          await base44.asServiceRole.entities.SlideElement.create({
+            slide_id: slide.id,
+            presentation_id: unifiedPresentation.id,
+            pp_id: ppId,
+            type: config.type,
+            content: te.text || '',
+            x: pos.x, y: pos.y, width: pos.w, height: pos.h,
+            rotation: 0, opacity: 100, z_index: elIdx + 1,
+            style: JSON.stringify({
+              fontSize: config.fontSize,
+              fontFamily: FONT_MAP_NEWS[config.font] || 'Inter, sans-serif',
+              color: colorVal,
+              bold: elemType === 'headline' || elemType === 'statistic',
+              italic: elemType === 'quote',
+              align: 'center',
+              role: elemType === 'headline' ? 'title' : elemType === 'body_text' ? 'body' : undefined,
+              backgroundColor: 'transparent',
+              borderRadius: 0,
+              border: 'none',
+              boxShadow: 'none',
+              textShadow: 'none',
+              filter: 'none',
+              backdropFilter: 'none',
+              padding: 12,
+            }),
+            // ── First-class fields ──
+            entrance_type: animType,
+            entrance_duration: 500,
+            entrance_delay: startMs,
+            exit_type: exitType,
+            ambient_animation: 'none',
+            visual_effects: JSON.stringify([]),
+            color_theme: colorTheme,
+            font_style: config.font,
+            start_ms: startMs,
+            end_ms: endMs,
+            // Legacy JSON
+            animation: JSON.stringify({ type: animType, duration_ms: 500, delay_ms: startMs }),
+            timing: JSON.stringify({ start_ms: startMs, end_ms: endMs }),
+            locked: false, visible: true, version: 1,
+          });
+          elIdx++;
+        } catch {}
+      }
+
+      // ── Create SlideElement records for image elements ──
+      for (const ie of imageEls) {
+        const startMs = Math.round((ie.start_time || 0) * 1000);
+        const endMs = Math.round((ie.end_time || slideDurationMs / 1000) * 1000);
+        const animType = ie.animation_in || 'fade_in';
+        const exitType = ie.animation_out || null;
+        const pos = { x: 390, y: 160 + elIdx * 120, w: 500, h: 350 };
+
+        try {
+          await base44.asServiceRole.entities.SlideElement.create({
+            slide_id: slide.id,
+            presentation_id: unifiedPresentation.id,
+            pp_id: ppId,
+            type: 'image',
+            content: pkg.generated_image_url || '',
+            x: pos.x, y: pos.y, width: pos.w, height: pos.h,
+            rotation: 0, opacity: 100, z_index: elIdx + 1,
+            style: JSON.stringify({}),
+            // ── First-class fields ──
+            entrance_type: animType,
+            entrance_duration: 500,
+            entrance_delay: startMs,
+            exit_type: exitType,
+            ambient_animation: 'none',
+            visual_effects: JSON.stringify([]),
+            color_theme: 'white',
+            font_style: 'font-body',
+            start_ms: startMs,
+            end_ms: endMs,
+            // Legacy JSON
+            animation: JSON.stringify({ type: animType, duration_ms: 500, delay_ms: startMs }),
+            timing: JSON.stringify({ start_ms: startMs, end_ms: endMs }),
+            locked: false, visible: true, version: 1,
+          });
+          elIdx++;
+        } catch {}
+      }
+
+      cumulativeStartMs += slideDurationMs;
+    }
+
+    // ── Finalize the unified presentation ──
+    const masterTimeline = {
+      events: masterTimelineEvents,
+      total_duration_ms: cumulativeStartMs,
+      slide_count: storySlideIds.length,
+    };
+
+    const updatedUnified = await base44.asServiceRole.entities.StoriesPresentation.update(unifiedPresentation.id, {
+      story_slide_ids: JSON.stringify(storySlideIds),
+      slide_order: JSON.stringify(storySlideIds),
+      master_timeline: JSON.stringify(masterTimeline),
+      presentation_metadata: JSON.stringify({
+        title: presentationTitle,
+        production_profile: 'news',
+        creator: user.full_name || user.email,
+        creator_id: user.id,
+        generation_timestamp: new Date().toISOString(),
+        apd_version: '2.0',
+        presentation_version: 1,
+        runtime_ms: cumulativeStartMs,
+        story_count: storySlideIds.length,
+      }),
+      total_runtime_ms: cumulativeStartMs,
+      status: 'generated',
+      completed_at: new Date().toISOString(),
+    });
+
     return Response.json({
       success: true,
-      message: `Generated ${createdScenes.length} presentation scenes from ${packages.length} approved packages.`,
+      message: `Generated ${createdScenes.length} presentation scenes and ${storySlideIds.length} unified slides from ${packages.length} approved packages.`,
       scenes_created: createdScenes.length,
-      scene_ids: createdScenes.map(s => s.id)
+      scene_ids: createdScenes.map(s => s.id),
+      presentation_id: unifiedPresentation.id,
+      story_slide_ids: storySlideIds,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

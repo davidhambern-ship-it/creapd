@@ -178,6 +178,22 @@ Deno.serve(async (req) => {
         }
         updates.animation = JSON.stringify(animObj);
 
+        // ── First-class fields (database-first architecture) ──
+        updates.entrance_type = entType;
+        updates.entrance_duration = entDur;
+        updates.entrance_delay = entDelay;
+        if (exit && exit.type) updates.exit_type = exit.type;
+        if (elem.ambient_animation) updates.ambient_animation = elem.ambient_animation;
+        if (elem.visual_effects) {
+          try { updates.visual_effects = JSON.stringify(elem.visual_effects); } catch {}
+        }
+        if (elem.color_theme) updates.color_theme = elem.color_theme;
+        if (elem.font_style || cleaned.font) {
+          updates.font_style = elem.font_style || match.font_style || 'font-body';
+        }
+        updates.start_ms = startMs;
+        updates.end_ms = endMs;
+
         // Apply canvas position/size/z_index/opacity from the scene graph
         if (elem.canvas_position) {
           if (elem.canvas_position.x != null) updates.x = Math.round(elem.canvas_position.x);
