@@ -110,11 +110,7 @@ export default function EditorCanvas({
             </div>
           )}
 
-          {/* TEMP DEBUG: element count badge */}
-          <div className="absolute top-1 left-1 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded z-[999] pointer-events-none">
-            ELS: {sorted.length} | slide: {slide?.id?.substring(0, 8) || 'none'}
-          </div>
-          {/* END TEMP DEBUG */}
+
         </div>
       </CanvasViewport>
     </div>

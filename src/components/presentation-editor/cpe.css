@@ -23,6 +23,12 @@
   color: hsl(var(--cpe-text));
 }
 
+/* ── Canvas Area ── */
+.cpe-canvas-area {
+  min-height: 0;
+  height: 100%;
+}
+
 /* ── Top Bar (Creative Toolbar) ── */
 .cpe-topbar {
   background: hsl(var(--cpe-surface));
