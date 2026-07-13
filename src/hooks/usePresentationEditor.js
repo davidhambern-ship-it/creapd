@@ -104,19 +104,19 @@ export function usePresentationEditor(presentationId) {
 
     const slideObj = typeof slide === 'object' ? slide : null;
 
-    // ── Try to load DB SlideElement records ──
-    // This may THROW (not just return empty) when the user lacks access due to
-    // RLS or the entity is temporarily unavailable. Wrap in its own try/catch
-    // so a failure here doesn't skip the scene_graph fallback below.
+    // ── Load elements: cache first (from loadEditorData), then DB, then scene_graph ──
     let dbElements = [];
-    try {
-      const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
-      dbElements = els || [];
-      if (dbElements.length === 0 && cachedElementsRef.current[slideId]?.length > 0) {
-        dbElements = cachedElementsRef.current[slideId];
+    // Cache from loadEditorData (service-role, bypasses RLS) is the primary source
+    if (cachedElementsRef.current[slideId]?.length > 0) {
+      dbElements = cachedElementsRef.current[slideId];
+    } else {
+      // Try user-scoped DB query as secondary source
+      try {
+        const els = await base44.entities.SlideElement.filter({ slide_id: slideId });
+        dbElements = els || [];
+      } catch {
+        dbElements = [];
       }
-    } catch {
-      dbElements = cachedElementsRef.current[slideId] || [];
     }
 
     // DB elements are the source of truth — scene_graph is just a "direction"

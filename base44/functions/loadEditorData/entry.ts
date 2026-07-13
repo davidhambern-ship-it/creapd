@@ -107,8 +107,8 @@ function parseSceneGraphElements(sceneGraphStr, slideId) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const isAuthed = await base44.auth.isAuthenticated().catch(() => false);
+    if (!isAuthed) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
     const { presentation_id } = body;
