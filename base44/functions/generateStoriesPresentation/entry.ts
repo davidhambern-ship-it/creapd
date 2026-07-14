@@ -1,5 +1,67 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+// ═══════════════════════════════════════════════════════════
+// SCENE GRAPH RESPONSE SCHEMA (used by critique loop re-generation)
+// ═══════════════════════════════════════════════════════════
+const SCENE_GRAPH_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    scenes: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          scene_id: { type: "string" },
+          scene_order: { type: "number" },
+          scene_type: { type: "string" },
+          scene_purpose: { type: "string" },
+          scene_start_time: { type: "number" },
+          scene_end_time: { type: "number" },
+          camera_behavior: { type: "string" },
+          camera_target: { type: "string" },
+          motion_intensity: { type: "string" },
+          background_design: { type: "string" },
+          transition_type: { type: "string" },
+          layers: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                layer_type: { type: "string" },
+                z_order: { type: "number" },
+                elements: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      element_type: { type: "string" },
+                      content: { type: "string" },
+                      position_x: { type: "number" },
+                      position_y: { type: "number" },
+                      scale: { type: "number" },
+                      opacity: { type: "number" },
+                      entrance_animation: { type: "string" },
+                      exit_animation: { type: "string" },
+                      font_style: { type: "string" },
+                      color_theme: { type: "string" },
+                      visual_effects: { type: "array", items: { type: "string" } },
+                      ambient_animation: { type: "string" },
+                      start_time: { type: "number" },
+                      end_time: { type: "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    decision_rationale: { type: "string" },
+    confidence_score: { type: "number" }
+  }
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -213,6 +275,7 @@ Deno.serve(async (req) => {
     const storySlideIds = [];
     let cumulativeStartMs = 0;
     const masterTimelineEvents = [];
+    const directorLog = []; // Step 3: Cinematic Memory — tracks visual patterns across slides
 
     for (let i = 0; i < storyPackages.length; i++) {
       const pkg = storyPackages[i];
@@ -238,7 +301,29 @@ Deno.serve(async (req) => {
       // ==========================================================
       // STEP 4: AI REASONING — Generate Scene Graph
       // ==========================================================
-      const sceneGraphPrompt = buildSceneGraphPrompt(pkg, vp, production_profile, sentenceTimeline, i, storyPackages.length, screenResolution, screenAspectRatio);
+      // ==========================================================
+      // STEP 3.5: VISUAL INTENT ANALYSIS (Step 1 — Semantic Transcript)
+      // Pre-process the script into a Visual Intent Map before scene graph
+      // generation. This gives the APD explicit visual cues per narration
+      // segment rather than relying on the LLM to infer visual needs.
+      // ==========================================================
+      let visualIntentMap = [];
+      try {
+        const intentResponse = await base44.asServiceRole.functions.invoke('analyzeVisualIntent', {
+          headline: pkg.headline_suggestions || pkg.article_id || 'Untitled Story',
+          story_summary: pkg.story_summary || '',
+          teleprompter_script: vp.teleprompter_script || pkg.teleprompter_script || '',
+          talking_points: pkg.talking_points || '',
+          sentence_timeline: sentenceTimeline,
+          production_profile: production_profile,
+          fact_check_notes: pkg.fact_check_notes || '',
+        });
+        visualIntentMap = intentResponse.data?.visual_intent_map || intentResponse.visual_intent_map || [];
+      } catch (e) {
+        // Non-fatal: continue without visual intent map if analysis fails
+      }
+
+      const sceneGraphPrompt = buildSceneGraphPrompt(pkg, vp, production_profile, sentenceTimeline, i, storyPackages.length, screenResolution, screenAspectRatio, visualIntentMap, directorLog);
 
       const llmResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt: sceneGraphPrompt,
@@ -316,6 +401,32 @@ Deno.serve(async (req) => {
       // This is the critical step: the audio is the master clock, so we snap
       // scene boundaries and element times to sentence boundaries
       sceneGraphData = syncSceneGraphToAudio(sceneGraphData, sentenceTimeline, trueAudioDurationMs);
+
+      // ==========================================================
+      // STEP 4.5: ITERATIVE CRITIQUE (Step 2 — Draft → Critique → Refine)
+      // Internal QA pass: check scene graph against Visual Intent Map and
+      // style rules. Deterministic fixes applied in-place (background variety,
+      // transition variety, safe area). Critical issues trigger LLM
+      // re-generation with critique feedback (max 2 iterations).
+      // ==========================================================
+      let critiqueResult = critiqueSceneGraph(sceneGraphData, visualIntentMap, sentenceTimeline, trueAudioDurationMs);
+      let critiqueIterations = 0;
+      const MAX_CRITIQUE_ITERATIONS = 2;
+
+      while (critiqueResult.issues.length > 0 && critiqueIterations < MAX_CRITIQUE_ITERATIONS) {
+        critiqueIterations++;
+        const critiquePrompt = sceneGraphPrompt + '\n\n## PREVIOUS DRAFT CRITIQUE — Issues Found\nThe previous scene graph draft had these issues. You MUST fix ALL of them:\n' + JSON.stringify(critiqueResult.issues, null, 2) + '\n\nRe-generate the FULL scene graph with these issues fixed. Do not repeat the same mistakes.';
+
+        const critiqueLlmResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: critiquePrompt,
+          response_json_schema: SCENE_GRAPH_RESPONSE_SCHEMA,
+          model: 'gpt_5_4',
+        });
+
+        sceneGraphData = enforceAnimationVariety(typeof critiqueLlmResponse === 'string' ? JSON.parse(critiqueLlmResponse) : critiqueLlmResponse);
+        sceneGraphData = syncSceneGraphToAudio(sceneGraphData, sentenceTimeline, trueAudioDurationMs);
+        critiqueResult = critiqueSceneGraph(sceneGraphData, visualIntentMap, sentenceTimeline, trueAudioDurationMs);
+      }
 
       let imgIdx = 0;
       // Build the complete scene graph object
@@ -580,6 +691,9 @@ Deno.serve(async (req) => {
       });
 
       cumulativeStartMs += trueAudioDurationMs;
+
+      // Step 3: Record visual patterns for Director's Log (Cinematic Memory)
+      directorLog.push(extractDirectorLogEntry(sceneGraph, i));
     }
 
     // ==========================================================
@@ -844,7 +958,7 @@ function enforceAnimationVariety(sceneGraphData) {
 // ==========================================================
 // SCENE GRAPH PROMPT BUILDER
 // ==========================================================
-function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, slideIndex, totalSlides, screenResolution, screenAspectRatio) {
+function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, slideIndex, totalSlides, screenResolution, screenAspectRatio, visualIntentMap, directorLog) {
   const headline = pkg.headline_suggestions || pkg.article_id || 'Untitled Story';
   const script = vp.teleprompter_script || pkg.teleprompter_script || '';
   const storySummary = pkg.story_summary || '';
@@ -862,6 +976,16 @@ function buildSceneGraphPrompt(pkg, vp, productionProfile, sentenceTimeline, sli
     start: s.start_time || 0,
     end: s.end_time || 0
   }));
+
+  // Step 1: Visual Intent Map injection — gives the APD explicit visual cues
+  const visualIntentBlock = visualIntentMap && visualIntentMap.length > 0
+    ? `\nVISUAL INTENT MAP (Semantic analysis of the narration — each segment tells you what visual is needed at that point):\n${JSON.stringify(visualIntentMap, null, 2)}\nCRITICAL: You MUST create elements that match the suggested_element_types for each segment. Every segment with visual_cue "statistic" MUST have a statistic element. Every segment with visual_cue "image" should have an image element. Match element start_time values to segment start_time values.`
+    : '';
+
+  // Step 3: Director's Log injection — prevents visual repetition across slides
+  const directorLogBlock = directorLog && directorLog.length > 0
+    ? `\nCROSS-SLIDE DIRECTOR'S LOG (Cinematic Memory — visual patterns already used on preceding slides):\n${JSON.stringify(directorLog, null, 2)}\nCRITICAL: Avoid repeating the same background_design, transition_type, or dominant color_theme from the previous 2 slides. Create visual rhythm by contrasting this slide's style with what came before. If the previous slide was high-energy, make this one calmer. If the previous slide was data-heavy, make this one more narrative.`
+    : '';
 
   return `You are the CREAPD AI Presentation Director (APD). Your job is to transform an approved Story Package into a professionally directed Story Slide.
 
@@ -901,7 +1025,7 @@ PRESENTATION CONTEXT:
 - Story Headline: ${headline}
 - Tone: ${tone}
 - Total Narration Duration: ${totalDurationMs}ms (${(totalDurationMs / 1000).toFixed(1)} seconds)
-
+${visualIntentBlock}${directorLogBlock}
 STORY PACKAGE DATA:
 - Headline: ${headline}
 - Story Summary: ${storySummary}
@@ -1303,4 +1427,142 @@ Return only the JSON object.`;
   });
 
   return typeof response === 'string' ? JSON.parse(response) : response;
+}
+
+// ==========================================================
+// STEP 2 HELPER: SCENE GRAPH CRITIQUE
+// Evaluates the generated scene graph against the Visual Intent
+// Map and style rules. Applies deterministic fixes in-place
+// (background variety, transition variety, safe area) and
+// returns remaining issues that require LLM re-generation.
+// ==========================================================
+function critiqueSceneGraph(sceneGraphData, visualIntentMap, sentenceTimeline, trueAudioDurationMs) {
+  const issues = [];
+  const scenes = sceneGraphData.scenes || [];
+
+  // ── Deterministic Fix 1: Background variety ──
+  const ALL_BG = ['gradient_orb', 'particle_field', 'grid_floor', 'glassmorphism', 'neon_glow', 'scan_lines', 'circuit_pattern', 'data_stream', 'energy_rings', 'gradient_mesh', 'dark_gradient', 'warm_gradient'];
+  const usedBg = new Set();
+  for (const scene of scenes) {
+    if (usedBg.has(scene.background_design)) {
+      const available = ALL_BG.find(b => !usedBg.has(b));
+      if (available) {
+        scene.background_design = available;
+        usedBg.add(available);
+      }
+    } else {
+      usedBg.add(scene.background_design);
+    }
+  }
+
+  // ── Deterministic Fix 2: Transition variety ──
+  const ALL_TRANSITIONS = ['fade', 'dissolve', 'slide_left', 'slide_right', 'zoom', 'cut'];
+  for (let i = 1; i < scenes.length; i++) {
+    if (scenes[i].transition_type === scenes[i - 1].transition_type) {
+      const available = ALL_TRANSITIONS.find(t => t !== scenes[i].transition_type);
+      if (available) scenes[i].transition_type = available;
+    }
+  }
+
+  // ── Deterministic Fix 3: Safe area compliance ──
+  for (const scene of scenes) {
+    for (const layer of (scene.layers || [])) {
+      for (const elem of (layer.elements || [])) {
+        if (elem.position_x !== undefined) {
+          if (elem.position_x < 0.08) elem.position_x = 0.08;
+          if (elem.position_x > 0.92) elem.position_x = 0.92;
+        }
+        if (elem.position_y !== undefined) {
+          if (elem.position_y < 0.08) elem.position_y = 0.08;
+          if (elem.position_y > 0.92) elem.position_y = 0.92;
+        }
+      }
+    }
+  }
+
+  // ── Critical Check 1: Visual intent coverage ──
+  // Each segment with a non-"text_only" visual_cue should have at least one
+  // matching element type in its time range. Missing elements trigger LLM re-gen.
+  if (visualIntentMap && visualIntentMap.length > 0) {
+    const allElements = scenes.flatMap(s =>
+      (s.layers || []).flatMap(l => (l.elements || []))
+    );
+    for (const segment of visualIntentMap) {
+      if (segment.visual_cue === 'text_only' || !segment.suggested_element_types) continue;
+      const segmentElements = allElements.filter(e =>
+        (e.start_time || 0) >= segment.start_time - 2000 &&
+        (e.start_time || 0) < segment.end_time + 2000
+      );
+      for (const suggestedType of segment.suggested_element_types) {
+        const hasType = segmentElements.some(e => e.element_type === suggestedType);
+        if (!hasType) {
+          issues.push({
+            severity: 'medium',
+            issue: `Segment "${(segment.segment_text || '').substring(0, 60)}..." expected element type "${suggestedType}" but none found at ${segment.start_time}-${segment.end_time}ms`,
+            fix: `Add a ${suggestedType} element timed to ${segment.start_time}ms`,
+          });
+        }
+      }
+    }
+  }
+
+  // ── Critical Check 2: Scenes without content ──
+  for (const scene of scenes) {
+    const hasContent = (scene.layers || []).some(l =>
+      (l.elements || []).some(e => e.content)
+    );
+    if (!hasContent) {
+      issues.push({
+        severity: 'high',
+        issue: `Scene ${scene.scene_id || '?'} has no content elements`,
+        fix: 'Add at least one text element to this scene',
+      });
+    }
+  }
+
+  // ── Critical Check 3: Sparse scenes (fewer than 2 elements) ──
+  for (const scene of scenes) {
+    const elemCount = (scene.layers || []).reduce((acc, l) =>
+      acc + (l.elements || []).length, 0
+    );
+    if (elemCount < 2) {
+      issues.push({
+        severity: 'medium',
+        issue: `Scene ${scene.scene_id || '?'} has only ${elemCount} element(s) — too sparse`,
+        fix: 'Add supporting elements (talking_point_card, callout, lower_third)',
+      });
+    }
+  }
+
+  return { issues, fixed_in_place: true };
+}
+
+// ==========================================================
+// STEP 3 HELPER: DIRECTOR'S LOG ENTRY EXTRACTION
+// Extracts a compact summary of visual patterns used on a slide
+// so subsequent slides can avoid repeating them.
+// ==========================================================
+function extractDirectorLogEntry(sceneGraph, slideIndex) {
+  const scenes = sceneGraph.scenes || [];
+  return {
+    slide_index: slideIndex,
+    backgrounds: scenes.map(s => s.background_design).filter(Boolean),
+    transitions: scenes.map(s => s.transition_type).filter(Boolean),
+    color_themes: scenes.flatMap(s =>
+      (s.layers || []).flatMap(l =>
+        (l.elements || []).map(e => e.color_theme).filter(Boolean)
+      )
+    ),
+    animation_types: scenes.flatMap(s =>
+      (s.layers || []).flatMap(l =>
+        (l.elements || []).map(e =>
+          typeof e.entrance_animation === 'object'
+            ? e.entrance_animation?.type
+            : e.entrance_animation
+        ).filter(Boolean)
+      )
+    ),
+    scene_count: scenes.length,
+    scene_types: scenes.map(s => s.scene_type).filter(Boolean),
+  };
 }
