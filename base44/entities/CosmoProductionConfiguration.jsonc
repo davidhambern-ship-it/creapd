@@ -99,6 +99,10 @@
       "type": "string",
       "description": "JSON array of selected AI automation options"
     },
+    "vo_requirements": {
+      "type": "string",
+      "description": "JSON: { vo_enabled, auto_generate, silent_segments[], default_voice_id } \u2014 controls which segments get voiceovers for this production profile"
+    },
     "status": {
       "type": "string",
       "enum": [

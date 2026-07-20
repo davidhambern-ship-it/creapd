@@ -432,27 +432,43 @@ Deno.serve(async (req) => {
     }
 
     // ── PHASE 3: Voice Chain (sequential — needs Script output) ──
+    // Reads vo_requirements from the production profile config to determine
+    // which segments get voiceovers. This is profile-specific — each PP
+    // defines its own VO requirements.
     let voiceSpecs = {};
-    if (flags.generate_voice !== false) {
-      const scriptsForVoice = slides.map((s, idx) => {
-        const spec = scriptSpecs[s.title.toLowerCase()] || {};
-        return {
-          point_title: s.title,
-          teleprompter_script: spec.teleprompter_script || s.prebuilt_assets?.teleprompter_script || s.content_summary,
-          talking_points: spec.talking_points || s.prebuilt_assets?.talking_points || [],
-        };
-      });
+    const voRequirements = presMeta.vo_requirements
+      ? parseVoRequirements(presMeta.vo_requirements)
+      : { vo_enabled: true, auto_generate: true, silent_segments: [], default_voice_id: 'river' };
+    const shouldGenerateVoice = flags.generate_voice !== false
+      && voRequirements.vo_enabled !== false
+      && voRequirements.auto_generate !== false;
 
-      const voiceResult = await invokeWorker(base44, 'developVoiceWorker', {
-        scripts: scriptsForVoice,
-        presentation_points: presentationPoints,
-        configuration_id: presMeta.production_profile,
-        voice_id: presMeta.voice_id || 'river',
-      });
+    if (shouldGenerateVoice) {
+      // Filter out slides whose section is in the silent_segments list
+      const silentSections = voRequirements.silent_segments || [];
+      const voicedSlides = slides.filter(s => !silentSections.includes(s.section || ''));
 
-      if (!voiceResult.error) {
-        for (const vs of (voiceResult.voice_segments || [])) {
-          voiceSpecs[(vs.point_title || '').toLowerCase()] = vs;
+      if (voicedSlides.length > 0) {
+        const scriptsForVoice = voicedSlides.map((s) => {
+          const spec = scriptSpecs[s.title.toLowerCase()] || {};
+          return {
+            point_title: s.title,
+            teleprompter_script: spec.teleprompter_script || s.prebuilt_assets?.teleprompter_script || s.content_summary,
+            talking_points: spec.talking_points || s.prebuilt_assets?.talking_points || [],
+          };
+        });
+
+        const voiceResult = await invokeWorker(base44, 'developVoiceWorker', {
+          scripts: scriptsForVoice,
+          presentation_points: presentationPoints,
+          configuration_id: presMeta.production_profile,
+          voice_id: voRequirements.default_voice_id || presMeta.voice_id || 'river',
+        });
+
+        if (!voiceResult.error) {
+          for (const vs of (voiceResult.voice_segments || [])) {
+            voiceSpecs[(vs.point_title || '').toLowerCase()] = vs;
+          }
         }
       }
     }
@@ -835,6 +851,18 @@ Deno.serve(async (req) => {
 // ═══════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════
+
+function parseVoRequirements(raw) {
+  const defaults = { vo_enabled: true, auto_generate: true, silent_segments: [], default_voice_id: 'river' };
+  if (!raw) return defaults;
+  if (typeof raw === 'object') return { ...defaults, ...raw };
+  try {
+    const parsed = JSON.parse(raw);
+    return { ...defaults, ...parsed };
+  } catch {
+    return defaults;
+  }
+}
 
 async function loadOverrides(base44, presentationId) {
   const overrideMap = {};

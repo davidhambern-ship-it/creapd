@@ -111,6 +111,13 @@ Deno.serve(async (req) => {
           sentence_timeline: sceneGraph.sentence_summaries || [],
           voice_audio_url: vp?.audio_url || vp?.merged_audio_url || null,
           duration_ms: sceneGraph.total_duration_ms || (slide.duration_ms || 5000),
+          transcript_sync: {
+            scenes_snapped_to_sentences: true,
+            sentence_count: sceneGraph.sentence_summaries?.length || 0,
+            pause_count: sceneGraph.pause_count || 0,
+            paragraph_count: sceneGraph.paragraph_count || 0,
+            last_sentence_end_ms: sceneGraph.last_sentence_end_ms || 0,
+          },
         }),
         slide_metadata: JSON.stringify({
           ...parseJSON(slide.slide_metadata, {}),
@@ -317,15 +324,78 @@ function cleanContent(raw) {
   return { content: content.trim(), font, anim };
 }
 
+// ── Transcript Sync Helpers ──
+// Processes VoicePackage timeline data into a structured timing context
+// that the APD uses to align scene boundaries and element animations with
+// natural speech rhythms.
+function buildTranscriptSyncContext(vp) {
+  const sentenceTimeline = parseJSON(vp?.sentence_timeline, '[]');
+  const pauseTimeline = parseJSON(vp?.pause_timeline, '[]');
+  const paragraphTimeline = parseJSON(vp?.paragraph_timeline, '[]');
+
+  // Convert sentence timeline (seconds) to ms boundaries
+  const sentenceBoundariesMs = (Array.isArray(sentenceTimeline) ? sentenceTimeline : []).map(s => ({
+    start_ms: Math.round((s.start_time || 0) * 1000),
+    end_ms: Math.round((s.end_time || 0) * 1000),
+    text: s.sentence_text || '',
+    duration: s.duration || 0,
+  }));
+
+  // Compute precise total duration from the last sentence's end time
+  const lastSentenceEndMs = sentenceBoundariesMs.length > 0
+    ? Math.max(...sentenceBoundariesMs.map(s => s.end_ms))
+    : 0;
+
+  // Identify natural break points for scene transitions
+  const pauseBoundaries = (Array.isArray(pauseTimeline) ? pauseTimeline : [])
+    .filter(p => (p.duration || 0) > 0.3)
+    .map(p => ({
+      time_ms: Math.round((p.pause_start || 0) * 1000),
+      duration: p.duration,
+      pause_type: p.pause_type || 'Natural Breath Pause',
+    }));
+
+  // Paragraph boundaries — macro-level scene grouping
+  const paragraphBoundaries = (Array.isArray(paragraphTimeline) ? paragraphTimeline : []).map(p => ({
+    start_ms: Math.round((p.start_time || 0) * 1000),
+    end_ms: Math.round((p.end_time || 0) * 1000),
+    duration: p.duration || 0,
+  }));
+
+  return {
+    sentenceBoundariesMs,
+    pauseBoundaries,
+    paragraphBoundaries,
+    lastSentenceEndMs,
+  };
+}
+
+// Snap a time value (in ms) to the nearest sentence boundary start or end.
+function snapToNearestBoundary(timeMs, sentenceBoundariesMs) {
+  if (!sentenceBoundariesMs || sentenceBoundariesMs.length === 0) return timeMs;
+  let closest = timeMs;
+  let minDist = Infinity;
+  for (const s of sentenceBoundariesMs) {
+    const distStart = Math.abs(timeMs - s.start_ms);
+    const distEnd = Math.abs(timeMs - s.end_ms);
+    if (distStart < minDist) { minDist = distStart; closest = s.start_ms; }
+    if (distEnd < minDist) { minDist = distEnd; closest = s.end_ms; }
+  }
+  return closest;
+}
+
 // ── APD Core: Direct one slide ──
 // The APD is trained on the actual canvas + timeline data model so its output
 // can be synced directly back to SlideElement records and rendered on the
 // vertically-stacked track timeline.
 async function directSlide(base44, { slide, elements, pkg, vp, slideIndex, totalSlides, presentationTitle }) {
+  const syncContext = buildTranscriptSyncContext(vp);
+  const { sentenceBoundariesMs, pauseBoundaries, paragraphBoundaries, lastSentenceEndMs } = syncContext;
   const sentenceTimeline = parseJSON(vp?.sentence_timeline, '[]');
   const pauseTimeline = parseJSON(vp?.pause_timeline, '[]');
+  // Use precise duration from last spoken sentence when available
   const totalDuration = vp?.total_duration_seconds || (slide.duration_ms / 1000) || 30;
-  const totalDurationMs = Math.round(totalDuration * 1000);
+  const totalDurationMs = lastSentenceEndMs > 0 ? lastSentenceEndMs : Math.round(totalDuration * 1000);
 
   // ── Build full element summaries with canvas + timeline state ──
   // The APD needs the exact same data the editor timeline shows so it can
@@ -477,7 +547,35 @@ ANIMATION TYPES (use these exact strings):
 - Total Duration: ${totalDuration}s (${totalDurationMs} ms)
 - Sentence Count: ${sentenceSummaries.length}
 - Sentence Timeline: ${JSON.stringify(sentenceSummaries.slice(0, 25))}
-- Pause Timeline: ${JSON.stringify((Array.isArray(pauseTimeline) ? pauseTimeline : []).slice(0, 10))}
+- Pause Timeline: ${JSON.stringify(pauseBoundaries.slice(0, 10))}
+- Paragraph Boundaries: ${JSON.stringify(paragraphBoundaries.slice(0, 10))}
+- Last Sentence End: ${lastSentenceEndMs}ms
+
+# ── TRANSCRIPT-BASED TIMING RULES (CRITICAL) ──
+The voiceover transcript is your MASTER CLOCK. Follow these rules precisely:
+
+1. SCENE BOUNDARIES SNAP TO SENTENCES:
+   - Each scene_start_time MUST equal a sentence's start_time (in ms) from the sentence timeline above
+   - Each scene_end_time MUST equal a sentence's end_time (in ms)
+   - Never invent scene boundaries at arbitrary time points — always snap to a real sentence boundary
+
+2. PAUSE-DRIVEN TRANSITIONS:
+   - Use natural pauses (from the Pause Timeline) as preferred scene transition moments
+   - Dramatic Pauses and Paragraph Pauses are ideal scene boundaries
+   - Natural Breath Pauses can mark emphasis changes within a scene
+
+3. ELEMENT-SENTENCE MAPPING:
+   - Each text element's entrance_animation delay_ms MUST match the start_time of the sentence it relates to
+   - Elements should appear AS the relevant sentence is spoken — never before or after
+   - If a talking point card discusses a specific sentence, its entrance should sync to that sentence's start_time
+
+4. SLIDE EXIT TIMING:
+   - Exit animations should begin at or near the last sentence's end_time (${lastSentenceEndMs}ms)
+   - The slide transition should occur at the natural end of the narration
+
+5. PARAGRAPH GROUPING:
+   - When paragraph boundaries are available, use them for macro-level scene grouping
+   - A new paragraph signals a topic shift — a natural scene boundary
 
 # ── EXISTING SLIDE ELEMENTS (already on canvas + timeline — you may reposition and re-time) ──
 Each element below has its current canvas position (pixels), style, timing clip, and animation lanes:
@@ -669,13 +767,18 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
     },
   });
 
-  // Ensure scene times are within slide duration
+  // Ensure scene times are within slide duration and snapped to sentence boundaries
   const maxMs = totalDurationMs;
-  const scenes = (response.scenes || []).map(s => ({
-    ...s,
-    scene_start_time: Math.max(0, Math.min(s.scene_start_time || 0, maxMs)),
-    scene_end_time: Math.min(s.scene_end_time || maxMs, maxMs),
-  }));
+  const scenes = (response.scenes || []).map(s => {
+    const rawStart = Math.max(0, Math.min(s.scene_start_time || 0, maxMs));
+    const rawEnd = Math.min(s.scene_end_time || maxMs, maxMs);
+    // Snap scene boundaries to nearest sentence boundary for perfect audio sync
+    return {
+      ...s,
+      scene_start_time: snapToNearestBoundary(rawStart, sentenceBoundariesMs),
+      scene_end_time: snapToNearestBoundary(rawEnd, sentenceBoundariesMs),
+    };
+  });
 
   // If no scenes were generated, create a fallback single-scene slide
   if (scenes.length === 0) {
@@ -713,5 +816,8 @@ Provide your directing decisions with rationale for: presentation_strategy, visu
     decisions: response.decisions || [],
     sentence_summaries: sentenceSummaries,
     total_duration_ms: totalDurationMs,
+    pause_count: pauseBoundaries.length,
+    paragraph_count: paragraphBoundaries.length,
+    last_sentence_end_ms: lastSentenceEndMs,
   };
 }
