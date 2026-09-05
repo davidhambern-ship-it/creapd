@@ -9,11 +9,13 @@ import {
 const STAGES = [
   { id: 'query_expansion', label: 'Query Expansion', description: 'Breaking topic into targeted search queries', icon: Search },
   { id: 'discovery', label: 'Parallel Discovery', description: 'Searching the web from multiple angles', icon: Compass },
-  { id: 'source_verification', label: 'Source Verification', description: 'Fetching and reading real source pages', icon: ShieldCheck },
+  { id: 'source_verification', label: 'Source Verification', description: 'Verifying discovered claims and sources', icon: ShieldCheck },
   { id: 'synthesis', label: 'Synthesis', description: 'Merging findings into structured dossier', icon: Layers },
-  { id: 'verification', label: 'Fact Verification', description: 'Cross-checking claims against source text', icon: CheckCircle2 },
+  { id: 'verification', label: 'Fact Verification', description: 'Cross-checking claims against source context', icon: CheckCircle2 },
   { id: 'critical_analysis', label: 'Critical Analysis', description: 'Identifying gaps and debate potential', icon: Brain },
 ];
+
+const INITIALIZATION_TIMEOUT_MS = 20000;
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
@@ -24,15 +26,25 @@ function safeHostname(url) {
   try { return new URL(url).hostname; } catch { return url || 'Unknown'; }
 }
 
-export default function ResearchProgressModal({ open, topicId, topicTitle, onClose }) {
+export default function ResearchProgressModal({ open, topicId, topicTitle, externalError, onClose }) {
   const [dossier, setDossier] = useState(null);
   const [progress, setProgress] = useState({});
   const [sources, setSources] = useState([]);
+  const [pollError, setPollError] = useState(null);
+  const [initializationTimedOut, setInitializationTimedOut] = useState(false);
 
   useEffect(() => {
     if (!open || !topicId) return;
+
+    setDossier(null);
+    setProgress({});
+    setSources([]);
+    setPollError(null);
+    setInitializationTimedOut(false);
+
     let active = true;
     let pollTimer = null;
+    const startedAt = Date.now();
 
     const poll = async () => {
       try {
@@ -45,23 +57,32 @@ export default function ResearchProgressModal({ open, topicId, topicTitle, onClo
           const d = dossiers[0];
           setDossier(d);
           setProgress(safeParse(d.orchestration_metadata, {}));
+          setPollError(null);
+          setInitializationTimedOut(false);
 
           const discovery = safeParse(d.discovery_raw_data, null);
           if (discovery?.all_sources) {
             setSources(discovery.all_sources);
           }
+        } else if (Date.now() - startedAt >= INITIALIZATION_TIMEOUT_MS) {
+          setInitializationTimedOut(true);
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        if (active) {
+          setPollError(err?.message || 'Unable to read research progress.');
+        }
+      }
 
-      pollTimer = setTimeout(poll, 2000);
+      if (active) pollTimer = setTimeout(poll, 2000);
     };
 
     poll();
     return () => { active = false; if (pollTimer) clearTimeout(pollTimer); };
   }, [open, topicId]);
 
+  const displayedError = externalError || pollError;
   const isComplete = dossier?.status === 'ready';
-  const isFailed = dossier?.status === 'failed';
+  const isFailed = dossier?.status === 'failed' || !!displayedError || initializationTimedOut;
   const currentStage = progress.current_stage;
   const stageOrder = STAGES.map(s => s.id);
   const currentStageIndex = currentStage ? stageOrder.indexOf(currentStage) : -1;
@@ -181,15 +202,17 @@ export default function ResearchProgressModal({ open, topicId, topicTitle, onClo
         )}
 
         {/* Error state */}
-        {isFailed && dossier?.error_message && (
+        {isFailed && (
           <div className="p-3 rounded-lg bg-red-500/10 !flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-400">{dossier.error_message}</p>
+            <p className="text-sm text-red-400">
+              {displayedError || dossier?.error_message || 'Research could not initialize. Close this window and retry the topic.'}
+            </p>
           </div>
         )}
 
         {/* Connecting status text */}
-        {!dossier && (
+        {!dossier && !isFailed && (
           <div className="p-3 rounded-lg bg-primary/10 !flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-primary" />
             <p className="text-sm text-primary">Initializing research pipeline...</p>
