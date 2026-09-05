@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { base44 } from '@/api/base44Client';
+import { runResearchClient, extractResearchPointsClient } from '@/lib/researchClientEngine';
 import { Loader2, ArrowRight, Sparkles, BookOpen, FlaskConical, Database, Settings, Clock, FileText, Layers } from 'lucide-react';
 import TopicsCabinet from '@/components/rpp/topics/TopicsCabinet';
 import TopicListPanel from '@/components/research/TopicListPanel';
@@ -26,6 +27,7 @@ export default function ResearchTopics() {
   const { config, topics, loading, refresh } = researchData;
   const [researching, setResearching] = useState(null);
   const [progressTopic, setProgressTopic] = useState(null);
+  const [researchError, setResearchError] = useState(null);
   const [userName, setUserName] = useState('');
 
   const researchingCount = topics.filter(t => t.status === 'researching').length;
@@ -101,26 +103,28 @@ export default function ResearchTopics() {
 
   const handleResearch = async (topic) => {
     setResearching(topic.id);
+    setResearchError(null);
     setProgressTopic(topic);
     try {
-      await base44.functions.invoke('deepResearchV2', { topic_id: topic.id, research_depth: topic.research_depth });
-      setProgressTopic(null);
+      await runResearchClient(topic);
       refresh();
     } catch (err) {
       console.error('Research failed:', err);
+      setResearchError(err?.message || 'Research could not start or complete.');
     } finally {
       setResearching(null);
-      setProgressTopic(null);
     }
   };
 
   const handleExtract = async (topic) => {
     setResearching(topic.id);
+    setResearchError(null);
     try {
-      await base44.functions.invoke('extractResearchPoints', { topic_id: topic.id });
+      await extractResearchPointsClient(topic);
       refresh();
     } catch (err) {
       console.error('Extraction failed:', err);
+      setResearchError(err?.message || 'Point extraction failed.');
     } finally {
       setResearching(null);
     }
@@ -178,6 +182,12 @@ export default function ResearchTopics() {
                   ? <>Your <span style={{ color: 'hsl(35 80% 58%)' }}>{config.production_name}</span> project has <span style={{ color: 'hsl(152 55% 50%)' }}>{topics.length} topic{topics.length !== 1 ? 's' : ''}</span> in the library.</>
                   : 'Define your research topic to begin the production pipeline.'}
               </p>
+
+              {researchError && (
+                <div className="max-w-2xl mx-auto mb-4 px-4 py-2 rounded-lg text-xs text-red-300" style={{ background: 'hsl(0 70% 20% / 0.2)', border: '1px solid hsl(0 70% 45% / 0.3)' }}>
+                  {researchError}
+                </div>
+              )}
 
               {/* Recommendation */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -357,7 +367,11 @@ export default function ResearchTopics() {
         open={!!progressTopic}
         topicId={progressTopic && progressTopic.id}
         topicTitle={progressTopic && progressTopic.title}
-        onClose={() => setProgressTopic(null)}
+        externalError={researchError}
+        onClose={() => {
+          setProgressTopic(null);
+          setResearchError(null);
+        }}
       />
     </div>
   );
