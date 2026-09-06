@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/apps/auth/:path*",
+      "destination": "https://creapd.base44.app/api/apps/auth/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
