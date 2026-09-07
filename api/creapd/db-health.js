@@ -12,6 +12,10 @@ function inspectDatabaseUrl() {
     parseable: false,
     neon_host: false,
     database_name_present: false,
+    role_name: null,
+    password_present: false,
+    password_length: 0,
+    password_looks_masked: false,
     sslmode: null,
     contains_whitespace: /\s/.test(value),
   };
@@ -22,9 +26,15 @@ function inspectDatabaseUrl() {
 
   try {
     const parsed = new URL(value);
+    const password = decodeURIComponent(parsed.password || '');
+
     summary.parseable = true;
     summary.neon_host = parsed.hostname.endsWith('.neon.tech');
     summary.database_name_present = Boolean(parsed.pathname && parsed.pathname !== '/');
+    summary.role_name = parsed.username || null;
+    summary.password_present = Boolean(password);
+    summary.password_length = password.length;
+    summary.password_looks_masked = Boolean(password) && /^\*+$/.test(password);
     summary.sslmode = parsed.searchParams.get('sslmode');
   } catch {
     // Intentionally omit the URL itself. The connection string contains credentials.
