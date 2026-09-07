@@ -67,6 +67,7 @@
         "developed",
         "packet_ready",
         "rejected",
+        "failed",
         "archived"
       ],
       "default": "pending"
@@ -83,7 +84,7 @@
         "failed"
       ],
       "default": "idle",
-      "description": "Current stage of the automated RPP pipeline (RPP-AI-001 \u00a712)"
+      "description": "Current stage of the automated RPP pipeline (RPP-AI-001 §12)"
     },
     "point_count": {
       "type": "number",
