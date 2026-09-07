@@ -23,6 +23,24 @@ function getSafeErrorMessage(error) {
     .slice(0, 240);
 }
 
+function buildIdentityPayload(identitySource, userId, verifiedAt) {
+  const payload = {
+    backend_auth_bridge: true,
+    last_verified_at: verifiedAt,
+    last_identity_source: identitySource,
+  };
+
+  if (identitySource === 'neon') {
+    payload.neon_auth_user_id = String(userId);
+    payload.neon_last_verified_at = verifiedAt;
+  } else if (identitySource === 'base44') {
+    payload.base44_user_id = String(userId);
+    payload.base44_last_verified_at = verifiedAt;
+  }
+
+  return payload;
+}
+
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store, max-age=0');
 
@@ -89,6 +107,32 @@ export default async function handler(request, response) {
       });
     }
 
+    const identityPayload = buildIdentityPayload(identitySource, user.id, verifiedAt);
+
+    stage = 'resolve_canonical_creapd_user';
+    let canonicalUser = null;
+
+    if (user.email) {
+      [canonicalUser] = await sql`
+        SELECT id, source_system
+        FROM creapd.users
+        WHERE id = ${String(user.id)}
+           OR LOWER(email) = LOWER(${user.email})
+        ORDER BY (id = ${String(user.id)}) DESC
+        LIMIT 1
+      `;
+    } else {
+      [canonicalUser] = await sql`
+        SELECT id, source_system
+        FROM creapd.users
+        WHERE id = ${String(user.id)}
+        LIMIT 1
+      `;
+    }
+
+    const canonicalUserId = canonicalUser?.id || String(user.id);
+    const canonicalSourceSystem = canonicalUser?.source_system || identitySource;
+
     stage = 'upsert_creapd_user';
     const [bridgedUser] = await sql`
       INSERT INTO creapd.users (
@@ -101,24 +145,20 @@ export default async function handler(request, response) {
         updated_at
       )
       VALUES (
-        ${user.id},
+        ${canonicalUserId},
         ${user.email || null},
         ${displayName},
-        ${identitySource},
-        ${JSON.stringify({
-          backend_auth_bridge: true,
-          last_verified_at: verifiedAt,
-        })}::jsonb,
+        ${canonicalSourceSystem},
+        ${JSON.stringify(identityPayload)}::jsonb,
         NOW(),
         NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
-        display_name = EXCLUDED.display_name,
-        source_system = EXCLUDED.source_system,
+        display_name = COALESCE(EXCLUDED.display_name, creapd.users.display_name),
         source_payload = COALESCE(creapd.users.source_payload, '{}'::jsonb) || EXCLUDED.source_payload,
         updated_at = NOW()
-      RETURNING id, email, display_name, source_system, updated_at
+      RETURNING id, email, display_name, source_system, source_payload, updated_at
     `;
 
     stage = 'complete';
@@ -127,6 +167,7 @@ export default async function handler(request, response) {
       service: 'creapd-auth',
       identity_source: identitySource,
       data_authority: 'neon',
+      canonical_user_id: bridgedUser.id,
       user: bridgedUser,
       timestamp: new Date().toISOString(),
     });
