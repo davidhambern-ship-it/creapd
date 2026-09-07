@@ -13,85 +13,89 @@ import { useFooterStats } from '@/hooks/useFooterStats';
 const VARIANTS = {
   news: {
     label: 'News Production',
-    icon: Radio,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: Clock, label: 'Last Refresh', value: 'Today 6:00 AM' },
-      { icon: Radio, label: 'Sources', value: '24' },
-      { icon: Database, label: 'Pulled', value: '47' },
-      { icon: CheckCircle, label: 'Approved', value: '18', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'lastRefresh', icon: Clock, label: 'Last Refresh' },
+      { key: 'sources', icon: Radio, label: 'Sources' },
+      { key: 'pulled', icon: Database, label: 'Pulled' },
+      { key: 'approved', icon: CheckCircle, label: 'Approved' },
     ],
     action: { icon: Zap, label: 'Generate Brief', path: '/news/brief' },
   },
   music: {
     label: 'Music Production',
-    icon: Music,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: Disc3, label: 'Runtime', value: '70 min' },
-      { icon: ListMusic, label: 'Playlist', value: '12 tracks' },
-      { icon: Headphones, label: 'Talk Segments', value: '12 min' },
-      { icon: CheckCircle, label: 'Rundown', value: 'Ready', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'runtime', icon: Disc3, label: 'Runtime' },
+      { key: 'playlist', icon: ListMusic, label: 'Playlist' },
+      { key: 'talkSegments', icon: Headphones, label: 'Talk Segments' },
+      { key: 'rundown', icon: CheckCircle, label: 'Rundown' },
     ],
     action: { icon: Zap, label: 'Build Rundown', path: '/music/rundown' },
   },
   spiritual: {
     label: 'Spiritual Production',
-    icon: Church,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: BookOpen, label: 'Scriptures', value: '6 indexed' },
-      { icon: GraduationCap, label: 'Studies', value: '3 active' },
-      { icon: PenTool, label: 'Sections', value: '8' },
-      { icon: CheckCircle, label: 'Approved', value: '5', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'research', icon: BookOpen, label: 'Research' },
+      { key: 'studies', icon: GraduationCap, label: 'Studies' },
+      { key: 'sections', icon: PenTool, label: 'Sections' },
+      { key: 'approved', icon: CheckCircle, label: 'Approved Assets' },
     ],
     action: { icon: Zap, label: 'Build Message', path: '/spiritual/message' },
   },
   talk: {
     label: 'Talk Production',
-    icon: Mic2,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: Lightbulb, label: 'Topics', value: '5 ready' },
-      { icon: Users, label: 'Guests', value: '2 confirmed' },
-      { icon: ClipboardList, label: 'Rundown', value: 'Ready', color: 'text-berna-emerald' },
-      { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'topics', icon: Lightbulb, label: 'Topics' },
+      { key: 'guests', icon: Users, label: 'Guests' },
+      { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
+      { key: 'assets', icon: CheckCircle, label: 'Assets' },
     ],
     action: { icon: Zap, label: 'Open Rundown', path: '/talk/rundown' },
   },
   cooking: {
     label: 'Cooking Production',
-    icon: ChefHat,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: ChefHat, label: 'Recipes', value: '4 ready' },
-      { icon: Carrot, label: 'Ingredients', value: '12 listed' },
-      { icon: ClipboardList, label: 'Rundown', value: 'Ready', color: 'text-berna-emerald' },
-      { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'recipes', icon: ChefHat, label: 'Recipes' },
+      { key: 'ingredients', icon: Carrot, label: 'Ingredients' },
+      { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
+      { key: 'assets', icon: CheckCircle, label: 'Assets' },
     ],
     action: { icon: Zap, label: 'Open Rundown', path: '/cooking/rundown' },
   },
+  sports: {
+    label: 'Sports Production',
+    stats: [
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'games', icon: Trophy, label: 'Games' },
+      { key: 'athletes', icon: Users, label: 'Athletes' },
+      { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
+      { key: 'assets', icon: CheckCircle, label: 'Assets' },
+    ],
+    action: { icon: Zap, label: 'Open Rundown', path: '/sports/rundown' },
+  },
   cosmo: {
     label: 'Cosmo Production',
-    icon: Sparkles,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: Sparkles, label: 'Topics', value: '5 ready' },
-      { icon: Users, label: 'Guests', value: '2 confirmed' },
-      { icon: ClipboardList, label: 'Rundown', value: 'Ready', color: 'text-berna-emerald' },
-      { icon: CheckCircle, label: 'Assets', value: '8', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'topics', icon: Sparkles, label: 'Topics' },
+      { key: 'guests', icon: Users, label: 'Guests' },
+      { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
+      { key: 'assets', icon: CheckCircle, label: 'Assets' },
     ],
     action: { icon: Zap, label: 'Open Rundown', path: '/cosmo/rundown' },
   },
   research: {
     label: 'Research Production',
-    icon: FlaskConical,
     stats: [
-      { icon: Activity, label: 'Automation', value: 'Active', color: 'text-berna-emerald' },
-      { icon: Lightbulb, label: 'Topics', value: '3 active' },
-      { icon: Layers, label: 'Points', value: '24' },
-      { icon: CheckCircle, label: 'Approved', value: '12', color: 'text-berna-emerald' },
-      { icon: Sparkles, label: 'Packages', value: '5', color: 'text-berna-emerald' },
+      { key: 'automation', icon: Activity, label: 'Automation' },
+      { key: 'topics', icon: Lightbulb, label: 'Topics' },
+      { key: 'points', icon: Layers, label: 'Points' },
+      { key: 'approved', icon: CheckCircle, label: 'Approved' },
+      { key: 'packages', icon: Sparkles, label: 'Packages' },
     ],
     action: { icon: Zap, label: 'Open Topics', path: '/research/topics' },
   },
@@ -102,24 +106,35 @@ export default function ProductionFooter({ variant = 'news' }) {
   const ActionIcon = config.action.icon;
   const liveStats = useFooterStats(variant);
 
-  // Build stats array — use live data when available, fall back to static config
   const stats = config.stats.map((stat) => {
-    if (variant === 'music' && liveStats) {
-      if (stat.label === 'Automation') return { ...stat, value: liveStats.automation, color: liveStats.automationColor };
-      if (stat.label === 'Runtime') return { ...stat, value: liveStats.runtime };
-      if (stat.label === 'Playlist') return { ...stat, value: liveStats.playlist };
-      if (stat.label === 'Talk Segments') return { ...stat, value: liveStats.talkSegments };
-      if (stat.label === 'Rundown') return { ...stat, value: liveStats.rundown, color: liveStats.rundownColor };
-    }
-    return stat;
+    const live = liveStats?.[stat.key];
+    return {
+      ...stat,
+      value: live?.value ?? '—',
+      color: live?.color || 'text-foreground',
+    };
   });
+
+  const health = liveStats?.health || 'loading';
+  const healthLabel = health === 'failed'
+    ? 'Attention Required'
+    : health === 'ok'
+      ? 'Systems Reporting'
+      : health === 'unknown'
+        ? 'Status Unavailable'
+        : 'Status Loading';
+  const healthColor = health === 'failed'
+    ? 'text-red-400'
+    : health === 'ok'
+      ? 'text-berna-emerald'
+      : 'text-muted-foreground';
 
   return (
     <footer className="hidden lg:flex h-8 glass-panel-navy border-t border-white/[0.06] items-center px-4 gap-6 text-[10px] font-mono text-muted-foreground">
-      {stats.map((stat, i) => (
-        <div key={i} className="flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
+      {stats.map((stat) => (
+        <div key={stat.key} className="flex items-center gap-1.5 flex-shrink-0 whitespace-nowrap">
           <stat.icon className={`w-3 h-3 ${stat.color || ''}`} />
-          <span>{stat.label}: <span className={stat.color || 'text-foreground'}>{stat.value}</span></span>
+          <span>{stat.label}: <span className={stat.color}>{stat.value}</span></span>
         </div>
       ))}
       <div className="ml-auto flex items-center gap-4 flex-shrink-0">
@@ -130,9 +145,9 @@ export default function ProductionFooter({ variant = 'news' }) {
           <ActionIcon className="w-3 h-3" />
           {config.action.label}
         </Link>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
-          <Wifi className="w-3 h-3 text-berna-emerald" />
-          <span>All Systems Operational</span>
+        <div className={`flex items-center gap-1.5 whitespace-nowrap ${healthColor}`}>
+          <Wifi className="w-3 h-3" />
+          <span>{healthLabel}</span>
         </div>
       </div>
     </footer>
