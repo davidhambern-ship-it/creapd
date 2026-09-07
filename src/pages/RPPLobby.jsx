@@ -49,6 +49,7 @@ export default function RPPLobby() {
   const { config, topics, points, packages, dossiers, loading } = researchData;
   const [userName, setUserName] = useState('');
 
+  const needsConfig = !config?.production_name;
   const researchingTopics = topics.filter(t => t.status === 'researching');
   const approvedPackages = packages.filter(p => p.status === 'approved' || p.status === 'finalized');
 
@@ -64,18 +65,21 @@ export default function RPPLobby() {
 
   const recommendedDeptId = getRecommendedDeptId(topics, points, packages, approvedPackages, dossiers);
   const recommendedDept = RPP_DEPARTMENTS.find(d => d.id === recommendedDeptId) || RPP_DEPARTMENTS[1];
+  const recommendedPath = needsConfig ? '/research/configure' : recommendedDept.path;
 
   const departments = RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map((d, i) => ({
     dept: d,
     status: getDeptStatus(d.id, topics, points, packages, dossiers),
     count: { topics: topics.length, research: points.length, dossier: (dossiers || []).length, develop: packages.length, packet: approvedPackages.length }[d.id] || 0,
-    recommended: d.id === recommendedDeptId,
+    recommended: !needsConfig && d.id === recommendedDeptId,
     index: i,
   }));
 
   const recommendation = (() => {
-    if (!config?.production_name || topics.length === 0)
-      return 'We need a topic before the team can work — start in Topics.';
+    if (needsConfig)
+      return 'Set the research scope and methodology first — then the team can begin.';
+    if (topics.length === 0)
+      return 'Configuration is ready — define your first research topic.';
     if (researchingTopics.length > 0)
       return `${researchingTopics.length} topic${researchingTopics.length > 1 ? 's' : ''} currently being researched.`;
     if (points.length === 0)
@@ -85,7 +89,13 @@ export default function RPPLobby() {
     return 'Your Production Packet is ready — collect it from Packet.';
   })();
 
-  const ctaLabel = topics.length === 0 ? 'Start New Topic' : approvedPackages.length > 0 ? 'Collect Packet' : 'Continue Project';
+  const ctaLabel = needsConfig
+    ? 'Configure Research'
+    : topics.length === 0
+      ? 'Start New Topic'
+      : approvedPackages.length > 0
+        ? 'Collect Packet'
+        : 'Continue Project';
 
   useEffect(() => {
     base44.auth.me().then(u => { if (u?.full_name) setUserName(u.full_name.split(' ')[0]); }).catch(() => {});
@@ -145,7 +155,7 @@ export default function RPPLobby() {
                   </div>
                 )}
                 <button
-                  onClick={() => navigate(recommendedDept.path)}
+                  onClick={() => navigate(recommendedPath)}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all hover:gap-3 shrink-0"
                   style={{
                     background: 'linear-gradient(135deg, hsl(190 50% 18% / 0.5), hsl(270 50% 18% / 0.3))',
