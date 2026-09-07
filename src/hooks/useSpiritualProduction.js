@@ -10,12 +10,23 @@ export function useSpiritualProduction(configId) {
   const [packageItems, setPackageItems] = useState([]);
   const [presentationScenes, setPresentationScenes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [generatingVoice, setGeneratingVoice] = useState(false);
   const [generatingImages, setGeneratingImages] = useState(false);
   const pollRef = useRef(null);
 
-  const fetchSubEntities = async (activeId) => {
-    const [r, t, m, a, p, ps] = await Promise.all([
+  const clearProduction = useCallback(() => {
+    setConfig(null);
+    setResearch([]);
+    setTopics([]);
+    setMessageSections([]);
+    setAssets([]);
+    setPackageItems([]);
+    setPresentationScenes([]);
+  }, []);
+
+  const fetchSubEntities = useCallback(async (activeId) => {
+    const results = await Promise.allSettled([
       base44.entities.SpiritualResearchItem.filter({ configuration_id: activeId }),
       base44.entities.SpiritualStudyTopic.filter({ configuration_id: activeId }),
       base44.entities.SpiritualMessageSection.filter({ configuration_id: activeId }, 'order'),
@@ -23,49 +34,70 @@ export function useSpiritualProduction(configId) {
       base44.entities.SpiritualPackageItem.filter({ configuration_id: activeId }, 'order'),
       base44.entities.PresentationScene.filter({ configuration_id: activeId }, 'order')
     ]);
-    setResearch(r || []);
-    setTopics(t || []);
-    setMessageSections(m || []);
-    setAssets(a || []);
-    setPackageItems(p || []);
-    setPresentationScenes(ps || []);
-  };
+
+    const setters = [
+      setResearch,
+      setTopics,
+      setMessageSections,
+      setAssets,
+      setPackageItems,
+      setPresentationScenes
+    ];
+    const labels = ['research', 'topics', 'message sections', 'assets', 'package items', 'presentation scenes'];
+    let partialFailure = false;
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        setters[index](result.value || []);
+      } else {
+        partialFailure = true;
+        console.error(`Spiritual ${labels[index]} load failed:`, result.reason);
+      }
+    });
+
+    return partialFailure;
+  }, []);
 
   const loadAll = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    let activeId = configId;
-    let activeConfig = null;
+    setError(null);
 
-    if (!activeId) {
-      const configs = await base44.entities.SpiritualProductionConfiguration.list('-created_date', 1);
-      if (configs && configs.length > 0) {
-        activeId = configs[0].id;
-        activeConfig = configs[0];
-      } else {
-        setConfig(null);
-        setResearch([]);
-        setTopics([]);
-        setMessageSections([]);
-        setAssets([]);
-        setPackageItems([]);
-        setLoading(false);
-        return;
+    try {
+      let activeId = configId;
+      let activeConfig = null;
+
+      if (!activeId) {
+        const configs = await base44.entities.SpiritualProductionConfiguration.list('-created_date', 1);
+        if (configs && configs.length > 0) {
+          activeId = configs[0].id;
+          activeConfig = configs[0];
+        } else {
+          clearProduction();
+          return;
+        }
       }
-    }
 
-    if (!activeConfig) {
-      activeConfig = await base44.entities.SpiritualProductionConfiguration.get(activeId);
-    }
-    setConfig(activeConfig);
+      if (!activeConfig) {
+        activeConfig = await base44.entities.SpiritualProductionConfiguration.get(activeId);
+      }
+      setConfig(activeConfig);
 
-    // Only fetch sub-entities when not building (avoids rate limit during polling)
-    if (activeConfig.status !== 'building') {
-      await fetchSubEntities(activeId);
+      // Only fetch sub-entities when not building (avoids rate limit during polling).
+      if (activeConfig.status !== 'building') {
+        const partialFailure = await fetchSubEntities(activeId);
+        if (partialFailure) {
+          setError(new Error('Some Spiritual production data could not be loaded. Refresh to retry.'));
+        }
+      }
+    } catch (err) {
+      console.error('useSpiritualProduction load error:', err);
+      setError(err);
+    } finally {
+      if (!silent) setLoading(false);
     }
-    if (!silent) setLoading(false);
-  }, [configId]);
+  }, [configId, clearProduction, fetchSubEntities]);
 
-  const generateSceneImages = async (activeId) => {
+  const generateSceneImages = useCallback(async (activeId) => {
     try {
       const sections = await base44.entities.SpiritualMessageSection.filter({ configuration_id: activeId }, 'order');
       for (const section of sections) {
@@ -79,31 +111,37 @@ export function useSpiritualProduction(configId) {
         } catch (err) { console.error('Image gen error:', err); }
       }
     } catch (err) { console.error('Scene image generation failed:', err); }
-  };
+  }, []);
 
-  // Poll config status when building
+  // Poll config status when building.
   useEffect(() => {
     if (config?.status !== 'building') {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
 
-    let activeId = config.id;
+    const activeId = config.id;
     pollRef.current = setInterval(async () => {
       try {
         const updated = await base44.entities.SpiritualProductionConfiguration.get(activeId);
         // Staleness safety net: if the config has been "building" for more than 3 minutes,
-        // the backend function likely timed out without reaching the catch block. Mark as failed.
-        const staleMs = Date.now() - new Date(updated.updated_date).getTime();
+        // the backend function likely timed out without reaching its catch block.
+        const updatedAt = new Date(updated.updated_date).getTime();
+        const staleMs = Number.isFinite(updatedAt) ? Date.now() - updatedAt : 0;
         if (updated.status === 'building' && staleMs > 180000) {
           await base44.entities.SpiritualProductionConfiguration.update(activeId, { status: 'failed' });
           updated.status = 'failed';
         }
         setConfig(updated);
+
         if (updated.status !== 'building') {
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-          await fetchSubEntities(activeId);
-          // After build completes, trigger voice generation
+          const partialFailure = await fetchSubEntities(activeId);
+          if (partialFailure) {
+            setError(new Error('Some Spiritual production data could not be loaded after the build. Refresh to retry.'));
+          }
+
+          // After build completes, trigger voice generation.
           if (updated.status === 'ready') {
             setGeneratingVoice(true);
             const voiceTimeout = setTimeout(() => {
@@ -112,6 +150,7 @@ export function useSpiritualProduction(configId) {
               setGeneratingImages(false);
               loadAll(true);
             }, 300000);
+
             base44.functions.invoke('generateSpiritualVoiceovers', { configuration_id: activeId })
               .then(async () => {
                 clearTimeout(voiceTimeout);
@@ -122,11 +161,13 @@ export function useSpiritualProduction(configId) {
                   setGeneratingImages(false);
                   loadAll(true);
                 }, 300000);
+
                 try {
                   await generateSceneImages(activeId);
                 } catch (err) {
                   console.error('Scene image generation failed:', err);
                 }
+
                 clearTimeout(imageTimeout);
                 setGeneratingImages(false);
                 await loadAll(true);
@@ -134,21 +175,44 @@ export function useSpiritualProduction(configId) {
               .catch(err => {
                 clearTimeout(voiceTimeout);
                 console.error('Voice generation error:', err);
+                setError(err);
                 setGeneratingVoice(false);
                 setGeneratingImages(false);
                 loadAll(true);
               });
           }
         }
-      } catch (e) { /* ignore poll errors */ }
+      } catch (err) {
+        console.error('Spiritual build status poll failed:', err);
+        setError(err);
+      }
     }, 10000);
 
-    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
-  }, [config?.status, config?.id]);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [config?.status, config?.id, fetchSubEntities, generateSceneImages, loadAll]);
 
   useEffect(() => {
     loadAll(false);
   }, [loadAll]);
 
-  return { config, setConfig, research, topics, messageSections, assets, packageItems, presentationScenes, loading, generatingVoice, generatingImages, refresh: () => loadAll(true) };
+  return {
+    config,
+    setConfig,
+    research,
+    topics,
+    messageSections,
+    assets,
+    packageItems,
+    presentationScenes,
+    loading,
+    error,
+    generatingVoice,
+    generatingImages,
+    refresh: () => loadAll(true)
+  };
 }
