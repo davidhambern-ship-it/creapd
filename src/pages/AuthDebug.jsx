@@ -22,6 +22,7 @@ export default function AuthDebug() {
         neon_auth_selected: shouldUseNeonAuth(),
         session_present: false,
         user_present: false,
+        session_token_present: false,
         jwt_present: false,
         jwt_segments: 0,
         jwt_length: 0,
@@ -34,10 +35,20 @@ export default function AuthDebug() {
 
       try {
         const sessionResult = await neonAuth.getSession();
-        result.session_present = Boolean(sessionResult?.data?.session);
+        const session = sessionResult?.data?.session;
+        result.session_present = Boolean(session);
         result.user_present = Boolean(sessionResult?.data?.user);
 
-        const token = await neonAuth.getJWTToken?.();
+        // Read the signed JWT directly from the already-valid session. The
+        // current beta SDK's getJWTToken() helper performs another session fetch
+        // and is the source of the invalid HTTP-method error we are isolating.
+        const token =
+          session?.token ||
+          session?.access_token ||
+          session?.accessToken ||
+          null;
+
+        result.session_token_present = Boolean(session?.token);
         result.jwt_present = Boolean(token);
         result.jwt_segments = token ? token.split('.').length : 0;
         result.jwt_length = token ? token.length : 0;
@@ -90,6 +101,7 @@ export default function AuthDebug() {
         <StatusRow label="Neon auth selected" value={state.neon_auth_selected ?? '—'} />
         <StatusRow label="Session present" value={state.session_present ?? '—'} />
         <StatusRow label="User present" value={state.user_present ?? '—'} />
+        <StatusRow label="Session token present" value={state.session_token_present ?? '—'} />
         <StatusRow label="JWT present" value={state.jwt_present ?? '—'} />
         <StatusRow label="JWT segments" value={state.jwt_segments ?? '—'} />
         <StatusRow label="JWT length" value={state.jwt_length ?? '—'} />
