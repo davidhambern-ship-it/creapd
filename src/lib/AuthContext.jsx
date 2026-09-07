@@ -120,7 +120,16 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setIsLoadingAuth(false);
         setAuthChecked(true);
-        setBackendAuthStatus('neon-session-ready');
+
+        // Prove the Neon JWT independently at the Vercel API boundary and
+        // bridge the verified identity into CREAPD's application user table.
+        setBackendAuthStatus('checking');
+        void creapdApi.get('/auth/me')
+          .then(() => setBackendAuthStatus('ready'))
+          .catch((backendError) => {
+            console.warn('CREAPD Neon backend auth verification unavailable:', backendError);
+            setBackendAuthStatus('unavailable');
+          });
       } catch (error) {
         console.error('Neon user auth check failed:', error);
         setUser(null);
