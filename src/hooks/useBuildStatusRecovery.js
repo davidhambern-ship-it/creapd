@@ -33,6 +33,7 @@ export function useBuildStatusRecovery({
     let active = true;
     let timer = null;
     let checking = false;
+    const watchStartedAt = Date.now();
 
     const checkStatus = async () => {
       if (!active || checking) return;
@@ -47,7 +48,9 @@ export function useBuildStatusRecovery({
 
         const isStillActive = activeStatuses.includes(updated.status);
         const updatedAt = new Date(updated.updated_date).getTime();
-        const staleMs = Number.isFinite(updatedAt) ? Date.now() - updatedAt : 0;
+        const staleMs = Number.isFinite(updatedAt)
+          ? Date.now() - updatedAt
+          : Date.now() - watchStartedAt;
 
         if (isStillActive && staleMs >= staleAfterMs) {
           console.error(
