@@ -1,5 +1,6 @@
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireBase44User } from '../../../server/base44Auth.js';
+import { requireNeonUser } from '../../../server/neonAuth.js';
 
 export const config = {
   maxDuration: 10,
@@ -7,6 +8,11 @@ export const config = {
 
 function getDisplayName(user) {
   return user?.full_name || user?.display_name || user?.name || null;
+}
+
+function getRequestedAuthProvider(request) {
+  const raw = request.headers?.['x-creapd-auth-provider'] || request.headers?.['X-CREAPD-Auth-Provider'];
+  return String(raw || 'base44').trim().toLowerCase();
 }
 
 export default async function handler(request, response) {
@@ -26,10 +32,48 @@ export default async function handler(request, response) {
   }
 
   try {
-    const user = await requireBase44User(request);
+    const provider = getRequestedAuthProvider(request);
     const sql = getSql();
-    const displayName = getDisplayName(user);
     const verifiedAt = new Date().toISOString();
+
+    let user;
+    let identitySource;
+    let displayName;
+
+    if (provider === 'neon') {
+      const neonIdentity = await requireNeonUser(request);
+      const [authUser] = await sql`
+        SELECT id, email, name
+        FROM neon_auth.user
+        WHERE id = ${neonIdentity.id}
+        LIMIT 1
+      `;
+
+      if (!authUser) {
+        const error = new Error('Authenticated Neon user not found');
+        error.status = 401;
+        error.code = 'AUTH_USER_NOT_RESOLVED';
+        throw error;
+      }
+
+      user = {
+        id: authUser.id,
+        email: authUser.email || neonIdentity.email || null,
+        name: authUser.name || null,
+      };
+      identitySource = 'neon';
+      displayName = getDisplayName(user);
+    } else if (provider === 'base44') {
+      user = await requireBase44User(request);
+      identitySource = 'base44';
+      displayName = getDisplayName(user);
+    } else {
+      return response.status(400).json({
+        ok: false,
+        service: 'creapd-auth',
+        error: 'unsupported_auth_provider',
+      });
+    }
 
     const [bridgedUser] = await sql`
       INSERT INTO creapd.users (
@@ -45,7 +89,7 @@ export default async function handler(request, response) {
         ${user.id},
         ${user.email || null},
         ${displayName},
-        'base44',
+        ${identitySource},
         ${JSON.stringify({
           backend_auth_bridge: true,
           last_verified_at: verifiedAt,
@@ -56,7 +100,7 @@ export default async function handler(request, response) {
       ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
         display_name = EXCLUDED.display_name,
-        source_system = 'base44',
+        source_system = EXCLUDED.source_system,
         source_payload = COALESCE(creapd.users.source_payload, '{}'::jsonb) || EXCLUDED.source_payload,
         updated_at = NOW()
       RETURNING id, email, display_name, source_system, updated_at
@@ -65,7 +109,7 @@ export default async function handler(request, response) {
     return response.status(200).json({
       ok: true,
       service: 'creapd-auth',
-      identity_source: 'base44',
+      identity_source: identitySource,
       data_authority: 'neon',
       user: bridgedUser,
       timestamp: new Date().toISOString(),
