@@ -92,6 +92,7 @@ export const TOPIC_STATUS_LABELS = {
   selected: 'Selected',
   used: 'Used',
   rejected: 'Rejected',
+  failed: 'Failed — Retry',
   archived: 'Archived'
 };
 
