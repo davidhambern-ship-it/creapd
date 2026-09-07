@@ -1,7 +1,8 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { CREAPModeProvider } from '@/context/CREAPModeContext';
 import LivingEnvironment from '@/components/environment/LivingEnvironment';
+import AppErrorBoundary from '@/components/shared/AppErrorBoundary';
 
 /**
  * Thin layout route that wraps all authenticated pages in the CREAPModeProvider.
@@ -13,10 +14,14 @@ import LivingEnvironment from '@/components/environment/LivingEnvironment';
  * across the entire authenticated experience. (CREAPD-MOTION-001)
  */
 export default function CREAPModeLayout() {
+  const location = useLocation();
+
   return (
     <CREAPModeProvider>
-      <LivingEnvironment />
-      <Outlet />
+      <AppErrorBoundary resetKey={location.pathname}>
+        <LivingEnvironment />
+        <Outlet />
+      </AppErrorBoundary>
     </CREAPModeProvider>
   );
 }
