@@ -11,6 +11,7 @@ import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
 
 import Login from '@/pages/Login';
+import AuthDebug from '@/pages/AuthDebug';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
@@ -164,6 +165,7 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route path="/auth-debug" element={<AuthDebug />} />
         <Route element={<CREAPModeLayout />}>
         <Route path="/" element={<CreapdHome />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
