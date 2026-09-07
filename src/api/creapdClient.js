@@ -1,4 +1,5 @@
 import { appParams } from '@/lib/app-params';
+import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
 
 function getStoredBase44Token() {
   if (typeof window === 'undefined') return appParams.token || null;
@@ -11,16 +12,33 @@ function getStoredBase44Token() {
   );
 }
 
+async function getAuthContext() {
+  if (shouldUseNeonAuth()) {
+    const sessionResult = await neonAuth.getSession();
+    const accessToken = sessionResult?.data?.session?.access_token || null;
+    return {
+      provider: 'neon',
+      token: accessToken,
+    };
+  }
+
+  return {
+    provider: 'base44',
+    token: getStoredBase44Token(),
+  };
+}
+
 async function request(path, options = {}) {
-  const token = getStoredBase44Token();
+  const auth = await getAuthContext();
   const headers = new Headers(options.headers || {});
 
   headers.set('Accept', 'application/json');
+  headers.set('X-CREAPD-Auth-Provider', auth.provider);
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  if (auth.token) {
+    headers.set('Authorization', `Bearer ${auth.token}`);
   }
 
   const response = await fetch(`/api/creapd${path}`, {
@@ -60,4 +78,4 @@ export const creapdApi = {
   request,
 };
 
-export { getStoredBase44Token };
+export { getStoredBase44Token, getAuthContext };
