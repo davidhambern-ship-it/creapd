@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, User, Menu as MenuIcon } from 'lucide-react';
+import { User, Menu as MenuIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Link, useLocation } from 'react-router-dom';
@@ -7,6 +7,7 @@ import NotificationDropdown from '@/components/shared/NotificationDropdown';
 import GlobalSearch from '@/components/shared/GlobalSearch';
 import CreapdLogo from '@/components/brand/CreapdLogo';
 import ModeToggle from '@/components/creap/ModeToggle';
+import { useCREAPMode } from '@/context/CREAPModeContext';
 import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
 
 export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
@@ -14,19 +15,33 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
   const [briefingStatus, setBriefingStatus] = useState(null);
   const location = useLocation();
   const activeMode = getActiveProductionMode(location.pathname);
+  const activeModeConfig = PRODUCTION_MODES.find(mode => mode.key === activeMode);
+  const { activeDepartment } = useCREAPMode();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // News Briefing is a News-only entity. Do not query or display it inside
+  // unrelated Production Profiles.
   useEffect(() => {
+    if (activeMode !== 'news') {
+      setBriefingStatus(null);
+      return;
+    }
+
+    let cancelled = false;
     base44.entities.Briefing.filter({ date: new Date().toISOString().split('T')[0] }, '-created_date', 1)
       .then(briefs => {
-        if (briefs.length > 0) setBriefingStatus(briefs[0].status);
+        if (!cancelled) setBriefingStatus(briefs?.[0]?.status || null);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        if (!cancelled) setBriefingStatus(null);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeMode]);
 
   const statusColors = {
     ready: 'text-berna-emerald',
@@ -55,8 +70,8 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
         {/* Purple bottom glow */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-berna-purple/40 to-transparent" />
 
-        {/* Emerald pulse when ready */}
-        {briefingStatus === 'ready' && (
+        {/* Emerald pulse when the News brief is actually ready */}
+        {activeMode === 'news' && briefingStatus === 'ready' && (
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-berna-emerald/60 to-transparent pulse-glow" />
         )}
 
@@ -86,18 +101,36 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
                 {time.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Next Run</p>
-              <p className="text-xs font-mono text-berna-purple">{hoursUntil}h {minsUntil}m</p>
-            </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Brief</p>
-              <p className={`text-xs font-semibold ${statusColors[briefingStatus] || 'text-muted-foreground'}`}>
-                {statusLabels[briefingStatus] || 'No Brief'}
-              </p>
-            </div>
+
+            {activeMode === 'news' ? (
+              <>
+                <div className="h-8 w-px bg-white/10" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Next Run</p>
+                  <p className="text-xs font-mono text-berna-purple">{hoursUntil}h {minsUntil}m</p>
+                </div>
+                <div className="h-8 w-px bg-white/10" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Brief</p>
+                  <p className={`text-xs font-semibold ${statusColors[briefingStatus] || 'text-muted-foreground'}`}>
+                    {statusLabels[briefingStatus] || 'No Brief'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="h-8 w-px bg-white/10" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Production Profile</p>
+                  <p className="text-xs font-semibold text-foreground">{activeModeConfig?.label || activeMode}</p>
+                </div>
+                <div className="h-8 w-px bg-white/10" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Department</p>
+                  <p className="text-xs font-semibold text-berna-purple">{activeDepartment?.name || 'Dashboard'}</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
