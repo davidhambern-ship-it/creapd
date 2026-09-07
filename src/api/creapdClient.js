@@ -14,22 +14,20 @@ function getStoredBase44Token() {
 
 async function getAuthContext() {
   if (shouldUseNeonAuth()) {
-    // Neon Auth exposes the JWT explicitly for calls to external/owned APIs.
-    // Do not depend on the shape of getSession().session for this token.
-    const jwtToken = typeof neonAuth.getJWTToken === 'function'
-      ? await neonAuth.getJWTToken()
-      : null;
-
-    // Compatibility fallback for older client/session shapes.
-    let fallbackToken = null;
-    if (!jwtToken) {
-      const sessionResult = await neonAuth.getSession();
-      fallbackToken = sessionResult?.data?.session?.access_token || null;
-    }
+    // The Neon session already contains the signed JWT. Reading it directly
+    // avoids a second SDK session lookup through getJWTToken(), which currently
+    // fails in this beta client with an invalid fetch-method error.
+    const sessionResult = await neonAuth.getSession();
+    const session = sessionResult?.data?.session;
+    const token =
+      session?.token ||
+      session?.access_token ||
+      session?.accessToken ||
+      null;
 
     return {
       provider: 'neon',
-      token: jwtToken || fallbackToken,
+      token,
     };
   }
 
