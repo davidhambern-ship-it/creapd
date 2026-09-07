@@ -38,13 +38,13 @@ function statusAccent(status) {
   if (status === 'researching') return 'hsl(35 90% 55%)';
   if (status === 'researched' || status === 'in_review') return 'hsl(152 60% 50%)';
   if (status === 'used') return 'hsl(210 80% 60%)';
-  if (status === 'rejected') return 'hsl(0 70% 55%)';
+  if (status === 'rejected' || status === 'failed') return 'hsl(0 70% 55%)';
   return 'hsl(190 60% 45%)';
 }
 
 function TopicCard({ topic, idx, researching, onResearch, onExtract, onDelete, horizontal }) {
   const isResearching = researching === topic.id;
-  const canResearch = topic.status === 'pending' || topic.status === 'rejected';
+  const canResearch = topic.status === 'pending' || topic.status === 'rejected' || topic.status === 'failed';
   const canExtract = topic.status === 'researched' && topic.point_count === 0;
   const accent = statusAccent(topic.status);
   const spine = SPINE_GRADIENTS[idx % SPINE_GRADIENTS.length];
@@ -96,7 +96,7 @@ function TopicCard({ topic, idx, researching, onResearch, onExtract, onDelete, h
           {canResearch && (
             <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => onResearch(topic)} disabled={isResearching}>
               {isResearching ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Search className="w-3 h-3 mr-1" />}
-              Research
+              {topic.status === 'failed' ? 'Retry' : 'Research'}
             </Button>
           )}
           {canExtract && (
