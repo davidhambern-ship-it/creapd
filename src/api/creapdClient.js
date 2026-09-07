@@ -14,11 +14,22 @@ function getStoredBase44Token() {
 
 async function getAuthContext() {
   if (shouldUseNeonAuth()) {
-    const sessionResult = await neonAuth.getSession();
-    const accessToken = sessionResult?.data?.session?.access_token || null;
+    // Neon Auth exposes the JWT explicitly for calls to external/owned APIs.
+    // Do not depend on the shape of getSession().session for this token.
+    const jwtToken = typeof neonAuth.getJWTToken === 'function'
+      ? await neonAuth.getJWTToken()
+      : null;
+
+    // Compatibility fallback for older client/session shapes.
+    let fallbackToken = null;
+    if (!jwtToken) {
+      const sessionResult = await neonAuth.getSession();
+      fallbackToken = sessionResult?.data?.session?.access_token || null;
+    }
+
     return {
       provider: 'neon',
-      token: accessToken,
+      token: jwtToken || fallbackToken,
     };
   }
 
