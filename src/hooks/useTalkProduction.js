@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useBuildStatusRecovery } from '@/hooks/useBuildStatusRecovery';
 
 export function useTalkProduction(configId) {
   const [config, setConfig] = useState(null);
@@ -75,6 +76,12 @@ export function useTalkProduction(configId) {
       setLoading(false);
     }
   }, [configId, clearProduction]);
+
+  useBuildStatusRecovery({
+    entityName: 'TalkProductionConfiguration',
+    config,
+    onTerminal: loadAll,
+  });
 
   useEffect(() => {
     loadAll();
