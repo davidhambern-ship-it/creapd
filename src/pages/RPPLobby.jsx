@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { RPP_DEPARTMENTS } from '@/lib/rppConstants';
-import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { Loader2, ArrowRight, Sparkles, BookOpen } from 'lucide-react';
 import DepartmentCabinet from '@/components/rpp/lobby/DepartmentCabinet';
 import NerveCenterBackground from '@/components/rpp/lobby/NerveCenterBackground';
@@ -98,7 +98,19 @@ export default function RPPLobby() {
         : 'Continue Project';
 
   useEffect(() => {
-    base44.auth.me().then(u => { if (u?.full_name) setUserName(u.full_name.split(' ')[0]); }).catch(() => {});
+    let cancelled = false;
+
+    creapdApi.get('/auth/me')
+      .then(payload => {
+        if (cancelled) return;
+        const fullName = payload?.user?.display_name || '';
+        if (fullName) setUserName(fullName.split(' ')[0]);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading) {
