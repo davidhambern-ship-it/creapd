@@ -29,6 +29,10 @@ export default function AuthDebug() {
         api_status: null,
         api_ok: false,
         api_error: null,
+        server_stage: null,
+        server_error_name: null,
+        server_error_code: null,
+        server_safe_message: null,
         identity_source: null,
         data_authority: null,
       };
@@ -39,9 +43,6 @@ export default function AuthDebug() {
         result.session_present = Boolean(session);
         result.user_present = Boolean(sessionResult?.data?.user);
 
-        // Read the signed JWT directly from the already-valid session. The
-        // current beta SDK's getJWTToken() helper performs another session fetch
-        // and is the source of the invalid HTTP-method error we are isolating.
         const token =
           session?.token ||
           session?.access_token ||
@@ -69,6 +70,10 @@ export default function AuthDebug() {
         const payload = await response.json().catch(() => null);
         result.api_ok = Boolean(response.ok && payload?.ok);
         result.api_error = payload?.error || null;
+        result.server_stage = payload?.diagnostic?.stage || null;
+        result.server_error_name = payload?.diagnostic?.error_name || null;
+        result.server_error_code = payload?.diagnostic?.error_code || null;
+        result.server_safe_message = payload?.diagnostic?.safe_message || null;
         result.identity_source = payload?.identity_source || null;
         result.data_authority = payload?.data_authority || null;
         result.status = response.ok ? 'complete' : 'failed';
@@ -108,6 +113,10 @@ export default function AuthDebug() {
         <StatusRow label="CREAPD API status" value={state.api_status ?? '—'} />
         <StatusRow label="CREAPD API ok" value={state.api_ok ?? '—'} />
         <StatusRow label="API error" value={state.api_error ?? 'none'} />
+        <StatusRow label="Server stage" value={state.server_stage ?? '—'} />
+        <StatusRow label="Server error name" value={state.server_error_name ?? '—'} />
+        <StatusRow label="Server error code" value={state.server_error_code ?? '—'} />
+        <StatusRow label="Server safe message" value={state.server_safe_message ?? '—'} />
         <StatusRow label="Identity source" value={state.identity_source ?? '—'} />
         <StatusRow label="Data authority" value={state.data_authority ?? '—'} />
       </div>
