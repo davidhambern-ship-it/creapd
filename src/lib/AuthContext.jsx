@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
@@ -12,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [backendAuthStatus, setBackendAuthStatus] = useState('unknown');
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   useEffect(() => {
@@ -45,6 +47,7 @@ export const AuthProvider = ({ children }) => {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
           setAuthChecked(true);
+          setBackendAuthStatus('unknown');
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
@@ -91,18 +94,29 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
-      // Now check if the user is authenticated
+      // Base44 remains the temporary identity provider while CREAPD backend/data move to Vercel + Neon.
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
+
+      // Non-blocking bridge: validate the same user token at our Vercel API boundary
+      // and upsert the identity bridge in Neon. Failure does not break the current UI.
+      setBackendAuthStatus('checking');
+      void creapdApi.get('/auth/me')
+        .then(() => setBackendAuthStatus('ready'))
+        .catch((backendError) => {
+          console.warn('CREAPD backend auth bridge unavailable:', backendError);
+          setBackendAuthStatus('unavailable');
+        });
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
+      setBackendAuthStatus('unknown');
       
       // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
@@ -117,6 +131,7 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
+    setBackendAuthStatus('unknown');
     
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
@@ -141,6 +156,7 @@ export const AuthProvider = ({ children }) => {
       authError,
       appPublicSettings,
       authChecked,
+      backendAuthStatus,
       logout,
       navigateToLogin,
       checkUserAuth,
