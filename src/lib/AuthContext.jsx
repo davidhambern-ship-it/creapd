@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
+import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
@@ -14,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [backendAuthStatus, setBackendAuthStatus] = useState('unknown');
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
 
   useEffect(() => {
     checkAppState();
@@ -24,15 +25,23 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
+
+      // Vercel Preview is the proving ground for CREAPD-owned auth. Do not call
+      // Base44 app/domain auth endpoints there; Base44 rejects arbitrary preview domains.
+      if (shouldUseNeonAuth()) {
+        setAppPublicSettings({ auth_provider: 'neon' });
+        setIsLoadingPublicSettings(false);
+        await checkUserAuth();
+        return;
+      }
       
-      // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
+      // Production remains on Base44 until Neon Auth is proven end-to-end.
       const appClient = createAxiosClient({
         baseURL: `/api/apps/public`,
         headers: {
           'X-App-Id': appParams.appId
         },
-        token: appParams.token, // Include token if available
+        token: appParams.token,
         interceptResponses: true
       });
       
@@ -40,7 +49,6 @@ export const AuthProvider = ({ children }) => {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
         
-        // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
           await checkUserAuth();
         } else {
@@ -53,7 +61,6 @@ export const AuthProvider = ({ children }) => {
       } catch (appError) {
         console.error('App state check failed:', appError);
         
-        // Handle app-level errors
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
@@ -93,8 +100,40 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkUserAuth = async () => {
+    if (shouldUseNeonAuth()) {
+      try {
+        setIsLoadingAuth(true);
+        const sessionResult = await neonAuth.getSession();
+        const session = sessionResult?.data?.session;
+        const currentUser = sessionResult?.data?.user;
+
+        if (!session || !currentUser) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoadingAuth(false);
+          setAuthChecked(true);
+          setBackendAuthStatus('unknown');
+          return;
+        }
+
+        setUser({ ...currentUser, auth_provider: 'neon' });
+        setIsAuthenticated(true);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        setBackendAuthStatus('neon-session-ready');
+      } catch (error) {
+        console.error('Neon user auth check failed:', error);
+        setUser(null);
+        setIsLoadingAuth(false);
+        setIsAuthenticated(false);
+        setAuthChecked(true);
+        setBackendAuthStatus('unavailable');
+      }
+      return;
+    }
+
     try {
-      // Base44 remains the temporary identity provider while CREAPD backend/data move to Vercel + Neon.
+      // Base44 remains the temporary production identity provider while CREAPD backend/data move to Vercel + Neon.
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
@@ -118,7 +157,6 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       setBackendAuthStatus('unknown');
       
-      // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
         setAuthError({
           type: 'auth_required',
@@ -132,18 +170,29 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     setBackendAuthStatus('unknown');
+
+    if (shouldUseNeonAuth()) {
+      void neonAuth.signOut().finally(() => {
+        if (shouldRedirect) {
+          window.location.href = '/login';
+        }
+      });
+      return;
+    }
     
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
       base44.auth.logout(window.location.href);
     } else {
-      // Just remove the token without redirect
       base44.auth.logout();
     }
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
+    if (shouldUseNeonAuth()) {
+      window.location.href = '/login';
+      return;
+    }
+
     base44.auth.redirectToLogin(window.location.href);
   };
 
