@@ -2,28 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { CREAP_MODES, MODE_TRAITS } from '@/lib/creapdPersonality';
+import { deriveProfileFromPath, getProfileDepartmentState } from '@/lib/productionDepartments';
 
 const CREAPModeContext = createContext(null);
 
 /**
- * Derive the production profile key from the current route.
- * /music/* → music, /talk/* → talk, /cooking/* → cooking, etc.
- * Default → news
- */
-function deriveProfileFromPath(pathname) {
-  if (pathname.startsWith('/music')) return 'music';
-  if (pathname.startsWith('/talk')) return 'talk';
-  if (pathname.startsWith('/cooking')) return 'cooking';
-  if (pathname.startsWith('/sports')) return 'sports';
-  if (pathname.startsWith('/cosmo')) return 'cosmo';
-  if (pathname.startsWith('/spiritual')) return 'spiritual';
-  return 'news';
-}
-
-/**
- * Derive the workflow step from the current route.
- * 1 = Story Review, 2 = Story Selection, 3 = Package Generation,
- * 4 = Package Review, 5 = Presentation, 6 = Export
+ * Legacy route-step mapping retained for backward compatibility with older
+ * CREAP components. New shared UI should prefer activeDepartmentKey and
+ * activeDepartment from the universal five-department architecture.
  */
 function deriveStepFromPath(pathname) {
   if (pathname.includes('/news/queue') || pathname.includes('/news/review')) return 1;
@@ -52,8 +38,15 @@ export function CREAPModeProvider({ children }) {
   const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
   const prefsRef = useRef(null);
 
-  // Derive profile and step from route
-  const profile = deriveProfileFromPath(location.pathname);
+  // Universal profile/department state. This fixes Research and gives every PP
+  // one shared answer to "which production department am I in?".
+  const departmentState = getProfileDepartmentState(location.pathname);
+  const profile = departmentState.profileKey || deriveProfileFromPath(location.pathname) || 'news';
+  const activeDepartmentKey = departmentState.departmentKey;
+  const activeDepartment = departmentState.department;
+  const activeProfileDepartment = departmentState.profileDepartment;
+
+  // Legacy step remains available so existing CREAP behaviors are not broken.
   const routeStep = deriveStepFromPath(location.pathname);
 
   // Sync step with route (but allow manual override)
@@ -117,6 +110,9 @@ export function CREAPModeProvider({ children }) {
     focusZone,
     isFocusAware,
     profile,
+    activeDepartmentKey,
+    activeDepartment,
+    activeProfileDepartment,
     isProcessing,
     setIsProcessing,
     traits,
@@ -132,8 +128,7 @@ export function CREAPModeProvider({ children }) {
 
 /**
  * Hook to access the CREAP Mode context.
- * Returns mode, setMode, activeStep, setActiveStep, focusZone,
- * isFocusAware, profile, isProcessing, setIsProcessing, traits, isLoadingPrefs.
+ * Legacy fields remain available while universal department fields are added.
  */
 export function useCREAPMode() {
   const ctx = useContext(CREAPModeContext);
