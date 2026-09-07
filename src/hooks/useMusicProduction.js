@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useBuildStatusRecovery } from '@/hooks/useBuildStatusRecovery';
 
 export function useMusicProduction(configId) {
   const [config, setConfig] = useState(null);
@@ -75,6 +76,14 @@ export function useMusicProduction(configId) {
       setLoading(false);
     }
   }, [configId, clearProduction]);
+
+  useBuildStatusRecovery({
+    entityName: 'MusicProductionConfiguration',
+    config,
+    onTerminal: loadAll,
+    staleAfterMs: 300000,
+    activeStatuses: ['planning', 'building', 'refreshing'],
+  });
 
   useEffect(() => {
     loadAll();
