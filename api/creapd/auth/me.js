@@ -15,6 +15,14 @@ function getRequestedAuthProvider(request) {
   return String(raw || 'base44').trim().toLowerCase();
 }
 
+function getSafeErrorMessage(error) {
+  const raw = String(error?.message || 'unknown_error');
+  return raw
+    .replace(/postgres(?:ql)?:\/\/\S+/gi, '[redacted-database-url]')
+    .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, 'Bearer [redacted-token]')
+    .slice(0, 240);
+}
+
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store, max-age=0');
 
@@ -31,6 +39,8 @@ export default async function handler(request, response) {
     });
   }
 
+  let stage = 'initialize';
+
   try {
     const provider = getRequestedAuthProvider(request);
     const sql = getSql();
@@ -41,7 +51,10 @@ export default async function handler(request, response) {
     let displayName;
 
     if (provider === 'neon') {
+      stage = 'verify_neon_jwt';
       const neonIdentity = await requireNeonUser(request);
+
+      stage = 'lookup_neon_auth_user';
       const [authUser] = await sql`
         SELECT id, email, name
         FROM neon_auth.user
@@ -64,6 +77,7 @@ export default async function handler(request, response) {
       identitySource = 'neon';
       displayName = getDisplayName(user);
     } else if (provider === 'base44') {
+      stage = 'verify_base44_user';
       user = await requireBase44User(request);
       identitySource = 'base44';
       displayName = getDisplayName(user);
@@ -75,6 +89,7 @@ export default async function handler(request, response) {
       });
     }
 
+    stage = 'upsert_creapd_user';
     const [bridgedUser] = await sql`
       INSERT INTO creapd.users (
         id,
@@ -106,6 +121,7 @@ export default async function handler(request, response) {
       RETURNING id, email, display_name, source_system, updated_at
     `;
 
+    stage = 'complete';
     return response.status(200).json({
       ok: true,
       service: 'creapd-auth',
@@ -120,14 +136,26 @@ export default async function handler(request, response) {
         ok: false,
         service: 'creapd-auth',
         error: error.code || 'authentication_required',
+        diagnostic: {
+          stage,
+          error_name: error?.name || null,
+          error_code: error?.code || null,
+          safe_message: getSafeErrorMessage(error),
+        },
       });
     }
 
-    console.error('[CREAPD AUTH BRIDGE]', error);
+    console.error('[CREAPD AUTH BRIDGE]', { stage, error });
     return response.status(503).json({
       ok: false,
       service: 'creapd-auth',
       error: 'auth_bridge_failed',
+      diagnostic: {
+        stage,
+        error_name: error?.name || null,
+        error_code: error?.code || null,
+        safe_message: getSafeErrorMessage(error),
+      },
     });
   }
 }
