@@ -134,9 +134,8 @@ export function getPreviousDepartment(key) {
 }
 
 /**
- * Map existing profile-specific pages to universal department stages.
- * This allows each production profile to have its existing pages
- * associated with the universal department they serve.
+ * Map each Production Profile's primary room to the universal department it serves.
+ * These paths are navigation anchors, not a complete list of rooms.
  */
 export const PROFILE_DEPARTMENT_MAP = {
   music: {
@@ -169,53 +168,154 @@ export const PROFILE_DEPARTMENT_MAP = {
   talk: {
     discovery: { label: 'Configure', path: '/talk/configure', description: 'Define show format, host, and topics.' },
     knowledge: { label: 'Research', path: '/talk/research', description: 'Gather guest info and topic research.' },
-    blueprint: { label: 'Topics', path: '/talk/topics', description: 'Organize talking points and show structure.' },
+    blueprint: { label: 'Topics', path: '/talk/topics', description: 'Organize talking points, guests, and show structure.' },
     production: { label: 'Assets', path: '/talk/assets', description: 'Generate scripts, voiceovers, and media.' },
     assembly: { label: 'Rundown & Export', path: '/talk/rundown', description: 'Assemble the show and export.' },
   },
   cooking: {
-    discovery: { label: 'Configure', path: '/cooking/configure', description: 'Define show format, cuisines, and recipes.' },
-    knowledge: { label: 'Research', path: '/cooking/research', description: 'Gather recipe research and ingredient info.' },
-    blueprint: { label: 'Recipes', path: '/cooking/recipes', description: 'Organize recipes and show structure.' },
+    discovery: { label: 'Configure', path: '/cooking/configure', description: 'Define show format, cuisines, and production goals.' },
+    knowledge: { label: 'Research', path: '/cooking/research', description: 'Gather recipe research and ingredient information.' },
+    blueprint: { label: 'Recipes', path: '/cooking/recipes', description: 'Organize recipes, ingredients, and show structure.' },
     production: { label: 'Assets', path: '/cooking/assets', description: 'Generate scripts, voiceovers, and media.' },
     assembly: { label: 'Rundown & Export', path: '/cooking/rundown', description: 'Assemble the show and export.' },
   },
   sports: {
-    discovery: { label: 'Configure', path: '/sports/configure', description: 'Define show format, sports, and games.' },
-    knowledge: { label: 'Research', path: '/sports/research', description: 'Gather game data, stats, and athlete info.' },
-    blueprint: { label: 'Games', path: '/sports/games', description: 'Organize matchups and show structure.' },
+    discovery: { label: 'Configure', path: '/sports/configure', description: 'Define show format, sports, and coverage goals.' },
+    knowledge: { label: 'Research', path: '/sports/research', description: 'Gather game data, stats, and athlete information.' },
+    blueprint: { label: 'Games', path: '/sports/games', description: 'Organize games, athletes, matchups, and show structure.' },
     production: { label: 'Assets', path: '/sports/assets', description: 'Generate scripts, voiceovers, and media.' },
     assembly: { label: 'Rundown & Export', path: '/sports/rundown', description: 'Assemble the show and export.' },
   },
   cosmo: {
-    discovery: { label: 'Configure', path: '/cosmo/configure', description: 'Define show format and beauty topics.' },
-    knowledge: { label: 'Research', path: '/cosmo/research', description: 'Gather product info and beauty research.' },
-    blueprint: { label: 'Topics', path: '/cosmo/topics', description: 'Organize talking points and show structure.' },
+    discovery: { label: 'Configure', path: '/cosmo/configure', description: 'Define show format and health/beauty production goals.' },
+    knowledge: { label: 'Research', path: '/cosmo/research', description: 'Gather product, expert, and health/beauty research.' },
+    blueprint: { label: 'Topics', path: '/cosmo/topics', description: 'Organize topics, guests, talking points, and show structure.' },
     production: { label: 'Assets', path: '/cosmo/assets', description: 'Generate scripts, voiceovers, and media.' },
     assembly: { label: 'Rundown & Export', path: '/cosmo/rundown', description: 'Assemble the show and export.' },
   },
   research: {
-    discovery: { label: 'Configure', path: '/research/configure', description: 'Define research parameters and topics.' },
-    knowledge: { label: 'Topics', path: '/research/topics', description: 'Run deep research with internet context.' },
-    blueprint: { label: 'Manager', path: '/research/manager', description: 'Extract and organize research points.' },
-    production: { label: 'Dossier', path: '/research/dossier', description: 'Generate synthesized production packages.' },
-    assembly: { label: 'Export', path: '/research/export', description: 'Export the research production.' },
+    discovery: { label: 'Configure', path: '/research/configure', description: 'Define the production scope, methodology, sources, and research parameters.' },
+    knowledge: { label: 'CREAPr Library', path: '/research/topics', description: 'Define topics and acquire verified research knowledge.' },
+    blueprint: { label: 'Point Manager', path: '/research/manager', description: 'Review research points and shape the approved research blueprint.' },
+    production: { label: 'Development Studio', path: '/research/assets', description: 'Generate production-ready assets from approved research.' },
+    assembly: { label: 'Assembly Office', path: '/research/export', description: 'Assemble and export the final research production packet.' },
   },
   spiritual: {
-    discovery: { label: 'Configure', path: '/spiritual/configure', description: 'Define message type and study parameters.' },
-    knowledge: { label: 'Research & Library', path: '/spiritual/research', description: 'Gather scripture, commentary, and study materials.' },
-    blueprint: { label: 'Study', path: '/spiritual/study', description: 'Organize message sections and teaching points.' },
+    discovery: { label: 'Configure', path: '/spiritual/configure', description: 'Define message type, audience, tradition, and study parameters.' },
+    knowledge: { label: 'Research & Library', path: '/spiritual/research', description: 'Gather scripture, commentary, history, language, and study materials.' },
+    blueprint: { label: 'Study & Message', path: '/spiritual/study', description: 'Organize study findings, message sections, and teaching points.' },
     production: { label: 'Assets', path: '/spiritual/assets', description: 'Generate voiceovers and visual assets.' },
-    assembly: { label: 'Package & Export', path: '/spiritual/package', description: 'Assemble the message and export.' },
+    assembly: { label: 'Package & Export', path: '/spiritual/package', description: 'Assemble the message package and export.' },
   },
   news: {
-    discovery: { label: 'Brief', path: '/news/brief', description: 'Define the news briefing scope.' },
-    knowledge: { label: 'Queue', path: '/news/queue', description: 'Gather and classify stories.' },
-    blueprint: { label: 'Workspace', path: '/news/workspace', description: 'Organize stories into production packages.' },
-    production: { label: 'Production', path: '/news/production', description: 'Generate scripts, voice, and media.' },
-    assembly: { label: 'Export', path: '/news/export', description: 'Assemble presentations and export.' },
+    discovery: { label: 'Brief & Story Queue', path: '/news/brief', description: 'Define the briefing direction and identify candidate stories.' },
+    knowledge: { label: 'Research Desk', path: '/news/research', description: 'Gather, verify, and organize source material.' },
+    blueprint: { label: 'Story Manager', path: '/news/workspace', description: 'Organize approved stories into production-ready blueprints.' },
+    production: { label: 'Production Packages', path: '/news/production', description: 'Generate scripts, voice, and media.' },
+    assembly: { label: 'Presentations & Export', path: '/news/presentations', description: 'Assemble presentations and export.' },
   },
 };
+
+/**
+ * Complete room-to-department registry used to answer "where am I?" consistently.
+ * Dashboard, archive, settings, and system routes intentionally do not pretend to
+ * be a production department unless they directly perform department work.
+ */
+export const PROFILE_ROOM_DEPARTMENT_MAP = {
+  news: {
+    discovery: ['/news/brief', '/news/queue', '/news/review', '/news/brands', '/news/shows', '/news/planner'],
+    knowledge: ['/news/research', '/news/sources', '/news/import', '/news/library', '/news/images'],
+    blueprint: ['/news/workspace', '/news/templates', '/news/graphics-templates', '/news/prompt-templates'],
+    production: ['/news/production'],
+    assembly: ['/news/presentations', '/news/export'],
+  },
+  music: {
+    discovery: ['/music/configure'],
+    knowledge: ['/music/research'],
+    blueprint: ['/music/topics', '/music/playlist', '/music/top10'],
+    production: ['/music/assets'],
+    assembly: ['/music/rundown'],
+  },
+  talk: {
+    discovery: ['/talk/configure'],
+    knowledge: ['/talk/research'],
+    blueprint: ['/talk/topics', '/talk/guests'],
+    production: ['/talk/assets'],
+    assembly: ['/talk/rundown', '/talk/export'],
+  },
+  cooking: {
+    discovery: ['/cooking/configure'],
+    knowledge: ['/cooking/research'],
+    blueprint: ['/cooking/recipes', '/cooking/ingredients'],
+    production: ['/cooking/assets'],
+    assembly: ['/cooking/rundown', '/cooking/export'],
+  },
+  sports: {
+    discovery: ['/sports/configure'],
+    knowledge: ['/sports/research'],
+    blueprint: ['/sports/games', '/sports/athletes'],
+    production: ['/sports/assets'],
+    assembly: ['/sports/rundown', '/sports/export'],
+  },
+  cosmo: {
+    discovery: ['/cosmo/configure'],
+    knowledge: ['/cosmo/research'],
+    blueprint: ['/cosmo/topics', '/cosmo/guests'],
+    production: ['/cosmo/assets'],
+    assembly: ['/cosmo/rundown', '/cosmo/export'],
+  },
+  spiritual: {
+    discovery: ['/spiritual/configure'],
+    knowledge: ['/spiritual/research', '/spiritual/library'],
+    blueprint: ['/spiritual/study', '/spiritual/message'],
+    production: ['/spiritual/assets'],
+    assembly: ['/spiritual/package', '/spiritual/export'],
+  },
+  research: {
+    discovery: ['/research/configure'],
+    knowledge: ['/research/topics'],
+    blueprint: ['/research/manager', '/research/dossier'],
+    production: ['/research/assets'],
+    assembly: ['/research/export'],
+  },
+};
+
+const PROFILE_PREFIXES = ['news', 'music', 'talk', 'cooking', 'sports', 'cosmo', 'spiritual', 'research'];
+
+export function deriveProfileFromPath(pathname = '') {
+  return PROFILE_PREFIXES.find(profile => pathname === `/${profile}` || pathname.startsWith(`/${profile}/`)) || null;
+}
+
+export function getDepartmentKeyFromPath(pathname = '', profileKey = deriveProfileFromPath(pathname)) {
+  if (!profileKey) return null;
+  const roomMap = PROFILE_ROOM_DEPARTMENT_MAP[profileKey];
+  if (!roomMap) return null;
+
+  for (const departmentKey of DEPARTMENT_KEYS) {
+    const paths = roomMap[departmentKey] || [];
+    if (paths.some(path => pathname === path || pathname.startsWith(`${path}/`))) {
+      return departmentKey;
+    }
+  }
+
+  return null;
+}
+
+export function getProfileDepartmentState(pathname = '') {
+  const profileKey = deriveProfileFromPath(pathname);
+  const departmentKey = getDepartmentKeyFromPath(pathname, profileKey);
+  const department = departmentKey ? getDepartment(departmentKey) : null;
+  const profileDepartment = profileKey && departmentKey
+    ? PROFILE_DEPARTMENT_MAP[profileKey]?.[departmentKey] || null
+    : null;
+
+  return {
+    profileKey,
+    departmentKey,
+    department,
+    profileDepartment,
+  };
+}
 
 export function getProfileDepartmentMap(profileKey) {
   return PROFILE_DEPARTMENT_MAP[profileKey] || null;
