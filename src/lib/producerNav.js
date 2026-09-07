@@ -3,7 +3,7 @@ import {
   Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
   ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film
+  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film, FlaskConical
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
@@ -76,6 +76,7 @@ export const PRODUCTION_MODES = [
   { key: 'cosmo', label: 'Cosmo', icon: Brush, path: '/cosmo/dashboard' },
   { key: 'radio', label: 'Radio', icon: Radio, path: '/music/configure' },
   { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
+  { key: 'research', label: 'Research', icon: FlaskConical, path: '/research' },
 ];
 
 export const PRODUCER_NAV_ITEMS = PRODUCER_NAV_SECTIONS.flatMap(section =>
@@ -89,6 +90,7 @@ export function getActiveProductionMode(pathname) {
   if (pathname.startsWith('/cooking')) return 'cooking';
   if (pathname.startsWith('/sports')) return 'sports';
   if (pathname.startsWith('/cosmo')) return 'cosmo';
+  if (pathname.startsWith('/research')) return 'research';
   if (pathname.startsWith('/news')) return 'news';
   return 'news';
 }
