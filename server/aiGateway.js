@@ -4,6 +4,12 @@ const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 const DEFAULT_MODEL = 'openai/gpt-5.6-luna';
 
 async function resolveGatewayCredential() {
+  // Direct AI Gateway REST requests are most deterministic with the explicit
+  // AI_GATEWAY_API_KEY. Keep Vercel OIDC as a secretless fallback only.
+  if (process.env.AI_GATEWAY_API_KEY) {
+    return { token: process.env.AI_GATEWAY_API_KEY, source: 'api_key' };
+  }
+
   let contextToken = null;
   try {
     contextToken = await getVercelOidcToken();
@@ -11,10 +17,6 @@ async function resolveGatewayCredential() {
 
   if (contextToken) {
     return { token: contextToken, source: 'vercel_oidc_context' };
-  }
-
-  if (process.env.AI_GATEWAY_API_KEY) {
-    return { token: process.env.AI_GATEWAY_API_KEY, source: 'api_key' };
   }
 
   if (process.env.VERCEL_OIDC_TOKEN) {
@@ -112,6 +114,7 @@ export async function generateStructuredGatewayResponse({
     );
     error.code = 'AI_GATEWAY_REQUEST_FAILED';
     error.status = gatewayResponse.status;
+    error.authSource = credential.source;
     error.gatewayPayload = payload;
     throw error;
   }
@@ -120,6 +123,7 @@ export async function generateStructuredGatewayResponse({
   if (!outputText) {
     const error = new Error('AI Gateway returned no structured text output');
     error.code = 'AI_GATEWAY_EMPTY_OUTPUT';
+    error.authSource = credential.source;
     throw error;
   }
 
@@ -129,6 +133,7 @@ export async function generateStructuredGatewayResponse({
   } catch {
     const error = new Error('AI Gateway structured output was not valid JSON');
     error.code = 'AI_GATEWAY_INVALID_JSON';
+    error.authSource = credential.source;
     throw error;
   }
 
