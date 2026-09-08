@@ -14,6 +14,7 @@ const NUMERIC_FIELDS = [
 ];
 
 const POINT_STATUSES = new Set(['pending', 'approved', 'rejected', 'used']);
+const PACKAGE_STATUSES = new Set(['not_generated', 'generating', 'generated', 'edited', 'approved']);
 
 function firstQueryValue(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -61,6 +62,37 @@ function safeError(error) {
   };
 }
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key);
+}
+
+function textPatchValue(patch, key) {
+  if (!hasOwn(patch, key)) return null;
+  const value = patch[key];
+  return value === null || value === undefined ? null : String(value);
+}
+
+function booleanPatchValue(patch, key) {
+  if (!hasOwn(patch, key)) return null;
+  return Boolean(patch[key]);
+}
+
+function jsonPatchValue(patch, key) {
+  if (!hasOwn(patch, key)) return null;
+  const value = patch[key];
+  if (value === null || value === undefined || value === '') return null;
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value));
+    } catch {
+      return JSON.stringify([]);
+    }
+  }
+
+  return JSON.stringify(value);
+}
+
 async function getOwnedPoint(sql, ownerUserId, pointId) {
   if (!pointId) return null;
   const [point] = await sql`
@@ -71,6 +103,19 @@ async function getOwnedPoint(sql, ownerUserId, pointId) {
     LIMIT 1
   `;
   return point || null;
+}
+
+async function getOwnedPackage(sql, ownerUserId, packageId) {
+  if (!packageId) return null;
+  const [pkg] = await sql`
+    SELECT *
+    FROM creapd.production_packages
+    WHERE id = ${String(packageId)}
+      AND owner_user_id = ${ownerUserId}
+      AND source_entity_type = 'ResearchPoint'
+    LIMIT 1
+  `;
+  return pkg || null;
 }
 
 async function getOwnedConfiguration(sql, ownerUserId, configurationId) {
@@ -85,15 +130,97 @@ async function getOwnedConfiguration(sql, ownerUserId, configurationId) {
   return configuration || null;
 }
 
+async function updateOwnedPackage(sql, ownerUserId, packageId, patch) {
+  const existing = await getOwnedPackage(sql, ownerUserId, packageId);
+  if (!existing) return null;
+
+  const status = hasOwn(patch, 'status') ? String(patch.status || '').trim() : null;
+  if (status && !PACKAGE_STATUSES.has(status)) {
+    const error = new Error('Invalid package status');
+    error.code = 'INVALID_PACKAGE_STATUS';
+    error.status = 400;
+    throw error;
+  }
+
+  const imageVariations = jsonPatchValue(patch, 'image_variations');
+  const thumbnailVariations = jsonPatchValue(patch, 'thumbnail_variations');
+
+  const [updated] = await sql`
+    UPDATE creapd.production_packages
+    SET
+      teleprompter_script = CASE WHEN ${hasOwn(patch, 'teleprompter_script')} THEN ${textPatchValue(patch, 'teleprompter_script')} ELSE teleprompter_script END,
+      show_script = CASE WHEN ${hasOwn(patch, 'show_script')} THEN ${textPatchValue(patch, 'show_script')} ELSE show_script END,
+      story_summary = CASE WHEN ${hasOwn(patch, 'story_summary')} THEN ${textPatchValue(patch, 'story_summary')} ELSE story_summary END,
+      talking_points = CASE WHEN ${hasOwn(patch, 'talking_points')} THEN ${textPatchValue(patch, 'talking_points')} ELSE talking_points END,
+      lower_third_text = CASE WHEN ${hasOwn(patch, 'lower_third_text')} THEN ${textPatchValue(patch, 'lower_third_text')} ELSE lower_third_text END,
+      headline_suggestions = CASE WHEN ${hasOwn(patch, 'headline_suggestions')} THEN ${textPatchValue(patch, 'headline_suggestions')} ELSE headline_suggestions END,
+      image_prompt = CASE WHEN ${hasOwn(patch, 'image_prompt')} THEN ${textPatchValue(patch, 'image_prompt')} ELSE image_prompt END,
+      thumbnail_prompt = CASE WHEN ${hasOwn(patch, 'thumbnail_prompt')} THEN ${textPatchValue(patch, 'thumbnail_prompt')} ELSE thumbnail_prompt END,
+      visual_suggestions = CASE WHEN ${hasOwn(patch, 'visual_suggestions')} THEN ${textPatchValue(patch, 'visual_suggestions')} ELSE visual_suggestions END,
+      broll_suggestions = CASE WHEN ${hasOwn(patch, 'broll_suggestions')} THEN ${textPatchValue(patch, 'broll_suggestions')} ELSE broll_suggestions END,
+      social_caption = CASE WHEN ${hasOwn(patch, 'social_caption')} THEN ${textPatchValue(patch, 'social_caption')} ELSE social_caption END,
+      fact_check_notes = CASE WHEN ${hasOwn(patch, 'fact_check_notes')} THEN ${textPatchValue(patch, 'fact_check_notes')} ELSE fact_check_notes END,
+      producer_notes = CASE WHEN ${hasOwn(patch, 'producer_notes')} THEN ${textPatchValue(patch, 'producer_notes')} ELSE producer_notes END,
+      estimated_runtime = CASE WHEN ${hasOwn(patch, 'estimated_runtime')} THEN ${textPatchValue(patch, 'estimated_runtime')} ELSE estimated_runtime END,
+      generated_image_url = CASE WHEN ${hasOwn(patch, 'generated_image_url')} THEN ${textPatchValue(patch, 'generated_image_url')} ELSE generated_image_url END,
+      generated_thumbnail_url = CASE WHEN ${hasOwn(patch, 'generated_thumbnail_url')} THEN ${textPatchValue(patch, 'generated_thumbnail_url')} ELSE generated_thumbnail_url END,
+      generated_video_url = CASE WHEN ${hasOwn(patch, 'generated_video_url')} THEN ${textPatchValue(patch, 'generated_video_url')} ELSE generated_video_url END,
+      generated_audio_url = CASE WHEN ${hasOwn(patch, 'generated_audio_url')} THEN ${textPatchValue(patch, 'generated_audio_url')} ELSE generated_audio_url END,
+      voice_package_id = CASE WHEN ${hasOwn(patch, 'voice_package_id')} THEN ${textPatchValue(patch, 'voice_package_id')} ELSE voice_package_id END,
+      image_variations = CASE WHEN ${hasOwn(patch, 'image_variations')} THEN ${imageVariations}::jsonb ELSE image_variations END,
+      thumbnail_variations = CASE WHEN ${hasOwn(patch, 'thumbnail_variations')} THEN ${thumbnailVariations}::jsonb ELSE thumbnail_variations END,
+      custom_prompt = CASE WHEN ${hasOwn(patch, 'custom_prompt')} THEN ${textPatchValue(patch, 'custom_prompt')} ELSE custom_prompt END,
+      status = CASE WHEN ${hasOwn(patch, 'status')} THEN ${status || existing.status} ELSE status END,
+      is_edited = CASE WHEN ${hasOwn(patch, 'is_edited')} THEN ${booleanPatchValue(patch, 'is_edited')} ELSE is_edited END,
+      updated_at = now()
+    WHERE id = ${String(existing.id)}
+      AND owner_user_id = ${ownerUserId}
+    RETURNING *
+  `;
+
+  return updated || null;
+}
+
 async function handlePost(request, response, sql, ownerUserId) {
   const body = request.body && typeof request.body === 'object' ? request.body : {};
   const action = String(body.action || '').trim();
-  const pointId = body.point_id || body.research_point_id || null;
 
   if (!action) {
     return response.status(400).json({ ok: false, error: 'action_required' });
   }
 
+  if (action === 'update_package') {
+    const packageId = body.package_id || null;
+    const patch = body.patch && typeof body.patch === 'object' ? body.patch : {};
+
+    if (!packageId) {
+      return response.status(400).json({ ok: false, error: 'package_id_required' });
+    }
+
+    try {
+      const updatedPackage = await updateOwnedPackage(sql, ownerUserId, packageId, patch);
+      if (!updatedPackage) {
+        return response.status(404).json({ ok: false, error: 'production_package_not_found' });
+      }
+
+      return response.status(200).json({
+        ok: true,
+        service: 'creapd-research',
+        action,
+        source: 'neon',
+        data_authority: 'neon',
+        package: withBase44Aliases(updatedPackage),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      if (error?.status === 400) {
+        return response.status(400).json({ ok: false, error: error.code || 'invalid_package_patch' });
+      }
+      throw error;
+    }
+  }
+
+  const pointId = body.point_id || body.research_point_id || null;
   const point = await getOwnedPoint(sql, ownerUserId, pointId);
   if (!point) {
     return response.status(404).json({ ok: false, error: 'research_point_not_found' });
