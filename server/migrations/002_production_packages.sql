@@ -1,0 +1,65 @@
+CREATE TABLE IF NOT EXISTS creapd.production_packages (
+  id text PRIMARY KEY,
+  owner_user_id text,
+  article_id text,
+  production_profile text NOT NULL DEFAULT 'news',
+  source_entity_type text,
+  source_entity_id text,
+  configuration_id text,
+  teleprompter_script text,
+  show_script text,
+  story_summary text,
+  talking_points text,
+  lower_third_text text,
+  headline_suggestions text,
+  image_prompt text,
+  thumbnail_prompt text,
+  visual_suggestions text,
+  broll_suggestions text,
+  social_caption text,
+  fact_check_notes text,
+  artist_facts text,
+  playlist_segment text,
+  cooking_notes text,
+  ingredient_list text,
+  scripture_references text,
+  reflection_notes text,
+  producer_notes text,
+  estimated_runtime text,
+  tone text NOT NULL DEFAULT 'professional',
+  reading_style text NOT NULL DEFAULT 'broadcast_news',
+  audience text NOT NULL DEFAULT 'General Public',
+  target_runtime text NOT NULL DEFAULT '1 Minute',
+  status text NOT NULL DEFAULT 'not_generated',
+  generated_image_url text,
+  generated_thumbnail_url text,
+  generated_video_url text,
+  generated_audio_url text,
+  voice_package_id text,
+  image_variations jsonb,
+  thumbnail_variations jsonb,
+  custom_prompt text,
+  prompt_template_id text,
+  generation_provider text,
+  generated_at timestamptz,
+  is_edited boolean NOT NULL DEFAULT false,
+  is_regenerated boolean NOT NULL DEFAULT false,
+  generation_count integer NOT NULL DEFAULT 0,
+  translation_language text,
+  translated_script text,
+  translated_caption text,
+  translated_at timestamptz,
+  source_system text NOT NULL DEFAULT 'creapd',
+  source_payload jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS production_packages_owner_idx
+  ON creapd.production_packages (owner_user_id);
+CREATE INDEX IF NOT EXISTS production_packages_config_idx
+  ON creapd.production_packages (configuration_id);
+CREATE INDEX IF NOT EXISTS production_packages_source_idx
+  ON creapd.production_packages (source_entity_type, source_entity_id);
+CREATE INDEX IF NOT EXISTS production_packages_status_idx
+  ON creapd.production_packages (status);
