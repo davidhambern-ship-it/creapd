@@ -71,11 +71,6 @@ const researchPointAdapter = new Proxy(sdkBase44.entities.ResearchPoint, {
   },
 });
 
-async function findNeonPackage(packageId) {
-  const payload = await creapdApi.get('/research/production');
-  return (payload?.packages || []).find(pkg => String(pkg.id) === String(packageId)) || null;
-}
-
 const productionPackageAdapter = new Proxy(sdkBase44.entities.ProductionPackage, {
   get(target, property) {
     if (property === 'create') {
@@ -98,14 +93,10 @@ const productionPackageAdapter = new Proxy(sdkBase44.entities.ProductionPackage,
           return target.update(packageId, payload);
         }
 
-        const existing = await findNeonPackage(packageId);
-        if (!existing?.source_entity_id) {
-          return target.update(packageId, payload);
-        }
-
         const result = await creapdApi.post('/research/production', {
-          action: 'generate_package',
-          point_id: existing.source_entity_id,
+          action: 'update_package',
+          package_id: packageId,
+          patch: payload,
         });
         return result?.package;
       };
