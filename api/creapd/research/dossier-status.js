@@ -5,16 +5,33 @@ export const config = {
   maxDuration: 10,
 };
 
+const LEGACY_JSON_FIELDS = [
+  'orchestration_metadata',
+  'discovery_raw_data',
+  'sources',
+];
+
 function firstQueryValue(value) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 function withBase44Aliases(row) {
   if (!row) return row;
+  const normalized = { ...row };
+
+  // Polling UIs were written against Base44, where these fields arrived as
+  // JSON strings. Keep that contract on this compatibility endpoint while the
+  // primary Neon read endpoints continue returning native JSON values.
+  for (const field of LEGACY_JSON_FIELDS) {
+    if (normalized[field] !== null && normalized[field] !== undefined && typeof normalized[field] !== 'string') {
+      normalized[field] = JSON.stringify(normalized[field]);
+    }
+  }
+
   return {
-    ...row,
-    created_date: row.created_at ?? row.created_date ?? null,
-    updated_date: row.updated_at ?? row.updated_date ?? null,
+    ...normalized,
+    created_date: normalized.created_at ?? normalized.created_date ?? null,
+    updated_date: normalized.updated_at ?? normalized.updated_date ?? null,
   };
 }
 
