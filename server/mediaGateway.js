@@ -3,7 +3,7 @@ import { put } from '@vercel/blob';
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh';
-const DEFAULT_IMAGE_MODEL = process.env.CREAPD_IMAGE_MODEL || 'openai/gpt-image-2';
+const DEFAULT_IMAGE_MODEL = process.env.CREAPD_IMAGE_MODEL || 'meta/muse-image-1.0';
 const DEFAULT_SPEECH_MODEL = process.env.CREAPD_SPEECH_MODEL || 'openai/tts-1';
 
 const VOICE_MAP = {
@@ -117,12 +117,6 @@ async function generateImageBytes({ prompt, model = DEFAULT_IMAGE_MODEL }) {
       model,
       prompt: String(prompt).slice(0, 12000),
       n: 1,
-      size: '1536x1024',
-      providerOptions: {
-        gateway: {
-          disallowPromptTraining: true,
-        },
-      },
     }),
     signal: AbortSignal.timeout(55000),
   });
