@@ -52,7 +52,8 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
     if (property === 'invoke') {
       return async (functionName, payload = {}) => {
         if (shouldUseNeonAuth() && functionName === 'deepResearchV2') {
-          const result = await creapdApi.post('/research/start', {
+          const result = await creapdApi.post('/research/topic-action', {
+            action: 'start',
             topic_id: payload?.topic_id,
             research_depth: payload?.research_depth,
           });
