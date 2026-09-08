@@ -5,6 +5,13 @@ export const config = {
   maxDuration: 10,
 };
 
+const NUMERIC_FIELDS = [
+  'total_show_runtime',
+  'confidence_score',
+  'priority_score',
+  'debate_potential_score',
+];
+
 function firstQueryValue(value) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -15,13 +22,31 @@ function normalizeDateOnly(value) {
   return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
 }
 
+function normalizeNumericFields(row) {
+  const normalized = { ...row };
+
+  for (const field of NUMERIC_FIELDS) {
+    const value = normalized[field];
+    if (value === null || value === undefined || value === '') continue;
+
+    const numberValue = Number(value);
+    if (Number.isFinite(numberValue)) {
+      normalized[field] = numberValue;
+    }
+  }
+
+  return normalized;
+}
+
 function withBase44Aliases(row, extra = {}) {
   if (!row) return row;
+  const normalized = normalizeNumericFields(row);
+
   return {
-    ...row,
-    ...(row.show_date ? { show_date: normalizeDateOnly(row.show_date) } : {}),
-    created_date: row.created_at ?? row.created_date ?? null,
-    updated_date: row.updated_at ?? row.updated_date ?? null,
+    ...normalized,
+    ...(normalized.show_date ? { show_date: normalizeDateOnly(normalized.show_date) } : {}),
+    created_date: normalized.created_at ?? normalized.created_date ?? null,
+    updated_date: normalized.updated_at ?? normalized.updated_date ?? null,
     ...extra,
   };
 }
