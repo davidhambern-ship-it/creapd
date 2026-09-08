@@ -1,4 +1,4 @@
-import { hasDatabaseConfig } from '../../../server/db.js';
+import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { runResearchEngine } from '../../../server/researchEngine.js';
 
@@ -28,10 +28,39 @@ export default async function handler(request, response) {
   }
 
   try {
+    const sql = getSql();
     const { user } = await requireCreapdUser(request);
+    const ownerUserId = String(user.id);
     const body = request.body && typeof request.body === 'object' ? request.body : {};
-    const configurationId = clean(body.configuration_id);
-    const topic = body.topic && typeof body.topic === 'object' ? body.topic : {};
+    let configurationId = clean(body.configuration_id);
+    let topic = body.topic && typeof body.topic === 'object' ? { ...body.topic } : {};
+    const requestedTopicId = clean(body.topic_id) || clean(topic.id);
+
+    if (requestedTopicId && (!clean(topic.title) || !configurationId)) {
+      const [existingTopic] = await sql`
+        SELECT *
+        FROM creapd.research_topics
+        WHERE id = ${requestedTopicId}
+          AND owner_user_id = ${ownerUserId}
+        LIMIT 1
+      `;
+
+      if (!existingTopic) {
+        return response.status(404).json({
+          ok: false,
+          service: 'creapd-research-engine',
+          error: 'topic_not_found',
+        });
+      }
+
+      topic = {
+        ...existingTopic,
+        ...topic,
+        id: requestedTopicId,
+        research_depth: clean(body.research_depth) || clean(topic.research_depth) || existingTopic.research_depth,
+      };
+      configurationId = configurationId || clean(existingTopic.configuration_id);
+    }
 
     if (!configurationId || !clean(topic.id) || !clean(topic.title)) {
       return response.status(400).json({
@@ -42,7 +71,7 @@ export default async function handler(request, response) {
     }
 
     const result = await runResearchEngine({
-      ownerUserId: String(user.id),
+      ownerUserId,
       ownerEmail: user.email || null,
       configurationId,
       topic,
