@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { put } from '@vercel/blob';
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh';
-const BLOB_API_BASE_URL = process.env.VERCEL_BLOB_API_URL || 'https://vercel.com/api/blob';
 const DEFAULT_IMAGE_MODEL = process.env.CREAPD_IMAGE_MODEL || 'openai/gpt-image-2';
 const DEFAULT_SPEECH_MODEL = process.env.CREAPD_SPEECH_MODEL || 'openai/tts-1';
 
@@ -41,44 +41,6 @@ async function resolveGatewayCredential() {
   throw error;
 }
 
-function normalizeStoreId(value) {
-  const text = String(value || '').trim();
-  return text.startsWith('store_') ? text.slice('store_'.length) : text;
-}
-
-function readWriteStoreId(token) {
-  const [, , , storeId = ''] = String(token || '').split('_');
-  return storeId;
-}
-
-async function resolveBlobCredential() {
-  const readWriteToken = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
-  if (readWriteToken) {
-    const storeId = readWriteStoreId(readWriteToken) || normalizeStoreId(process.env.BLOB_STORE_ID);
-    if (!storeId) {
-      const error = new Error('Vercel Blob token is present but its store ID could not be resolved');
-      error.code = 'BLOB_STORE_ID_NOT_AVAILABLE';
-      throw error;
-    }
-    return { token: readWriteToken, storeId, source: 'read_write_token' };
-  }
-
-  const storeId = normalizeStoreId(process.env.BLOB_STORE_ID);
-  let oidcToken = null;
-  try {
-    oidcToken = await getVercelOidcToken();
-  } catch {}
-  oidcToken = oidcToken || process.env.VERCEL_OIDC_TOKEN || null;
-
-  if (oidcToken && storeId) {
-    return { token: oidcToken, storeId, source: 'vercel_oidc' };
-  }
-
-  const error = new Error('Vercel Blob is not configured for this project');
-  error.code = 'BLOB_NOT_CONFIGURED';
-  throw error;
-}
-
 async function uploadPublicBlob({ pathname, bytes, contentType }) {
   if (!pathname || !bytes?.length) {
     const error = new Error('Blob pathname and bytes are required');
@@ -86,44 +48,42 @@ async function uploadPublicBlob({ pathname, bytes, contentType }) {
     throw error;
   }
 
-  const credential = await resolveBlobCredential();
-  const url = `${BLOB_API_BASE_URL}/?pathname=${encodeURIComponent(pathname)}`;
-  const requestId = `${credential.storeId}:${Date.now()}:${Math.random().toString(16).slice(2)}`;
-
-  const blobResponse = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${credential.token}`,
-      'x-vercel-blob-store-id': credential.storeId,
-      'x-vercel-blob-access': 'public',
-      'x-content-type': contentType,
-      'x-add-random-suffix': '1',
-      'x-api-version': '12',
-      'x-api-blob-request-id': requestId,
-      'x-api-blob-request-attempt': '0',
-    },
-    body: bytes,
-    signal: AbortSignal.timeout(30000),
-  });
-
-  const payload = await blobResponse.json().catch(() => null);
-  if (!blobResponse.ok || !payload?.url) {
-    const error = new Error(
-      safeMessage(payload?.error?.message || payload?.message, `Vercel Blob returned HTTP ${blobResponse.status}`),
-    );
-    error.code = payload?.error?.code === 'store_not_found' ? 'BLOB_STORE_NOT_FOUND' : 'BLOB_UPLOAD_FAILED';
-    error.status = blobResponse.status;
+  const token = String(process.env.BLOB_READ_WRITE_TOKEN || '').trim();
+  if (!token) {
+    const error = new Error('Vercel Blob is not configured for this project');
+    error.code = 'BLOB_NOT_CONFIGURED';
     throw error;
   }
 
-  return {
-    url: payload.url,
-    downloadUrl: payload.downloadUrl || null,
-    pathname: payload.pathname || pathname,
-    contentType: payload.contentType || contentType,
-    etag: payload.etag || null,
-    authSource: credential.source,
-  };
+  try {
+    const blob = await put(pathname, bytes, {
+      access: 'public',
+      contentType,
+      addRandomSuffix: true,
+      token,
+      abortSignal: AbortSignal.timeout(30000),
+    });
+
+    if (!blob?.url) {
+      const error = new Error('Vercel Blob returned no URL');
+      error.code = 'BLOB_UPLOAD_EMPTY';
+      throw error;
+    }
+
+    return {
+      url: blob.url,
+      downloadUrl: blob.downloadUrl || null,
+      pathname: blob.pathname || pathname,
+      contentType: blob.contentType || contentType,
+      etag: blob.etag || null,
+      authSource: 'read_write_token',
+    };
+  } catch (error) {
+    if (String(error?.code || '').startsWith('BLOB_')) throw error;
+    const wrapped = new Error(safeMessage(error?.message, 'Vercel Blob upload failed'));
+    wrapped.code = 'BLOB_UPLOAD_FAILED';
+    throw wrapped;
+  }
 }
 
 async function downloadGeneratedAsset(url) {
@@ -262,10 +222,7 @@ async function generateSpeechBytes({ text, voice = 'river', model = DEFAULT_SPEE
 }
 
 export function hasOwnedMediaStorageConfig() {
-  return Boolean(
-    process.env.BLOB_READ_WRITE_TOKEN ||
-    ((process.env.BLOB_STORE_ID || '').trim() && (process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL)),
-  );
+  return Boolean(String(process.env.BLOB_READ_WRITE_TOKEN || '').trim());
 }
 
 export async function generateAndStoreResearchMedia({
