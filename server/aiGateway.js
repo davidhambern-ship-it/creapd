@@ -1,7 +1,7 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
-const DEFAULT_MODEL = 'openai/gpt-5.6-luna';
+const DEFAULT_MODEL = process.env.CREAPD_AI_MODEL || 'openai/gpt-5.4-mini';
 
 async function resolveGatewayCredential() {
   // Direct AI Gateway REST requests are most deterministic with the explicit
