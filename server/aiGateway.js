@@ -3,6 +3,26 @@ import { getVercelOidcToken } from '@vercel/oidc';
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 const DEFAULT_MODEL = process.env.CREAPD_AI_MODEL || 'openai/gpt-5.4-mini';
 
+const RESEARCH_COMPACT_INSTRUCTION = `
+
+OUTPUT SIZE CONTRACT — IMPORTANT:
+Return the complete JSON object, but keep it compact enough to finish well before the output limit.
+- executive_summary: at most 180 words.
+- context_and_background: at most 160 words.
+- key_facts: 5-7 concise items.
+- key_people: at most 5 items.
+- key_organizations: at most 5 items.
+- timeline: at most 6 items.
+- counter_arguments: at most 3 items.
+- data_and_statistics: at most 4 items.
+- coverage_angles: exactly 3 concise items.
+- sources: 6-10 strong sources; do not duplicate the same URL.
+- claim_confidence_scores: at most 6 important claims.
+- critical_analysis_report: at most 3 gray areas, 3 logical gaps, 3 competing perspectives, and 3 open questions.
+- organization_structure.themes: at most 4 themes.
+- research_points: exactly 10. Keep each content field under 90 words, significance under 35 words, suggested_angle under 30 words, key_facts at most 2, and sources at most 2.
+Do not add prose before or after the JSON. Completeness of valid JSON is more important than extra detail.`;
+
 async function resolveGatewayCredential() {
   // Direct AI Gateway REST requests are most deterministic with the explicit
   // AI_GATEWAY_API_KEY. Keep Vercel OIDC as a secretless fallback only.
@@ -50,6 +70,19 @@ function listOutputTypes(payload) {
     .filter(Boolean);
 }
 
+function isIncompleteResponse(payload) {
+  return payload?.status === 'incomplete' || Boolean(payload?.incomplete_details);
+}
+
+function incompleteReason(payload) {
+  return String(
+    payload?.incomplete_details?.reason ||
+    payload?.incomplete_details?.type ||
+    payload?.status ||
+    'incomplete',
+  ).slice(0, 120);
+}
+
 export async function generateStructuredGatewayResponse({
   prompt,
   schema,
@@ -66,13 +99,17 @@ export async function generateStructuredGatewayResponse({
   }
 
   const credential = await resolveGatewayCredential();
+  const effectivePrompt = schemaName === 'creapd_research_v1'
+    ? `${prompt}${RESEARCH_COMPACT_INSTRUCTION}`
+    : prompt;
+
   const requestBody = {
     model,
     input: [
       {
         type: 'message',
         role: 'user',
-        content: prompt,
+        content: effectivePrompt,
       },
     ],
     text: {
@@ -119,6 +156,15 @@ export async function generateStructuredGatewayResponse({
     throw error;
   }
 
+  if (isIncompleteResponse(payload)) {
+    const reason = incompleteReason(payload);
+    const error = new Error(`AI Gateway output was incomplete (${reason})`);
+    error.code = 'AI_GATEWAY_OUTPUT_INCOMPLETE';
+    error.authSource = credential.source;
+    error.incompleteReason = reason;
+    throw error;
+  }
+
   const outputText = extractOutputText(payload);
   if (!outputText) {
     const error = new Error('AI Gateway returned no structured text output');
@@ -131,9 +177,10 @@ export async function generateStructuredGatewayResponse({
   try {
     data = JSON.parse(outputText);
   } catch {
-    const error = new Error('AI Gateway structured output was not valid JSON');
+    const error = new Error(`AI Gateway structured output was not valid JSON (${outputText.length} chars)`);
     error.code = 'AI_GATEWAY_INVALID_JSON';
     error.authSource = credential.source;
+    error.outputLength = outputText.length;
     throw error;
   }
 
