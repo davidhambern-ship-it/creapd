@@ -9,10 +9,17 @@ function firstQueryValue(value) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function normalizeDateOnly(value) {
+  if (!value) return value ?? null;
+  const text = value instanceof Date ? value.toISOString() : String(value);
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
+}
+
 function withBase44Aliases(row, extra = {}) {
   if (!row) return row;
   return {
     ...row,
+    ...(row.show_date ? { show_date: normalizeDateOnly(row.show_date) } : {}),
     created_date: row.created_at ?? row.created_date ?? null,
     updated_date: row.updated_at ?? row.updated_date ?? null,
     ...extra,
