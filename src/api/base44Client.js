@@ -38,11 +38,88 @@ const researchTopicAdapter = new Proxy(sdkBase44.entities.ResearchTopic, {
   },
 });
 
+const researchPointAdapter = new Proxy(sdkBase44.entities.ResearchPoint, {
+  get(target, property) {
+    if (property === 'update') {
+      return async (pointId, payload = {}) => {
+        if (!shouldUseNeonAuth()) {
+          return target.update(pointId, payload);
+        }
+
+        if (payload?.status) {
+          const result = await creapdApi.post('/research/production', {
+            action: 'set_point_status',
+            point_id: pointId,
+            status: payload.status,
+            rejection_reason: payload.rejection_reason,
+          });
+          return result?.point;
+        }
+
+        // package_id is written atomically by the Vercel package engine. The
+        // legacy UI may repeat that write after package creation; return a
+        // compatibility shape rather than sending a Neon-only session to Base44.
+        if (Object.keys(payload || {}).every(key => key === 'package_id')) {
+          return { id: pointId, ...payload };
+        }
+
+        return target.update(pointId, payload);
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+async function findNeonPackage(packageId) {
+  const payload = await creapdApi.get('/research/production');
+  return (payload?.packages || []).find(pkg => String(pkg.id) === String(packageId)) || null;
+}
+
+const productionPackageAdapter = new Proxy(sdkBase44.entities.ProductionPackage, {
+  get(target, property) {
+    if (property === 'create') {
+      return async payload => {
+        if (!shouldUseNeonAuth() || payload?.source_entity_type !== 'ResearchPoint' || !payload?.source_entity_id) {
+          return target.create(payload);
+        }
+
+        const result = await creapdApi.post('/research/production', {
+          action: 'approve_point',
+          point_id: payload.source_entity_id,
+        });
+        return result?.package;
+      };
+    }
+
+    if (property === 'update') {
+      return async (packageId, payload = {}) => {
+        if (!shouldUseNeonAuth()) {
+          return target.update(packageId, payload);
+        }
+
+        const existing = await findNeonPackage(packageId);
+        if (!existing?.source_entity_id) {
+          return target.update(packageId, payload);
+        }
+
+        const result = await creapdApi.post('/research/production', {
+          action: 'generate_package',
+          point_id: existing.source_entity_id,
+        });
+        return result?.package;
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
 const entitiesAdapter = new Proxy(sdkBase44.entities, {
   get(target, property) {
-    if (property === 'ResearchTopic') {
-      return researchTopicAdapter;
-    }
+    if (property === 'ResearchTopic') return researchTopicAdapter;
+    if (property === 'ResearchPoint') return researchPointAdapter;
+    if (property === 'ProductionPackage') return productionPackageAdapter;
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
@@ -61,9 +138,6 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
         if (shouldUseNeonAuth() && functionName === 'extractResearchPoints') {
-          // Vercel Research Engine v1 writes the 10 production points in the
-          // same authenticated run that creates the dossier. Preserve the old
-          // Base44 function contract as a harmless compatibility no-op.
           return {
             data: {
               success: true,
@@ -74,10 +148,55 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           };
         }
 
+        if (shouldUseNeonAuth() && functionName === 'buildResearchProduction') {
+          const result = await creapdApi.post('/research/production', {
+            action: 'generate_package',
+            point_id: payload?.research_point_id,
+          });
+          return { data: result };
+        }
+
         return target.invoke(functionName, payload);
       };
     }
 
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
+  get(target, property) {
+    if (property === 'InvokeLLM') {
+      return async payload => {
+        const prompt = String(payload?.prompt || '');
+        const isResearchApprovalPrompt =
+          shouldUseNeonAuth() &&
+          prompt.includes('broadcast news producer and fact-checker') &&
+          prompt.includes('teleprompter_script');
+
+        if (isResearchApprovalPrompt) {
+          // The legacy Point Manager asks Base44 for a three-field draft and then
+          // immediately creates a ProductionPackage. On Neon Preview, package
+          // creation itself invokes our Vercel package engine, so avoid paying
+          // for a duplicate LLM pass and preserve the old call contract.
+          return {
+            teleprompter_script: '',
+            story_summary: '',
+            talking_points: '',
+          };
+        }
+
+        return target.InvokeLLM(payload);
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+const integrationsAdapter = new Proxy(sdkBase44.integrations, {
+  get(target, property) {
+    if (property === 'Core') return coreIntegrationsAdapter;
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
@@ -89,6 +208,7 @@ export const base44 = new Proxy(sdkBase44, {
   get(target, property) {
     if (property === 'entities') return entitiesAdapter;
     if (property === 'functions') return functionsAdapter;
+    if (property === 'integrations') return integrationsAdapter;
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
