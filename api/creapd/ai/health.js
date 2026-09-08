@@ -84,6 +84,8 @@ async function runGatewayHealth(response) {
       service: 'creapd-ai-gateway',
       gateway_http_status: gatewayResponse.status,
       auth_source: authSource,
+      api_key_present: Boolean(process.env.AI_GATEWAY_API_KEY),
+      oidc_context_present: Boolean(contextOidcToken),
       target_model: TARGET_MODEL,
       target_model_available: targetAvailable,
       model_count: models.length,
@@ -97,6 +99,7 @@ async function runGatewayHealth(response) {
       error_name: error?.name || null,
       safe_message: String(error?.message || 'gateway_connection_failed').slice(0, 180),
       auth_source: authSource,
+      api_key_present: Boolean(process.env.AI_GATEWAY_API_KEY),
       target_model: TARGET_MODEL,
       timestamp: new Date().toISOString(),
     });
@@ -137,7 +140,7 @@ async function runResearchCanary(request, response) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    if ([400, 401, 403].includes(error?.status)) {
+    if ([400, 401, 403].includes(error?.status) && error?.code !== 'AI_GATEWAY_REQUEST_FAILED') {
       return response.status(error.status).json({
         ok: false,
         service: 'creapd-ai-research-canary',
@@ -150,6 +153,8 @@ async function runResearchCanary(request, response) {
       ok: false,
       service: 'creapd-ai-research-canary',
       error: error?.code || 'research_canary_failed',
+      gateway_auth_source: error?.authSource || null,
+      api_key_present: Boolean(process.env.AI_GATEWAY_API_KEY),
       diagnostic: {
         error_name: error?.name || null,
         error_code: error?.code || null,
