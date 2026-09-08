@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import {
   Loader2, Download, RefreshCw, Volume2, Film, ImageIcon, Play,
   Pencil, Check, X, Trash2, Copy, History, Cpu, Clock, Save
@@ -26,6 +28,8 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
 
   const prompt = pkg?.[promptField] || '';
   const mediaUrl = pkg?.[urlField] || '';
+  const ownedPreview = shouldUseNeonAuth();
+  const ownedVideoPending = ownedPreview && mediaType === 'video';
 
   // PRD 9.15: Base44 stored JSON strings; Neon JSONB returns native arrays.
   // Accept both shapes while the frontend compatibility layer is being retired.
@@ -52,10 +56,36 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
       setError('Generate the teleprompter script first.');
       return;
     }
+    if (ownedVideoPending) {
+      setError('Owned video generation is the next migration checkpoint. Preview will not fall back to Base44.');
+      return;
+    }
+
     setGenerating(true);
     setError(null);
     setEditingPrompt(false);
     try {
+      if (ownedPreview) {
+        const ownedMediaType = mediaType === 'audio'
+          ? 'audio'
+          : urlField === 'generated_thumbnail_url'
+            ? 'thumbnail'
+            : 'image';
+
+        const result = await creapdApi.post('/research/production', {
+          action: 'generate_media',
+          package_id: pkg.id,
+          media_type: ownedMediaType,
+          prompt: usePrompt,
+          script: pkg.teleprompter_script,
+          voice,
+        });
+
+        if (!result?.package) throw new Error('Owned media generation returned no package');
+        onMediaUpdate(result.package);
+        return;
+      }
+
       let url;
       if (mediaType === 'image') {
         const result = await base44.integrations.Core.GenerateImage({ prompt: usePrompt });
@@ -86,7 +116,8 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
       const updated = await base44.entities.ProductionPackage.update(pkg.id, updateData);
       onMediaUpdate(updated);
 
-      // PRD 12: Auto-sync generated images/videos to Image Library
+      // PRD 12: Auto-sync generated images/videos to Image Library.
+      // Preview deliberately skips this until ImageAsset has an owned Neon store.
       if (mediaType === 'image' || mediaType === 'video') {
         const isThumbnail = urlField === 'generated_thumbnail_url';
         const isVideo = mediaType === 'video';
@@ -110,7 +141,8 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Generation failed');
+      const apiMessage = err?.data?.diagnostic?.message || err?.data?.message || err?.message;
+      setError(apiMessage || 'Generation failed');
     } finally {
       setGenerating(false);
     }
@@ -193,8 +225,8 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
           <div className="flex flex-col items-center justify-center py-10 gap-2">
             <Loader2 className="w-6 h-6 text-berna-orange animate-spin" />
             <span className="text-[10px] text-muted-foreground">
-              {mediaType === 'image' ? 'Generating image (5-10s)...' :
-               mediaType === 'video' ? 'Generating video (30-60s)...' :
+              {mediaType === 'image' ? 'Generating image...' :
+               mediaType === 'video' ? 'Generating video...' :
                'Generating Voice Package...'}
             </span>
           </div>
@@ -228,8 +260,14 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
             )}
 
             <div className="flex gap-1.5">
-              <Button size="sm" variant="outline" className="h-7 text-[10px] border-white/10 text-white hover:bg-white/[0.04] flex-1" onClick={() => handleGenerate()}>
-                <RefreshCw className="w-3 h-3 mr-1" />Regenerate
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] border-white/10 text-white hover:bg-white/[0.04] flex-1"
+                onClick={() => handleGenerate()}
+                disabled={ownedVideoPending}
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />{ownedVideoPending ? 'Migration Pending' : 'Regenerate'}
               </Button>
               {mediaType === 'image' && prompt && (
                 <Button size="sm" variant="outline" className="h-7 text-[10px] border-white/10 text-white hover:bg-white/[0.04]" onClick={handleStartEditPrompt}>
@@ -294,10 +332,14 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
                 size="sm"
                 className="bg-berna-orange/90 hover:bg-berna-orange text-white text-xs h-8 w-full"
                 onClick={() => handleGenerate()}
-                disabled={!prompt && mediaType !== 'audio'}
+                disabled={ownedVideoPending || (!prompt && mediaType !== 'audio')}
               >
                 <Icon className="w-3 h-3 mr-1" />
-                {prompt || (mediaType === 'audio' && pkg?.teleprompter_script) ? `Generate ${label}` : `Need ${promptField.replace(/_/g, ' ')} first`}
+                {ownedVideoPending
+                  ? 'Video migration pending'
+                  : prompt || (mediaType === 'audio' && pkg?.teleprompter_script)
+                    ? `Generate ${label}`
+                    : `Need ${promptField.replace(/_/g, ' ')} first`}
               </Button>
             )}
             {error && <p className="text-[10px] text-red-400">{error}</p>}
