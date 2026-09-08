@@ -1,3 +1,5 @@
+import { getVercelOidcToken } from '@vercel/oidc';
+
 export const config = {
   maxDuration: 10,
 };
@@ -12,15 +14,38 @@ export default async function handler(request, response) {
     return response.status(405).json({ ok: false, error: 'method_not_allowed' });
   }
 
-  const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || null;
+  let contextOidcToken = null;
+  let oidcErrorName = null;
+
+  try {
+    contextOidcToken = await getVercelOidcToken();
+  } catch (error) {
+    oidcErrorName = error?.name || 'OidcTokenError';
+  }
+
+  const gatewayToken =
+    process.env.AI_GATEWAY_API_KEY ||
+    contextOidcToken ||
+    process.env.VERCEL_OIDC_TOKEN ||
+    null;
+
+  const authSource = process.env.AI_GATEWAY_API_KEY
+    ? 'api_key'
+    : contextOidcToken
+      ? 'vercel_oidc_context'
+      : process.env.VERCEL_OIDC_TOKEN
+        ? 'vercel_oidc_env'
+        : null;
 
   if (!gatewayToken) {
     return response.status(503).json({
       ok: false,
       service: 'creapd-ai-gateway',
       error: 'gateway_auth_not_available',
-      oidc_present: Boolean(process.env.VERCEL_OIDC_TOKEN),
+      oidc_context_present: Boolean(contextOidcToken),
+      oidc_env_present: Boolean(process.env.VERCEL_OIDC_TOKEN),
       api_key_present: Boolean(process.env.AI_GATEWAY_API_KEY),
+      oidc_error_name: oidcErrorName,
       target_model: TARGET_MODEL,
       timestamp: new Date().toISOString(),
     });
@@ -44,7 +69,7 @@ export default async function handler(request, response) {
       ok: gatewayResponse.ok,
       service: 'creapd-ai-gateway',
       gateway_http_status: gatewayResponse.status,
-      auth_source: process.env.AI_GATEWAY_API_KEY ? 'api_key' : 'vercel_oidc',
+      auth_source: authSource,
       target_model: TARGET_MODEL,
       target_model_available: targetAvailable,
       model_count: models.length,
@@ -57,6 +82,7 @@ export default async function handler(request, response) {
       error: 'gateway_connection_failed',
       error_name: error?.name || null,
       safe_message: String(error?.message || 'gateway_connection_failed').slice(0, 180),
+      auth_source: authSource,
       target_model: TARGET_MODEL,
       timestamp: new Date().toISOString(),
     });
