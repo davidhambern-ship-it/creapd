@@ -1,6 +1,7 @@
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { generateResearchProductionPackage } from '../../../server/researchPackageEngine.js';
+import { generateAndStoreResearchMedia } from '../../../server/mediaGateway.js';
 
 export const config = {
   maxDuration: 60,
@@ -15,6 +16,7 @@ const NUMERIC_FIELDS = [
 
 const POINT_STATUSES = new Set(['pending', 'approved', 'rejected', 'used']);
 const PACKAGE_STATUSES = new Set(['not_generated', 'generating', 'generated', 'edited', 'approved']);
+const OWNED_MEDIA_TYPES = new Set(['image', 'thumbnail', 'audio']);
 
 function firstQueryValue(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -91,6 +93,20 @@ function jsonPatchValue(patch, key) {
   }
 
   return JSON.stringify(value);
+}
+
+function jsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 async function getOwnedPoint(sql, ownerUserId, pointId) {
@@ -181,6 +197,125 @@ async function updateOwnedPackage(sql, ownerUserId, packageId, patch) {
   return updated || null;
 }
 
+async function generateOwnedMedia(response, sql, ownerUserId, body) {
+  const packageId = body.package_id || null;
+  const mediaType = String(body.media_type || '').trim();
+
+  if (!packageId) {
+    return response.status(400).json({ ok: false, error: 'package_id_required' });
+  }
+
+  if (mediaType === 'video') {
+    return response.status(409).json({
+      ok: false,
+      error: 'video_media_migration_pending',
+      message: 'Video generation is not enabled on the owned Preview media path yet.',
+    });
+  }
+
+  if (!OWNED_MEDIA_TYPES.has(mediaType)) {
+    return response.status(400).json({ ok: false, error: 'unsupported_media_type' });
+  }
+
+  const pkg = await getOwnedPackage(sql, ownerUserId, packageId);
+  if (!pkg) {
+    return response.status(404).json({ ok: false, error: 'production_package_not_found' });
+  }
+
+  const prompt = String(
+    body.prompt ||
+    (mediaType === 'thumbnail' ? pkg.thumbnail_prompt : pkg.image_prompt) ||
+    '',
+  ).trim();
+  const script = String(body.script || pkg.teleprompter_script || pkg.story_summary || '').trim();
+
+  try {
+    const media = await generateAndStoreResearchMedia({
+      packageId: pkg.id,
+      mediaType,
+      prompt,
+      script,
+      voice: String(body.voice || 'river'),
+    });
+
+    const patch = {};
+    if (mediaType === 'audio') {
+      patch.generated_audio_url = media.url;
+    } else if (mediaType === 'thumbnail') {
+      patch.generated_thumbnail_url = media.url;
+      if (pkg.generated_thumbnail_url) {
+        patch.thumbnail_variations = [
+          ...jsonArray(pkg.thumbnail_variations).filter(item => item?.url !== pkg.generated_thumbnail_url),
+          {
+            url: pkg.generated_thumbnail_url,
+            prompt,
+            created_at: new Date().toISOString(),
+          },
+        ];
+      }
+    } else {
+      patch.generated_image_url = media.url;
+      if (pkg.generated_image_url) {
+        patch.image_variations = [
+          ...jsonArray(pkg.image_variations).filter(item => item?.url !== pkg.generated_image_url),
+          {
+            url: pkg.generated_image_url,
+            prompt,
+            created_at: new Date().toISOString(),
+          },
+        ];
+      }
+    }
+
+    let updatedPackage = await updateOwnedPackage(sql, ownerUserId, pkg.id, patch);
+
+    const mediaMetadata = JSON.stringify({
+      last_media_generation: {
+        media_type: mediaType,
+        model: media.model,
+        gateway_auth_source: media.gatewayAuthSource,
+        blob_auth_source: media.blobAuthSource,
+        blob_pathname: media.pathname,
+        content_type: media.contentType,
+        elapsed_ms: media.elapsedMs,
+        generated_at: new Date().toISOString(),
+      },
+    });
+
+    [updatedPackage] = await sql`
+      UPDATE creapd.production_packages
+      SET
+        source_payload = COALESCE(source_payload, '{}'::jsonb) || ${mediaMetadata}::jsonb,
+        updated_at = now()
+      WHERE id = ${String(pkg.id)}
+        AND owner_user_id = ${ownerUserId}
+      RETURNING *
+    `;
+
+    return response.status(200).json({
+      ok: true,
+      service: 'creapd-research',
+      action: 'generate_media',
+      source: 'neon',
+      data_authority: 'neon',
+      media,
+      package: withBase44Aliases(updatedPackage),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[CREAPD RESEARCH MEDIA GENERATION]', error);
+    const isStorageError = String(error?.code || '').startsWith('BLOB_');
+    return response.status(isStorageError ? 503 : 502).json({
+      ok: false,
+      service: 'creapd-research',
+      action: 'generate_media',
+      error: error?.code || 'media_generation_failed',
+      diagnostic: safeError(error),
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
 async function handlePost(request, response, sql, ownerUserId) {
   const body = request.body && typeof request.body === 'object' ? request.body : {};
   const action = String(body.action || '').trim();
@@ -218,6 +353,10 @@ async function handlePost(request, response, sql, ownerUserId) {
       }
       throw error;
     }
+  }
+
+  if (action === 'generate_media') {
+    return await generateOwnedMedia(response, sql, ownerUserId, body);
   }
 
   const pointId = body.point_id || body.research_point_id || null;
