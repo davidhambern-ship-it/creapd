@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 
@@ -65,6 +66,69 @@ export default async function handler(request, response) {
     const ownerUserId = String(user.id);
     const body = request.body && typeof request.body === 'object' ? request.body : {};
     const action = cleanString(body.action);
+
+    if (action === 'create') {
+      const input = body.topic && typeof body.topic === 'object' ? body.topic : body;
+      const configurationId = cleanString(input.configuration_id);
+      const title = cleanString(input.title);
+
+      if (!configurationId || !title) {
+        return response.status(400).json({
+          ok: false,
+          service: 'creapd-research',
+          error: 'configuration_id_and_title_required',
+        });
+      }
+
+      const [configuration] = await sql`
+        SELECT id, research_depth
+        FROM creapd.research_production_configurations
+        WHERE id = ${configurationId}
+          AND owner_user_id = ${ownerUserId}
+        LIMIT 1
+      `;
+
+      if (!configuration) {
+        return response.status(404).json({
+          ok: false,
+          service: 'creapd-research',
+          error: 'configuration_not_found',
+        });
+      }
+
+      const topicId = cleanString(input.id) || randomUUID();
+      const description = cleanString(input.description) || '';
+      const researchQuery = cleanString(input.research_query) || title;
+      const category = cleanString(input.category) || 'general';
+      const priority = cleanString(input.priority) || 'standard';
+      const researchDepth = cleanString(input.research_depth) || configuration.research_depth || 'standard';
+      const status = ALLOWED_STATUSES.has(cleanString(input.status)) ? cleanString(input.status) : 'pending';
+
+      const [createdTopic] = await sql`
+        INSERT INTO creapd.research_topics (
+          id, configuration_id, owner_user_id, title, description, research_query,
+          category, priority, research_depth, status, pipeline_stage,
+          created_by_id, created_by_email, source_system, source_payload
+        ) VALUES (
+          ${topicId}, ${configurationId}, ${ownerUserId}, ${title}, ${description}, ${researchQuery},
+          ${category}, ${priority}, ${researchDepth}, ${status}, 'idle',
+          ${ownerUserId}, ${user.email || null}, 'creapd-vercel',
+          ${JSON.stringify({ created_via: 'topic-action', created_at: new Date().toISOString() })}::jsonb
+        )
+        RETURNING *
+      `;
+
+      return response.status(201).json({
+        ok: true,
+        service: 'creapd-research',
+        source: 'neon',
+        data_authority: 'neon',
+        action: 'create',
+        topic: normalizeTopic(createdTopic),
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     const topicId = cleanString(body.topic_id);
 
     if (!topicId) {
