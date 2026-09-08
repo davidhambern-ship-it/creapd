@@ -1,12 +1,12 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
-import { generateStructuredGatewayResponse } from '../../../server/aiGateway.js';
+import { generateStructuredGatewayResponse, DEFAULT_MODEL } from '../../../server/aiGateway.js';
 
 export const config = {
   maxDuration: 30,
 };
 
-const TARGET_MODEL = 'openai/gpt-5.6-luna';
+const TARGET_MODEL = DEFAULT_MODEL;
 
 const canarySchema = {
   type: 'object',
