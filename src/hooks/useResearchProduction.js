@@ -33,12 +33,7 @@ export function useResearchProduction(configId) {
     setTopics(payload.topics || []);
     setPoints(payload.points || []);
     setDossiers(payload.dossiers || []);
-
-    // ProductionPackage has not been migrated to Neon yet. Do not silently call
-    // Base44 from a Neon-authenticated Preview session because that session does
-    // not carry a Base44 credential. Production remains on the legacy path below
-    // until package data is migrated as a separate checkpoint.
-    setPackages([]);
+    setPackages(payload.packages || []);
   }, [configId, clearProduction]);
 
   const loadFromBase44 = useCallback(async () => {
@@ -61,8 +56,6 @@ export function useResearchProduction(configId) {
     }
     setConfig(activeConfig);
 
-    // Topics and points are independent enough that one failed collection should
-    // not make CREAPD pretend the entire Research Production does not exist.
     const [topicsResult, pointsResult] = await Promise.allSettled([
       base44.entities.ResearchTopic.filter({ configuration_id: activeId }, '-created_date'),
       base44.entities.ResearchPoint.filter({ configuration_id: activeId }, 'order')
@@ -86,7 +79,6 @@ export function useResearchProduction(configId) {
       console.error('Research points load failed:', pointsResult.reason);
     }
 
-    // Fetch packages linked to the currently loaded research points.
     if (pointsResult.status === 'fulfilled') {
       const pointIds = loadedPoints.map(pt => pt.id).filter(Boolean);
       if (pointIds.length > 0) {
@@ -104,9 +96,6 @@ export function useResearchProduction(configId) {
       }
     }
 
-    // Dossiers are created before research finishes, so load them by topic_id as
-    // well as the final dossier_id. This makes active and failed research visible
-    // to the Lobby/Briefing Room instead of disappearing until completion.
     if (topicsResult.status === 'fulfilled') {
       const topicIds = loadedTopics.map(topic => topic.id).filter(Boolean);
       const dossierIds = loadedTopics.map(topic => topic.dossier_id).filter(Boolean);
@@ -142,9 +131,6 @@ export function useResearchProduction(configId) {
         await loadFromBase44();
       }
     } catch (err) {
-      // A critical lookup failure should be reported, but do not erase
-      // already-rendered production data and turn a transient API error into a
-      // misleading "No Research Production" screen.
       console.error('useResearchProduction load error:', err);
       setError(err);
     } finally {
