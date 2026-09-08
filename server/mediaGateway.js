@@ -3,7 +3,8 @@ import { put } from '@vercel/blob';
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh';
-const DEFAULT_IMAGE_MODEL = process.env.CREAPD_IMAGE_MODEL || 'meta/muse-image-1.0';
+const CLOUDFLARE_API_BASE_URL = 'https://api.cloudflare.com/client/v4';
+const DEFAULT_IMAGE_MODEL = process.env.CLOUDFLARE_IMAGE_MODEL || '@cf/black-forest-labs/flux-1-schnell';
 const DEFAULT_SPEECH_MODEL = process.env.CREAPD_SPEECH_MODEL || 'openai/tts-1';
 
 const VOICE_MAP = {
@@ -39,6 +40,19 @@ async function resolveGatewayCredential() {
   const error = new Error('AI Gateway authentication is not available');
   error.code = 'AI_GATEWAY_AUTH_NOT_AVAILABLE';
   throw error;
+}
+
+function resolveCloudflareCredential() {
+  const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+  const token = String(process.env.CLOUDFLARE_API_TOKEN || '').trim();
+
+  if (!accountId || !token) {
+    const error = new Error('Cloudflare Workers AI is not configured for this project');
+    error.code = 'CLOUDFLARE_AI_NOT_CONFIGURED';
+    throw error;
+  }
+
+  return { accountId, token, source: 'cloudflare_workers_ai_token' };
 }
 
 async function uploadPublicBlob({ pathname, bytes, contentType }) {
@@ -86,17 +100,6 @@ async function uploadPublicBlob({ pathname, bytes, contentType }) {
   }
 }
 
-async function downloadGeneratedAsset(url) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
-  if (!response.ok) {
-    const error = new Error(`Generated media URL returned HTTP ${response.status}`);
-    error.code = 'MEDIA_DOWNLOAD_FAILED';
-    throw error;
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
-}
-
 async function generateImageBytes({ prompt, model = DEFAULT_IMAGE_MODEL }) {
   if (!prompt) {
     const error = new Error('Image prompt is required');
@@ -104,9 +107,12 @@ async function generateImageBytes({ prompt, model = DEFAULT_IMAGE_MODEL }) {
     throw error;
   }
 
-  const credential = await resolveGatewayCredential();
+  const credential = resolveCloudflareCredential();
   const startedAt = Date.now();
-  const gatewayResponse = await fetch(`${GATEWAY_BASE_URL}/v1/images/generations`, {
+  const modelPath = String(model || DEFAULT_IMAGE_MODEL).trim();
+  const endpoint = `${CLOUDFLARE_API_BASE_URL}/accounts/${encodeURIComponent(credential.accountId)}/ai/run/${modelPath}`;
+
+  const cloudflareResponse = await fetch(endpoint, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${credential.token}`,
@@ -114,47 +120,40 @@ async function generateImageBytes({ prompt, model = DEFAULT_IMAGE_MODEL }) {
       Accept: 'application/json',
     },
     body: JSON.stringify({
-      model,
-      prompt: String(prompt).slice(0, 12000),
-      n: 1,
+      prompt: String(prompt).slice(0, 2048),
+      steps: 4,
+      seed: Math.floor(Math.random() * 2147483646) + 1,
     }),
     signal: AbortSignal.timeout(55000),
   });
 
-  const payload = await gatewayResponse.json().catch(() => null);
-  if (!gatewayResponse.ok) {
-    const error = new Error(
-      safeMessage(payload?.error?.message || payload?.message, `AI Gateway image request returned HTTP ${gatewayResponse.status}`),
-    );
-    error.code = 'AI_GATEWAY_IMAGE_FAILED';
-    error.status = gatewayResponse.status;
+  const payload = await cloudflareResponse.json().catch(() => null);
+  if (!cloudflareResponse.ok || payload?.success === false) {
+    const providerMessage =
+      payload?.errors?.[0]?.message ||
+      payload?.error?.message ||
+      payload?.message ||
+      `Cloudflare Workers AI returned HTTP ${cloudflareResponse.status}`;
+    const error = new Error(safeMessage(providerMessage));
+    error.code = 'CLOUDFLARE_IMAGE_FAILED';
+    error.status = cloudflareResponse.status;
     throw error;
   }
 
-  const generated = Array.isArray(payload?.data) ? payload.data[0] : null;
-  let bytes = null;
-  let contentType = 'image/png';
-
-  if (generated?.b64_json) {
-    bytes = Buffer.from(generated.b64_json, 'base64');
-  } else if (generated?.url) {
-    bytes = await downloadGeneratedAsset(generated.url);
-    const lowerUrl = String(generated.url).toLowerCase();
-    if (lowerUrl.includes('.jpg') || lowerUrl.includes('.jpeg')) contentType = 'image/jpeg';
-    if (lowerUrl.includes('.webp')) contentType = 'image/webp';
-  }
+  const imageBase64 = payload?.result?.image || payload?.image || null;
+  const bytes = imageBase64 ? Buffer.from(imageBase64, 'base64') : null;
 
   if (!bytes?.length) {
-    const error = new Error('AI Gateway returned no image bytes');
-    error.code = 'AI_GATEWAY_IMAGE_EMPTY';
+    const error = new Error('Cloudflare Workers AI returned no image bytes');
+    error.code = 'CLOUDFLARE_IMAGE_EMPTY';
     throw error;
   }
 
   return {
     bytes,
-    contentType,
-    extension: contentType === 'image/jpeg' ? 'jpg' : contentType === 'image/webp' ? 'webp' : 'png',
-    model: payload?.model || model,
+    contentType: 'image/jpeg',
+    extension: 'jpg',
+    model: modelPath,
     authSource: credential.source,
     elapsedMs: Date.now() - startedAt,
   };
