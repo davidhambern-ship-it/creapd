@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,11 +70,18 @@ export default function ResearchConfigure() {
   });
 
   useEffect(() => {
-    if (editConfigId) {
-      base44.entities.ResearchProductionConfiguration.get(editConfigId).then(c => {
-        if (c) setConfig({ ...c, status: 'configuring' });
-      }).catch(() => {});
-    }
+    if (!editConfigId) return;
+
+    let active = true;
+    creapdApi.get(`/research/production?config_id=${encodeURIComponent(editConfigId)}`)
+      .then(payload => {
+        if (active && payload?.config) {
+          setConfig({ ...payload.config, status: 'configuring' });
+        }
+      })
+      .catch(() => {});
+
+    return () => { active = false; };
   }, [editConfigId]);
 
   const updateConfig = (field, value) => {
@@ -347,7 +355,6 @@ export default function ResearchConfigure() {
       </div>
     );
   }
-
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       {/* Header */}
