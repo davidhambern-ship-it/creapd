@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
+import { runResearchEngine } from '../../../server/researchEngine.js';
 
 export const config = {
-  maxDuration: 10,
+  maxDuration: 60,
 };
 
 const ALLOWED_STATUSES = new Set([
@@ -102,7 +103,8 @@ export default async function handler(request, response) {
       const category = cleanString(input.category) || 'general';
       const priority = cleanString(input.priority) || 'standard';
       const researchDepth = cleanString(input.research_depth) || configuration.research_depth || 'standard';
-      const status = ALLOWED_STATUSES.has(cleanString(input.status)) ? cleanString(input.status) : 'pending';
+      const requestedStatus = cleanString(input.status);
+      const status = ALLOWED_STATUSES.has(requestedStatus) ? requestedStatus : 'pending';
 
       const [createdTopic] = await sql`
         INSERT INTO creapd.research_topics (
@@ -152,6 +154,28 @@ export default async function handler(request, response) {
         ok: false,
         service: 'creapd-research',
         error: 'topic_not_found',
+      });
+    }
+
+    if (action === 'start') {
+      const result = await runResearchEngine({
+        ownerUserId,
+        ownerEmail: user.email || null,
+        configurationId: String(topic.configuration_id),
+        topic: {
+          ...topic,
+          research_depth: cleanString(body.research_depth) || topic.research_depth,
+        },
+      });
+
+      return response.status(200).json({
+        ok: true,
+        service: 'creapd-research-engine',
+        source: 'neon',
+        data_authority: 'neon',
+        action: 'start',
+        ...result,
+        timestamp: new Date().toISOString(),
       });
     }
 
@@ -238,11 +262,12 @@ export default async function handler(request, response) {
       error: 'invalid_topic_action',
     });
   } catch (error) {
-    if ([400, 401, 403].includes(error?.status)) {
+    if ([400, 401, 403, 404, 409].includes(error?.status)) {
       return response.status(error.status).json({
         ok: false,
         service: 'creapd-research',
-        error: error.code || 'authentication_required',
+        error: error.code || 'research_topic_action_rejected',
+        safe_message: String(error?.message || 'research_topic_action_rejected').slice(0, 220),
       });
     }
 
@@ -250,7 +275,8 @@ export default async function handler(request, response) {
     return response.status(503).json({
       ok: false,
       service: 'creapd-research',
-      error: 'research_topic_write_failed',
+      error: error?.code || 'research_topic_write_failed',
+      gateway_auth_source: error?.authSource || null,
       diagnostic: safeError(error),
       timestamp: new Date().toISOString(),
     });
