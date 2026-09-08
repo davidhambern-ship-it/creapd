@@ -71,19 +71,27 @@ export default async function handler(request, response) {
       });
     }
 
-    const [dossier] = await sql`
-      SELECT *
-      FROM creapd.research_dossiers
-      WHERE owner_user_id = ${ownerUserId}
-        AND (
-          topic_id = ${String(topic.id)}
-          OR id = ${String(topic.dossier_id || '')}
-        )
-      ORDER BY
-        CASE WHEN id = ${String(topic.dossier_id || '')} THEN 0 ELSE 1 END,
-        created_at DESC
-      LIMIT 1
-    `;
+    const [[dossier], [pointCountRow]] = await Promise.all([
+      sql`
+        SELECT *
+        FROM creapd.research_dossiers
+        WHERE owner_user_id = ${ownerUserId}
+          AND (
+            topic_id = ${String(topic.id)}
+            OR id = ${String(topic.dossier_id || '')}
+          )
+        ORDER BY
+          CASE WHEN id = ${String(topic.dossier_id || '')} THEN 0 ELSE 1 END,
+          created_at DESC
+        LIMIT 1
+      `,
+      sql`
+        SELECT COUNT(*)::int AS point_count
+        FROM creapd.research_points
+        WHERE owner_user_id = ${ownerUserId}
+          AND topic_id = ${String(topic.id)}
+      `,
+    ]);
 
     return response.status(200).json({
       ok: true,
@@ -92,6 +100,7 @@ export default async function handler(request, response) {
       data_authority: 'neon',
       topic: withBase44Aliases(topic),
       dossier: dossier ? withBase44Aliases(dossier) : null,
+      point_count: pointCountRow?.point_count || 0,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
