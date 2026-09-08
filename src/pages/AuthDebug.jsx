@@ -100,7 +100,7 @@ export default function AuthDebug() {
       const { token } = await getNeonToken();
       if (!token) throw new Error('No Neon session token is available.');
 
-      const response = await fetch('/api/creapd/ai/research-canary', {
+      const response = await fetch('/api/creapd/ai/health', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -108,7 +108,7 @@ export default function AuthDebug() {
           Authorization: `Bearer ${token}`,
           'X-CREAPD-Auth-Provider': 'neon',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ action: 'research_canary' }),
       });
       const payload = await response.json().catch(() => null);
       setAiState({
