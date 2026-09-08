@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,9 +30,10 @@ const STEPS = [
   { label: 'Review', icon: CheckCircle2 }
 ];
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function safeParse(value, fallback) {
+  if (!value) return fallback;
+  if (Array.isArray(value) || typeof value === 'object') return value;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 export default function ResearchConfigure() {
@@ -73,13 +75,24 @@ export default function ResearchConfigure() {
     if (!editConfigId) return;
 
     let active = true;
-    creapdApi.get(`/research/production?config_id=${encodeURIComponent(editConfigId)}`)
-      .then(payload => {
-        if (active && payload?.config) {
-          setConfig({ ...payload.config, status: 'configuring' });
-        }
-      })
-      .catch(() => {});
+
+    if (shouldUseNeonAuth()) {
+      creapdApi.get(`/research/production?config_id=${encodeURIComponent(editConfigId)}`)
+        .then(payload => {
+          if (active && payload?.config) {
+            setConfig({ ...payload.config, status: 'configuring' });
+          }
+        })
+        .catch(() => {});
+    } else {
+      base44.entities.ResearchProductionConfiguration.get(editConfigId)
+        .then(existingConfig => {
+          if (active && existingConfig) {
+            setConfig({ ...existingConfig, status: 'configuring' });
+          }
+        })
+        .catch(() => {});
+    }
 
     return () => { active = false; };
   }, [editConfigId]);
@@ -110,6 +123,20 @@ export default function ResearchConfigure() {
     setSaving(true);
     setSaveError('');
     try {
+      if (shouldUseNeonAuth()) {
+        const payload = await creapdApi.post('/research/configuration', {
+          ...config,
+          ...(editConfigId ? { id: editConfigId } : {}),
+        });
+
+        if (!payload?.configuration?.id) {
+          throw new Error('Research configuration was not returned after save.');
+        }
+
+        navigate('/research');
+        return;
+      }
+
       let savedConfig;
       if (editConfigId) {
         savedConfig = await base44.entities.ResearchProductionConfiguration.update(editConfigId, config);
