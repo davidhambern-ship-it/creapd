@@ -27,10 +27,19 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
   const prompt = pkg?.[promptField] || '';
   const mediaUrl = pkg?.[urlField] || '';
 
-  // PRD 9.15: Parse image variations from stored JSON string
+  // PRD 9.15: Base44 stored JSON strings; Neon JSONB returns native arrays.
+  // Accept both shapes while the frontend compatibility layer is being retired.
   const variations = (() => {
     const field = mediaType === 'image' && urlField === 'generated_thumbnail_url' ? 'thumbnail_variations' : 'image_variations';
-    try { return JSON.parse(pkg?.[field] || '[]'); } catch { return []; }
+    const raw = pkg?.[field];
+    if (Array.isArray(raw)) return raw;
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   })();
 
   const handleGenerate = async (customPrompt) => {
