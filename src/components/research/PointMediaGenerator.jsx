@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
 import MediaGenerator from '@/components/production/MediaGenerator';
 import {
@@ -30,12 +32,55 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
 
   if (!pkg) return null;
 
+  const ownedPreview = shouldUseNeonAuth();
+  const visibleSteps = ownedPreview ? STEPS.filter(step => step.key !== 'video') : STEPS;
   const hasMedia = pkg.generated_audio_url || pkg.generated_thumbnail_url || pkg.generated_image_url || pkg.generated_video_url;
+
+  const generateOwned = async (mediaType, extra = {}) => {
+    const result = await creapdApi.post('/research/production', {
+      action: 'generate_media',
+      package_id: pkg.id,
+      media_type: mediaType,
+      ...extra,
+    });
+    if (result?.package) onMediaUpdate(result.package);
+    return result;
+  };
 
   const handleGenerateAll = async () => {
     setGeneratingAll(true);
     setMediaStep('voiceover');
     try {
+      if (ownedPreview) {
+        if (pkg.teleprompter_script || pkg.story_summary) {
+          try {
+            await generateOwned('audio', {
+              script: pkg.teleprompter_script || pkg.story_summary,
+              voice: 'river',
+            });
+          } catch (err) { console.error('Owned voiceover failed:', err); }
+        }
+
+        setMediaStep('thumbnail');
+        if (pkg.thumbnail_prompt) {
+          try {
+            await generateOwned('thumbnail', { prompt: pkg.thumbnail_prompt });
+          } catch (err) { console.error('Owned thumbnail failed:', err); }
+        }
+
+        setMediaStep('story_image');
+        if (pkg.image_prompt) {
+          try {
+            await generateOwned('image', { prompt: pkg.image_prompt });
+          } catch (err) { console.error('Owned story image failed:', err); }
+        }
+
+        // Video is intentionally not sent to Base44 on Preview. It becomes the
+        // next owned media checkpoint after image + voice are proven.
+        setMediaStep('done');
+        return;
+      }
+
       if (pkg.story_summary) {
         try {
           const vpResult = await base44.functions.invoke('generateVoicePackage', {
@@ -120,14 +165,20 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-7"
         >
           {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-          {generatingAll ? 'Generating...' : 'Generate All'}
+          {generatingAll ? 'Generating...' : ownedPreview ? 'Generate Owned Media' : 'Generate All'}
         </Button>
       </div>
 
+      {ownedPreview && (
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Preview generates voiceover, thumbnail, and story image through CREAPD's owned Vercel path. Video is temporarily disabled until its migration checkpoint is complete.
+        </p>
+      )}
+
       {generatingAll && (
         <div className="mb-3 flex flex-wrap gap-3">
-          {STEPS.map(step => {
-            const stepOrder = STEPS.map(s => s.key);
+          {visibleSteps.map(step => {
+            const stepOrder = visibleSteps.map(s => s.key);
             const isDone = stepOrder.indexOf(mediaStep) > stepOrder.indexOf(step.key) || mediaStep === 'done';
             const isActive = mediaStep === step.key;
             return (
