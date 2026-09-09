@@ -14,12 +14,23 @@ const sdkBase44 = createClient({
   appBaseUrl
 });
 
+// Presentation ids created by Base44 may also look like UUIDs, so a UUID alone
+// is not enough to decide data authority. A presentation becomes "owned" only
+// after the Presentation Studio loader successfully resolves it from Neon in
+// this browser tab.
+const ownedPresentationIds = new Set();
+let activeOwnedPresentationId = null;
+
 function bindIfFunction(value, target) {
   return typeof value === 'function' ? value.bind(target) : value;
 }
 
-function isOwnedPresentationId(value) {
+function looksLikePresentationId(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
+function isOwnedPresentationId(value) {
+  return ownedPresentationIds.has(String(value || ''));
 }
 
 function presentationIdFromChildId(value, marker) {
@@ -28,6 +39,13 @@ function presentationIdFromChildId(value, marker) {
   if (index <= 0) return null;
   const candidate = text.slice(0, index);
   return isOwnedPresentationId(candidate) ? candidate : null;
+}
+
+function isOwnedNotFound(error) {
+  return error?.status === 404 && (
+    error?.data?.error === 'PRESENTATION_NOT_FOUND' ||
+    error?.data?.diagnostic?.code === 'PRESENTATION_NOT_FOUND'
+  );
 }
 
 const researchTopicAdapter = new Proxy(sdkBase44.entities.ResearchTopic, {
@@ -278,22 +296,30 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
   get(target, property) {
     if (property === 'invoke') {
       return async (functionName, payload = {}) => {
-        if (shouldUseNeonAuth() && functionName === 'loadEditorData' && isOwnedPresentationId(payload?.presentation_id)) {
-          const result = await creapdApi.post('/production/core', {
-            action: 'load_presentation_editor',
-            presentation_id: payload.presentation_id,
-          });
-          return {
-            data: {
-              presentation: result?.presentation,
-              slides: result?.slides || [],
-              // Leave this intentionally empty so the editor asks the owned
-              // SlideElement adapter for fresh state after every save.
-              elementsBySlide: {},
-              presentation_studio: true,
-              source: 'neon',
-            },
-          };
+        if (shouldUseNeonAuth() && functionName === 'loadEditorData' && looksLikePresentationId(payload?.presentation_id)) {
+          try {
+            const result = await creapdApi.post('/production/core', {
+              action: 'load_presentation_editor',
+              presentation_id: payload.presentation_id,
+            });
+            ownedPresentationIds.add(String(payload.presentation_id));
+            activeOwnedPresentationId = String(payload.presentation_id);
+            return {
+              data: {
+                presentation: result?.presentation,
+                slides: result?.slides || [],
+                // Leave this intentionally empty so the editor asks the owned
+                // SlideElement adapter for fresh state after every save.
+                elementsBySlide: {},
+                presentation_studio: true,
+                source: 'neon',
+              },
+            };
+          } catch (error) {
+            if (!isOwnedNotFound(error)) throw error;
+            activeOwnedPresentationId = null;
+            return target.invoke(functionName, payload);
+          }
         }
 
         if (shouldUseNeonAuth() && functionName === 'directPresentation' && isOwnedPresentationId(payload?.presentation_id)) {
@@ -309,6 +335,20 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
               source: 'neon',
             },
           };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'cpeController' && activeOwnedPresentationId) {
+          const workerAction = payload?.action === 'review'
+            ? 'presentation_workers_review'
+            : 'presentation_workers_improve';
+          const result = await creapdApi.post('/production/core', {
+            action: workerAction,
+            presentation_id: activeOwnedPresentationId,
+            presentation_data: payload?.presentation_data || {},
+            revision_context: payload?.revision_context || null,
+            revision_count: payload?.revision_count || 0,
+          });
+          return { data: result };
         }
 
         if (shouldUseNeonAuth() && functionName === 'deepResearchV2') {
@@ -384,11 +424,11 @@ const integrationsAdapter = new Proxy(sdkBase44.integrations, {
   },
 });
 
-// Keep the existing Base44 surface intact for production and for services that
-// have not migrated yet. On Vercel Preview, explicitly bridged operations are
-// redirected to CREAPD's owned backend. The Presentation Editor remains one
-// application; this compatibility layer swaps its data authority to Neon for
-// owned Presentation Studio projects.
+// Keep the existing Base44 surface intact for services that have not migrated
+// yet. On the owned Preview, explicitly bridged operations are redirected to
+// CREAPD's Neon/Vercel backend. There is still only one Presentation Editor;
+// this compatibility layer changes its data authority for Presentation Studio
+// projects without creating a second editor implementation.
 export const base44 = new Proxy(sdkBase44, {
   get(target, property) {
     if (property === 'entities') return entitiesAdapter;
