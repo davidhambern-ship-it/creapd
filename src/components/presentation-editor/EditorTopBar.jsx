@@ -63,7 +63,7 @@ export default function EditorTopBar({
   saving, dirty, canUndo, canRedo, hasSelection, title,
   onSave, onUndo, onRedo, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
-  onAutoBuild, onToggleAiPanel, aiPanelOpen,
+  onToggleAiPanel, aiPanelOpen,
   onToggleReviewPanel, reviewPanelOpen,
   workspaceMode, onWorkspaceModeChange,
 }) {
@@ -210,12 +210,6 @@ export default function EditorTopBar({
       >
         <ClipboardCheck className="w-4 h-4" /> Review
       </button>
-
-      {onAutoBuild && (
-        <button className="cpe-autobuild-btn" onClick={onAutoBuild}>
-          <Wand2 className="w-4 h-4" /> Auto-Build
-        </button>
-      )}
 
       <div className="relative">
         <button className="cpe-tool-btn" onClick={() => setExportOpen(!exportOpen)}>
