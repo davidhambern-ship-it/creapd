@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
-import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
+import { generateFreeLocalVoice, LOCAL_VOICE_ENGINE_REVISION } from '@/lib/localVoiceEngine';
 import {
   Loader2, Download, RefreshCw, Volume2, Film, ImageIcon, Play,
   Pencil, Check, X, Trash2, Copy, History, Cpu, Clock, Save
@@ -11,12 +11,63 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const VOICES = [
+const LEGACY_VOICES = [
   { value: 'river', label: 'River — Calm, neutral' },
   { value: 'honey', label: 'Honey — Warm, soft' },
   { value: 'sunny', label: 'Sunny — Bright, upbeat' },
   { value: 'storm', label: 'Storm — Formal, authoritative' },
   { value: 'spark', label: 'Spark — Energetic, quick' },
+];
+
+const KOKORO_VOICE_GROUPS = [
+  {
+    label: 'American English — Female',
+    voices: [
+      { value: 'heart', label: 'Heart' },
+      { value: 'alloy', label: 'Alloy' },
+      { value: 'aoede', label: 'Aoede' },
+      { value: 'honey', label: 'Bella / Honey' },
+      { value: 'jessica', label: 'Jessica' },
+      { value: 'kore', label: 'Kore' },
+      { value: 'nicole', label: 'Nicole' },
+      { value: 'nova', label: 'Nova' },
+      { value: 'river', label: 'River' },
+      { value: 'sarah', label: 'Sarah' },
+      { value: 'sunny', label: 'Sky / Sunny' },
+    ],
+  },
+  {
+    label: 'American English — Male',
+    voices: [
+      { value: 'adam', label: 'Adam' },
+      { value: 'echo', label: 'Echo' },
+      { value: 'eric', label: 'Eric' },
+      { value: 'fenrir', label: 'Fenrir' },
+      { value: 'liam', label: 'Liam' },
+      { value: 'michael', label: 'Michael' },
+      { value: 'storm', label: 'Onyx / Storm' },
+      { value: 'spark', label: 'Puck / Spark' },
+      { value: 'santa', label: 'Santa' },
+    ],
+  },
+  {
+    label: 'British English — Female',
+    voices: [
+      { value: 'alice', label: 'Alice' },
+      { value: 'emma', label: 'Emma' },
+      { value: 'isabella', label: 'Isabella' },
+      { value: 'lily', label: 'Lily' },
+    ],
+  },
+  {
+    label: 'British English — Male',
+    voices: [
+      { value: 'daniel', label: 'Daniel' },
+      { value: 'fable', label: 'Fable' },
+      { value: 'george', label: 'George' },
+      { value: 'lewis', label: 'Lewis' },
+    ],
+  },
 ];
 
 const LOCAL_VOICE_PROGRESS = {
@@ -236,7 +287,7 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
           <Icon className="w-3.5 h-3.5 text-berna-orange" />
           <span className="text-xs font-semibold text-white">{label}</span>
           {ownedPreview && mediaType === 'audio' && (
-            <span className="text-[9px] text-emerald-400">FREE · LOCAL</span>
+            <span className="text-[9px] text-emerald-400">FREE · LOCAL · {LOCAL_VOICE_ENGINE_REVISION}</span>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -346,12 +397,18 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
                     onChange={e => setVoice(e.target.value)}
                     className="bg-white/[0.03] border border-white/[0.08] text-white text-[10px] rounded-md px-2 py-1 h-7"
                   >
-                    {VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                    {ownedPreview
+                      ? KOKORO_VOICE_GROUPS.map(group => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.voices.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                          </optgroup>
+                        ))
+                      : LEGACY_VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                   </select>
                 </div>
                 {ownedPreview && (
                   <p className="text-[9px] text-muted-foreground/70">
-                    Kokoro runs on your device. No ElevenLabs or paid TTS API is used.
+                    28 built-in English Kokoro voices run on your device. No ElevenLabs or paid TTS API is used.
                   </p>
                 )}
               </>
