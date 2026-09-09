@@ -64,9 +64,6 @@ function encodeWav(samples, sampleRate = SAMPLE_RATE) {
 }
 
 async function importKokoro() {
-  // Pinned browser module keeps inference off CREAPD servers and avoids any
-  // per-character or per-generation TTS charge. Vite leaves this URL import
-  // to the browser intentionally.
   return import(/* @vite-ignore */ KOKORO_PACKAGE_URL);
 }
 
@@ -147,6 +144,9 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     package_id: packageId,
     content_type: 'audio/wav',
     byte_size: generated.blob.size,
+    model: generated.model,
+    voice: generated.voice,
+    device: generated.device,
   });
 
   if (!authorization?.upload_ticket || !authorization?.pathname) {
