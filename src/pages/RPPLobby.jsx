@@ -25,10 +25,11 @@ function getDeptStatus(deptId, topics, points, packages, dossiers) {
       if ((dossiers || []).length > 0) return 'needs_review';
       return 'not_started';
     case 'develop':
-      if (packages.length > 0) return 'complete';
+      if (approvedPackages.length > 0) return 'complete';
+      if (packages.length > 0) return 'needs_review';
       return 'not_started';
     case 'packet':
-      if (approvedPackages.length > 0) return 'complete';
+      if (approvedPackages.length > 0) return 'in_progress';
       return 'not_started';
     default: return 'not_started';
   }
@@ -57,8 +58,8 @@ export default function RPPLobby() {
     { label: 'Research Assignment', done: topics.length > 0 },
     { label: 'Raw Research Dataset', done: points.length > 0 },
     { label: 'Approved Research Dossier', done: (dossiers || []).some(d => d.status === 'ready') },
-    { label: 'Presentation Assets', done: packages.length > 0 },
-    { label: 'Production Packet', done: approvedPackages.length > 0 },
+    { label: 'Production Package', done: packages.length > 0 },
+    { label: 'Approved Production Package', done: approvedPackages.length > 0 },
   ];
   const completedItems = checklist.filter(c => c.done).length;
   const readinessPercent = Math.round((completedItems / checklist.length) * 100);
@@ -70,31 +71,39 @@ export default function RPPLobby() {
   const departments = RPP_DEPARTMENTS.filter(d => d.id !== 'lobby').map((d, i) => ({
     dept: d,
     status: getDeptStatus(d.id, topics, points, packages, dossiers),
-    count: { topics: topics.length, research: points.length, dossier: (dossiers || []).length, develop: packages.length, packet: approvedPackages.length }[d.id] || 0,
+    count: {
+      topics: topics.length,
+      research: points.length,
+      dossier: (dossiers || []).length,
+      develop: packages.length,
+      packet: approvedPackages.length,
+    }[d.id] || 0,
     recommended: !needsConfig && d.id === recommendedDeptId,
     index: i,
   }));
 
   const recommendation = (() => {
     if (needsConfig)
-      return 'Set the research scope and methodology first — then the team can begin.';
+      return 'Set the research scope and methodology first — then the Research Studio team can begin.';
     if (topics.length === 0)
       return 'Configuration is ready — define your first research topic.';
     if (researchingTopics.length > 0)
       return `${researchingTopics.length} topic${researchingTopics.length > 1 ? 's' : ''} currently being researched.`;
     if (points.length === 0)
       return 'Your topic is defined — head to Research to begin gathering knowledge.';
+    if (packages.length === 0)
+      return 'Your research is ready — the Production Department can build the package.';
     if (approvedPackages.length === 0)
-      return 'Your research points are ready — let\'s develop them into production assets.';
-    return 'Your Production Packet is ready — collect it from Packet.';
+      return 'Your Production Package is built — review and approve it in the Production Department.';
+    return 'Your approved Production Package is ready — dispatch a copy to the Presentation Studio.';
   })();
 
   const ctaLabel = needsConfig
-    ? 'Configure Research'
+    ? 'Configure Research Studio'
     : topics.length === 0
       ? 'Start New Topic'
       : approvedPackages.length > 0
-        ? 'Collect Packet'
+        ? 'Dispatch Package'
         : 'Continue Project';
 
   useEffect(() => {
@@ -138,12 +147,11 @@ export default function RPPLobby() {
         <NerveCenterSideRail side="left" />
         <div className="nc-viewport">
           <div className="max-w-5xl mx-auto relative" style={{ zIndex: 1 }}>
-            {/* ═══ Hero ═══ */}
             <div className="text-center mb-8 md:mb-10 cc-animate-fade-up">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <BookOpen className="w-3.5 h-3.5" style={{ color: 'hsl(35 80% 55%)' }} />
                 <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Research Production Profile
+                  Research Studio
                 </span>
               </div>
               <h1
@@ -155,10 +163,9 @@ export default function RPPLobby() {
               <p className="text-sm text-muted-foreground mb-4 max-w-xl mx-auto">
                 {config?.production_name
                   ? <>Your <span style={{ color: 'hsl(35 80% 58%)' }}>{config.production_name}</span> project is <span style={{ color: 'hsl(152 55% 50%)' }}>{readinessPercent}% ready</span>.</>
-                  : 'No active research project configured yet.'}
+                  : 'No active Research Studio project configured yet.'}
               </p>
 
-              {/* Recommendation + CTA */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 {recommendation && (
                   <div className="flex items-center gap-1.5 text-xs" style={{ color: 'hsl(190 70% 55%)' }}>
@@ -182,7 +189,6 @@ export default function RPPLobby() {
               </div>
             </div>
 
-            {/* ═══ Department Cabinets ═══ */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {departments.map((d) => (
                 <DepartmentCabinet
@@ -196,15 +202,15 @@ export default function RPPLobby() {
               ))}
             </div>
 
-            {/* ═══ Readiness bar ═══ */}
-            <div className="mt-8 flex items-center gap-3 px-4 py-3 rounded-xl cc-animate-fade-up cc-stagger-5"
+            <div
+              className="mt-8 flex items-center gap-3 px-4 py-3 rounded-xl cc-animate-fade-up cc-stagger-5"
               style={{
                 background: 'hsl(210 40% 7% / 0.5)',
                 border: '1px solid hsl(190 30% 20% / 0.3)',
                 backdropFilter: 'blur(8px)',
               }}
             >
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 shrink-0">Readiness</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 shrink-0">Package Readiness</span>
               <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(190 20% 12% / 0.5)' }}>
                 <div
                   className="h-full rounded-full transition-all duration-700"
