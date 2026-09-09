@@ -1,148 +1,105 @@
 import { upload } from '@vercel/blob/client';
 import { creapdApi } from '@/api/creapdClient';
 
-const KOKORO_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-const KOKORO_PACKAGE_URL = 'https://esm.sh/kokoro-js@1.2.1?bundle';
-const SAMPLE_RATE = 24000;
+const LOCAL_VOICE_MIME = 'audio/wav';
 
-const VOICE_MAP = {
-  river: 'af_river',
-  honey: 'af_bella',
-  sunny: 'af_sky',
-  storm: 'am_onyx',
-  spark: 'am_puck',
-};
+let workerInstance = null;
+let activeJob = null;
 
-let ttsPromise = null;
-let activeDevice = null;
-
-function concatFloat32(chunks) {
-  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const combined = new Float32Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.length;
+function terminateWorker() {
+  if (workerInstance) {
+    workerInstance.terminate();
+    workerInstance = null;
   }
-  return combined;
 }
 
-function encodeWav(samples, sampleRate = SAMPLE_RATE) {
-  const bytesPerSample = 2;
-  const dataLength = samples.length * bytesPerSample;
-  const buffer = new ArrayBuffer(44 + dataLength);
-  const view = new DataView(buffer);
+function getWorker() {
+  if (workerInstance) return workerInstance;
 
-  const writeAscii = (offset, text) => {
-    for (let i = 0; i < text.length; i += 1) {
-      view.setUint8(offset + i, text.charCodeAt(i));
-    }
-  };
-
-  writeAscii(0, 'RIFF');
-  view.setUint32(4, 36 + dataLength, true);
-  writeAscii(8, 'WAVE');
-  writeAscii(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * bytesPerSample, true);
-  view.setUint16(32, bytesPerSample, true);
-  view.setUint16(34, 16, true);
-  writeAscii(36, 'data');
-  view.setUint32(40, dataLength, true);
-
-  let offset = 44;
-  for (let i = 0; i < samples.length; i += 1) {
-    const sample = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
-    offset += 2;
-  }
-
-  return new Blob([buffer], { type: 'audio/wav' });
-}
-
-async function importKokoro() {
-  return import(/* @vite-ignore */ KOKORO_PACKAGE_URL);
-}
-
-async function loadTts() {
-  if (ttsPromise) return ttsPromise;
-
-  ttsPromise = (async () => {
-    const { KokoroTTS } = await importKokoro();
-
-    if (typeof navigator !== 'undefined' && navigator.gpu) {
-      try {
-        const tts = await KokoroTTS.from_pretrained(KOKORO_MODEL, {
-          dtype: 'fp32',
-          device: 'webgpu',
-        });
-        activeDevice = 'webgpu';
-        return tts;
-      } catch (error) {
-        console.warn('[CREAPD LOCAL VOICE] WebGPU unavailable; falling back to WASM.', error);
-      }
-    }
-
-    const tts = await KokoroTTS.from_pretrained(KOKORO_MODEL, {
-      dtype: 'q8',
-      device: 'wasm',
-    });
-    activeDevice = 'wasm';
-    return tts;
-  })().catch(error => {
-    ttsPromise = null;
-    activeDevice = null;
-    throw error;
+  workerInstance = new Worker(new URL('./localVoiceWorker.js', import.meta.url), {
+    type: 'module',
+    name: 'creapd-local-voice',
   });
 
-  return ttsPromise;
+  workerInstance.onmessage = event => {
+    const message = event?.data || {};
+    if (!activeJob) return;
+
+    if (message.type === 'progress') {
+      activeJob.onProgress?.(message.stage, message.detail || {});
+      return;
+    }
+
+    if (message.requestId && message.requestId !== activeJob.requestId) return;
+
+    if (message.type === 'complete') {
+      const job = activeJob;
+      activeJob = null;
+      job.resolve({
+        blob: new Blob([message.wavBuffer], { type: LOCAL_VOICE_MIME }),
+        voice: message.voice,
+        device: message.device,
+        model: message.model,
+        chunkCount: message.chunkCount || 0,
+        segmentCount: message.segmentCount || 0,
+      });
+      return;
+    }
+
+    if (message.type === 'error') {
+      const job = activeJob;
+      activeJob = null;
+      job.reject(new Error(message.message || 'Local voice generation failed.'));
+    }
+  };
+
+  workerInstance.onerror = event => {
+    const job = activeJob;
+    activeJob = null;
+    terminateWorker();
+    if (job) {
+      job.reject(new Error(event?.message || 'The local voice worker stopped unexpectedly.'));
+    }
+  };
+
+  return workerInstance;
 }
 
-async function synthesizeToWav(script, voiceKey, onProgress) {
-  const text = String(script || '').trim();
-  if (!text) throw new Error('A teleprompter script is required for voice generation.');
-
-  onProgress?.('loading_model');
-  const tts = await loadTts();
-  const kokoroVoice = VOICE_MAP[voiceKey] || VOICE_MAP.river;
-  const chunks = [];
-  let chunkCount = 0;
-
-  onProgress?.('synthesizing');
-  for await (const result of tts.stream(text, { voice: kokoroVoice, speed: 1 })) {
-    if (result?.audio?.data?.length) {
-      chunks.push(new Float32Array(result.audio.data));
-      chunkCount += 1;
-      onProgress?.('synthesizing', { chunkCount });
-    }
+function generateInWorker(script, voice, onProgress) {
+  if (activeJob) {
+    return Promise.reject(new Error('A local voiceover is already generating in this browser tab.'));
   }
 
-  if (!chunks.length) throw new Error('Local voice model returned no audio.');
+  const worker = getWorker();
+  const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
-  onProgress?.('encoding');
-  return {
-    blob: encodeWav(concatFloat32(chunks), SAMPLE_RATE),
-    voice: kokoroVoice,
-    device: activeDevice || 'wasm',
-    model: KOKORO_MODEL,
-    chunkCount,
-  };
+  return new Promise((resolve, reject) => {
+    activeJob = { requestId, resolve, reject, onProgress };
+    worker.postMessage({
+      type: 'generate',
+      requestId,
+      script: String(script || ''),
+      voice: String(voice || 'river'),
+    });
+  });
+}
+
+async function refreshPackage(packageId) {
+  const snapshot = await creapdApi.get('/research/production');
+  return snapshot?.packages?.find(item => String(item.id) === String(packageId)) || null;
 }
 
 export async function generateFreeLocalVoice({ packageId, script, voice = 'river', onProgress }) {
   if (!packageId) throw new Error('Production package is required for voice generation.');
 
   const startedAt = performance.now();
-  const generated = await synthesizeToWav(script, voice, onProgress);
+  const generated = await generateInWorker(script, voice, onProgress);
 
   onProgress?.('authorizing_upload');
   const authorization = await creapdApi.post('/research/voice-upload', {
     action: 'authorize',
     package_id: packageId,
-    content_type: 'audio/wav',
+    content_type: LOCAL_VOICE_MIME,
     byte_size: generated.blob.size,
     model: generated.model,
     voice: generated.voice,
@@ -158,7 +115,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     access: 'public',
     handleUploadUrl: '/api/creapd/research/voice-upload',
     clientPayload: JSON.stringify({ ticket: authorization.upload_ticket }),
-    contentType: 'audio/wav',
+    contentType: LOCAL_VOICE_MIME,
     multipart: generated.blob.size > 8 * 1024 * 1024,
   });
 
@@ -167,26 +124,47 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
   }
 
   onProgress?.('saving');
-  const registered = await creapdApi.post('/research/voice-upload', {
-    action: 'register',
-    package_id: packageId,
-    blob_url: uploaded.url,
-    blob_pathname: uploaded.pathname,
-    model: generated.model,
-    voice: generated.voice,
-    device: generated.device,
-    byte_size: generated.blob.size,
-    elapsed_ms: Math.round(performance.now() - startedAt),
-  });
+  try {
+    const registered = await creapdApi.post('/research/voice-upload', {
+      action: 'register',
+      package_id: packageId,
+      blob_url: uploaded.url,
+      blob_pathname: uploaded.pathname,
+      model: generated.model,
+      voice: generated.voice,
+      device: generated.device,
+      byte_size: generated.blob.size,
+      elapsed_ms: Math.round(performance.now() - startedAt),
+    });
 
-  if (!registered?.package) {
-    throw new Error('CREAPD uploaded the voiceover but could not save it to the production package.');
+    if (registered?.package) {
+      onProgress?.('done');
+      return registered;
+    }
+  } catch (error) {
+    // The Blob completion callback also persists the audio URL server-side.
+    // If this confirmation request fails, refresh from Neon before declaring
+    // failure so a successful upload is not shown as an error to the user.
+    console.warn('[CREAPD LOCAL VOICE] Confirmation call failed; refreshing Neon.', error);
+  }
+
+  const refreshedPackage = await refreshPackage(packageId);
+  if (!refreshedPackage?.generated_audio_url) {
+    throw new Error('The voiceover was generated, but CREAPD could not confirm that it was saved.');
   }
 
   onProgress?.('done');
-  return registered;
+  return {
+    ok: true,
+    source: 'neon',
+    package: refreshedPackage,
+  };
 }
 
-export function getLocalVoiceLabel(voiceKey) {
-  return VOICE_MAP[voiceKey] || VOICE_MAP.river;
+export function cancelFreeLocalVoice() {
+  if (activeJob) {
+    activeJob.reject(new Error('Local voice generation was cancelled.'));
+    activeJob = null;
+  }
+  terminateWorker();
 }
