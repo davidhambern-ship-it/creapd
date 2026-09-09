@@ -1,8 +1,14 @@
 const KOKORO_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-const KOKORO_PACKAGE_URL = 'https://esm.sh/kokoro-js@1.2.1?bundle';
+const KOKORO_PACKAGE_URLS = [
+  'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm',
+  'https://esm.sh/kokoro-js@1.2.1?bundle',
+];
 const SAMPLE_RATE = 24000;
 const MAX_SCRIPT_CHARS = 8000;
 const TARGET_SEGMENT_CHARS = 650;
+const RUNTIME_IMPORT_TIMEOUT_MS = 45000;
+const MODEL_LOAD_TIMEOUT_MS = 240000;
+const STREAM_CHUNK_TIMEOUT_MS = 180000;
 
 const VOICE_MAP = {
   river: 'af_river',
@@ -16,6 +22,32 @@ let ttsPromise = null;
 
 function postProgress(stage, detail = {}) {
   self.postMessage({ type: 'progress', stage, detail });
+}
+
+function errorMessage(error) {
+  return String(error?.message || error || 'Unknown error').slice(0, 300);
+}
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function normalizeModelProgress(progress) {
+  if (!progress || typeof progress !== 'object') return {};
+
+  const detail = {};
+  if (typeof progress.status === 'string') detail.status = progress.status;
+  if (typeof progress.name === 'string') detail.name = progress.name;
+  if (typeof progress.file === 'string') detail.file = progress.file;
+  if (Number.isFinite(progress.progress)) detail.progress = progress.progress;
+  if (Number.isFinite(progress.loaded)) detail.loaded = progress.loaded;
+  if (Number.isFinite(progress.total)) detail.total = progress.total;
+  return detail;
 }
 
 function splitForSpeech(text) {
@@ -96,25 +128,106 @@ function encodeWavBuffer(samples, sampleRate = SAMPLE_RATE) {
   return buffer;
 }
 
+async function importKokoroRuntime() {
+  let lastError = null;
+
+  for (let index = 0; index < KOKORO_PACKAGE_URLS.length; index += 1) {
+    const packageUrl = KOKORO_PACKAGE_URLS[index];
+    postProgress('loading_model', {
+      phase: 'loading_runtime',
+      attempt: index + 1,
+      totalAttempts: KOKORO_PACKAGE_URLS.length,
+      source: new URL(packageUrl).hostname,
+    });
+
+    try {
+      return await withTimeout(
+        import(/* @vite-ignore */ packageUrl),
+        RUNTIME_IMPORT_TIMEOUT_MS,
+        `Kokoro runtime download timed out from ${new URL(packageUrl).hostname}.`,
+      );
+    } catch (error) {
+      lastError = error;
+      postProgress('loading_model', {
+        phase: 'runtime_failed',
+        attempt: index + 1,
+        totalAttempts: KOKORO_PACKAGE_URLS.length,
+        source: new URL(packageUrl).hostname,
+        error: errorMessage(error),
+      });
+    }
+  }
+
+  throw new Error(`CREAPD could not load the Kokoro browser runtime. ${errorMessage(lastError)}`);
+}
+
 async function loadTts() {
   if (ttsPromise) return ttsPromise;
 
   ttsPromise = (async () => {
-    postProgress('loading_model');
-    const { KokoroTTS } = await import(/* @vite-ignore */ KOKORO_PACKAGE_URL);
+    postProgress('loading_model', { phase: 'starting' });
+    const runtime = await importKokoroRuntime();
+    const { KokoroTTS } = runtime || {};
 
-    // WASM q8 is deliberate here. Keeping inference in a dedicated worker
-    // protects the React UI and avoids WebGPU work starving the compositor.
-    return KokoroTTS.from_pretrained(KOKORO_MODEL, {
+    if (!KokoroTTS?.from_pretrained) {
+      throw new Error('The Kokoro browser runtime loaded, but KokoroTTS was unavailable.');
+    }
+
+    postProgress('loading_model', { phase: 'initializing_model' });
+
+    const modelPromise = KokoroTTS.from_pretrained(KOKORO_MODEL, {
       dtype: 'q8',
       device: 'wasm',
+      progress_callback: progress => {
+        postProgress('loading_model', {
+          phase: 'model_progress',
+          ...normalizeModelProgress(progress),
+        });
+      },
     });
+
+    const tts = await withTimeout(
+      modelPromise,
+      MODEL_LOAD_TIMEOUT_MS,
+      'Kokoro model loading timed out after 4 minutes. Check this browser connection to Hugging Face and try again.',
+    );
+
+    postProgress('loading_model', { phase: 'ready' });
+    return tts;
   })().catch(error => {
     ttsPromise = null;
     throw error;
   });
 
   return ttsPromise;
+}
+
+async function synthesizeSegment(tts, segment, voice, segmentIndex, totalSegments, audioChunks, currentChunkCount) {
+  const iterator = tts.stream(segment, { voice, speed: 1 })[Symbol.asyncIterator]();
+  let streamChunkCount = currentChunkCount;
+
+  while (true) {
+    const next = await withTimeout(
+      iterator.next(),
+      STREAM_CHUNK_TIMEOUT_MS,
+      `Kokoro stopped responding while synthesizing segment ${segmentIndex + 1} of ${totalSegments}.`,
+    );
+
+    if (next.done) break;
+
+    const data = next.value?.audio?.data;
+    if (data?.length) {
+      audioChunks.push(new Float32Array(data));
+      streamChunkCount += 1;
+      postProgress('synthesizing', {
+        segment: segmentIndex + 1,
+        totalSegments,
+        chunkCount: streamChunkCount,
+      });
+    }
+  }
+
+  return streamChunkCount;
 }
 
 async function synthesize(script, voiceKey) {
@@ -139,18 +252,15 @@ async function synthesize(script, voiceKey) {
       chunkCount: streamChunkCount,
     });
 
-    for await (const result of tts.stream(segments[segmentIndex], { voice, speed: 1 })) {
-      const data = result?.audio?.data;
-      if (data?.length) {
-        audioChunks.push(new Float32Array(data));
-        streamChunkCount += 1;
-        postProgress('synthesizing', {
-          segment: segmentIndex + 1,
-          totalSegments: segments.length,
-          chunkCount: streamChunkCount,
-        });
-      }
-    }
+    streamChunkCount = await synthesizeSegment(
+      tts,
+      segments[segmentIndex],
+      voice,
+      segmentIndex,
+      segments.length,
+      audioChunks,
+      streamChunkCount,
+    );
   }
 
   if (!audioChunks.length) throw new Error('Local voice model returned no audio.');
@@ -188,7 +298,7 @@ self.onmessage = async event => {
     self.postMessage({
       type: 'error',
       requestId: message.requestId,
-      message: String(error?.message || 'Local voice generation failed').slice(0, 500),
+      message: errorMessage(error),
     });
   }
 };
