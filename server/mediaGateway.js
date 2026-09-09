@@ -124,7 +124,6 @@ async function generateImageBytes({ prompt, model = DEFAULT_IMAGE_MODEL }) {
     body: JSON.stringify({
       prompt: String(prompt).slice(0, 2048),
       steps: 4,
-      seed: Math.floor(Math.random() * 2147483646) + 1,
     }),
     signal: AbortSignal.timeout(55000),
   });
