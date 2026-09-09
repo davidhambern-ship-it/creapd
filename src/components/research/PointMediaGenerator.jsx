@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
 import { Button } from '@/components/ui/button';
 import MediaGenerator from '@/components/production/MediaGenerator';
 import {
@@ -54,11 +55,13 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
       if (ownedPreview) {
         if (pkg.teleprompter_script || pkg.story_summary) {
           try {
-            await generateOwned('audio', {
+            const result = await generateFreeLocalVoice({
+              packageId: pkg.id,
               script: pkg.teleprompter_script || pkg.story_summary,
               voice: 'river',
             });
-          } catch (err) { console.error('Owned voiceover failed:', err); }
+            if (result?.package) onMediaUpdate(result.package);
+          } catch (err) { console.error('Free local voiceover failed:', err); }
         }
 
         setMediaStep('thumbnail');
@@ -171,7 +174,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
 
       {ownedPreview && (
         <p className="text-[10px] text-muted-foreground mb-3">
-          Preview generates voiceover, thumbnail, and story image through CREAPD's owned Vercel path. Video is temporarily disabled until its migration checkpoint is complete.
+          Preview generates voiceover locally in your browser, then stores it in CREAPD's Vercel Blob + Neon path. Thumbnail and story image use the owned Cloudflare path. Video is temporarily disabled until its migration checkpoint is complete.
         </p>
       )}
 
