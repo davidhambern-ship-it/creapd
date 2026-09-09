@@ -4,6 +4,11 @@ import { readProductionCore } from '../../../server/productionCore.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
 import { runPresentationStudioWorkers } from '../../../server/presentationStudioWorkers.js';
 import {
+  rewritePresentationStudioText,
+  runPresentationStudioQa,
+  sharePresentationStudioProject,
+} from '../../../server/presentationStudioActions.js';
+import {
   handoffPackageToPresentationStudio,
   loadPresentationStudioEditor,
   updateEditorPresentation,
@@ -163,6 +168,35 @@ async function handlePost(request, response, sql, ownerUserId) {
           sql,
           ownerUserId,
           presentationId: body.presentation_id,
+        });
+        return success(response, action, result);
+      }
+
+      case 'rewrite_presentation_text': {
+        const result = await rewritePresentationStudioText({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+          content: body.content,
+        });
+        return success(response, action, result);
+      }
+
+      case 'run_presentation_qa': {
+        const result = await runPresentationStudioQa({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+        });
+        return success(response, action, result);
+      }
+
+      case 'share_presentation_studio': {
+        const result = await sharePresentationStudioProject({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+          visibility: body.visibility || 'team',
         });
         return success(response, action, result);
       }
