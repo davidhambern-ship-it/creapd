@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 
 const MEDIA_CENTER_FIELDS = {
-  story_summary: 'Teleprompter Script',
+  story_summary: 'Story Summary',
+  teleprompter_script: 'Teleprompter Script',
   talking_points: 'Talking Points',
   image_prompt: 'Image Prompt',
   thumbnail_prompt: 'Thumbnail Prompt',
@@ -53,11 +54,11 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
     setMediaStep('voiceover');
     try {
       if (ownedPreview) {
-        if (pkg.teleprompter_script || pkg.story_summary) {
+        if (pkg.teleprompter_script) {
           try {
             const result = await generateFreeLocalVoice({
               packageId: pkg.id,
-              script: pkg.teleprompter_script || pkg.story_summary,
+              script: pkg.teleprompter_script,
               voice: 'river',
             });
             if (result?.package) onMediaUpdate(result.package);
@@ -84,10 +85,10 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
         return;
       }
 
-      if (pkg.story_summary) {
+      if (pkg.teleprompter_script || pkg.story_summary) {
         try {
           const vpResult = await base44.functions.invoke('generateVoicePackage', {
-            script_text: pkg.story_summary,
+            script_text: pkg.teleprompter_script || pkg.story_summary,
             voice: 'river',
             language_code: 'en',
             source_type: 'production_package',
@@ -174,7 +175,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
 
       {ownedPreview && (
         <p className="text-[10px] text-muted-foreground mb-3">
-          Preview generates voiceover locally in your browser, then stores it in CREAPD's Vercel Blob + Neon path. Thumbnail and story image use the owned Cloudflare path. Video is temporarily disabled until its migration checkpoint is complete.
+          Preview generates voiceover locally in your browser from the Teleprompter Script, then stores it in CREAPD's Vercel Blob + Neon path. Thumbnail and story image use the owned Cloudflare path. Video is temporarily disabled until its migration checkpoint is complete.
         </p>
       )}
 
@@ -215,7 +216,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
         <MediaGenerator
           pkg={pkg}
           mediaType="audio"
-          promptField="story_summary"
+          promptField="teleprompter_script"
           urlField="generated_audio_url"
           label="AI Voiceover"
           icon={Volume2}
