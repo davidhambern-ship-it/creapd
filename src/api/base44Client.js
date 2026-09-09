@@ -375,7 +375,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
 
         if (
           shouldUseNeonAuth() &&
-          functionName === 'shareToCreapd' &&
+          (functionName === 'sharePresentation' || functionName === 'shareToCreapd') &&
           isOwnedPresentationId(payload?.presentation_id)
         ) {
           const result = await creapdApi.post('/production/core', {
@@ -383,7 +383,12 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
             presentation_id: payload.presentation_id,
             visibility: payload?.visibility || 'team',
           });
-          return { data: result };
+          return {
+            data: {
+              showcase: result,
+              ...result,
+            },
+          };
         }
 
         if (
