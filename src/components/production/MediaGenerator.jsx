@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
 import {
   Loader2, Download, RefreshCw, Volume2, Film, ImageIcon, Play,
   Pencil, Check, X, Trash2, Copy, History, Cpu, Clock, Save
@@ -18,6 +19,16 @@ const VOICES = [
   { value: 'spark', label: 'Spark — Energetic, quick' },
 ];
 
+const LOCAL_VOICE_PROGRESS = {
+  loading_model: 'Loading free local voice model...',
+  synthesizing: 'Generating voice on this device...',
+  encoding: 'Encoding WAV locally...',
+  authorizing_upload: 'Preparing secure upload...',
+  uploading: 'Saving voiceover to CREAPD...',
+  saving: 'Registering voiceover in Neon...',
+  done: 'Voiceover ready',
+};
+
 export default function MediaGenerator({ pkg, mediaType, promptField, urlField, label, icon: Icon, onMediaUpdate }) {
   const [generating, setGenerating] = useState(false);
   const [voice, setVoice] = useState('river');
@@ -25,6 +36,7 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
   const [editingPrompt, setEditingPrompt] = useState(false);
   const [promptDraft, setPromptDraft] = useState('');
   const [showVariations, setShowVariations] = useState(false);
+  const [localVoiceProgress, setLocalVoiceProgress] = useState(null);
 
   const prompt = pkg?.[promptField] || '';
   const mediaUrl = pkg?.[urlField] || '';
@@ -64,21 +76,27 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
     setGenerating(true);
     setError(null);
     setEditingPrompt(false);
+    setLocalVoiceProgress(null);
     try {
       if (ownedPreview) {
-        const ownedMediaType = mediaType === 'audio'
-          ? 'audio'
-          : urlField === 'generated_thumbnail_url'
-            ? 'thumbnail'
-            : 'image';
+        if (mediaType === 'audio') {
+          const result = await generateFreeLocalVoice({
+            packageId: pkg.id,
+            script: pkg.teleprompter_script,
+            voice,
+            onProgress: stage => setLocalVoiceProgress(stage),
+          });
 
+          onMediaUpdate(result.package);
+          return;
+        }
+
+        const ownedMediaType = urlField === 'generated_thumbnail_url' ? 'thumbnail' : 'image';
         const result = await creapdApi.post('/research/production', {
           action: 'generate_media',
           package_id: pkg.id,
           media_type: ownedMediaType,
           prompt: usePrompt,
-          script: pkg.teleprompter_script,
-          voice,
         });
 
         if (!result?.package) throw new Error('Owned media generation returned no package');
@@ -145,11 +163,22 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
       setError(apiMessage || 'Generation failed');
     } finally {
       setGenerating(false);
+      setLocalVoiceProgress(null);
     }
   };
 
   // PRD 9.16: Delete generated media
   const handleDelete = async () => {
+    if (ownedPreview) {
+      const result = await creapdApi.post('/research/production', {
+        action: 'update_package',
+        package_id: pkg.id,
+        patch: { [urlField]: '' },
+      });
+      onMediaUpdate(result.package);
+      return;
+    }
+
     const updated = await base44.entities.ProductionPackage.update(pkg.id, { [urlField]: '' });
     onMediaUpdate(updated);
   };
@@ -162,11 +191,33 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
     if (mediaUrl) {
       updateData[varField] = JSON.stringify([...remaining, { url: mediaUrl, prompt: prompt, created_at: new Date().toISOString() }]);
     }
+
+    if (ownedPreview) {
+      const result = await creapdApi.post('/research/production', {
+        action: 'update_package',
+        package_id: pkg.id,
+        patch: updateData,
+      });
+      onMediaUpdate(result.package);
+      return;
+    }
+
     const updated = await base44.entities.ProductionPackage.update(pkg.id, updateData);
     onMediaUpdate(updated);
   };
 
-  const handleSavePrompt = () => {
+  const handleSavePrompt = async () => {
+    if (ownedPreview) {
+      const result = await creapdApi.post('/research/production', {
+        action: 'update_package',
+        package_id: pkg.id,
+        patch: { [promptField]: promptDraft },
+      });
+      onMediaUpdate(result.package);
+      setEditingPrompt(false);
+      return;
+    }
+
     base44.entities.ProductionPackage.update(pkg.id, { [promptField]: promptDraft }).then(updated => {
       onMediaUpdate(updated);
       setEditingPrompt(false);
@@ -184,6 +235,9 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
         <div className="flex items-center gap-2">
           <Icon className="w-3.5 h-3.5 text-berna-orange" />
           <span className="text-xs font-semibold text-white">{label}</span>
+          {ownedPreview && mediaType === 'audio' && (
+            <span className="text-[9px] text-emerald-400">FREE · LOCAL</span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           {mediaUrl && !generating && (
@@ -210,7 +264,7 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
       {mediaUrl && pkg.generated_at && (
         <div className="flex items-center gap-2 px-4 py-1.5 border-b border-white/[0.02] bg-white/[0.01] flex-wrap">
           <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
-            <Cpu className="w-2.5 h-2.5" />{pkg.generation_provider || 'automatic'}
+            <Cpu className="w-2.5 h-2.5" />{ownedPreview && mediaType === 'audio' ? 'Kokoro · browser local' : (pkg.generation_provider || 'automatic')}
           </span>
           <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
             <Clock className="w-2.5 h-2.5" />{new Date(pkg.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -227,8 +281,13 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
             <span className="text-[10px] text-muted-foreground">
               {mediaType === 'image' ? 'Generating image...' :
                mediaType === 'video' ? 'Generating video...' :
-               'Generating Voice Package...'}
+               ownedPreview ? (LOCAL_VOICE_PROGRESS[localVoiceProgress] || 'Generating free local voiceover...') : 'Generating Voice Package...'}
             </span>
+            {ownedPreview && mediaType === 'audio' && (
+              <span className="text-[9px] text-muted-foreground/70 text-center max-w-xs">
+                First use downloads the Kokoro model to this browser. CREAPD is not paying a TTS provider for this generation.
+              </span>
+            )}
           </div>
         ) : mediaUrl ? (
           <div className="space-y-2">
@@ -279,16 +338,23 @@ export default function MediaGenerator({ pkg, mediaType, promptField, urlField, 
         ) : (
           <div className="space-y-2">
             {mediaType === 'audio' && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">Voice:</span>
-                <select
-                  value={voice}
-                  onChange={e => setVoice(e.target.value)}
-                  className="bg-white/[0.03] border border-white/[0.08] text-white text-[10px] rounded-md px-2 py-1 h-7"
-                >
-                  {VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-                </select>
-              </div>
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">Voice:</span>
+                  <select
+                    value={voice}
+                    onChange={e => setVoice(e.target.value)}
+                    className="bg-white/[0.03] border border-white/[0.08] text-white text-[10px] rounded-md px-2 py-1 h-7"
+                  >
+                    {VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                  </select>
+                </div>
+                {ownedPreview && (
+                  <p className="text-[9px] text-muted-foreground/70">
+                    Kokoro runs on your device. No ElevenLabs or paid TTS API is used.
+                  </p>
+                )}
+              </>
             )}
 
             {/* PRD 9.12: Prompt review/editing before generation */}
