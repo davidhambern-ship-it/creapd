@@ -9,6 +9,7 @@ export const config = {
 
 const MAX_AUDIO_BYTES = 64 * 1024 * 1024;
 const AUDIO_CONTENT_TYPE = 'audio/wav';
+const LOCAL_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 const LOCAL_MODEL_PREFIX = 'onnx-community/Kokoro-82M';
 const TICKET_TTL_MS = 15 * 60 * 1000;
 
@@ -122,12 +123,88 @@ function withAliases(row) {
   };
 }
 
+async function persistLocalVoice({
+  sql,
+  ownerUserId,
+  packageId,
+  blobUrl,
+  blobPathname,
+  model = LOCAL_MODEL,
+  voice = null,
+  device = null,
+  byteSize = 0,
+  elapsedMs = 0,
+  blobAuthSource = 'vercel_client_upload',
+}) {
+  if (!isOwnedBlobUrl(blobUrl)) {
+    const error = new Error('Invalid owned voice blob URL');
+    error.code = 'INVALID_OWNED_VOICE_BLOB';
+    throw error;
+  }
+
+  const pkg = await getOwnedPackage(sql, ownerUserId, packageId);
+  if (!pkg) {
+    const error = new Error('Production package not found');
+    error.code = 'PRODUCTION_PACKAGE_NOT_FOUND';
+    throw error;
+  }
+
+  const expectedPrefix = `creapd/research/${pkg.id}/voice-`;
+  if (!blobPathname.startsWith(expectedPrefix) || !blobPathname.endsWith('.wav')) {
+    const error = new Error('Voice blob pathname does not match the production package');
+    error.code = 'INVALID_OWNED_VOICE_BLOB';
+    throw error;
+  }
+
+  const normalizedModel = safeText(model, 300) || LOCAL_MODEL;
+  if (!normalizedModel.startsWith(LOCAL_MODEL_PREFIX)) {
+    const error = new Error('Unsupported local voice model');
+    error.code = 'UNSUPPORTED_LOCAL_VOICE_MODEL';
+    throw error;
+  }
+
+  const now = new Date().toISOString();
+  const mediaMetadata = JSON.stringify({
+    last_media_generation: {
+      media_type: 'audio',
+      model: normalizedModel,
+      voice: safeText(voice, 120) || null,
+      device: safeText(device, 80) || null,
+      gateway_auth_source: 'browser_local_inference',
+      blob_auth_source: blobAuthSource,
+      blob_pathname: blobPathname,
+      content_type: AUDIO_CONTENT_TYPE,
+      byte_size: Math.max(0, Math.round(safeNumber(byteSize, 0))) || null,
+      elapsed_ms: Math.max(0, Math.round(safeNumber(elapsedMs, 0))) || null,
+      generated_at: now,
+    },
+  });
+
+  const [updatedPackage] = await sql`
+    UPDATE creapd.production_packages
+    SET
+      generated_audio_url = ${blobUrl},
+      voice_package_id = ${`kokoro:${safeText(voice, 120) || 'local'}`},
+      source_system = 'creapd-neon-vercel',
+      source_payload = COALESCE(source_payload, '{}'::jsonb) || ${mediaMetadata}::jsonb,
+      updated_at = now()
+    WHERE id = ${String(pkg.id)}
+      AND owner_user_id = ${String(ownerUserId)}
+    RETURNING *
+  `;
+
+  return updatedPackage || null;
+}
+
 async function authorizeUpload(request, response, sql, body) {
   const auth = await requireCreapdUser(request);
   const ownerUserId = String(auth.user.id);
   const packageId = safeText(body.package_id, 120);
   const contentType = safeText(body.content_type, 80) || AUDIO_CONTENT_TYPE;
   const byteSize = safeNumber(body.byte_size, 0);
+  const model = safeText(body.model, 300) || LOCAL_MODEL;
+  const voice = safeText(body.voice, 120) || null;
+  const device = safeText(body.device, 80) || null;
 
   if (!packageId) {
     return response.status(400).json({ ok: false, error: 'package_id_required' });
@@ -135,6 +212,10 @@ async function authorizeUpload(request, response, sql, body) {
 
   if (contentType !== AUDIO_CONTENT_TYPE) {
     return response.status(400).json({ ok: false, error: 'audio_wav_required' });
+  }
+
+  if (!model.startsWith(LOCAL_MODEL_PREFIX)) {
+    return response.status(400).json({ ok: false, error: 'unsupported_local_voice_model' });
   }
 
   if (byteSize <= 0 || byteSize > MAX_AUDIO_BYTES) {
@@ -164,6 +245,9 @@ async function authorizeUpload(request, response, sql, body) {
     ownerUserId,
     pathname,
     maxBytes: Math.round(byteSize),
+    model,
+    voice,
+    device,
     expiresAt,
   });
 
@@ -217,17 +301,48 @@ async function handleBlobClientUpload(request, response, sql, body) {
           packageId: ticket.packageId,
           ownerUserId: ticket.ownerUserId,
           pathname: ticket.pathname,
+          model: ticket.model || LOCAL_MODEL,
+          voice: ticket.voice || null,
+          device: ticket.device || null,
+          byteSize: Number(ticket.maxBytes || 0),
         }),
       };
     },
     onUploadCompleted: async ({ blob, tokenPayload }) => {
-      // Registration is intentionally performed by the authenticated browser
-      // call after upload. This callback remains side-effect free so a delayed
-      // Blob webhook cannot overwrite newer voice media.
-      console.info('[CREAPD LOCAL VOICE BLOB COMPLETE]', {
-        pathname: blob?.pathname || null,
-        tokenPayloadPresent: Boolean(tokenPayload),
-      });
+      let payload = null;
+      try {
+        payload = tokenPayload ? JSON.parse(tokenPayload) : null;
+      } catch {
+        payload = null;
+      }
+
+      if (!payload?.packageId || !payload?.ownerUserId || !blob?.url || !blob?.pathname) {
+        console.error('[CREAPD LOCAL VOICE BLOB COMPLETE] Missing completion metadata');
+        return;
+      }
+
+      try {
+        await persistLocalVoice({
+          sql,
+          ownerUserId: payload.ownerUserId,
+          packageId: payload.packageId,
+          blobUrl: blob.url,
+          blobPathname: blob.pathname,
+          model: payload.model || LOCAL_MODEL,
+          voice: payload.voice || null,
+          device: payload.device || null,
+          byteSize: payload.byteSize || 0,
+          blobAuthSource: 'vercel_client_upload_callback',
+        });
+
+        console.info('[CREAPD LOCAL VOICE BLOB COMPLETE]', {
+          packageId: payload.packageId,
+          pathname: blob.pathname,
+          neonPersisted: true,
+        });
+      } catch (error) {
+        console.error('[CREAPD LOCAL VOICE BLOB COMPLETE] Neon persistence failed', error);
+      }
     },
   });
 
@@ -240,63 +355,38 @@ async function registerUpload(request, response, sql, body) {
   const packageId = safeText(body.package_id, 120);
   const blobUrl = safeText(body.blob_url, 2000);
   const blobPathname = safeText(body.blob_pathname, 1000);
-  const model = safeText(body.model, 300);
-  const voice = safeText(body.voice, 120);
-  const device = safeText(body.device, 80);
-  const elapsedMs = Math.max(0, Math.round(safeNumber(body.elapsed_ms, 0)));
-  const byteSize = Math.max(0, Math.round(safeNumber(body.byte_size, 0)));
 
   if (!packageId || !blobUrl || !blobPathname) {
     return response.status(400).json({ ok: false, error: 'voice_registration_incomplete' });
   }
 
-  const pkg = await getOwnedPackage(sql, ownerUserId, packageId);
-  if (!pkg) {
-    return response.status(404).json({ ok: false, error: 'production_package_not_found' });
+  let updatedPackage;
+  try {
+    updatedPackage = await persistLocalVoice({
+      sql,
+      ownerUserId,
+      packageId,
+      blobUrl,
+      blobPathname,
+      model: body.model || LOCAL_MODEL,
+      voice: body.voice || null,
+      device: body.device || null,
+      byteSize: body.byte_size || 0,
+      elapsedMs: body.elapsed_ms || 0,
+      blobAuthSource: 'vercel_client_upload_register',
+    });
+  } catch (error) {
+    if (error?.code === 'PRODUCTION_PACKAGE_NOT_FOUND') {
+      return response.status(404).json({ ok: false, error: 'production_package_not_found' });
+    }
+    if (
+      error?.code === 'INVALID_OWNED_VOICE_BLOB' ||
+      error?.code === 'UNSUPPORTED_LOCAL_VOICE_MODEL'
+    ) {
+      return response.status(400).json({ ok: false, error: error.code.toLowerCase() });
+    }
+    throw error;
   }
-
-  const expectedPrefix = `creapd/research/${pkg.id}/voice-`;
-  if (
-    !isOwnedBlobUrl(blobUrl) ||
-    !blobPathname.startsWith(expectedPrefix) ||
-    !blobPathname.endsWith('.wav')
-  ) {
-    return response.status(400).json({ ok: false, error: 'invalid_owned_voice_blob' });
-  }
-
-  if (model && !model.startsWith(LOCAL_MODEL_PREFIX)) {
-    return response.status(400).json({ ok: false, error: 'unsupported_local_voice_model' });
-  }
-
-  const now = new Date().toISOString();
-  const mediaMetadata = JSON.stringify({
-    last_media_generation: {
-      media_type: 'audio',
-      model: model || 'onnx-community/Kokoro-82M-v1.0-ONNX',
-      voice: voice || null,
-      device: device || null,
-      gateway_auth_source: 'browser_local_inference',
-      blob_auth_source: 'vercel_client_upload',
-      blob_pathname: blobPathname,
-      content_type: AUDIO_CONTENT_TYPE,
-      byte_size: byteSize || null,
-      elapsed_ms: elapsedMs || null,
-      generated_at: now,
-    },
-  });
-
-  const [updatedPackage] = await sql`
-    UPDATE creapd.production_packages
-    SET
-      generated_audio_url = ${blobUrl},
-      voice_package_id = ${`kokoro:${voice || 'default'}`},
-      source_system = 'creapd-neon-vercel',
-      source_payload = COALESCE(source_payload, '{}'::jsonb) || ${mediaMetadata}::jsonb,
-      updated_at = now()
-    WHERE id = ${String(pkg.id)}
-      AND owner_user_id = ${ownerUserId}
-    RETURNING *
-  `;
 
   return response.status(200).json({
     ok: true,
@@ -305,7 +395,7 @@ async function registerUpload(request, response, sql, body) {
     source: 'neon',
     data_authority: 'neon',
     package: withAliases(updatedPackage),
-    timestamp: now,
+    timestamp: new Date().toISOString(),
   });
 }
 
@@ -334,7 +424,7 @@ export default async function handler(request, response) {
       return await registerUpload(request, response, sql, body);
     }
 
-    // @vercel/blob/client posts its own protocol body without a CREAPD action.
+    // @vercel/blob/client posts its own protocol body without CREAPD auth headers.
     return await handleBlobClientUpload(request, response, sql, body);
   } catch (error) {
     console.error('[CREAPD LOCAL VOICE UPLOAD]', error);
