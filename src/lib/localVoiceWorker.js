@@ -64,7 +64,6 @@ function splitLongText(text, maxChars) {
 
     if (current) parts.push(current);
 
-    // A pathological token should never make a segment unbounded.
     if (word.length > maxChars) {
       for (let offset = 0; offset < word.length; offset += maxChars) {
         parts.push(word.slice(offset, offset + maxChars));
@@ -159,6 +158,133 @@ function encodeWavBuffer(samples, sampleRate = SAMPLE_RATE) {
   return buffer;
 }
 
+function toFloat32Samples(value) {
+  if (!value) return null;
+
+  if (value instanceof Float32Array) {
+    return value.length ? new Float32Array(value) : null;
+  }
+
+  if (ArrayBuffer.isView(value) && typeof value.length === 'number' && value.length) {
+    const samples = new Float32Array(value.length);
+    for (let i = 0; i < value.length; i += 1) samples[i] = Number(value[i]) || 0;
+    return samples;
+  }
+
+  if (Array.isArray(value) && value.length) {
+    if (typeof value[0] === 'number') return Float32Array.from(value);
+
+    const chunks = value.map(toFloat32Samples).filter(Boolean);
+    return chunks.length ? concatFloat32(chunks) : null;
+  }
+
+  return null;
+}
+
+function readAscii(view, offset, length) {
+  let result = '';
+  for (let i = 0; i < length; i += 1) {
+    result += String.fromCharCode(view.getUint8(offset + i));
+  }
+  return result;
+}
+
+async function decodeWavBlob(blob) {
+  const buffer = await blob.arrayBuffer();
+  if (buffer.byteLength < 44) throw new Error('Kokoro returned an empty WAV blob.');
+
+  const view = new DataView(buffer);
+  if (readAscii(view, 0, 4) !== 'RIFF' || readAscii(view, 8, 4) !== 'WAVE') {
+    throw new Error('Kokoro returned an unrecognized audio container.');
+  }
+
+  let offset = 12;
+  let format = null;
+  let channels = 1;
+  let sampleRate = SAMPLE_RATE;
+  let bitsPerSample = 0;
+  let dataOffset = -1;
+  let dataSize = 0;
+
+  while (offset + 8 <= view.byteLength) {
+    const chunkId = readAscii(view, offset, 4);
+    const chunkSize = view.getUint32(offset + 4, true);
+    const chunkDataOffset = offset + 8;
+
+    if (chunkId === 'fmt ' && chunkSize >= 16) {
+      format = view.getUint16(chunkDataOffset, true);
+      channels = view.getUint16(chunkDataOffset + 2, true) || 1;
+      sampleRate = view.getUint32(chunkDataOffset + 4, true) || SAMPLE_RATE;
+      bitsPerSample = view.getUint16(chunkDataOffset + 14, true);
+    } else if (chunkId === 'data') {
+      dataOffset = chunkDataOffset;
+      dataSize = Math.min(chunkSize, view.byteLength - chunkDataOffset);
+      break;
+    }
+
+    offset = chunkDataOffset + chunkSize + (chunkSize % 2);
+  }
+
+  if (dataOffset < 0 || !dataSize || !bitsPerSample) {
+    throw new Error('Kokoro WAV contained no readable audio samples.');
+  }
+
+  const bytesPerSample = bitsPerSample / 8;
+  if (![1, 2, 3, 4, 8].includes(bytesPerSample)) {
+    throw new Error(`Unsupported Kokoro WAV sample depth: ${bitsPerSample}-bit.`);
+  }
+
+  const frameSize = bytesPerSample * channels;
+  const frameCount = Math.floor(dataSize / frameSize);
+  const samples = new Float32Array(frameCount);
+
+  const readSample = sampleOffset => {
+    if (format === 3 && bitsPerSample === 32) return view.getFloat32(sampleOffset, true);
+    if (format === 3 && bitsPerSample === 64) return view.getFloat64(sampleOffset, true);
+    if (format !== 1) throw new Error(`Unsupported Kokoro WAV format code ${format}.`);
+
+    if (bitsPerSample === 8) return (view.getUint8(sampleOffset) - 128) / 128;
+    if (bitsPerSample === 16) return view.getInt16(sampleOffset, true) / 32768;
+    if (bitsPerSample === 24) {
+      let value = view.getUint8(sampleOffset)
+        | (view.getUint8(sampleOffset + 1) << 8)
+        | (view.getUint8(sampleOffset + 2) << 16);
+      if (value & 0x800000) value |= 0xff000000;
+      return value / 8388608;
+    }
+    if (bitsPerSample === 32) return view.getInt32(sampleOffset, true) / 2147483648;
+    throw new Error(`Unsupported PCM sample depth: ${bitsPerSample}-bit.`);
+  };
+
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    let sum = 0;
+    const frameOffset = dataOffset + frame * frameSize;
+    for (let channel = 0; channel < channels; channel += 1) {
+      sum += readSample(frameOffset + channel * bytesPerSample);
+    }
+    samples[frame] = sum / channels;
+  }
+
+  return { samples, sampleRate };
+}
+
+async function extractAudioSamples(audio) {
+  const directCandidates = [audio?.data, audio?.audio?.data, audio?.audio, audio?.waveform?.data, audio?.waveform];
+  for (const candidate of directCandidates) {
+    const samples = toFloat32Samples(candidate);
+    if (samples?.length) return { samples, source: 'raw_data', sampleRate: SAMPLE_RATE };
+  }
+
+  if (typeof audio?.toBlob === 'function') {
+    const blob = audio.toBlob();
+    const decoded = await decodeWavBlob(blob);
+    if (decoded.samples?.length) return { ...decoded, source: 'wav_blob' };
+  }
+
+  const keys = audio && typeof audio === 'object' ? Object.keys(audio).slice(0, 12).join(',') : typeof audio;
+  throw new Error(`Kokoro produced no readable audio samples. Output shape: ${keys || 'unknown'}.`);
+}
+
 async function importKokoroRuntime() {
   let lastError = null;
 
@@ -247,9 +373,14 @@ async function generateSegment(tts, segment, voice, segmentIndex, totalSegments)
     `Kokoro timed out while generating narration segment ${segmentIndex + 1} of ${totalSegments}.`,
   );
 
-  const data = audio?.data;
+  const extracted = await extractAudioSamples(audio);
+  const data = extracted.samples;
   if (!data?.length) {
     throw new Error(`Kokoro returned no audio for narration segment ${segmentIndex + 1} of ${totalSegments}.`);
+  }
+
+  if (extracted.sampleRate !== SAMPLE_RATE) {
+    throw new Error(`Unexpected Kokoro sample rate ${extracted.sampleRate}; expected ${SAMPLE_RATE}.`);
   }
 
   postProgress('synthesizing', {
@@ -257,9 +388,10 @@ async function generateSegment(tts, segment, voice, segmentIndex, totalSegments)
     segment: segmentIndex + 1,
     totalSegments,
     sampleCount: data.length,
+    extractionSource: extracted.source,
   });
 
-  return new Float32Array(data);
+  return data;
 }
 
 async function synthesize(script, voiceKey) {
@@ -290,9 +422,6 @@ async function synthesize(script, voiceKey) {
       segments.length,
     );
     audioChunks.push(audioChunk);
-
-    // Yield between inference calls so the worker can flush progress messages
-    // and avoid chaining long ONNX runs back-to-back without a scheduling gap.
     await new Promise(resolve => setTimeout(resolve, 0));
   }
 
