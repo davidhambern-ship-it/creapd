@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
   Plus, Type, Image as ImageIcon, Square, ChevronDown,
-  AlignLeft, Captions, Wand2, FolderOpen, Cpu, ClipboardCheck,
+  AlignLeft, Captions, Wand2, FolderOpen,
   Video, Music, PenTool, Shapes, BarChart3, Table as TableIcon,
   Minus, MessageSquare, Quote, Code, Sigma, QrCode, Box,
 } from 'lucide-react';
@@ -59,116 +59,131 @@ const MEDIA_ADD_OPTIONS = [
 
 const EXPORT_OPTIONS = ['Google Slides (PPTX)', 'PDF', 'PowerPoint', 'Video', 'Present Mode'];
 
+const ROOM_INFO = {
+  design: { label: 'Design Room', hint: 'Compose slides, add elements, and refine visual layout.' },
+  animate: { label: 'Animate Room', hint: 'Select an element and use the Animation Inspector and timeline below.' },
+  media: { label: 'Media Room', hint: 'Manage package assets and presentation media.' },
+  script: { label: 'Script Room', hint: 'Edit narration, speaker notes, and presentation copy.' },
+  review: { label: 'Review Room', hint: 'Run QA, inspect issues, and approve the production.' },
+  present: { label: 'Present Room', hint: 'Rehearse and run the presentation using the controls below the canvas.' },
+  ai: { label: 'AI Control Room', hint: 'Coordinate the Presentation Studio specialist workers.' },
+};
+
 export default function EditorTopBar({
   saving, dirty, canUndo, canRedo, hasSelection, title,
   onSave, onUndo, onRedo, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
-  onToggleAiPanel, aiPanelOpen,
-  onToggleReviewPanel, reviewPanelOpen,
   workspaceMode, onWorkspaceModeChange,
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [mediaAddOpen, setMediaAddOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
+  const room = ROOM_INFO[workspaceMode] || ROOM_INFO.design;
   const showDesignTools = workspaceMode === 'design';
-  const showAnimateTools = workspaceMode === 'animate';
   const showMediaTools = workspaceMode === 'media';
   const showReviewTools = workspaceMode === 'review';
-  const showAITools = workspaceMode === 'ai';
 
   return (
-    <div className="cpe-topbar flex items-center gap-1 px-3 py-2">
-      <div className="flex items-center gap-2 mr-2 min-w-0">
-        <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD · PRESENTATION STUDIO</span>
-        <span className="cpe-title-text text-sm truncate max-w-[180px]">{title || 'Presentation Editor'}</span>
+    <div className="cpe-topbar flex flex-col flex-shrink-0">
+      {/* Global Presentation Studio header — these controls never change rooms. */}
+      <div className="cpe-global-toolbar flex items-center gap-1 px-3 py-2 min-w-0">
+        <div className="flex items-center gap-2 mr-2 min-w-0">
+          <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD · PRESENTATION STUDIO</span>
+          <span className="cpe-title-text text-sm truncate max-w-[260px]">{title || 'Presentation Editor'}</span>
+          {dirty && <span className="cpe-dirty-dot" title="Unsaved changes" />}
+        </div>
+
+        <div className="cpe-sep" />
+
+        <button className="cpe-tool-btn" onClick={onSave} disabled={saving}>
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Save
+        </button>
+        <button className="cpe-icon-btn" onClick={onUndo} disabled={!canUndo} title="Undo"><Undo2 className="w-4 h-4" /></button>
+        <button className="cpe-icon-btn" onClick={onRedo} disabled={!canRedo} title="Redo"><Redo2 className="w-4 h-4" /></button>
+
+        <div className="cpe-sep" />
+
+        <Link to="/presentations">
+          <button className="cpe-tool-btn"><FolderOpen className="w-4 h-4" /> Open</button>
+        </Link>
+
+        <div className="flex-1" />
+
+        <button
+          className="cpe-tool-btn cpe-director-btn"
+          onClick={onRegenerateSlide}
+          title="Run the CREAPD Presentation Director / APD across this presentation"
+        >
+          <Wand2 className="w-4 h-4" /> Director
+        </button>
+
+        <div className="relative">
+          <button className="cpe-tool-btn" onClick={() => setExportOpen(!exportOpen)}>
+            <Download className="w-4 h-4" /> Export <ChevronDown className="w-3 h-3" />
+          </button>
+          {exportOpen && (
+            <Dropdown onClose={() => setExportOpen(false)} align="right">
+              {EXPORT_OPTIONS.map(fmt => (
+                <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }} className="cpe-dropdown-item">{fmt}</button>
+              ))}
+            </Dropdown>
+          )}
+        </div>
       </div>
-      {dirty && <span className="cpe-dirty-dot" title="Unsaved changes" />}
 
-      <div className="cpe-sep" />
+      {/* Navigation between Presentation Studio rooms. */}
+      <div className="cpe-studio-roombar flex items-center gap-3 px-3 py-1.5">
+        <span className="cpe-roombar-label">Studio Rooms</span>
+        <WorkspaceSwitcher activeMode={workspaceMode} onModeChange={onWorkspaceModeChange} />
+      </div>
 
-      <button className="cpe-tool-btn" onClick={onSave} disabled={saving}>
-        {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-        Save
-      </button>
-      <button className="cpe-icon-btn" onClick={onUndo} disabled={!canUndo} title="Undo"><Undo2 className="w-4 h-4" /></button>
-      <button className="cpe-icon-btn" onClick={onRedo} disabled={!canRedo} title="Redo"><Redo2 className="w-4 h-4" /></button>
+      {/* Context toolbar: equipment/actions that belong only to the active room. */}
+      <div className="cpe-room-toolbar flex items-center gap-1 px-3 py-1.5 min-h-[38px]">
+        <div className="flex items-center gap-2 min-w-0 mr-2">
+          <span className="cpe-room-title">{room.label}</span>
+          <span className="cpe-room-hint hidden lg:inline truncate">{room.hint}</span>
+        </div>
 
-      <div className="cpe-sep" />
+        <div className="flex-1" />
 
-      <Link to="/presentations">
-        <button className="cpe-tool-btn"><FolderOpen className="w-4 h-4" /> Open</button>
-      </Link>
-
-      <div className="cpe-sep" />
-
-      <WorkspaceSwitcher activeMode={workspaceMode} onModeChange={onWorkspaceModeChange} />
-
-      {showDesignTools && (
-        <>
-          <div className="cpe-sep" />
-          <div className="relative">
-            <button className="cpe-tool-btn" onClick={() => setAddOpen(!addOpen)}>
-              <Plus className="w-4 h-4" /> Add <ChevronDown className="w-3 h-3" />
-            </button>
-            {addOpen && (
-              <Dropdown onClose={() => setAddOpen(false)}>
-                {ADD_GROUPS.map((group, gi) => (
-                  <div key={group.label} className={gi > 0 ? 'mt-1 pt-1 border-t border-white/5' : ''}>
-                    <div className="cpe-dropdown-group-label">{group.label}</div>
-                    {group.items.map(({ type, label, icon: Icon }) => (
-                      <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }} className="cpe-dropdown-item">
-                        <Icon className="w-4 h-4" /> {label}
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </Dropdown>
+        {showDesignTools && (
+          <>
+            <div className="relative">
+              <button className="cpe-tool-btn" onClick={() => setAddOpen(!addOpen)}>
+                <Plus className="w-4 h-4" /> Add Element <ChevronDown className="w-3 h-3" />
+              </button>
+              {addOpen && (
+                <Dropdown onClose={() => setAddOpen(false)} align="right">
+                  {ADD_GROUPS.map((group, gi) => (
+                    <div key={group.label} className={gi > 0 ? 'mt-1 pt-1 border-t border-white/5' : ''}>
+                      <div className="cpe-dropdown-group-label">{group.label}</div>
+                      {group.items.map(({ type, label, icon: Icon }) => (
+                        <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }} className="cpe-dropdown-item">
+                          <Icon className="w-4 h-4" /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </Dropdown>
+              )}
+            </div>
+            {hasSelection && (
+              <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected text element via AI">
+                <RefreshCw className="w-3.5 h-3.5" /> Improve Element
+              </button>
             )}
-          </div>
-          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Run the CREAPD Presentation Director / APD">
-            <Wand2 className="w-4 h-4" /> Director
-          </button>
-          {hasSelection && (
-            <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected element via AI">
-              <RefreshCw className="w-3.5 h-3.5" /> Element
-            </button>
-          )}
-        </>
-      )}
+          </>
+        )}
 
-      {showAnimateTools && (
-        <>
-          <div className="cpe-sep" />
-          <button className="cpe-tool-btn" title="Suggest Animation" onClick={() => {}}>
-            <Wand2 className="w-4 h-4" /> Suggest
-          </button>
-          <button className="cpe-tool-btn" title="Auto-Choreograph" onClick={() => {}}>
-            <Wand2 className="w-3.5 h-3.5" /> Auto-Choreograph
-          </button>
-          <button className="cpe-tool-btn" title="Match Animation Style" onClick={() => {}}>
-            <Wand2 className="w-3.5 h-3.5" /> Match Style
-          </button>
-          <button className="cpe-tool-btn" title="Auto Sync Timing" onClick={() => {}}>
-            <Wand2 className="w-3.5 h-3.5" /> Sync Timing
-          </button>
-          {hasSelection && (
-            <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected element via AI">
-              <RefreshCw className="w-3.5 h-3.5" /> Element
-            </button>
-          )}
-        </>
-      )}
-
-      {showMediaTools && (
-        <>
-          <div className="cpe-sep" />
+        {showMediaTools && (
           <div className="relative">
             <button className="cpe-tool-btn" onClick={() => setMediaAddOpen(!mediaAddOpen)}>
               <Plus className="w-4 h-4" /> Add Media <ChevronDown className="w-3 h-3" />
             </button>
             {mediaAddOpen && (
-              <Dropdown onClose={() => setMediaAddOpen(false)}>
+              <Dropdown onClose={() => setMediaAddOpen(false)} align="right">
                 {MEDIA_ADD_OPTIONS.map(({ type, label, icon: Icon }) => (
                   <button key={type} onClick={() => { onAddElement(type); setMediaAddOpen(false); }} className="cpe-dropdown-item">
                     <Icon className="w-4 h-4" /> {label}
@@ -177,50 +192,12 @@ export default function EditorTopBar({
               </Dropdown>
             )}
           </div>
-        </>
-      )}
+        )}
 
-      {showReviewTools && (
-        <>
-          <div className="cpe-sep" />
+        {showReviewTools && (
           <button className="cpe-tool-btn" onClick={onRunQA}>
             <ShieldCheck className="w-4 h-4" /> Run QA
           </button>
-          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Re-run the CREAPD Presentation Director / APD">
-            <Wand2 className="w-4 h-4" /> Re-Direct
-          </button>
-        </>
-      )}
-
-      {showAITools && (
-        <>
-          <div className="cpe-sep" />
-          <button className={`cpe-tool-btn ${aiPanelOpen ? 'active' : ''}`} onClick={onToggleAiPanel}>
-            <Cpu className="w-4 h-4" /> AI Workers
-          </button>
-        </>
-      )}
-
-      <div className="flex-1" />
-
-      <button
-        className={`cpe-tool-btn ${reviewPanelOpen ? 'active' : ''}`}
-        onClick={onToggleReviewPanel}
-        title="Review & Production"
-      >
-        <ClipboardCheck className="w-4 h-4" /> Review
-      </button>
-
-      <div className="relative">
-        <button className="cpe-tool-btn" onClick={() => setExportOpen(!exportOpen)}>
-          <Download className="w-4 h-4" /> Export <ChevronDown className="w-3 h-3" />
-        </button>
-        {exportOpen && (
-          <Dropdown onClose={() => setExportOpen(false)} align="right">
-            {EXPORT_OPTIONS.map(fmt => (
-              <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }} className="cpe-dropdown-item">{fmt}</button>
-            ))}
-          </Dropdown>
         )}
       </div>
     </div>
