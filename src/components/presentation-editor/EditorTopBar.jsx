@@ -60,7 +60,6 @@ const MEDIA_ADD_OPTIONS = [
 const EXPORT_OPTIONS = ['Google Slides (PPTX)', 'PDF', 'PowerPoint', 'Video', 'Present Mode'];
 
 export default function EditorTopBar({
-
   saving, dirty, canUndo, canRedo, hasSelection, title,
   onSave, onUndo, onRedo, onExport,
   onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
@@ -80,9 +79,8 @@ export default function EditorTopBar({
 
   return (
     <div className="cpe-topbar flex items-center gap-1 px-3 py-2">
-
       <div className="flex items-center gap-2 mr-2 min-w-0">
-        <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD</span>
+        <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD · PRESENTATION STUDIO</span>
         <span className="cpe-title-text text-sm truncate max-w-[180px]">{title || 'Presentation Editor'}</span>
       </div>
       {dirty && <span className="cpe-dirty-dot" title="Unsaved changes" />}
@@ -98,7 +96,7 @@ export default function EditorTopBar({
 
       <div className="cpe-sep" />
 
-      <Link to="/news/presentations">
+      <Link to="/presentations">
         <button className="cpe-tool-btn"><FolderOpen className="w-4 h-4" /> Open</button>
       </Link>
 
@@ -106,7 +104,6 @@ export default function EditorTopBar({
 
       <WorkspaceSwitcher activeMode={workspaceMode} onModeChange={onWorkspaceModeChange} />
 
-      {/* Design mode tools */}
       {showDesignTools && (
         <>
           <div className="cpe-sep" />
@@ -120,8 +117,7 @@ export default function EditorTopBar({
                   <div key={group.label} className={gi > 0 ? 'mt-1 pt-1 border-t border-white/5' : ''}>
                     <div className="cpe-dropdown-group-label">{group.label}</div>
                     {group.items.map(({ type, label, icon: Icon }) => (
-                      <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }}
-                        className="cpe-dropdown-item">
+                      <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }} className="cpe-dropdown-item">
                         <Icon className="w-4 h-4" /> {label}
                       </button>
                     ))}
@@ -130,8 +126,8 @@ export default function EditorTopBar({
               </Dropdown>
             )}
           </div>
-          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Re-direct via APD">
-            <RefreshCw className="w-4 h-4" /> Regenerate
+          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Run the CREAPD Presentation Director / APD">
+            <Wand2 className="w-4 h-4" /> Director
           </button>
           {hasSelection && (
             <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected element via AI">
@@ -141,7 +137,6 @@ export default function EditorTopBar({
         </>
       )}
 
-      {/* Animate mode tools */}
       {showAnimateTools && (
         <>
           <div className="cpe-sep" />
@@ -165,7 +160,6 @@ export default function EditorTopBar({
         </>
       )}
 
-      {/* Media mode tools */}
       {showMediaTools && (
         <>
           <div className="cpe-sep" />
@@ -176,8 +170,7 @@ export default function EditorTopBar({
             {mediaAddOpen && (
               <Dropdown onClose={() => setMediaAddOpen(false)}>
                 {MEDIA_ADD_OPTIONS.map(({ type, label, icon: Icon }) => (
-                  <button key={type} onClick={() => { onAddElement(type); setMediaAddOpen(false); }}
-                    className="cpe-dropdown-item">
+                  <button key={type} onClick={() => { onAddElement(type); setMediaAddOpen(false); }} className="cpe-dropdown-item">
                     <Icon className="w-4 h-4" /> {label}
                   </button>
                 ))}
@@ -187,20 +180,18 @@ export default function EditorTopBar({
         </>
       )}
 
-      {/* Review mode tools */}
       {showReviewTools && (
         <>
           <div className="cpe-sep" />
           <button className="cpe-tool-btn" onClick={onRunQA}>
             <ShieldCheck className="w-4 h-4" /> Run QA
           </button>
-          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Re-direct via APD">
-            <RefreshCw className="w-4 h-4" /> Regenerate
+          <button className="cpe-tool-btn" onClick={onRegenerateSlide} title="Re-run the CREAPD Presentation Director / APD">
+            <Wand2 className="w-4 h-4" /> Re-Direct
           </button>
         </>
       )}
 
-      {/* AI mode tools */}
       {showAITools && (
         <>
           <div className="cpe-sep" />
@@ -233,8 +224,7 @@ export default function EditorTopBar({
         {exportOpen && (
           <Dropdown onClose={() => setExportOpen(false)} align="right">
             {EXPORT_OPTIONS.map(fmt => (
-              <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }}
-                className="cpe-dropdown-item">{fmt}</button>
+              <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }} className="cpe-dropdown-item">{fmt}</button>
             ))}
           </Dropdown>
         )}
