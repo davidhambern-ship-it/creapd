@@ -1,7 +1,7 @@
 import { upload } from '@vercel/blob/client';
 import { creapdApi } from '@/api/creapdClient';
 
-export const LOCAL_VOICE_ENGINE_REVISION = 'r7-voices';
+export const LOCAL_VOICE_ENGINE_REVISION = 'r8-duration';
 const LOCAL_VOICE_MIME = 'audio/wav';
 
 let workerInstance = null;
@@ -43,6 +43,7 @@ function getWorker() {
         model: message.model,
         chunkCount: message.chunkCount || 0,
         segmentCount: message.segmentCount || 0,
+        durationSeconds: Number(message.durationSeconds || 0) || null,
         engineRevision: message.engineRevision || LOCAL_VOICE_ENGINE_REVISION,
       });
       return;
@@ -124,6 +125,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     package_id: packageId,
     content_type: LOCAL_VOICE_MIME,
     byte_size: generated.blob.size,
+    duration_seconds: generated.durationSeconds,
     model: generated.model,
     voice: generated.voice,
     device: generated.device,
@@ -157,11 +159,15 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
       voice: generated.voice,
       device: generated.device,
       byte_size: generated.blob.size,
+      duration_seconds: generated.durationSeconds,
       elapsed_ms: Math.round(performance.now() - startedAt),
     });
 
     if (registered?.package) {
-      onProgress?.('done', { engineRevision: generated.engineRevision });
+      onProgress?.('done', {
+        engineRevision: generated.engineRevision,
+        durationSeconds: generated.durationSeconds,
+      });
       return registered;
     }
   } catch (error) {
@@ -173,7 +179,10 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     throw new Error('The voiceover was generated, but CREAPD could not confirm that it was saved.');
   }
 
-  onProgress?.('done', { engineRevision: generated.engineRevision });
+  onProgress?.('done', {
+    engineRevision: generated.engineRevision,
+    durationSeconds: generated.durationSeconds,
+  });
   return {
     ok: true,
     source: 'neon',
