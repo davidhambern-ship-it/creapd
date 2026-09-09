@@ -30,7 +30,6 @@ function readAudioDuration(url) {
 
     const audio = new Audio();
     audio.preload = 'metadata';
-    audio.crossOrigin = 'anonymous';
 
     const cleanup = () => {
       audio.onloadedmetadata = null;
