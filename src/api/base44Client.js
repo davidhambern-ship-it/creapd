@@ -48,6 +48,15 @@ function isOwnedNotFound(error) {
   );
 }
 
+function extractEditorRewriteText(prompt) {
+  const prefix = 'Improve this presentation text: "';
+  const suffix = '". Return JSON:';
+  const start = prompt.indexOf(prefix);
+  const end = prompt.lastIndexOf(suffix);
+  if (start < 0 || end <= start) return null;
+  return prompt.slice(start + prefix.length, end);
+}
+
 const researchTopicAdapter = new Proxy(sdkBase44.entities.ResearchTopic, {
   get(target, property) {
     if (property === 'create') {
@@ -351,6 +360,53 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result };
         }
 
+        if (
+          shouldUseNeonAuth() &&
+          functionName === 'dispatchWorker' &&
+          activeOwnedPresentationId &&
+          String(payload?.production_id || '') === activeOwnedPresentationId
+        ) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'run_presentation_qa',
+            presentation_id: activeOwnedPresentationId,
+          });
+          return { data: result };
+        }
+
+        if (
+          shouldUseNeonAuth() &&
+          functionName === 'shareToCreapd' &&
+          isOwnedPresentationId(payload?.presentation_id)
+        ) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'share_presentation_studio',
+            presentation_id: payload.presentation_id,
+            visibility: payload?.visibility || 'team',
+          });
+          return { data: result };
+        }
+
+        if (
+          shouldUseNeonAuth() &&
+          functionName === 'generateNewsPresentation' &&
+          activeOwnedPresentationId &&
+          payload?.regenerate === true
+        ) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'direct_presentation_studio',
+            presentation_id: activeOwnedPresentationId,
+          });
+          return {
+            data: {
+              success: true,
+              presentation_id: activeOwnedPresentationId,
+              presentation: result?.presentation,
+              director_plan: result?.director_plan,
+              source: 'neon',
+            },
+          };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'deepResearchV2') {
           const result = await creapdApi.post('/research/topic-action', {
             action: 'start',
@@ -407,6 +463,16 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
             story_summary: '',
             talking_points: '',
           };
+        }
+
+        const rewriteText = activeOwnedPresentationId && extractEditorRewriteText(prompt);
+        if (shouldUseNeonAuth() && activeOwnedPresentationId && rewriteText !== null) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'rewrite_presentation_text',
+            presentation_id: activeOwnedPresentationId,
+            content: rewriteText,
+          });
+          return { content: result?.content || rewriteText };
         }
 
         return target.InvokeLLM(payload);
