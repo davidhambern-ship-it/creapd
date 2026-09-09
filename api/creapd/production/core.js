@@ -2,6 +2,19 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
+import {
+  handoffPackageToPresentationStudio,
+  loadPresentationStudioEditor,
+  updateEditorPresentation,
+  createEditorSlide,
+  updateEditorSlide,
+  deleteEditorSlide,
+  listEditorElements,
+  createEditorElement,
+  updateEditorElement,
+  deleteEditorElements,
+  directPresentationStudioProject,
+} from '../../../server/presentationStudio.js';
 
 export const config = {
   maxDuration: 60,
@@ -15,6 +28,18 @@ function safeError(error) {
   };
 }
 
+function success(response, action, payload = {}) {
+  return response.status(200).json({
+    ok: true,
+    service: 'creapd-production-core',
+    action,
+    source: 'neon',
+    data_authority: 'neon',
+    ...payload,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 async function handlePost(request, response, sql, ownerUserId) {
   const body = request.body && typeof request.body === 'object' ? request.body : {};
   const action = String(body.action || '').trim();
@@ -23,28 +48,144 @@ async function handlePost(request, response, sql, ownerUserId) {
     return response.status(400).json({ ok: false, error: 'action_required' });
   }
 
-  if (action !== 'assemble_research_presentation') {
-    return response.status(400).json({ ok: false, error: 'unsupported_action' });
-  }
-
   try {
-    const result = await assembleResearchPresentation({
-      sql,
-      ownerUserId,
-      configurationId: body.configuration_id || body.config_id,
-    });
+    switch (action) {
+      case 'approve_package_and_handoff': {
+        const result = await handoffPackageToPresentationStudio({
+          sql,
+          ownerUserId,
+          packageId: body.package_id,
+          approve: true,
+        });
+        return success(response, action, result);
+      }
 
-    return response.status(200).json({
-      ok: true,
-      service: 'creapd-production-core',
-      action,
-      source: 'neon',
-      data_authority: 'neon',
-      presentation: result.presentation,
-      configuration: result.configuration,
-      package_count: result.packages.length,
-      timestamp: new Date().toISOString(),
-    });
+      case 'handoff_package_to_presentation_studio': {
+        const result = await handoffPackageToPresentationStudio({
+          sql,
+          ownerUserId,
+          packageId: body.package_id,
+          approve: false,
+        });
+        return success(response, action, result);
+      }
+
+      case 'load_presentation_editor': {
+        const result = await loadPresentationStudioEditor({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+        });
+        return success(response, action, result);
+      }
+
+      case 'list_editor_elements': {
+        const elements = await listEditorElements({
+          sql,
+          ownerUserId,
+          slideId: body.slide_id,
+        });
+        return success(response, action, { elements });
+      }
+
+      case 'update_editor_presentation': {
+        const result = await updateEditorPresentation({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+          patch: body.patch || {},
+        });
+        return success(response, action, result);
+      }
+
+      case 'create_editor_slide': {
+        const result = await createEditorSlide({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+          slide: body.slide || {},
+        });
+        return success(response, action, { slide: result.result, ...result });
+      }
+
+      case 'update_editor_slide': {
+        const result = await updateEditorSlide({
+          sql,
+          ownerUserId,
+          slideId: body.slide_id,
+          patch: body.patch || {},
+        });
+        return success(response, action, { slide: result.result, ...result });
+      }
+
+      case 'delete_editor_slide': {
+        const result = await deleteEditorSlide({
+          sql,
+          ownerUserId,
+          slideId: body.slide_id,
+        });
+        return success(response, action, result);
+      }
+
+      case 'create_editor_element': {
+        const result = await createEditorElement({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+          element: body.element || {},
+        });
+        return success(response, action, { element: result.result, ...result });
+      }
+
+      case 'update_editor_element': {
+        const result = await updateEditorElement({
+          sql,
+          ownerUserId,
+          elementId: body.element_id,
+          patch: body.patch || {},
+        });
+        return success(response, action, { element: result.result, ...result });
+      }
+
+      case 'delete_editor_elements': {
+        const result = await deleteEditorElements({
+          sql,
+          ownerUserId,
+          slideId: body.slide_id,
+          elementIds: body.element_ids || [],
+        });
+        return success(response, action, result);
+      }
+
+      case 'direct_presentation_studio': {
+        const result = await directPresentationStudioProject({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+        });
+        return success(response, action, result);
+      }
+
+      // Temporary compatibility action. New CREAPD architecture hands approved
+      // Production Packages to the Presentation Studio and directs them there.
+      case 'assemble_research_presentation': {
+        const result = await assembleResearchPresentation({
+          sql,
+          ownerUserId,
+          configurationId: body.configuration_id || body.config_id,
+        });
+
+        return success(response, action, {
+          presentation: result.presentation,
+          configuration: result.configuration,
+          package_count: result.packages.length,
+          compatibility_path: true,
+        });
+      }
+
+      default:
+        return response.status(400).json({ ok: false, error: 'unsupported_action' });
+    }
   } catch (error) {
     const status = Number(error?.status || 0);
     if ([400, 404, 409].includes(status)) {
@@ -52,7 +193,7 @@ async function handlePost(request, response, sql, ownerUserId) {
         ok: false,
         service: 'creapd-production-core',
         action,
-        error: error.code || 'research_presentation_assembly_failed',
+        error: error.code || 'production_core_action_failed',
         diagnostic: safeError(error),
         timestamp: new Date().toISOString(),
       });
