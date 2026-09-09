@@ -5,10 +5,10 @@ const KOKORO_PACKAGE_URLS = [
 ];
 const SAMPLE_RATE = 24000;
 const MAX_SCRIPT_CHARS = 8000;
-const TARGET_SEGMENT_CHARS = 650;
+const TARGET_SEGMENT_CHARS = 260;
 const RUNTIME_IMPORT_TIMEOUT_MS = 45000;
 const MODEL_LOAD_TIMEOUT_MS = 240000;
-const STREAM_CHUNK_TIMEOUT_MS = 180000;
+const SEGMENT_GENERATION_TIMEOUT_MS = 150000;
 
 const VOICE_MAP = {
   river: 'af_river',
@@ -50,30 +50,61 @@ function normalizeModelProgress(progress) {
   return detail;
 }
 
+function splitLongText(text, maxChars) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const parts = [];
+  let current = '';
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxChars) {
+      current = candidate;
+      continue;
+    }
+
+    if (current) parts.push(current);
+
+    // A pathological token should never make a segment unbounded.
+    if (word.length > maxChars) {
+      for (let offset = 0; offset < word.length; offset += maxChars) {
+        parts.push(word.slice(offset, offset + maxChars));
+      }
+      current = '';
+    } else {
+      current = word;
+    }
+  }
+
+  if (current) parts.push(current);
+  return parts;
+}
+
 function splitForSpeech(text) {
-  const normalized = String(text || '').replace(/\r\n?/g, '\n').trim();
+  const normalized = String(text || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
   if (!normalized) return [];
 
-  const sentences = normalized
+  const sentenceCandidates = normalized
     .split(/(?<=[.!?])\s+|\n+/g)
     .map(part => part.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .flatMap(part => part.length > TARGET_SEGMENT_CHARS
+      ? splitLongText(part, TARGET_SEGMENT_CHARS)
+      : [part]);
 
   const segments = [];
   let current = '';
 
-  for (const sentence of sentences) {
-    if (!current) {
-      current = sentence;
+  for (const sentence of sentenceCandidates) {
+    const candidate = current ? `${current} ${sentence}` : sentence;
+    if (candidate.length <= TARGET_SEGMENT_CHARS) {
+      current = candidate;
       continue;
     }
 
-    if (`${current} ${sentence}`.length <= TARGET_SEGMENT_CHARS) {
-      current = `${current} ${sentence}`;
-      continue;
-    }
-
-    segments.push(current);
+    if (current) segments.push(current);
     current = sentence;
   }
 
@@ -202,32 +233,33 @@ async function loadTts() {
   return ttsPromise;
 }
 
-async function synthesizeSegment(tts, segment, voice, segmentIndex, totalSegments, audioChunks, currentChunkCount) {
-  const iterator = tts.stream(segment, { voice, speed: 1 })[Symbol.asyncIterator]();
-  let streamChunkCount = currentChunkCount;
+async function generateSegment(tts, segment, voice, segmentIndex, totalSegments) {
+  postProgress('synthesizing', {
+    phase: 'segment_started',
+    segment: segmentIndex + 1,
+    totalSegments,
+    segmentCharacters: segment.length,
+  });
 
-  while (true) {
-    const next = await withTimeout(
-      iterator.next(),
-      STREAM_CHUNK_TIMEOUT_MS,
-      `Kokoro stopped responding while synthesizing segment ${segmentIndex + 1} of ${totalSegments}.`,
-    );
+  const audio = await withTimeout(
+    tts.generate(segment, { voice, speed: 1 }),
+    SEGMENT_GENERATION_TIMEOUT_MS,
+    `Kokoro timed out while generating narration segment ${segmentIndex + 1} of ${totalSegments}.`,
+  );
 
-    if (next.done) break;
-
-    const data = next.value?.audio?.data;
-    if (data?.length) {
-      audioChunks.push(new Float32Array(data));
-      streamChunkCount += 1;
-      postProgress('synthesizing', {
-        segment: segmentIndex + 1,
-        totalSegments,
-        chunkCount: streamChunkCount,
-      });
-    }
+  const data = audio?.data;
+  if (!data?.length) {
+    throw new Error(`Kokoro returned no audio for narration segment ${segmentIndex + 1} of ${totalSegments}.`);
   }
 
-  return streamChunkCount;
+  postProgress('synthesizing', {
+    phase: 'segment_complete',
+    segment: segmentIndex + 1,
+    totalSegments,
+    sampleCount: data.length,
+  });
+
+  return new Float32Array(data);
 }
 
 async function synthesize(script, voiceKey) {
@@ -242,25 +274,26 @@ async function synthesize(script, voiceKey) {
   const segments = splitForSpeech(text);
   if (!segments.length) throw new Error('The teleprompter script has no speakable text.');
 
+  postProgress('synthesizing', {
+    phase: 'plan_ready',
+    totalSegments: segments.length,
+  });
+
   const audioChunks = [];
-  let streamChunkCount = 0;
 
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
-    postProgress('synthesizing', {
-      segment: segmentIndex + 1,
-      totalSegments: segments.length,
-      chunkCount: streamChunkCount,
-    });
-
-    streamChunkCount = await synthesizeSegment(
+    const audioChunk = await generateSegment(
       tts,
       segments[segmentIndex],
       voice,
       segmentIndex,
       segments.length,
-      audioChunks,
-      streamChunkCount,
     );
+    audioChunks.push(audioChunk);
+
+    // Yield between inference calls so the worker can flush progress messages
+    // and avoid chaining long ONNX runs back-to-back without a scheduling gap.
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
 
   if (!audioChunks.length) throw new Error('Local voice model returned no audio.');
@@ -271,9 +304,9 @@ async function synthesize(script, voiceKey) {
   return {
     wavBuffer,
     voice,
-    device: 'wasm-worker',
+    device: 'wasm-worker-generate',
     model: KOKORO_MODEL,
-    chunkCount: streamChunkCount,
+    chunkCount: audioChunks.length,
     segmentCount: segments.length,
   };
 }
