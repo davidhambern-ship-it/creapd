@@ -1,4 +1,4 @@
-const ENGINE_REVISION = 'r7-voices';
+const ENGINE_REVISION = 'r8-duration';
 const KOKORO_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 const KOKORO_PACKAGE_URLS = [
   'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js',
@@ -387,7 +387,9 @@ async function synthesize(script, voiceKey) {
   if (!chunks.length) throw new Error('Kokoro produced no narration chunks.');
 
   postProgress('encoding');
-  const wavBuffer = encodeWavBuffer(concatFloat32(chunks), SAMPLE_RATE);
+  const combinedSamples = concatFloat32(chunks);
+  const durationSeconds = combinedSamples.length / SAMPLE_RATE;
+  const wavBuffer = encodeWavBuffer(combinedSamples, SAMPLE_RATE);
 
   return {
     wavBuffer,
@@ -396,6 +398,7 @@ async function synthesize(script, voiceKey) {
     model: KOKORO_MODEL,
     chunkCount: chunks.length,
     segmentCount: segments.length,
+    durationSeconds,
   };
 }
 
@@ -413,6 +416,7 @@ self.onmessage = async event => {
       model: result.model,
       chunkCount: result.chunkCount,
       segmentCount: result.segmentCount,
+      durationSeconds: result.durationSeconds,
       engineRevision: ENGINE_REVISION,
       wavBuffer: result.wavBuffer,
     }, [result.wavBuffer]);
