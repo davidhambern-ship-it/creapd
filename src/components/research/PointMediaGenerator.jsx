@@ -5,6 +5,7 @@ import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
 import { Button } from '@/components/ui/button';
 import MediaGenerator from '@/components/production/MediaGenerator';
+import ResearchVideoPlanner from '@/components/research/ResearchVideoPlanner';
 import {
   Loader2, ImageIcon, Film, Volume2, Wand2, Sparkles, FileText
 } from 'lucide-react';
@@ -173,7 +174,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
 
       {ownedPreview && (
         <p className="text-[10px] text-muted-foreground mb-3">
-          Preview generates voiceover locally in your browser from the Teleprompter Script, then stores it in CREAPD's Vercel Blob + Neon path. Thumbnail and story image use the owned Cloudflare path. Video is temporarily disabled until its migration checkpoint is complete.
+          Preview generates voiceover locally in your browser from the Teleprompter Script, stores media through CREAPD's owned Blob + Neon path, and uses the saved Kokoro voiceover as the master timeline for the Video Director.
         </p>
       )}
 
@@ -215,7 +216,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           mediaType="audio"
           promptField="teleprompter_script"
           urlField="generated_audio_url"
-          label={ownedPreview ? 'AI Voiceover · r6-webbundle' : 'AI Voiceover'}
+          label="AI Voiceover"
           icon={Volume2}
           onMediaUpdate={onMediaUpdate}
         />
@@ -237,15 +238,19 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           icon={ImageIcon}
           onMediaUpdate={onMediaUpdate}
         />
-        <MediaGenerator
-          pkg={pkg}
-          mediaType="video"
-          promptField="image_prompt"
-          urlField="generated_video_url"
-          label="Video Clip"
-          icon={Film}
-          onMediaUpdate={onMediaUpdate}
-        />
+        {ownedPreview ? (
+          <ResearchVideoPlanner pkg={pkg} onMediaUpdate={onMediaUpdate} />
+        ) : (
+          <MediaGenerator
+            pkg={pkg}
+            mediaType="video"
+            promptField="image_prompt"
+            urlField="generated_video_url"
+            label="Video Clip"
+            icon={Film}
+            onMediaUpdate={onMediaUpdate}
+          />
+        )}
       </div>
     </div>
   );
