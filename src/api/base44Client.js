@@ -18,6 +18,18 @@ function bindIfFunction(value, target) {
   return typeof value === 'function' ? value.bind(target) : value;
 }
 
+function isOwnedPresentationId(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
+function presentationIdFromChildId(value, marker) {
+  const text = String(value || '');
+  const index = text.indexOf(marker);
+  if (index <= 0) return null;
+  const candidate = text.slice(0, index);
+  return isOwnedPresentationId(candidate) ? candidate : null;
+}
+
 const researchTopicAdapter = new Proxy(sdkBase44.entities.ResearchTopic, {
   get(target, property) {
     if (property === 'create') {
@@ -106,11 +118,158 @@ const productionPackageAdapter = new Proxy(sdkBase44.entities.ProductionPackage,
   },
 });
 
+const storiesPresentationAdapter = new Proxy(sdkBase44.entities.StoriesPresentation, {
+  get(target, property) {
+    if (property === 'update') {
+      return async (presentationId, payload = {}) => {
+        if (!shouldUseNeonAuth() || !isOwnedPresentationId(presentationId)) {
+          return target.update(presentationId, payload);
+        }
+
+        const result = await creapdApi.post('/production/core', {
+          action: 'update_editor_presentation',
+          presentation_id: presentationId,
+          patch: payload,
+        });
+        return result?.result || result?.presentation;
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+const storySlideAdapter = new Proxy(sdkBase44.entities.StorySlide, {
+  get(target, property) {
+    if (property === 'create') {
+      return async (payload = {}) => {
+        const presentationId = payload?.stories_presentation_id || payload?.presentation_id;
+        if (!shouldUseNeonAuth() || !isOwnedPresentationId(presentationId)) {
+          return target.create(payload);
+        }
+
+        const result = await creapdApi.post('/production/core', {
+          action: 'create_editor_slide',
+          presentation_id: presentationId,
+          slide: payload,
+        });
+        return result?.slide || result?.result;
+      };
+    }
+
+    if (property === 'update') {
+      return async (slideId, payload = {}) => {
+        const presentationId = presentationIdFromChildId(slideId, ':slide:');
+        if (!shouldUseNeonAuth() || !presentationId) {
+          return target.update(slideId, payload);
+        }
+
+        const result = await creapdApi.post('/production/core', {
+          action: 'update_editor_slide',
+          slide_id: slideId,
+          patch: payload,
+        });
+        return result?.slide || result?.result;
+      };
+    }
+
+    if (property === 'delete') {
+      return async slideId => {
+        const presentationId = presentationIdFromChildId(slideId, ':slide:');
+        if (!shouldUseNeonAuth() || !presentationId) {
+          return target.delete(slideId);
+        }
+
+        return creapdApi.post('/production/core', {
+          action: 'delete_editor_slide',
+          slide_id: slideId,
+        });
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+const slideElementAdapter = new Proxy(sdkBase44.entities.SlideElement, {
+  get(target, property) {
+    if (property === 'filter') {
+      return async (criteria = {}, ...rest) => {
+        const slideId = criteria?.slide_id;
+        const presentationId = presentationIdFromChildId(slideId, ':slide:');
+        if (!shouldUseNeonAuth() || !presentationId) {
+          return target.filter(criteria, ...rest);
+        }
+
+        const result = await creapdApi.post('/production/core', {
+          action: 'list_editor_elements',
+          slide_id: slideId,
+        });
+        return result?.elements || [];
+      };
+    }
+
+    if (property === 'create') {
+      return async (payload = {}) => {
+        const presentationId = payload?.presentation_id || presentationIdFromChildId(payload?.slide_id, ':slide:');
+        if (!shouldUseNeonAuth() || !isOwnedPresentationId(presentationId)) {
+          return target.create(payload);
+        }
+
+        const result = await creapdApi.post('/production/core', {
+          action: 'create_editor_element',
+          presentation_id: presentationId,
+          element: payload,
+        });
+        return result?.element || result?.result;
+      };
+    }
+
+    if (property === 'update') {
+      return async (elementId, payload = {}) => {
+        const presentationId = presentationIdFromChildId(elementId, ':element:');
+        if (!shouldUseNeonAuth() || !presentationId) {
+          return target.update(elementId, payload);
+        }
+
+        const result = await creapdApi.post('/production/core', {
+          action: 'update_editor_element',
+          element_id: elementId,
+          patch: payload,
+        });
+        return result?.element || result?.result;
+      };
+    }
+
+    if (property === 'deleteMany') {
+      return async (criteria = {}) => {
+        const slideId = criteria?.slide_id;
+        const presentationId = presentationIdFromChildId(slideId, ':slide:');
+        if (!shouldUseNeonAuth() || !presentationId) {
+          return target.deleteMany(criteria);
+        }
+
+        const ids = Array.isArray(criteria?.id?.$in) ? criteria.id.$in : [];
+        return creapdApi.post('/production/core', {
+          action: 'delete_editor_elements',
+          slide_id: slideId,
+          element_ids: ids,
+        });
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
 const entitiesAdapter = new Proxy(sdkBase44.entities, {
   get(target, property) {
     if (property === 'ResearchTopic') return researchTopicAdapter;
     if (property === 'ResearchPoint') return researchPointAdapter;
     if (property === 'ProductionPackage') return productionPackageAdapter;
+    if (property === 'StoriesPresentation') return storiesPresentationAdapter;
+    if (property === 'StorySlide') return storySlideAdapter;
+    if (property === 'SlideElement') return slideElementAdapter;
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
@@ -119,6 +278,39 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
   get(target, property) {
     if (property === 'invoke') {
       return async (functionName, payload = {}) => {
+        if (shouldUseNeonAuth() && functionName === 'loadEditorData' && isOwnedPresentationId(payload?.presentation_id)) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'load_presentation_editor',
+            presentation_id: payload.presentation_id,
+          });
+          return {
+            data: {
+              presentation: result?.presentation,
+              slides: result?.slides || [],
+              // Leave this intentionally empty so the editor asks the owned
+              // SlideElement adapter for fresh state after every save.
+              elementsBySlide: {},
+              presentation_studio: true,
+              source: 'neon',
+            },
+          };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'directPresentation' && isOwnedPresentationId(payload?.presentation_id)) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'direct_presentation_studio',
+            presentation_id: payload.presentation_id,
+          });
+          return {
+            data: {
+              success: true,
+              presentation: result?.presentation,
+              director_plan: result?.director_plan,
+              source: 'neon',
+            },
+          };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'deepResearchV2') {
           const result = await creapdApi.post('/research/topic-action', {
             action: 'start',
@@ -193,8 +385,10 @@ const integrationsAdapter = new Proxy(sdkBase44.integrations, {
 });
 
 // Keep the existing Base44 surface intact for production and for services that
-// have not migrated yet. On Vercel Preview, only the explicitly bridged Research
-// operations above are redirected to CREAPD's owned backend.
+// have not migrated yet. On Vercel Preview, explicitly bridged operations are
+// redirected to CREAPD's owned backend. The Presentation Editor remains one
+// application; this compatibility layer swaps its data authority to Neon for
+// owned Presentation Studio projects.
 export const base44 = new Proxy(sdkBase44, {
   get(target, property) {
     if (property === 'entities') return entitiesAdapter;
