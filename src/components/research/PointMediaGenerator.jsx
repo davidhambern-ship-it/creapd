@@ -5,7 +5,6 @@ import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
 import { Button } from '@/components/ui/button';
 import MediaGenerator from '@/components/production/MediaGenerator';
-import ResearchVideoPlanner from '@/components/research/ResearchVideoPlanner';
 import {
   Loader2, ImageIcon, Film, Volume2, Wand2, Sparkles, FileText
 } from 'lucide-react';
@@ -174,7 +173,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
 
       {ownedPreview && (
         <p className="text-[10px] text-muted-foreground mb-3">
-          Preview generates voiceover locally in your browser from the Teleprompter Script, stores media through CREAPD's owned Blob + Neon path, and uses the saved Kokoro voiceover as the master timeline for the Video Director.
+          Preview generates voiceover locally in your browser from the Teleprompter Script and stores owned media through CREAPD's Blob + Neon path. Presentation assembly belongs to the universal Presentation Director; video rendering is a downstream Presentation output.
         </p>
       )}
 
@@ -239,7 +238,21 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           onMediaUpdate={onMediaUpdate}
         />
         {ownedPreview ? (
-          <ResearchVideoPlanner pkg={pkg} onMediaUpdate={onMediaUpdate} />
+          <div className="glass-panel overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
+              <div className="flex items-center gap-2">
+                <Film className="w-3.5 h-3.5 text-berna-orange" />
+                <span className="text-xs font-semibold text-white">Presentation Output</span>
+                <span className="text-[9px] text-cyan-400">CORE MIGRATION</span>
+              </div>
+            </div>
+            <div className="p-4 text-center space-y-2">
+              <Film className="w-7 h-7 text-muted-foreground mx-auto" />
+              <p className="text-[10px] text-muted-foreground max-w-xs mx-auto">
+                Video is intentionally not directed from this asset card. CREAPD's Presentation Director will assemble this Episode's approved Production Packages into a live-ready Presentation first; rendered video can be produced from that Presentation later.
+              </p>
+            </div>
+          </div>
         ) : (
           <MediaGenerator
             pkg={pkg}
