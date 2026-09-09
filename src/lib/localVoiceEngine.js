@@ -89,11 +89,35 @@ async function refreshPackage(packageId) {
   return snapshot?.packages?.find(item => String(item.id) === String(packageId)) || null;
 }
 
+function prepareSpeechText(script) {
+  return String(script || '')
+    // Parenthesized Markdown citations such as ([nerc.com](https://...)) are
+    // research metadata, not narration. Drop the whole citation for speech.
+    .replace(/\(\s*\[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*\)/gi, ' ')
+    // Preserve useful anchor text for ordinary Markdown links while removing
+    // the raw URL that a voice model would otherwise attempt to pronounce.
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/gi, '$1')
+    .replace(/https?:\/\/[^\s)]+/gi, ' ')
+    .replace(/[*_`#>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function generateFreeLocalVoice({ packageId, script, voice = 'river', onProgress }) {
   if (!packageId) throw new Error('Production package is required for voice generation.');
 
+  const speechScript = prepareSpeechText(script);
+  if (!speechScript) {
+    throw new Error('The teleprompter script contains no speakable text.');
+  }
+
+  onProgress?.('preparing_script', {
+    sourceCharacters: String(script || '').length,
+    spokenCharacters: speechScript.length,
+  });
+
   const startedAt = performance.now();
-  const generated = await generateInWorker(script, voice, onProgress);
+  const generated = await generateInWorker(speechScript, voice, onProgress);
 
   onProgress?.('authorizing_upload');
   const authorization = await creapdApi.post('/research/voice-upload', {
