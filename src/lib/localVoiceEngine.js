@@ -1,3 +1,4 @@
+import { upload } from '@vercel/blob/client';
 import { creapdApi } from '@/api/creapdClient';
 
 const KOKORO_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
@@ -148,39 +149,29 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     byte_size: generated.blob.size,
   });
 
-  if (!authorization?.presigned_url || !authorization?.pathname) {
+  if (!authorization?.upload_ticket || !authorization?.pathname) {
     throw new Error('CREAPD could not authorize the local voice upload.');
   }
 
   onProgress?.('uploading');
-  const uploadResponse = await fetch(authorization.presigned_url, {
-    method: 'PUT',
-    headers: { 'content-type': 'audio/wav' },
-    body: generated.blob,
+  const uploaded = await upload(authorization.pathname, generated.blob, {
+    access: 'public',
+    handleUploadUrl: '/api/creapd/research/voice-upload',
+    clientPayload: JSON.stringify({ ticket: authorization.upload_ticket }),
+    contentType: 'audio/wav',
+    multipart: generated.blob.size > 8 * 1024 * 1024,
   });
 
-  const uploadText = await uploadResponse.text();
-  let uploadResult = null;
-  try {
-    uploadResult = uploadText ? JSON.parse(uploadText) : null;
-  } catch {
-    uploadResult = null;
+  if (!uploaded?.url || !uploaded?.pathname) {
+    throw new Error('Vercel Blob returned no URL for the generated voiceover.');
   }
-
-  if (!uploadResponse.ok) {
-    throw new Error(uploadResult?.message || uploadResult?.error || `Voice upload failed (${uploadResponse.status}).`);
-  }
-
-  const blobUrl = uploadResult?.url;
-  const blobPathname = uploadResult?.pathname || authorization.pathname;
-  if (!blobUrl) throw new Error('Vercel Blob returned no URL for the generated voiceover.');
 
   onProgress?.('saving');
   const registered = await creapdApi.post('/research/voice-upload', {
     action: 'register',
     package_id: packageId,
-    blob_url: blobUrl,
-    blob_pathname: blobPathname,
+    blob_url: uploaded.url,
+    blob_pathname: uploaded.pathname,
     model: generated.model,
     voice: generated.voice,
     device: generated.device,
