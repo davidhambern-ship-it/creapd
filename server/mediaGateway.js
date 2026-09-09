@@ -47,7 +47,9 @@ function resolveCloudflareCredential() {
   const token = String(process.env.CLOUDFLARE_API_TOKEN || '').trim();
 
   if (!accountId || !token) {
-    const error = new Error('Cloudflare Workers AI is not configured for this project');
+    const error = new Error(
+      `Cloudflare Workers AI is not configured for this project (account_id_present=${Boolean(accountId)}, api_token_present=${Boolean(token)})`,
+    );
     error.code = 'CLOUDFLARE_AI_NOT_CONFIGURED';
     throw error;
   }
