@@ -1,6 +1,7 @@
 import { upload } from '@vercel/blob/client';
 import { creapdApi } from '@/api/creapdClient';
 
+export const LOCAL_VOICE_ENGINE_REVISION = 'r6-webbundle';
 const LOCAL_VOICE_MIME = 'audio/wav';
 
 let workerInstance = null;
@@ -16,9 +17,9 @@ function terminateWorker() {
 function getWorker() {
   if (workerInstance) return workerInstance;
 
-  workerInstance = new Worker(new URL('./localVoiceWorker.js', import.meta.url), {
+  workerInstance = new Worker(new URL('./localVoiceWorkerV2.js', import.meta.url), {
     type: 'module',
-    name: 'creapd-local-voice',
+    name: `creapd-local-voice-${LOCAL_VOICE_ENGINE_REVISION}`,
   });
 
   workerInstance.onmessage = event => {
@@ -42,6 +43,7 @@ function getWorker() {
         model: message.model,
         chunkCount: message.chunkCount || 0,
         segmentCount: message.segmentCount || 0,
+        engineRevision: message.engineRevision || LOCAL_VOICE_ENGINE_REVISION,
       });
       return;
     }
@@ -91,11 +93,7 @@ async function refreshPackage(packageId) {
 
 function prepareSpeechText(script) {
   return String(script || '')
-    // Parenthesized Markdown citations such as ([nerc.com](https://...)) are
-    // research metadata, not narration. Drop the whole citation for speech.
     .replace(/\(\s*\[([^\]]+)\]\((https?:\/\/[^)]+)\)\s*\)/gi, ' ')
-    // Preserve useful anchor text for ordinary Markdown links while removing
-    // the raw URL that a voice model would otherwise attempt to pronounce.
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/gi, '$1')
     .replace(/https?:\/\/[^\s)]+/gi, ' ')
     .replace(/[*_`#>]/g, '')
@@ -112,6 +110,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
   }
 
   onProgress?.('preparing_script', {
+    engineRevision: LOCAL_VOICE_ENGINE_REVISION,
     sourceCharacters: String(script || '').length,
     spokenCharacters: speechScript.length,
   });
@@ -119,7 +118,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
   const startedAt = performance.now();
   const generated = await generateInWorker(speechScript, voice, onProgress);
 
-  onProgress?.('authorizing_upload');
+  onProgress?.('authorizing_upload', { engineRevision: generated.engineRevision });
   const authorization = await creapdApi.post('/research/voice-upload', {
     action: 'authorize',
     package_id: packageId,
@@ -134,7 +133,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     throw new Error('CREAPD could not authorize the local voice upload.');
   }
 
-  onProgress?.('uploading');
+  onProgress?.('uploading', { engineRevision: generated.engineRevision });
   const uploaded = await upload(authorization.pathname, generated.blob, {
     access: 'public',
     handleUploadUrl: '/api/creapd/research/voice-upload',
@@ -147,7 +146,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     throw new Error('Vercel Blob returned no URL for the generated voiceover.');
   }
 
-  onProgress?.('saving');
+  onProgress?.('saving', { engineRevision: generated.engineRevision });
   try {
     const registered = await creapdApi.post('/research/voice-upload', {
       action: 'register',
@@ -162,13 +161,10 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     });
 
     if (registered?.package) {
-      onProgress?.('done');
+      onProgress?.('done', { engineRevision: generated.engineRevision });
       return registered;
     }
   } catch (error) {
-    // The Blob completion callback also persists the audio URL server-side.
-    // If this confirmation request fails, refresh from Neon before declaring
-    // failure so a successful upload is not shown as an error to the user.
     console.warn('[CREAPD LOCAL VOICE] Confirmation call failed; refreshing Neon.', error);
   }
 
@@ -177,7 +173,7 @@ export async function generateFreeLocalVoice({ packageId, script, voice = 'river
     throw new Error('The voiceover was generated, but CREAPD could not confirm that it was saved.');
   }
 
-  onProgress?.('done');
+  onProgress?.('done', { engineRevision: generated.engineRevision });
   return {
     ok: true,
     source: 'neon',
