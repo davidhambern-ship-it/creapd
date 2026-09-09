@@ -2,6 +2,7 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
+import { runPresentationStudioWorkers } from '../../../server/presentationStudioWorkers.js';
 import {
   handoffPackageToPresentationStudio,
   loadPresentationStudioEditor,
@@ -162,6 +163,21 @@ async function handlePost(request, response, sql, ownerUserId) {
           sql,
           ownerUserId,
           presentationId: body.presentation_id,
+        });
+        return success(response, action, result);
+      }
+
+      case 'presentation_workers_improve':
+      case 'presentation_workers_review': {
+        const workerAction = action === 'presentation_workers_improve' ? 'improve' : 'review';
+        const result = await runPresentationStudioWorkers({
+          sql,
+          ownerUserId,
+          presentationId: body.presentation_id,
+          action: workerAction,
+          presentationData: body.presentation_data || {},
+          revisionContext: body.revision_context || null,
+          revisionCount: body.revision_count || 0,
         });
         return success(response, action, result);
       }
