@@ -1,7 +1,7 @@
 import { upload } from '@vercel/blob/client';
 import { creapdApi } from '@/api/creapdClient';
 
-export const LOCAL_VOICE_ENGINE_REVISION = 'r6-webbundle';
+export const LOCAL_VOICE_ENGINE_REVISION = 'r7-voices';
 const LOCAL_VOICE_MIME = 'audio/wav';
 
 let workerInstance = null;
@@ -17,7 +17,7 @@ function terminateWorker() {
 function getWorker() {
   if (workerInstance) return workerInstance;
 
-  workerInstance = new Worker(new URL('./localVoiceWorkerV2.js', import.meta.url), {
+  workerInstance = new Worker(new URL('./localVoiceWorkerV3.js', import.meta.url), {
     type: 'module',
     name: `creapd-local-voice-${LOCAL_VOICE_ENGINE_REVISION}`,
   });
