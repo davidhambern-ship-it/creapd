@@ -22,6 +22,12 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function normalizeDuration(value) {
+  const duration = safeNumber(value, 0);
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 3600) return null;
+  return Math.round(duration * 1000) / 1000;
+}
+
 function getTicketSecret() {
   const secret = String(
     process.env.CREAPD_UPLOAD_SIGNING_SECRET ||
@@ -133,6 +139,7 @@ async function persistLocalVoice({
   voice = null,
   device = null,
   byteSize = 0,
+  durationSeconds = null,
   elapsedMs = 0,
   blobAuthSource = 'vercel_client_upload',
 }) {
@@ -163,8 +170,10 @@ async function persistLocalVoice({
     throw error;
   }
 
+  const normalizedDuration = normalizeDuration(durationSeconds);
   const now = new Date().toISOString();
   const mediaMetadata = JSON.stringify({
+    ...(normalizedDuration ? { voice_duration_seconds: normalizedDuration } : {}),
     last_media_generation: {
       media_type: 'audio',
       model: normalizedModel,
@@ -175,6 +184,7 @@ async function persistLocalVoice({
       blob_pathname: blobPathname,
       content_type: AUDIO_CONTENT_TYPE,
       byte_size: Math.max(0, Math.round(safeNumber(byteSize, 0))) || null,
+      duration_seconds: normalizedDuration,
       elapsed_ms: Math.max(0, Math.round(safeNumber(elapsedMs, 0))) || null,
       generated_at: now,
     },
@@ -202,6 +212,7 @@ async function authorizeUpload(request, response, sql, body) {
   const packageId = safeText(body.package_id, 120);
   const contentType = safeText(body.content_type, 80) || AUDIO_CONTENT_TYPE;
   const byteSize = safeNumber(body.byte_size, 0);
+  const durationSeconds = normalizeDuration(body.duration_seconds);
   const model = safeText(body.model, 300) || LOCAL_MODEL;
   const voice = safeText(body.voice, 120) || null;
   const device = safeText(body.device, 80) || null;
@@ -245,6 +256,7 @@ async function authorizeUpload(request, response, sql, body) {
     ownerUserId,
     pathname,
     maxBytes: Math.round(byteSize),
+    durationSeconds,
     model,
     voice,
     device,
@@ -260,6 +272,7 @@ async function authorizeUpload(request, response, sql, body) {
     upload_ticket: ticket,
     content_type: AUDIO_CONTENT_TYPE,
     max_bytes: MAX_AUDIO_BYTES,
+    duration_seconds: durationSeconds,
     valid_until: new Date(expiresAt).toISOString(),
   });
 }
@@ -305,6 +318,7 @@ async function handleBlobClientUpload(request, response, sql, body) {
           voice: ticket.voice || null,
           device: ticket.device || null,
           byteSize: Number(ticket.maxBytes || 0),
+          durationSeconds: normalizeDuration(ticket.durationSeconds),
         }),
       };
     },
@@ -332,12 +346,14 @@ async function handleBlobClientUpload(request, response, sql, body) {
           voice: payload.voice || null,
           device: payload.device || null,
           byteSize: payload.byteSize || 0,
+          durationSeconds: payload.durationSeconds || null,
           blobAuthSource: 'vercel_client_upload_callback',
         });
 
         console.info('[CREAPD LOCAL VOICE BLOB COMPLETE]', {
           packageId: payload.packageId,
           pathname: blob.pathname,
+          durationSeconds: payload.durationSeconds || null,
           neonPersisted: true,
         });
       } catch (error) {
@@ -372,6 +388,7 @@ async function registerUpload(request, response, sql, body) {
       voice: body.voice || null,
       device: body.device || null,
       byteSize: body.byte_size || 0,
+      durationSeconds: body.duration_seconds || null,
       elapsedMs: body.elapsed_ms || 0,
       blobAuthSource: 'vercel_client_upload_register',
     });
