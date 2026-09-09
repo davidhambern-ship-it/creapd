@@ -201,6 +201,34 @@ async function handlePost(request, response, sql, ownerUserId) {
         return success(response, action, result);
       }
 
+      case 'delete_presentation_studio': {
+        const presentationId = String(body.presentation_id || '').trim();
+        if (!presentationId) {
+          return response.status(400).json({ ok: false, error: 'presentation_id_required' });
+        }
+
+        const deleted = await sql`
+          DELETE FROM creapd.presentations
+          WHERE id = ${presentationId}
+            AND owner_user_id = ${String(ownerUserId)}
+          RETURNING id
+        `;
+
+        if (!deleted.length) {
+          return response.status(404).json({
+            ok: false,
+            service: 'creapd-production-core',
+            action,
+            error: 'PRESENTATION_NOT_FOUND',
+          });
+        }
+
+        return success(response, action, {
+          presentation_id: presentationId,
+          deleted: true,
+        });
+      }
+
       case 'presentation_workers_improve':
       case 'presentation_workers_review': {
         const workerAction = action === 'presentation_workers_improve' ? 'improve' : 'review';
