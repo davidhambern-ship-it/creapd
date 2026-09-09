@@ -79,8 +79,6 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           } catch (err) { console.error('Owned story image failed:', err); }
         }
 
-        // Video is intentionally not sent to Base44 on Preview. It becomes the
-        // next owned media checkpoint after image + voice are proven.
         setMediaStep('done');
         return;
       }
@@ -195,7 +193,6 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
         </div>
       )}
 
-      {/* Package content fields that feed the media generation pipeline */}
       <div className="mb-3 space-y-2">
         {Object.entries(MEDIA_CENTER_FIELDS).map(([key, label]) => {
           const value = pkg[key];
@@ -218,7 +215,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           mediaType="audio"
           promptField="teleprompter_script"
           urlField="generated_audio_url"
-          label="AI Voiceover"
+          label={ownedPreview ? 'AI Voiceover · r6-webbundle' : 'AI Voiceover'}
           icon={Volume2}
           onMediaUpdate={onMediaUpdate}
         />
