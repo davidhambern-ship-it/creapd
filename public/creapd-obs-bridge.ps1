@@ -46,7 +46,7 @@ function Send-ObsJson($Socket, $Value) {
   $json = ConvertTo-CompactJson $Value
   $bytes = [Text.Encoding]::UTF8.GetBytes($json)
   $segment = [ArraySegment[byte]]::new($bytes)
-  $Socket.SendAsync(
+  $null = $Socket.SendAsync(
     $segment,
     [Net.WebSockets.WebSocketMessageType]::Text,
     $true,
@@ -62,7 +62,15 @@ function Receive-ObsJson($Socket) {
       $segment = [ArraySegment[byte]]::new($buffer)
       $result = $Socket.ReceiveAsync($segment, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
       if ($result.MessageType -eq [Net.WebSockets.WebSocketMessageType]::Close) {
-        throw "OBS WebSocket closed the connection."
+        $closeCode = 'unknown'
+        if ($null -ne $result.CloseStatus) {
+          try { $closeCode = [int]$result.CloseStatus } catch { $closeCode = [string]$result.CloseStatus }
+        }
+        $closeReason = [string]$result.CloseStatusDescription
+        if ([string]::IsNullOrWhiteSpace($closeReason)) {
+          $closeReason = 'No close reason provided by OBS.'
+        }
+        throw "OBS WebSocket closed the connection (code $closeCode): $closeReason"
       }
       if ($result.Count -gt 0) {
         $stream.Write($buffer, 0, $result.Count)
@@ -96,13 +104,16 @@ function Connect-Obs {
   Write-Host "Connecting to OBS at $($script:ObsUrl)..." -ForegroundColor Cyan
   $socket = [Net.WebSockets.ClientWebSocket]::new()
   $socket.Options.AddSubProtocol('obswebsocket.json')
-  $socket.ConnectAsync([Uri]$script:ObsUrl, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
+  $null = $socket.ConnectAsync([Uri]$script:ObsUrl, [Threading.CancellationToken]::None).GetAwaiter().GetResult()
 
   $hello = Receive-ObsJson $socket
   if (-not $hello -or [int]$hello.op -ne 0) {
     $socket.Dispose()
     throw "OBS did not send the expected WebSocket Hello message."
   }
+
+  $authRequired = $null -ne $hello.d.authentication
+  Write-Host ("OBS handshake received. Authentication required: " + $(if ($authRequired) { 'Yes' } else { 'No' })) -ForegroundColor DarkGray
 
   $identifyData = @{
     rpcVersion = [Math]::Min(1, [int]$hello.d.rpcVersion)
@@ -127,6 +138,8 @@ function Connect-Obs {
       $identified = $message
     }
   }
+
+  Write-Host "OBS identification accepted." -ForegroundColor DarkGray
 
   $script:ObsSocket = $socket
   $version = Invoke-ObsRequest 'GetVersion' @{}
@@ -283,6 +296,10 @@ while ($true) {
   } catch {
     $message = $_.Exception.Message
     Write-Host "Bridge waiting: $message" -ForegroundColor Yellow
+
+    if ($message -match 'code 4009|Authentication failed') {
+      Write-Host "OBS rejected the WebSocket password. Stop the bridge with Ctrl+C, copy the current password from OBS Tools > WebSocket Server Settings, and run the bridge again." -ForegroundColor Red
+    }
 
     try {
       Invoke-CreapdBridge 'obs_bridge_agent_poll' @{
