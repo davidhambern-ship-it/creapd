@@ -247,6 +247,49 @@ Important architecture behavior:
 - Monitor audio remains intentionally muted/disabled to prevent echo.
 - selected video device is remembered locally.
 
+### OBS recording controls — BUILT + DEPLOYED, USER TEST REQUIRED
+
+User noticed there was no way to start recording from CREAPD Live. Recording is now implemented through the same owned OBS bridge/command queue rather than as a separate transport path.
+
+Functional implementation commits:
+- `f313e9de0ab5d39212058a84e52b7231a7e16487` — add `TalkObsRecordingControl.jsx`
+- `2e7a92cdcc98f6b2d571fce955be190949c42bcc` — mount recording controls in CREAPD Live shell
+- `ee85e85732a50908a9fc0dfa640fcc9a60da2dc9` — allow owned OBS recording commands in server queue
+- `905ce416f70d3f29b71f3dbf226bee533ed49b49` — add OBS recording status/control to PowerShell bridge
+- `b6af6cbb5f151a2cc010dabb37507626278d926c` — require a recording-capable bridge heartbeat before enabling recording buttons
+
+Vercel for latest functional commit `b6af6cbb...`: **SUCCESS / DEPLOYED** on 2026-09-10.
+
+No Neon schema migration was required. Existing `creapd.obs_commands` records recording commands and existing `obs_bridges.capabilities` carries current recording state.
+
+Implemented OBS WebSocket v5 requests:
+- `GetRecordStatus`
+- `StartRecord`
+- `StopRecord`
+- `PauseRecord`
+- `ResumeRecord`
+
+CREAPD Live behavior:
+- recording controls appear in the sticky **Show Control** area
+- **Start Recording** is available when the connected bridge reports `recording_control = true`
+- active recording shows a red **REC** indicator and OBS recording timecode
+- active recording exposes **Pause Recording** and **Stop Recording**
+- paused recording exposes **Resume Recording** and **Stop Recording**
+- recording itself remains local to OBS; CREAPD sends commands and reads status only
+- the current older running bridge intentionally reports no recording capability, so buttons remain disabled until the newly deployed bridge script is downloaded/restarted
+
+Acceptance required from Berna:
+1. Stop the currently running older PowerShell bridge with `Ctrl+C`.
+2. Redownload `/creapd-obs-bridge.ps1` from the green Preview deployment.
+3. Restart the bridge using the same valid CREAPD Bridge Token, OBS WebSocket password, and Preview bypass secret.
+4. Confirm CREAPD Live changes from **Bridge update required** to **Ready to record**.
+5. Click **Start Recording** in CREAPD Live and verify OBS begins recording.
+6. Confirm CREAPD shows **REC** with a moving recording timecode.
+7. Test **Pause Recording** and **Resume Recording**.
+8. Click **Stop Recording**, verify OBS stops and a recording file is created in OBS’s configured recording path.
+
+Do **not** mark recording controls PASSED until the actual OBS recording behavior is exercised successfully.
+
 ## 10. Talk Acceptance Status
 
 ### PASSED
@@ -269,6 +312,10 @@ Important architecture behavior:
 - OBS scene result round-trip into CREAPD/Neon
 - real OBS Program picture rendered locally inside CREAPD Program Monitor
 
+### BUILT + DEPLOYED / USER TEST REQUIRED
+- OBS Start/Stop/Pause/Resume Recording controls from CREAPD Live
+- real OBS recording state/timecode heartbeat into CREAPD
+
 ### STILL PARTIAL / FUTURE
 - guest shortlist/invite/confirm semantics
 - focused asset approve/unapprove persistence regression
@@ -286,16 +333,19 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Begin browser-source overlays / lower-thirds integration on Preview now that real OBS Program Monitor is PASSED.**
+**User-test the deployed OBS recording controls in Preview.**
 
-Immediate goals:
-1. Inspect current Talk assets, rundown, guest data, and OBS bridge command capabilities for overlay-ready content.
-2. Define a CREAPD-owned overlay state model that can drive lower thirds, topic/title cards, guest IDs, and simple live text without routing video through Vercel.
-3. Build a browser-source overlay surface that OBS can load as a Browser Source.
-4. Add owned Production Core actions / bridge commands for showing, updating, and clearing overlays while preserving the already-passed OBS scene control path.
-5. Add simple CREAPD Live controls for at least one real lower-third test.
-6. User-test the lower third appearing in actual OBS Program and verify the Program Monitor reflects it.
-7. Keep all work on `backend/vercel-foundation`; do not touch `main`.
+Immediate acceptance sequence:
+1. Stop the currently running old bridge process.
+2. Download the newest `creapd-obs-bridge.ps1` from Preview and run it.
+3. Reuse the current CREAPD Bridge Token unless it has been rotated; enter the OBS WebSocket password and Preview bypass secret locally.
+4. Hard-refresh CREAPD Live and verify OBS Recording says **Ready to record**.
+5. Click **Start Recording** and verify actual OBS recording starts.
+6. Verify CREAPD shows live **REC** status/timecode.
+7. Test Pause -> Resume.
+8. Stop recording and verify OBS creates the recording file.
+
+If successful, mark recording **TESTED + PASSED** and resume browser-source overlays / lower-thirds integration. If it fails, inspect the command row/bridge error and patch Preview only.
 
 After overlays are stable, continue toward automatic segment-to-scene/overlay mappings, teleprompter refinements, and post-show tooling.
 
