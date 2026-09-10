@@ -62,11 +62,11 @@ The experimental client-side Base44 Talk work accidentally made on `main` was re
 
 ### Latest functional code head
 
-`25a6e441e9f526fa039969cb81e3223d8a1dedab` — `Keep Talk dashboard refresh on owned backend`
+`a64963eee7bd961a00a1834d841a0f5740d463b6` — `Batch and checkpoint Talk research by topic`
 
-Vercel status: **SUCCESS / DEPLOYED**.
+Vercel status for this functional commit: **SUCCESS / DEPLOYED**.
 
-This head includes the Talk timeout architecture repair described below.
+This head includes both the Talk timeout architecture repair and the follow-up batched research repair described below.
 
 ### Vercel function-count discovery
 
@@ -84,7 +84,7 @@ Do not re-add separate `/api/creapd/talk/configuration.js` or `/api/creapd/talk/
 
 ### Production Core execution ceiling
 
-`api/creapd/production/core.js` now exports `maxDuration: 300` for long owned Studio work. The Talk pipeline itself is checkpointed into separate requests so it does not rely on one monolithic 300-second request.
+`api/creapd/production/core.js` exports `maxDuration: 300` for long owned Studio work. Talk does not rely on one monolithic 300-second request; expensive work is checkpointed into separate requests/stages.
 
 ## 4. Architecture Direction
 
@@ -137,10 +137,11 @@ It reads owned production data through `/production/core`, opens `/editor/:id`, 
 
 - Neon migration 004: **APPLIED + VERIFIED**
 - Owned read/write foundation: **DEPLOYED**
-- First real user build test: **FAILED AS EXPECTED REGRESSION TEST** due to a 50-second AI timeout
-- Timeout root cause: **DIAGNOSED**
-- Checkpointed repair: **DEPLOYED**
-- Retest after repair: **NOT YET RUN**
+- First real user build test: **FAILED / DIAGNOSED** at old 50-second monolithic AI timeout
+- First architecture repair: **DEPLOYED** — split Research and Production into separate checkpointed requests
+- Second real user retest: **FAILED / DIAGNOSED** in Research with `AI_GATEWAY_OUTPUT_INCOMPLETE (max_output_tokens)`
+- Second architecture repair: **DEPLOYED** — Research now batches selected topics and checkpoints every successful batch
+- Retest after batched research repair: **NOT YET RUN**
 - Talk overall: **PARTIAL** until the real acceptance path passes
 
 ### Neon migration 004
@@ -164,9 +165,9 @@ Verified active tables:
 
 Schema includes verification status/notes/confidence, counter-perspectives, debate questions, runtime segment state, actual segment timestamps/duration, clip marker count, OBS scene/overlay fields, Host View state, and session/event logging.
 
-### First real Talk test and exact failure
+### Stress-test configuration being used
 
-User configured a fresh stress-test production:
+User created and is intentionally reusing a realistic heavy Talk production rather than reducing workload:
 
 - Name: `We Are America`
 - Host: `TexasNomad`
@@ -180,81 +181,70 @@ User configured a fresh stress-test production:
 - Sources: `18 enabled`
 - Automation: `18 selected`
 
-The Configure screen returned:
+The saved configuration id is:
+
+`af9ccc24-ba27-46f2-9b63-4025da1b4dbc`
+
+### First failure — timeout
+
+Initial Configure build returned:
 
 `The operation was aborted due to timeout`
 
-Neon inspection proved the new run created the configuration but **did not partially write generated content**:
+Neon inspection proved the run created the configuration but **did not partially write generated content**. Timing matched the old `server/talkEngine.js` `timeoutMs: 50000` almost exactly. Root cause was the monolithic owned AI request, not Neon.
 
-- 0 new Talk topics
-- 0 research items
-- 0 guests
-- 0 segments
-- 0 assets
-- 0 Talk Production Package
-- 0 Talk session
+Repair:
 
-The bottom CREAPD bar counts visible in the screenshot were older/global state, not this failed new run.
+- `server/talkResearchEngine.js` — live research / verification checkpoint
+- `server/talkProductionEngine.js` — consumes verified checkpoint and builds rundown/scripts/assets/package
+- `server/talkPackageEngine.js` — owned Talk Production Package upsert
+- `api/creapd/production/core.js` — `talk_build_research`, `talk_build_production`, maxDuration 300
+- `src/api/creapdClient.js` — normal owned `build` / `refresh` orchestrated as two sequential API requests
+- `src/pages/TalkDashboard.jsx` — owned polling/refresh; no Base44 poll on Preview
 
-Timing matched the old `server/talkEngine.js` hard-coded `timeoutMs: 50000` almost exactly. Root cause was the monolithic owned AI request, not Neon.
+### Second failure — structured AI output ceiling
 
-### Timeout architecture repair
+After the timeout repair was deployed, user reran the exact same 8-topic / 120-minute show.
 
-Instead of simply increasing the old 50-second timeout, Talk was split into checkpointed stages consistent with the blueprint.
+Configure returned:
 
-New server files:
+`AI Gateway output was incomplete (max_output_tokens)`
 
-- `server/talkResearchEngine.js`
-  - live web research
-  - intake/de-duplication
-  - fact-check / verification
-  - counter-perspective / debate analysis
-  - one dossier per selected topic
-  - about 2 concise research items per topic
-  - real suggested guests only
-  - writes Neon checkpoint only after structured AI output succeeds
-  - stage metadata: `researching` -> `research_ready`
-  - timeout ceiling: 210s
+Neon `build_metadata` proved the exact stage:
 
-- `server/talkProductionEngine.js`
-  - consumes saved verified Research checkpoint
-  - does **not** redo web research
-  - builds rundown, host/co-host material, engagement assets, promo/presentation assets
-  - creates owned Talk Production Package
-  - creates/resets Talk session
-  - marks config `ready`
-  - preserves Research checkpoint on production-stage failure
-  - timeout ceiling: 180s
+- `stage: research_failed`
+- `code: AI_GATEWAY_OUTPUT_INCOMPLETE`
+- `recoverable: true`
 
-- `server/talkPackageEngine.js`
-  - upserts `creapd.production_packages` for production profile `talk`
-  - stores verified Talk summaries/talking points/scripts/production metadata
-  - package status becomes approved for downstream shared production flow
+This was not a Vercel timeout and not a Neon error. The Research stage was still asking one strict structured response to contain all 8 topics' research items, verification, source links, counter-perspectives, debate questions, and guest suggestions. The model exhausted its allowed output/reasoning budget before finishing valid JSON.
 
-Updated:
+### Batched Research repair — current deployed behavior
 
-- `api/creapd/production/core.js`
-  - `maxDuration: 300`
-  - actions `talk_build_research` and `talk_build_production`
-  - both use the existing shared endpoint; no extra Vercel functions
+`server/talkResearchEngine.js` now:
 
-- `src/api/creapdClient.js`
-  - normal owned Talk `build` / `refresh` is orchestrated as two sequential API requests:
-    1. research checkpoint
-    2. production assembly
-  - no browser-side request timeout
+- researches at most **3 selected topics per AI batch**
+- the 8-topic stress test becomes **3 + 3 + 2**
+- uses live web search for each batch
+- requires exact topic coverage before accepting a batch
+- keeps individual summaries/talking points/counter-perspectives compact
+- gives each smaller batch adequate structured-output headroom
+- writes successful batch records to Neon immediately
+- records a research signature so a retry can tell whether the configuration changed
+- records completed topics and response ids in `build_metadata`
+- resumes completed batches when the same configuration is retried
+- deletes/restarts the Research checkpoint if the research-relevant configuration signature changed
+- preserves successful earlier batches if a later batch fails
+- remains behind the same `/api/creapd/production/core` Vercel function, so function count does not increase
 
-- `src/pages/TalkDashboard.jsx`
-  - owned Preview polling reads Neon/Production Core
-  - owned Refresh uses the checkpointed CREAPD API path
-  - no Base44 poll/refresh on Preview
-  - build errors are surfaced visibly
+Important architecture lesson for later Studios:
 
-The universal `creapd.production_packages` schema was checked and already has every column required by the new Talk package engine. No additional database migration was required for this repair.
+> **Large multi-topic research jobs must be batched and checkpointed. Do not force an entire production's research intelligence into one strict AI response.**
+
+The universal `creapd.production_packages` schema already has every column required by Talk. No database migration was required for either Talk runtime repair.
 
 ### Important legacy code note
 
-`server/talkEngine.js` and legacy `talk_build` / `talk_refresh` handlers in `server/talkStudio.js` still exist as compatibility code. The normal owned Preview Configure/Refresh paths now bypass them through the checkpointed client orchestration.
+`server/talkEngine.js` and legacy `talk_build` / `talk_refresh` handlers in `server/talkStudio.js` still exist as compatibility code. The normal owned Preview Configure/Refresh path bypasses them through `src/api/creapdClient.js` checkpoint orchestration.
 
 Before Talk is considered fully migrated, retire or hard-block the monolithic legacy build path so it cannot become an accidental fallback. This is a cleanup gate after the repaired path is proven.
 
@@ -268,6 +258,7 @@ Owned Preview behavior includes:
 - topic approval/unapproval through owned path
 - guest create/update/delete/confirm through owned path
 - asset approval/unapproval through owned path
+- Dashboard polling/refresh through owned path
 
 Future Talk features still include full Host Mode execution UI, OBS bridge execution, and post-show clipping/transcription implementation. The Neon foundation already supports them.
 
@@ -277,9 +268,9 @@ Talk is **not PASSED** just because Vercel is green.
 
 ### Immediate retest
 
-Repeat the same realistic stress test rather than reducing scope. The saved `We Are America` configuration is in Neon, so it may be reopened from Talk Dashboard -> Edit Config instead of retyping everything.
+Hard-refresh the `backend/vercel-foundation` Preview and rerun the saved `We Are America` configuration without reducing the 8 topics / 120-minute workload.
 
-Expected build-state progression in `build_metadata.stage`:
+Expected Research progression now includes batch checkpoints in `build_metadata`, followed by:
 
 `researching` -> `research_ready` -> `assembling_production` -> `complete`
 
@@ -287,7 +278,7 @@ Expected final state:
 
 - config `ready`
 - research > 0
-- all selected topics represented
+- all 8 selected topics represented
 - rundown > 0
 - assets > 0
 - owned Talk Production Package exists
@@ -306,7 +297,7 @@ Then continue acceptance testing:
 9. Confirm no tested Talk action silently falls back to Base44.
 10. Later intentionally test a recoverable failure and confirm a clear error + retained checkpoint.
 
-If the Research stage still times out at 210s, do **not** simply raise it again. Split live research by topic batches through the same Production Core gateway and checkpoint batch progress.
+If the next failure occurs, inspect Neon `build_metadata.stage`, `failure_details`, completed-topic checkpoints, and generated row counts before changing code. Do not reduce the workload merely to make the test pass.
 
 ## 9. Remaining Studios / Major Areas
 
@@ -366,11 +357,11 @@ After every meaningful work block record: date, branch, latest functional commit
 
 ## 12. Current Exact Next Action
 
-**Retest Talk Studio on the green Preview head after the checkpointed timeout repair.**
+**Retest Talk Studio on the green Preview head after the batched Research repair.**
 
-Use the same 8-topic / 120-minute `We Are America` configuration if possible. Do not reduce the workload merely to make the test pass.
+Use the same saved 8-topic / 120-minute `We Are America` configuration. Do not reduce the workload.
 
-If it fails, inspect Neon `build_metadata.stage` and counts before changing code. The checkpointed architecture should tell us exactly which stage failed and whether completed Research was preserved.
+If it fails, inspect Neon `build_metadata.stage`, batch checkpoint metadata, and generated counts before changing code. The pipeline should now tell us exactly which research batch or later Production stage failed and what work was preserved.
 
 Do not touch `main`.
 
