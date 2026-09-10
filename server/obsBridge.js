@@ -16,6 +16,15 @@ const USER_COMMANDS = new Set([
   'clear_overlay',
 ]);
 
+const OVERLAY_POSITIONS = new Set([
+  'bottom_left',
+  'bottom_center',
+  'bottom_right',
+  'top_left',
+  'top_center',
+  'top_right',
+]);
+
 function clean(value, fallback = '') {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -180,10 +189,12 @@ async function enqueueCommand(sql, ownerUserId, body) {
   if (commandType === 'show_lower_third') {
     const title = clean(payload.title);
     if (!title) throw makeError('Lower-third title is required', 'OBS_LOWER_THIRD_TITLE_REQUIRED');
+    const requestedPosition = clean(payload.position, 'bottom_left').toLowerCase();
     payload = {
       title: title.slice(0, 120),
       subtitle: clean(payload.subtitle).slice(0, 180),
       label: clean(payload.label, 'CREAPD LIVE').slice(0, 40),
+      position: OVERLAY_POSITIONS.has(requestedPosition) ? requestedPosition : 'bottom_left',
     };
   }
 
