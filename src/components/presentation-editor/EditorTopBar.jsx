@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Save, Undo2, Redo2, Download, RefreshCw, ShieldCheck,
+  Save, Undo2, Redo2, RefreshCw,
   Plus, Type, Image as ImageIcon, Square, ChevronDown,
-  AlignLeft, Captions, Wand2, FolderOpen,
+  AlignLeft, Captions, FolderOpen,
   Video, Music, PenTool, Shapes, BarChart3, Table as TableIcon,
   Minus, MessageSquare, Quote, Code, Sigma, QrCode, Box,
 } from 'lucide-react';
@@ -57,36 +57,29 @@ const MEDIA_ADD_OPTIONS = [
   { type: 'shape', label: 'Shape', icon: Square },
 ];
 
-const EXPORT_OPTIONS = ['Google Slides (PPTX)', 'PDF', 'PowerPoint', 'Video', 'Present Mode'];
-
 const ROOM_INFO = {
   design: { label: 'Design Room', hint: 'Compose slides, add elements, and refine visual layout.' },
-  animate: { label: 'Animate Room', hint: 'Select an element and use the Animation Inspector and timeline below.' },
-  media: { label: 'Media Room', hint: 'Manage package assets and presentation media.' },
+  animate: { label: 'Animate Room', hint: 'Use the Animation Inspector and timeline to control motion.' },
+  media: { label: 'Media Room', hint: 'Browse and manage media already attached to this presentation.' },
   script: { label: 'Script Room', hint: 'Edit narration, speaker notes, and presentation copy.' },
-  review: { label: 'Review Room', hint: 'Run QA, inspect issues, and approve the production.' },
-  present: { label: 'Present Room', hint: 'Rehearse and run the presentation using the controls below the canvas.' },
-  ai: { label: 'AI Control Room', hint: 'Coordinate the Presentation Studio specialist workers.' },
+  review: { label: 'Review Room', hint: 'Inspect the production and approve or request changes.' },
+  present: { label: 'Present Room', hint: 'Rehearse and run the presentation.' },
 };
 
 export default function EditorTopBar({
-  saving, dirty, canUndo, canRedo, hasSelection, title,
-  onSave, onUndo, onRedo, onExport,
-  onRegenerateSlide, onRegenerateElement, onRunQA, onAddElement,
+  saving, dirty, canUndo, canRedo, title,
+  onSave, onUndo, onRedo, onAddElement,
   workspaceMode, onWorkspaceModeChange,
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [mediaAddOpen, setMediaAddOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
 
   const room = ROOM_INFO[workspaceMode] || ROOM_INFO.design;
   const showDesignTools = workspaceMode === 'design';
   const showMediaTools = workspaceMode === 'media';
-  const showReviewTools = workspaceMode === 'review';
 
   return (
     <div className="cpe-topbar flex flex-col flex-shrink-0">
-      {/* Global Presentation Studio header — these controls never change rooms. */}
       <div className="cpe-global-toolbar flex items-center gap-1 px-3 py-2 min-w-0">
         <div className="flex items-center gap-2 mr-2 min-w-0">
           <span className="cpe-brand-mark text-[11px] hidden sm:inline">CREAPD · PRESENTATION STUDIO</span>
@@ -95,7 +88,6 @@ export default function EditorTopBar({
         </div>
 
         <div className="cpe-sep" />
-
         <button className="cpe-tool-btn" onClick={onSave} disabled={saving}>
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save
@@ -104,77 +96,46 @@ export default function EditorTopBar({
         <button className="cpe-icon-btn" onClick={onRedo} disabled={!canRedo} title="Redo"><Redo2 className="w-4 h-4" /></button>
 
         <div className="cpe-sep" />
-
         <Link to="/presentations">
           <button className="cpe-tool-btn"><FolderOpen className="w-4 h-4" /> Open</button>
         </Link>
 
         <div className="flex-1" />
-
-        <button
-          className="cpe-tool-btn cpe-director-btn"
-          onClick={onRegenerateSlide}
-          title="Run the CREAPD Presentation Director / APD across this presentation"
-        >
-          <Wand2 className="w-4 h-4" /> Director
-        </button>
-
-        <div className="relative">
-          <button className="cpe-tool-btn" onClick={() => setExportOpen(!exportOpen)}>
-            <Download className="w-4 h-4" /> Export <ChevronDown className="w-3 h-3" />
-          </button>
-          {exportOpen && (
-            <Dropdown onClose={() => setExportOpen(false)} align="right">
-              {EXPORT_OPTIONS.map(fmt => (
-                <button key={fmt} onClick={() => { onExport(fmt); setExportOpen(false); }} className="cpe-dropdown-item">{fmt}</button>
-              ))}
-            </Dropdown>
-          )}
-        </div>
+        <span className="text-[10px] text-muted-foreground hidden md:inline">LOCAL TOOL MODE · NO AI CREDITS</span>
       </div>
 
-      {/* Navigation between Presentation Studio rooms. */}
       <div className="cpe-studio-roombar flex items-center gap-3 px-3 py-1.5">
         <span className="cpe-roombar-label">Studio Rooms</span>
         <WorkspaceSwitcher activeMode={workspaceMode} onModeChange={onWorkspaceModeChange} />
       </div>
 
-      {/* Context toolbar: equipment/actions that belong only to the active room. */}
       <div className="cpe-room-toolbar flex items-center gap-1 px-3 py-1.5 min-h-[38px]">
         <div className="flex items-center gap-2 min-w-0 mr-2">
           <span className="cpe-room-title">{room.label}</span>
           <span className="cpe-room-hint hidden lg:inline truncate">{room.hint}</span>
         </div>
-
         <div className="flex-1" />
 
         {showDesignTools && (
-          <>
-            <div className="relative">
-              <button className="cpe-tool-btn" onClick={() => setAddOpen(!addOpen)}>
-                <Plus className="w-4 h-4" /> Add Element <ChevronDown className="w-3 h-3" />
-              </button>
-              {addOpen && (
-                <Dropdown onClose={() => setAddOpen(false)} align="right">
-                  {ADD_GROUPS.map((group, gi) => (
-                    <div key={group.label} className={gi > 0 ? 'mt-1 pt-1 border-t border-white/5' : ''}>
-                      <div className="cpe-dropdown-group-label">{group.label}</div>
-                      {group.items.map(({ type, label, icon: Icon }) => (
-                        <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }} className="cpe-dropdown-item">
-                          <Icon className="w-4 h-4" /> {label}
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </Dropdown>
-              )}
-            </div>
-            {hasSelection && (
-              <button className="cpe-tool-btn" onClick={onRegenerateElement} title="Improve selected text element via AI">
-                <RefreshCw className="w-3.5 h-3.5" /> Improve Element
-              </button>
+          <div className="relative">
+            <button className="cpe-tool-btn" onClick={() => setAddOpen(!addOpen)}>
+              <Plus className="w-4 h-4" /> Add Element <ChevronDown className="w-3 h-3" />
+            </button>
+            {addOpen && (
+              <Dropdown onClose={() => setAddOpen(false)} align="right">
+                {ADD_GROUPS.map((group, gi) => (
+                  <div key={group.label} className={gi > 0 ? 'mt-1 pt-1 border-t border-white/5' : ''}>
+                    <div className="cpe-dropdown-group-label">{group.label}</div>
+                    {group.items.map(({ type, label, icon: Icon }) => (
+                      <button key={type} onClick={() => { onAddElement(type); setAddOpen(false); }} className="cpe-dropdown-item">
+                        <Icon className="w-4 h-4" /> {label}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </Dropdown>
             )}
-          </>
+          </div>
         )}
 
         {showMediaTools && (
@@ -192,12 +153,6 @@ export default function EditorTopBar({
               </Dropdown>
             )}
           </div>
-        )}
-
-        {showReviewTools && (
-          <button className="cpe-tool-btn" onClick={onRunQA}>
-            <ShieldCheck className="w-4 h-4" /> Run QA
-          </button>
         )}
       </div>
     </div>
