@@ -67,7 +67,8 @@
         "developed",
         "packet_ready",
         "rejected",
-        "archived"
+        "archived",
+        "failed"
       ],
       "default": "pending"
     },
