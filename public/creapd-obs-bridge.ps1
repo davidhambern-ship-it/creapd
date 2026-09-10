@@ -48,6 +48,7 @@ $script:OverlayVisible = $false
 $script:OverlayTitle = $null
 $script:OverlaySubtitle = $null
 $script:OverlayLabel = $null
+$script:OverlayPosition = 'bottom_left'
 $script:OverlayFile = $null
 $script:VideoWidth = 1920
 $script:VideoHeight = 1080
@@ -226,11 +227,25 @@ function Refresh-ObsState([bool]$RefreshScenes = $false) {
   $script:RecordingBytes = [int64]$recordStatus.outputBytes
 }
 
-function Get-CreapdOverlayHtml([string]$Title, [string]$Subtitle, [string]$Label, [bool]$Visible) {
+function Normalize-OverlayPosition([string]$Position) {
+  $value = ([string]$Position).Trim().ToLowerInvariant()
+  switch ($value) {
+    'bottom_left' { return 'bottom_left' }
+    'bottom_center' { return 'bottom_center' }
+    'bottom_right' { return 'bottom_right' }
+    'top_left' { return 'top_left' }
+    'top_center' { return 'top_center' }
+    'top_right' { return 'top_right' }
+    default { return 'bottom_left' }
+  }
+}
+
+function Get-CreapdOverlayHtml([string]$Title, [string]$Subtitle, [string]$Label, [bool]$Visible, [string]$Position) {
   $safeTitle = [Net.WebUtility]::HtmlEncode([string]$Title)
   $safeSubtitle = [Net.WebUtility]::HtmlEncode([string]$Subtitle)
   $safeLabel = [Net.WebUtility]::HtmlEncode([string]$Label)
   $stateClass = $(if ($Visible) { 'show' } else { 'hidden' })
+  $positionClass = Normalize-OverlayPosition $Position
   $subtitleMarkup = $(if ([string]::IsNullOrWhiteSpace($safeSubtitle)) { '' } else { "<div class=`"subtitle`">$safeSubtitle</div>" })
 
   return @"
@@ -243,25 +258,34 @@ function Get-CreapdOverlayHtml([string]$Title, [string]$Subtitle, [string]$Label
   * { box-sizing: border-box; }
   html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: rgba(0,0,0,0); font-family: Arial, Helvetica, sans-serif; }
   .stage { position: relative; width: 100vw; height: 100vh; }
-  .lower { position: absolute; left: 5.2vw; bottom: 6.5vh; min-width: 420px; max-width: 72vw; display: flex; align-items: stretch; filter: drop-shadow(0 14px 28px rgba(0,0,0,.45)); transform-origin: left bottom; }
+  .anchor { position: absolute; max-width: 90vw; }
+  .anchor.bottom_left { left: 5.2vw; bottom: 6.5vh; }
+  .anchor.bottom_center { left: 50%; bottom: 6.5vh; transform: translateX(-50%); }
+  .anchor.bottom_right { right: 5.2vw; bottom: 6.5vh; }
+  .anchor.top_left { left: 5.2vw; top: 6.5vh; }
+  .anchor.top_center { left: 50%; top: 6.5vh; transform: translateX(-50%); }
+  .anchor.top_right { right: 5.2vw; top: 6.5vh; }
+  .lower { min-width: 420px; max-width: 72vw; display: flex; align-items: stretch; filter: drop-shadow(0 14px 28px rgba(0,0,0,.45)); }
   .accent { width: 10px; border-radius: 12px 0 0 12px; background: linear-gradient(180deg,#8b5cf6,#d946ef); }
   .card { min-width: 0; padding: 17px 25px 18px 22px; border-radius: 0 12px 12px 0; background: linear-gradient(105deg,rgba(10,11,18,.97),rgba(25,22,38,.94)); border: 1px solid rgba(255,255,255,.15); border-left: 0; }
   .label { display: inline-flex; align-items: center; margin-bottom: 7px; font-size: 15px; line-height: 1; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #c4b5fd; }
   .title { font-size: 42px; line-height: 1.04; font-weight: 850; letter-spacing: -.025em; color: #fff; white-space: normal; text-wrap: balance; }
   .subtitle { margin-top: 7px; font-size: 23px; line-height: 1.18; font-weight: 500; color: rgba(255,255,255,.76); }
   .show .lower { animation: creapdIn .46s cubic-bezier(.16,1,.3,1) both; }
-  .hidden .lower { opacity: 0; transform: translateX(-36px); }
-  @keyframes creapdIn { from { opacity: 0; transform: translateX(-70px) scale(.97); } to { opacity: 1; transform: translateX(0) scale(1); } }
+  .hidden .lower { opacity: 0; transform: translateY(18px) scale(.98); }
+  @keyframes creapdIn { from { opacity: 0; transform: translateY(28px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 </style>
 </head>
 <body class="$stateClass">
   <div class="stage">
-    <div class="lower">
-      <div class="accent"></div>
-      <div class="card">
-        <div class="label">$safeLabel</div>
-        <div class="title">$safeTitle</div>
-        $subtitleMarkup
+    <div class="anchor $positionClass">
+      <div class="lower">
+        <div class="accent"></div>
+        <div class="card">
+          <div class="label">$safeLabel</div>
+          <div class="title">$safeTitle</div>
+          $subtitleMarkup
+        </div>
       </div>
     </div>
   </div>
@@ -270,14 +294,14 @@ function Get-CreapdOverlayHtml([string]$Title, [string]$Subtitle, [string]$Label
 "@
 }
 
-function Write-CreapdOverlayFile([string]$Title, [string]$Subtitle, [string]$Label, [bool]$Visible) {
+function Write-CreapdOverlayFile([string]$Title, [string]$Subtitle, [string]$Label, [bool]$Visible, [string]$Position) {
   if (-not (Test-Path -LiteralPath $script:OverlayDirectory)) {
     New-Item -ItemType Directory -Path $script:OverlayDirectory -Force | Out-Null
   }
 
   $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
   $path = Join-Path $script:OverlayDirectory "creapd-overlay-$stamp.html"
-  $html = Get-CreapdOverlayHtml $Title $Subtitle $Label $Visible
+  $html = Get-CreapdOverlayHtml $Title $Subtitle $Label $Visible $Position
   Set-Content -LiteralPath $path -Value $html -Encoding UTF8
   $script:OverlayFile = $path
   return $path
@@ -335,20 +359,23 @@ function Ensure-CreapdOverlayInput([string]$LocalFile) {
   }
 }
 
-function Set-CreapdLowerThird([string]$Title, [string]$Subtitle, [string]$Label) {
+function Set-CreapdLowerThird([string]$Title, [string]$Subtitle, [string]$Label, [string]$Position) {
   if ([string]::IsNullOrWhiteSpace($Title)) { throw 'Lower-third title is required.' }
   if ([string]::IsNullOrWhiteSpace($Label)) { $Label = 'CREAPD LIVE' }
+  $Position = Normalize-OverlayPosition $Position
 
-  $file = Write-CreapdOverlayFile $Title $Subtitle $Label $true
+  Refresh-ObsState -RefreshScenes $true
+  $file = Write-CreapdOverlayFile $Title $Subtitle $Label $true $Position
   Ensure-CreapdOverlayInput $file
   $script:OverlayVisible = $true
   $script:OverlayTitle = $Title
   $script:OverlaySubtitle = $Subtitle
   $script:OverlayLabel = $Label
+  $script:OverlayPosition = $Position
 }
 
 function Clear-CreapdOverlay {
-  $file = Write-CreapdOverlayFile '' '' '' $false
+  $file = Write-CreapdOverlayFile '' '' '' $false $script:OverlayPosition
   Ensure-CreapdOverlayInput $file
   $script:OverlayVisible = $false
   $script:OverlayTitle = $null
@@ -362,6 +389,7 @@ function Get-OverlayResult {
     overlay_title = $script:OverlayTitle
     overlay_subtitle = $script:OverlaySubtitle
     overlay_label = $script:OverlayLabel
+    overlay_position = $script:OverlayPosition
     overlay_input_name = $script:OverlayInputName
   }
 }
@@ -490,9 +518,10 @@ function Run-CreapdCommand($Command) {
         $title = [string]$Command.payload.title
         $subtitle = [string]$Command.payload.subtitle
         $label = [string]$Command.payload.label
-        Set-CreapdLowerThird $title $subtitle $label
+        $position = [string]$Command.payload.position
+        Set-CreapdLowerThird $title $subtitle $label $position
         Complete-CreapdCommand $Command $true (Get-OverlayResult)
-        Write-Host "Lower third ON -> $title" -ForegroundColor Magenta
+        Write-Host "Lower third ON -> $title [$($script:OverlayPosition)]" -ForegroundColor Magenta
       }
 
       'clear_overlay' {
@@ -514,6 +543,7 @@ function Run-CreapdCommand($Command) {
 
 Write-Host "CREAPD: $($script:CreapdUrl)" -ForegroundColor DarkGray
 Write-Host "OBS:    $($script:ObsUrl)" -ForegroundColor DarkGray
+Write-Host "Bridge: 2026.09.10-overlay2" -ForegroundColor DarkGray
 Write-Host "Press Ctrl+C to stop the bridge." -ForegroundColor DarkGray
 Write-Host ""
 
@@ -541,13 +571,16 @@ while ($true) {
         recording_duration = $script:RecordingDuration
         recording_bytes = $script:RecordingBytes
         overlay_control = $true
+        overlay_position_control = $true
         overlay_visible = $script:OverlayVisible
         overlay_title = $script:OverlayTitle
         overlay_subtitle = $script:OverlaySubtitle
         overlay_label = $script:OverlayLabel
+        overlay_position = $script:OverlayPosition
         overlay_input_name = $script:OverlayInputName
         protocol = 'obs-websocket-v5'
         bridge = 'powershell'
+        bridge_version = '2026.09.10-overlay2'
       }
       last_error = $null
     }
