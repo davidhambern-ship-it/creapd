@@ -3,9 +3,10 @@ import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { ASSET_TYPE_LABELS } from '@/lib/talkConstants';
 import { Loader2, Mic2, Sparkles, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, Volume2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 
 export default function TalkAssets() {
-  const { config, assets, loading, refresh } = useTalkProduction();
+  const { config, assets, loading, refresh, source } = useTalkProduction();
   const [expanded, setExpanded] = useState(null);
 
   if (loading) {
@@ -29,7 +30,15 @@ export default function TalkAssets() {
 
   const toggleApproved = async (asset) => {
     const newStatus = asset.status === 'approved' ? 'ready' : 'approved';
-    await base44.entities.TalkAsset.update(asset.id, { status: newStatus });
+    if (source === 'neon') {
+      await creapdApi.post('/talk/production', {
+        action: 'set_asset_status',
+        asset_id: asset.id,
+        status: newStatus,
+      });
+    } else {
+      await base44.entities.TalkAsset.update(asset.id, { status: newStatus });
+    }
     refresh();
   };
 
