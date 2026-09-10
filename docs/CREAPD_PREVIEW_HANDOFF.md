@@ -238,7 +238,7 @@ User acceptance on 2026-09-10 — **TESTED + PASSED**:
 - active graphic survives CREAPD **Take** scene changes
 - Program Monitor remains alive through Next Segment
 
-## 10. Segment-to-OBS Scene Mapping — BUILT + DEPLOYED, TEST REQUIRED
+## 10. Segment-to-OBS Scene Mapping + Timed Auto-Run — BUILT + DEPLOYED, TEST REQUIRED
 
 This is the current active work block.
 
@@ -252,8 +252,10 @@ Functional commits:
 - `b553b5c468b5576ceace3f6c250d0dcf49207df3` — add owned `obs_segment_scene_save` action to `server/obsBridge.js`; persists/clears `talk_segments.obs_scene` through existing Production Core
 - `d9299a917be24f0245327256fa9453f509b81078` — add `src/components/talk/TalkObsSceneCueControl.jsx`
 - `840ab8036bef2cbcb5c9acb3389dee501200501b` — mount scene cue control in CREAPD Live
+- `c555feb6b73b583c44bcdacc9c504e575dbb37a4` — add `src/components/talk/TalkAutoRundownAdvance.jsx`; watches the active segment planned duration while automation is armed and performs the owned Talk transition/start sequence
+- `dc529991ec0fd82aac8138e609901d3dceabff80` — mount timed automatic rundown advancement in CREAPD Live
 
-Vercel combined status for `840ab803...` on 2026-09-10: **SUCCESS / DEPLOYED**.
+Vercel combined status for `dc529991...` on 2026-09-10: **SUCCESS / DEPLOYED**.
 
 Design:
 - Top Live header shows current segment scene cue.
@@ -263,24 +265,32 @@ Design:
 - CREAPD does **not** automatically switch Program by default.
 - Producer can use **Take Cue / Take Cued Scene**.
 - Existing manual OBS Take remains available.
-- Optional **Auto Take on segment change** exists as an explicit opt-in and is OFF by default. Enabling it does not immediately switch; it arms the next segment transition.
-- Auto Take preference is local to the browser/config; scene mappings themselves are persisted in Neon.
+- Optional **Auto Take on segment change** exists as an explicit opt-in and is OFF by default.
+- When that automation is armed during a live session, CREAPD now also watches the active segment's `duration_seconds`. When the planned duration expires and another segment exists, it automatically records the transition, ends the current segment, starts the next segment, and then the existing Auto Take behavior can take the next segment's mapped OBS scene.
+- Auto-run re-reads production immediately before mutation to reduce manual/automatic double-advance races.
+- If an interruption leaves a live session with no active segment after a completed prior segment, the automation can recover by starting the first incomplete waiting segment.
+- The final segment **does not automatically End Show**. The producer retains the explicit End Show decision.
+- Auto Take/auto-run preference is local to the browser/config; scene mappings themselves are persisted in Neon.
 - Existing local bridge requires no redownload because it already supports `set_scene`.
 
 Acceptance status: **BUILT + DEPLOYED, NOT YET PASSED**.
 
-Required user test:
-1. Open **Scene Cue** in CREAPD Live.
-2. Map at least two consecutive rundown segments to two different real OBS scenes and **Save Scene Map**.
-3. Close/reopen the panel or refresh and confirm mappings persist.
-4. On the current segment, confirm the header/panel shows the mapped scene as the cue.
-5. Click **Take Cue** and confirm actual OBS Program changes and Program Monitor follows without dropping video.
-6. Click **Next Segment** and confirm the cue changes to that segment’s mapped scene without switching automatically while Auto Take is OFF.
-7. Click **Take Cue** for the second segment and confirm actual OBS changes.
-8. Optionally arm **Auto Take**, move to another mapped segment, and verify it switches only after the segment transition.
-9. Confirm existing lower-third graphics remain functional and manual OBS Take still works.
+User-reported failure that caused the timed auto-run repair:
+- With automation armed, allowing a segment to run to its planned end did not advance the CREAPD rundown. Auto Take only reacted after an operator-created segment change, so the next mapped scene never appeared automatically.
 
-Do not mark this scene-mapping layer PASSED until that real OBS test succeeds.
+Required user test:
+1. Hard-refresh CREAPD Live and keep the same mapped consecutive segments.
+2. Arm the existing scene automation.
+3. Start or continue a live segment with a positive planned duration and do **not** press Next Segment.
+4. Allow the active segment timer to reach/exceed its planned duration.
+5. Confirm CREAPD automatically changes Current Segment to the next rundown segment.
+6. Confirm the next segment timer starts from its own fresh start.
+7. If the next segment has a different mapped OBS scene, confirm Auto Take switches actual OBS Program to that mapped scene after the automatic transition.
+8. Confirm Program Monitor remains alive through the automatic transition.
+9. Confirm manual Next Segment and manual OBS Take still work afterward.
+10. Do not expect the final segment to auto-End Show; that remains manual by design.
+
+Do not mark this scene-mapping/timed-auto-run layer PASSED until the real OBS timed transition test succeeds.
 
 ## 11. Talk Acceptance Summary
 
@@ -294,7 +304,7 @@ Do not mark this scene-mapping layer PASSED until that real OBS test succeeds.
 - Program Monitor / Teleprompter layout
 - OBS bridge auth/state/manual scene Take
 - real local OBS Program Monitor
-- Program Monitor continuity through segment changes
+- Program Monitor continuity through manual segment changes
 - OBS recording Start/Pause/Resume/Stop + real file creation
 - lower-third Show/Update/Clear
 - data-driven Host/Guest/Topic/Custom graphics
@@ -303,7 +313,9 @@ Do not mark this scene-mapping layer PASSED until that real OBS test succeeds.
 - overlay persistence across OBS scene changes
 
 ### BUILT / PARTIAL TEST REQUIRED
-- segment-to-OBS scene mapping / cue / Take Cue / optional Auto Take
+- segment-to-OBS scene mapping / cue / Take Cue
+- optional Auto Take on segment change
+- timed automatic rundown advancement when automation is armed
 - future-build persisted host/guest lower-third asset generation on a newly rebuilt production
 
 ### STILL PARTIAL / FUTURE
@@ -322,9 +334,11 @@ Talk overall remains PARTIAL until shared-flow and Base44 cleanup gates are comp
 
 ## 12. Current Exact Next Action
 
-**User-test the deployed segment-to-OBS scene mapping layer in Preview.**
+**User-test the deployed timed automatic segment transition + mapped OBS scene change in Preview.**
 
-If it passes, record the result and then choose the next CREAPD Live layer. Do not begin another feature until scene mapping persistence, cue behavior, Take Cue, Program Monitor continuity, and manual-control regression are confirmed.
+Specifically, arm automation and let a non-final timed segment expire without pressing Next Segment. Confirm CREAPD advances Current Segment by itself, starts the next segment timer, Auto Take changes OBS to the next mapped scene when applicable, and Program Monitor remains continuous. Also confirm manual Next and manual OBS Take still work afterward.
+
+Do not begin another feature until this timed automation regression is confirmed.
 
 ## 13. Remaining Studios / Major Areas
 
