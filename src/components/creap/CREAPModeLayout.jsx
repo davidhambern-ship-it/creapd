@@ -4,6 +4,7 @@ import { CREAPModeProvider } from '@/context/CREAPModeContext';
 import LivingEnvironment from '@/components/environment/LivingEnvironment';
 import AppErrorBoundary from '@/components/shared/AppErrorBoundary';
 import TalkLiveRestartControl from '@/components/talk/TalkLiveRestartControl';
+import TalkObsBridgeControl from '@/components/talk/TalkObsBridgeControl';
 
 /**
  * Thin layout route that wraps all authenticated pages in the CREAPModeProvider.
@@ -23,6 +24,7 @@ export default function CREAPModeLayout() {
         <LivingEnvironment />
         <Outlet />
         <TalkLiveRestartControl />
+        <TalkObsBridgeControl />
       </AppErrorBoundary>
     </CREAPModeProvider>
   );
