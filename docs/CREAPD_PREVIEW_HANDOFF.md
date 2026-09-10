@@ -10,82 +10,58 @@ CREAPD is being rebuilt and fully tested **before anything is promoted to the li
 
 Goal: a **fully operational, launch-ready CREAPD in Preview**, with runtime ownership migrated off Base44. Only after the entire product is upgraded, regression-tested, demo-tested, and audited do we promote the completed rebuild to `main`.
 
-Launch-ready means:
-
-- Every Production Studio works end-to-end in Preview.
-- Shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
-- Show execution works: **Production Package -> CREAPD Live -> session/timing/events -> OBS/overlays -> post-show clipping**.
-- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, regeneration, live-session re-entry, and repeat show runs.
-- Critical runtime behavior no longer depends on Base44 entities, backend functions, auth, AI integrations, or hidden fallbacks.
-- Failure states are explicit; no endless Initializing states, blank pages, silent failures, or dead buttons.
-- CREAPD guides users through each workflow instead of assuming they already know what to do.
-- Multiple realistic demos can be run without special handling.
-- Final repository-wide Base44 audit is complete.
-- Only then is Preview promoted to `main` and production smoke-tested.
+Launch-ready means every Production Studio works end-to-end, shared Production Package/Dispatch/Presentation flows work, CREAPD Live can execute a show with OBS/overlays/post-show tooling, data survives realistic reuse, critical runtime behavior no longer depends on Base44, failure states are explicit, and users are guided through major workflows.
 
 ## 2. Branch / Environment Rules
 
 ### Development/testing branch
-
 `backend/vercel-foundation`
 
 ### Preview URL
-
 `https://project-1nufq-git-backend-vercel-foundation-texasnomadgames.vercel.app/`
 
 ### Vercel
-
 - Project: `project-1nufq`
 - Team slug: `texasnomadgames`
 - Team ID: `team_E9xyI6RoOjilno6YazF4Bksb`
 
 ### Neon
-
 - Project: `bold-term-42963962`
 - Database: `neondb`
 - Active Preview branch: `br-round-cake-awfbwk2h`
 
 ### Live branch
-
 `main`
 
 **Treat `main` as frozen. Do not implement migration work there.**
 
 `main` was intentionally restored to:
-
 `ca03bf2af028cc2cf62e915c2e47c41ee6a0f214` — `Add explicit presentation editor exit`
 
 Do not resurrect the accidental client-side Base44 Talk experiment from `main` as migration architecture.
 
 ## 3. Architecture Direction
 
-Preview is becoming the **new CREAPD**, not a patched copy of the old site.
-
 Preferred owned runtime:
 
 `React UI -> /api/creapd/production/core -> Studio server module -> Neon / owned services`
 
 Principles:
-
 - React/Vite frontend on Vercel.
 - Shared owned Production Core gateway.
 - Neon/Postgres as primary persistent data.
 - `src/api/creapdClient.js` as owned frontend client.
 - Neon-aware auth via `shouldUseNeonAuth()`.
 - Base44 only as temporary compatibility for unmigrated areas.
-- A Studio is **not migrated** merely because a Base44 backend function was replaced by browser-side Base44 SDK calls.
-- The user-provided **CREAPD Zero-Cost Upgrade & Architecture Blueprint** is the north star: multi-agent editorial intelligence, provider fallbacks, OBS WebSocket, browser overlays, Host/Teleprompter mode, live session/timestamp logging, local FFmpeg clipping, and future organization/show/member/RLS design.
+- Do not count browser-side Base44 SDK workarounds as migration completion.
+- CREAPD Zero-Cost Upgrade & Architecture Blueprint remains the north star: multi-agent editorial intelligence, provider fallbacks, OBS WebSocket, browser overlays, Host/Teleprompter mode, live session/timestamp logging, local FFmpeg clipping, and future org/team/RLS design.
 
 ### Vercel function-count lesson
-
-Preview already had 12 Vercel serverless API functions. Early Talk work added function #13 and deployments failed. Talk and OBS control are consolidated behind the existing Production Core endpoint. Do not add a separate OBS serverless function.
-
-`api/creapd/production/core.js` currently exports `maxDuration: 300`, but expensive AI work should still be split/checkpointed rather than relying on one long request.
+Preview already had 12 serverless API functions. Early Talk work added function #13 and deployment failed. Talk and OBS control must remain consolidated behind the existing Production Core endpoint. Do not add separate OBS serverless functions.
 
 ## 4. Research Studio — Reference Implementation
 
 Controlled Preview regression passed:
-
 - points persisted
 - approve worked
 - package count changed
@@ -94,24 +70,18 @@ Controlled Preview regression passed:
 - package/editor opened
 - explicit Exit Editor works
 
-Known non-blocking issue: Escape does not reliably exit Present mode. User explicitly does not care about this right now.
-
-Research remains the strongest reference implementation, not something to ship independently.
+Known non-blocking issue: Escape does not reliably exit Present mode. User explicitly does not care right now.
 
 ## 5. Presentation Studio
 
-Preview contains an owned Presentation Studio more advanced than `main`.
-
-It reads owned production data through `/production/core`, opens `/editor/:id`, and uses owned update/delete/editor actions. Do not overwrite it with older `main` presentation code without inspection.
+Preview contains an owned Presentation Studio more advanced than `main`. It reads owned production data through `/production/core`, opens `/editor/:id`, and uses owned update/delete/editor actions. Do not overwrite it with older `main` presentation code without inspection.
 
 ## 6. Talk Studio 2.0 — Core Build Status
 
 ### Stress-test production
-
 Config id: `af9ccc24-ba27-46f2-9b63-4025da1b4dbc`
 
 Production:
-
 - Name: `We Are America`
 - Host: `TexasNomad`
 - Format: `Panel Discussion`
@@ -125,9 +95,7 @@ Production:
 - Automation selections: 18
 
 ### Neon migration 004 — APPLIED
-
 Owned Talk tables:
-
 - `creapd.talk_production_configurations`
 - `creapd.talk_topics`
 - `creapd.talk_research_items`
@@ -137,39 +105,21 @@ Owned Talk tables:
 - `creapd.talk_sessions`
 - `creapd.talk_events`
 
-Schema includes verification/confidence, counter-perspectives, debate questions, actual segment timing, clip markers, OBS scene/overlay fields, Host View state, and Talk session/event logging.
-
-### Failure history / architectural fixes
-
-1. **50-second AI timeout** — monolithic Talk build was split into checkpointed Research and Production stages.
-2. **AI max_output_tokens** — Research Stage was split into topic batches, max 3 topics per batch; the 8-topic test becomes 3 + 3 + 2.
-3. **Overly strict research-item coverage** — verified topic dossier became authoritative coverage; secondary research-item rows can be derived from the verified dossier when omitted.
-
-### Successful Talk build — USER TESTED + NEON VERIFIED
-
-The heavy production above completed successfully.
-
-Neon verification:
-
-- config status: `ready`
-- `build_metadata.stage`: `complete`
-- 8 / 8 selected topics
+### Successful heavy build — USER TESTED + NEON VERIFIED
+- config status `ready`
+- `build_metadata.stage = complete`
+- 8/8 topics
 - 16 research items
 - 4 AI guest suggestions
-- 13 rundown segments
+- 13 segments
 - 19 AI assets
 - 1 owned Talk Production Package
-- 1 Talk session from the generated production
-- all 3 Research batches completed
-- production model: `openai/gpt-5.4-mini`
+- all three research batches complete
+- production model `openai/gpt-5.4-mini`
 
 Core owned Talk generation is **PASSED**.
 
-### Owned Talk paths
-
-Preview-owned behavior includes configuration save/read, checkpointed build/refresh, topic approve/unapprove, guest create/update/delete/confirm, asset approve/unapprove, Dashboard polling, owned Production Package creation, and live-session start/event persistence.
-
-Legacy `server/talkEngine.js` and monolithic `talk_build` / `talk_refresh` compatibility handlers still exist. Retire/hard-block them after the modern path is fully accepted so they cannot become an accidental fallback.
+Legacy `server/talkEngine.js` and monolithic `talk_build` / `talk_refresh` compatibility handlers still exist and must later be retired/hard-blocked.
 
 ## 7. UX Rule — CREAPD Must Guide the User
 
@@ -178,231 +128,154 @@ Product rule:
 > **Never assume a CREAPD user already understands the production workflow. Every major page should explain what the user is doing, what decision they need to make, what “ready” means, and the next step.**
 
 Talk guided sequence:
-
 **Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Finish & Launch -> CREAPD Live**
 
-The user manually walked the guided downstream path all the way through and successfully exported the show. Guidance was reported as good overall.
+The user manually walked the guided downstream path all the way through and successfully exported the show.
 
-Guest-status semantics remain a later cleanup: AI suggestions should eventually progress through **Suggested/Shortlist -> Invited -> Confirmed/Declined** and should never imply CREAPD itself booked a real person.
+Guest semantics remain future cleanup: **Suggested/Shortlist -> Invited -> Confirmed/Declined** rather than implying CREAPD actually booked someone.
 
 ## 8. Export Decision
 
-JSON is no longer treated as the normal human-facing export.
-
-Current direction:
-
-- JSON = **Advanced Data Export** for backup/integrations/developers.
+- JSON = **Advanced Data Export**.
 - Primary action = **Enter CREAPD Live**.
-- Future human export = **Show Book / ZIP package** containing PDF/rundown/scripts/source sheet/assets, with JSON tucked into an advanced/data folder.
+- Future human export = **Show Book / ZIP package** with PDF/rundown/scripts/source sheet/assets and JSON in an advanced/data folder.
 
 ## 9. CREAPD Live — Current Status
 
-Product decision: do **not** build a Riverside clone/media transport stack first. CREAPD is the **brain + live control room**; OBS is the broadcast engine.
-
 Route:
-
 `/talk/live?config_id=<talk configuration id>`
 
-This route is standalone/full-screen.
+Product direction: CREAPD is the **brain + live control room**; OBS is the broadcast engine. Do not build a Riverside clone/media transport stack first.
 
 ### First execution cockpit — USER TESTED + PASSED
+Passed in Preview:
+- READY / ON AIR / PAUSED / SHOW ENDED
+- elapsed/current/planned timing
+- current segment / next segment / Run of Show
+- host notes
+- Start / Pause / Resume / Clip / Next / End
+- leaving/re-entering Live during a run
 
-User manually tested READY / ON AIR / PAUSED / SHOW ENDED state, elapsed/current/planned timing, host notes, next segment, Run of Show, Start/Pause/Resume/Clip/Next/End, and live-session re-entry. User reported it **worked seamlessly**.
+User reported the first cockpit worked seamlessly.
 
 ### Teleprompter layout — USER VISUALLY ACCEPTED
-
-Commit: `79703004fc2697523d973de56de51666174caafe` — `Put teleprompter beside CREAPD Live program monitor`
-
-Vercel: **SUCCESS / DEPLOYED**.
+Commit:
+`79703004fc2697523d973de56de51666174caafe` — `Put teleprompter beside CREAPD Live program monitor`
 
 Desktop layout:
+- Program Monitor top left
+- Teleprompter top right
+- Current Segment + Up Next below
+- Run of Show below
+- sticky Show Control bottom
 
-- top left: **Program Monitor**
-- top right: **Teleprompter**
-- below: **Current Segment + Up Next**
-- below that: **Run of Show**
-- sticky Show Control at bottom
-
-Teleprompter behavior includes topic-specific script, talking-point/notes/global fallbacks, scroll reset on segment change, `A−` / `A+`, and conversation/debate prompts. User said the layout **“looks good.”**
+Teleprompter includes topic-specific script/talking-point/notes/global fallbacks, scroll reset on segment change, A−/A+ sizing, and debate prompts.
 
 ### Repeat-run behavior — USER TESTED + PASSED
+Backend repair:
+`805c4f06514d3556151b93fdf988f29f949a83bd` — `Allow completed Talk shows to start a new run`
 
-Product rule:
-
-> **End Show ends one run/session; it must not permanently lock the prepared production.**
-
-Backend repair: `805c4f06514d3556151b93fdf988f29f949a83bd` — `Allow completed Talk shows to start a new run`
-
-Frontend restart control: `src/components/talk/TalkLiveRestartControl.jsx`, mounted only for `/talk/live`, labeled **Start New Run** when latest session is complete.
-
-Latest functional restart commit before OBS work:
-
+Latest restart cleanup:
 `acfb320d8d56984f5460876cedf9d4ed1344fddb` — `Scope CREAPD Live restart data load to live route`
 
-Vercel: **SUCCESS / DEPLOYED**. User manually tested it and repeat-run behavior is **PASSED**.
-
-Important data-model note: previous session/event history is retained. Current Talk segment rows are shared production rows, so per-run runtime fields are reset for the new run; historical run reconstruction should use the session/event log until a future per-session segment-run table is added.
+Product rule: ending a show ends one run/session; it does not permanently lock the prepared production. `Start New Run` creates a fresh active run while retaining prior session/event history.
 
 ### OBS local bridge + scene control — USER TESTED + PASSED
-
-Owned OBS bridge work is active in Preview.
-
 Core implementation:
-
 - `server/obsBridge.js`
 - `src/components/talk/TalkObsBridgeControl.jsx`
 - `public/creapd-obs-bridge.ps1`
-- routed through existing `/api/creapd/production/core`; no new Vercel function added
+- routed through existing `/api/creapd/production/core`
 
-Neon migration `005` was prepared/tested on a temporary branch, explicitly approved by the user, and **APPLIED** to the active Preview branch. Owned tables:
-
+Neon migration `005` — **APPLIED** to active Preview branch.
+Owned tables:
 - `creapd.obs_bridges`
 - `creapd.obs_commands`
 
 Architecture:
-
-- OBS stays local on the creator's computer.
+- OBS remains local.
 - Local bridge connects to OBS WebSocket v5 at `ws://127.0.0.1:4455` by default.
-- Bridge makes outbound HTTPS requests to CREAPD.
+- Bridge makes outbound HTTPS calls to CREAPD.
 - CREAPD stores bridge heartbeat/state and command queue in Neon.
-- Preview uses Vercel Automation Protection Bypass because the Preview deployment is protected; this is a testing-only concern, not intended as a normal end-user step.
-- Final-user direction is a one-click installed bridge/desktop helper or OBS plugin. **Do not ship the PowerShell/manual-token workflow to normal users.**
+- Preview uses Vercel Automation Protection Bypass only because Preview is protected.
+- Final users must not receive the PowerShell/manual-token workflow; final direction is a one-click installed bridge/desktop helper or OBS plugin.
 
-Relevant commits:
-
+Relevant OBS commits:
 - `b01bf2c428d226b5b01902cd27896b7d162c08f8` — first owned OBS bridge stack
 - `f097c600743a1b3e11c3b5127c818cdae8e264e3` — improved OBS handshake diagnostics
-- `5709f06cf2b4a711d5f5061a0f5503cf6b1149e1` — Preview protection bypass support; Vercel **SUCCESS / DEPLOYED**
-- `70b54a4da21f851732c413bf0e525ace6f528d18` — sync Program Monitor OBS badge/copy with live bridge state
+- `5709f06cf2b4a711d5f5061a0f5503cf6b1149e1` — Preview protection bypass support
+- `70b54a4da21f851732c413bf0e525ace6f528d18` — sync Program Monitor OBS state
 
-User test on 2026-09-10:
+User-tested and PASSED:
+- local OBS pairing/authentication
+- heartbeat/state round-trip
+- real OBS version/current-scene metadata in CREAPD
+- scene discovery
+- **Take** command from CREAPD changes actual OBS Program scene
+- resulting scene state round-trips back into CREAPD/Neon
 
-- bridge launched and OBS WebSocket authentication succeeded
-- CREAPD Live showed **“OBS is under CREAPD control”**
-- UI returned OBS Studio `32.1.2`, WebSocket `5.7.3`, current scene
-- Neon independently verified connected heartbeat with `last_error = null`
-- Berna clicked **Take** in CREAPD Live and actual OBS changed from `Scene` to `Scene 2`
-- scene result round-tripped back into CREAPD/Neon
-- changing back to `Scene` also completed successfully
-
-Treat local pairing/auth, heartbeat/state, scene discovery, CREAPD scene commands, and scene-state round-trip as **TESTED + PASSED**.
-
-### Local real Program Monitor — USER TESTED, BLACK-FRAME FIX DEPLOYED, RETEST REQUIRED
-
-Initial implementation commit:
-
-`735c5fc6d0c2a053bea7c312bea7e9197988a50f` — `Mount local OBS program monitor in CREAPD Live`
-
-Black-frame repair commit:
-
-`09ce2bd4e712bdaf7041cb2c6468fc95d731aca4` — `Attach OBS program stream after video mount`
-
-Vercel for `09ce2bd4...`: **SUCCESS / DEPLOYED** on 2026-09-10.
-
-Files:
-
-- `src/components/talk/TalkProgramMonitor.jsx` — local Program Monitor layer and black-frame repair
-- `src/components/creap/CREAPModeLayout.jsx` — mounts Program Monitor on authenticated shell; component self-scopes to `/talk/live`
-
+### Local real Program Monitor — USER TESTED + PASSED
 Implementation direction:
 
 `OBS Program -> OBS Virtual Camera -> browser getUserMedia() -> CREAPD Program Monitor`
 
-Key behavior:
+Initial implementation:
+`735c5fc6d0c2a053bea7c312bea7e9197988a50f` — `Mount local OBS program monitor in CREAPD Live`
 
-- video remains entirely local to the creator's computer; CREAPD does not relay frames through Vercel or store them in Neon
-- monitor audio is intentionally disabled/muted to prevent echo
-- monitor polls owned OBS bridge state and only enables the feed when OBS control is connected
-- detects OBS Virtual Camera when browser device labels are available
-- asks for browser camera permission when necessary, then re-enumerates devices
-- remembers selected program-video device locally using `localStorage`
-- provides a manual video-device selector if OBS Virtual Camera cannot be auto-matched
-- shows current OBS scene alongside the local feed
-- stops media tracks cleanly when feed closes/unmounts
-- preserves the existing Program Monitor + Teleprompter desktop layout by rendering into the existing monitor box rather than restructuring `TalkLive.jsx`
+Initial real Preview test found a black-frame rendering bug even though CREAPD had correctly acquired `OBS Virtual Camera`. Root cause: the MediaStream was acquired before the `<video>` element mounted, so `videoRef.current` was null when `srcObject` was first assigned.
 
-User test on 2026-09-10 of the initial deployed monitor:
+Repair:
+`09ce2bd4e712bdaf7041cb2c6468fc95d731aca4` — `Attach OBS program stream after video mount`
 
-- CREAPD showed **LOCAL PROGRAM FEED**
-- selected device displayed **OBS Virtual Camera**
-- current scene displayed **Scene**
-- OBS bridge badge remained connected and showed **OBS Connected · Scene**
-- the Program Monitor picture area itself remained black
+Vercel for `09ce2bd4...`: **SUCCESS / DEPLOYED**.
 
-This test proves browser device discovery/acquisition and OBS bridge state were functioning, but real picture rendering was **PARTIAL / FAILED**.
+Retest on 2026-09-10 — **TESTED + PASSED**:
+- OBS bridge remained connected.
+- OBS Virtual Camera remained active.
+- CREAPD Live showed **LOCAL PROGRAM FEED**.
+- Program Monitor rendered the actual live OBS Program picture instead of black.
+- UI identified `OBS Virtual Camera · Scene`.
+- OBS connected badge remained green.
+- Teleprompter/show layout remained intact in the same Live cockpit.
+- User supplied screenshot visibly confirming the real OBS Program picture inside CREAPD Live and reported: **“IT WORKED!!! OMG!! Literally brought tears to me eyes....”**
 
-Root cause found in `TalkProgramMonitor.jsx`:
+Treat the local real Program Monitor video path as **TESTED + PASSED**.
 
-- `openDevice()` acquired and stored the MediaStream while `previewState` was still `requesting`
-- the `<video>` element only renders when `previewState === 'live'`
-- therefore `videoRef.current` was null at the moment the code tried to assign `srcObject`
-- state then changed to `live`, rendering an empty video element with no stream attached
-
-Repair in `09ce2bd4...`:
-
-- stream acquisition still occurs first
-- state changes to `live`
-- a dedicated effect runs after the video element mounts
-- that effect assigns the stored `streamRef.current` to `videoRef.current.srcObject` and invokes playback
-
-No Neon schema/database changes were required for this slice.
-
-Retest acceptance required from Berna:
-
-1. Keep OBS bridge running and OBS Virtual Camera started.
-2. Hard-refresh CREAPD Live.
-3. Open the Program Feed again.
-4. Confirm actual OBS Program picture appears instead of black.
-5. Use CREAPD **Take** to switch scenes and confirm the displayed picture follows the OBS Program output.
-6. Confirm Teleprompter/show controls remain unaffected.
-
-Do **not** mark the real Program Monitor PASSED until the repaired build is successfully exercised.
-
-Still future after monitor acceptance:
-
-- browser-source overlays/lower thirds
-- automatic segment-to-scene mapping
-- final one-click end-user bridge/desktop helper packaging
+Important architecture behavior:
+- Program video remains entirely local to the creator’s machine.
+- CREAPD does not relay Program frames through Vercel or store them in Neon.
+- Monitor audio remains intentionally muted/disabled to prevent echo.
+- selected video device is remembered locally.
 
 ## 10. Talk Acceptance Status
 
 ### PASSED
-
-- Heavy owned Talk generation
+- heavy owned Talk generation
 - Neon persistence for generated production
-- Research batching/checkpointing under realistic load
-- Topics display and approval path
-- guided review through Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
+- research batching/checkpointing under realistic load
+- Topics display/approval
+- guided Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
 - Advanced JSON export execution
-- first CREAPD Live show-execution cockpit
-- live start/pause/resume/next/clip/end path
-- Live re-entry during a run
-- side-by-side Program Monitor + Teleprompter layout visually accepted
-- **Start New Run** after `SHOW ENDED`
-- new run starts at Segment 1 with fresh clock/runtime state
-- prior completed session remains historical rather than becoming active again
-- repeat-run control path is user-tested
-- local OBS WebSocket pairing/authentication through CREAPD bridge
-- OBS heartbeat/state round-trip into owned Neon bridge state
-- CREAPD Live displaying real OBS Studio/WebSocket version and current-scene metadata
-- OBS scene discovery in CREAPD Live
-- **Take** command changes the actual OBS Program scene
-- scene change result round-trips back into CREAPD/Neon
-
-### TESTED / RETEST REQUIRED
-
-- local OBS Virtual Camera -> CREAPD Program Monitor device acquisition and state display
-- initial picture rendering exposed a black-frame mount-order bug
-- repair commit `09ce2bd4...` is BUILT + DEPLOYED but not yet user-tested
+- CREAPD Live state machine and show controls
+- Live re-entry
+- Program Monitor + Teleprompter layout
+- completed-show **Start New Run**
+- fresh Segment 1/clock/runtime state on new run
+- prior completed session retained historically
+- OBS local pairing/authentication
+- OBS heartbeat/state round-trip
+- OBS scene discovery
+- CREAPD **Take** -> actual OBS scene change
+- OBS scene result round-trip into CREAPD/Neon
+- real OBS Program picture rendered locally inside CREAPD Program Monitor
 
 ### STILL PARTIAL / FUTURE
-
 - guest shortlist/invite/confirm semantics
 - focused asset approve/unapprove persistence regression
 - shared Production Package -> Presentation Studio/editor handoff for Talk
 - legacy monolithic Talk build retirement
-- user-facing Show Book / ZIP export
-- browser overlays/lower thirds
+- Show Book / ZIP export
+- browser-source overlays/lower thirds
 - automatic segment-to-scene mappings
 - teleprompter auto-scroll / mirror / detached display
 - post-show clipping/transcription
@@ -413,20 +286,18 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Retest the repaired local Program Monitor in Preview.**
+**Begin browser-source overlays / lower-thirds integration on Preview now that real OBS Program Monitor is PASSED.**
 
-Immediate acceptance sequence:
+Immediate goals:
+1. Inspect current Talk assets, rundown, guest data, and OBS bridge command capabilities for overlay-ready content.
+2. Define a CREAPD-owned overlay state model that can drive lower thirds, topic/title cards, guest IDs, and simple live text without routing video through Vercel.
+3. Build a browser-source overlay surface that OBS can load as a Browser Source.
+4. Add owned Production Core actions / bridge commands for showing, updating, and clearing overlays while preserving the already-passed OBS scene control path.
+5. Add simple CREAPD Live controls for at least one real lower-third test.
+6. User-test the lower third appearing in actual OBS Program and verify the Program Monitor reflects it.
+7. Keep all work on `backend/vercel-foundation`; do not touch `main`.
 
-1. Keep the CREAPD OBS bridge running and OBS Virtual Camera started.
-2. Hard-refresh CREAPD Live.
-3. Click **Open Program Feed**.
-4. Confirm the real OBS Program picture now appears locally in CREAPD.
-5. Switch from `Scene` to `Scene 2` (or another scene) using CREAPD **Take** and confirm the Program Monitor visibly follows the switch.
-6. Verify Teleprompter and existing show controls still behave normally.
-
-If successful, mark local Program Monitor **TESTED + PASSED** and move directly to browser-source overlays/lower thirds. If it still fails, capture the exact Program Monitor state and patch Preview only.
-
-Separate Talk cleanup still remains for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
+After overlays are stable, continue toward automatic segment-to-scene/overlay mappings, teleprompter refinements, and post-show tooling.
 
 ## 12. Remaining Studios / Major Areas
 
@@ -451,7 +322,6 @@ Do not promote individual Studio work to production along the way.
 ## 13. Final Base44 Removal Gate
 
 Before launch search Preview for at least:
-
 - `@base44/sdk`
 - `base44.entities`
 - `base44.functions`
