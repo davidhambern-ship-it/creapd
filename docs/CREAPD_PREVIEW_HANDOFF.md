@@ -14,8 +14,8 @@ Launch-ready means:
 
 - Every Production Studio works end-to-end in Preview.
 - Shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
-- CREAPD also supports **show execution** after production: Production Package -> CREAPD Live -> session/timing/events -> later OBS/overlays/clipping.
-- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, and regeneration.
+- CREAPD also supports **show execution**: Production Package -> CREAPD Live -> session/timing/events -> later OBS/overlays/clipping.
+- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, regeneration, and live-session re-entry.
 - Critical runtime behavior no longer depends on Base44 entities, backend functions, auth, AI integrations, or hidden fallbacks.
 - Failure states are explicit; no endless Initializing states, blank pages, silent failures, or dead buttons.
 - CREAPD guides users through each workflow instead of assuming they already know what to do.
@@ -110,7 +110,7 @@ It reads owned production data through `/production/core`, opens `/editor/:id`, 
 
 ### Latest functional branch head before this documentation commit
 
-`34409a8d78216100363802dc7bce3031a5ffa85f` — `Add CREAPD Live entry point to Talk dashboard`
+`79703004fc2697523d973de56de51666174caafe` — `Put teleprompter beside CREAPD Live program monitor`
 
 Vercel status: **SUCCESS / DEPLOYED**.
 
@@ -205,8 +205,6 @@ Neon verification after the successful run:
 - all 3 Research batches completed
 - production model: `openai/gpt-5.4-mini`
 
-At the time of DB inspection, all 8 topics were approved.
-
 This proves the core owned Talk build pipeline can handle the 8-topic / 120-minute stress test.
 
 ### Talk owned frontend/backend paths
@@ -221,6 +219,7 @@ Owned Preview behavior includes:
 - asset approve/unapprove through owned path
 - Dashboard polling/refresh through owned path
 - owned Talk Production Package creation
+- live-session start/event persistence through owned path
 
 Legacy `server/talkEngine.js` and `talk_build` / `talk_refresh` compatibility handlers still exist. After the repaired path is fully accepted, retire/hard-block the monolithic legacy path so it cannot become an accidental fallback.
 
@@ -234,35 +233,29 @@ Reusable component:
 
 `src/components/talk/TalkProducerGuide.jsx`
 
-Talk guided sequence is now:
+Talk guided sequence:
 
-**Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Export -> Live Studio**
+**Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Finish & Launch -> CREAPD Live**
 
-Guide wiring exists across Dashboard, Research, Topics, Guests, Rundown, AI Assets, and Finish & Launch/Export.
+User manually walked the guided downstream path all the way through and successfully exported the show. The guidance was reported as good overall.
 
-User manually walked the guided downstream path all the way through and successfully exported the show. The guidance was reported as good overall. Guest-status semantics remain a later UX cleanup: AI suggestions should not imply real-world booking/confirmation.
+Guest-status semantics remain a later UX cleanup: AI suggestions should progress through a shortlist/invited/confirmed model and should not imply CREAPD actually contacted or booked a real guest.
 
 ## 8. Export Decision
 
-The old Talk Export downloaded a `.json` file as if it were the normal user-facing show package. Windows may associate JSON with PowerShell/editor tooling, which made the result confusing to a normal user.
+The old Talk Export downloaded a `.json` file as if it were the normal user-facing show package.
 
 New product direction:
 
-- JSON remains available as **Advanced Data Export** for backup/integrations/developers.
+- JSON remains **Advanced Data Export** for backup/integrations/developers.
 - Normal post-production action is **Enter CREAPD Live**.
-- A human-readable **Show Book / downloadable ZIP package** (PDF/rundown/scripts/source sheet/assets, with JSON tucked into an advanced folder) is a later export enhancement.
+- A human-readable **Show Book / downloadable ZIP package** (PDF/rundown/scripts/source sheet/assets, with JSON in an advanced folder) is a later export enhancement.
 
-`src/pages/TalkExport.jsx` now labels JSON correctly and guides users into CREAPD Live.
+`src/pages/TalkExport.jsx` labels JSON correctly and guides users into CREAPD Live.
 
-## 9. CREAPD Live — FIRST EXECUTION COCKPIT
+## 9. CREAPD Live — Show Execution Cockpit
 
 Product decision: do **not** build a Riverside clone/media transport stack first. CREAPD should initially be the **brain + live control room**, with OBS becoming the broadcast engine later.
-
-First Preview execution slice is **BUILT + DEPLOYED**, but not yet user-tested.
-
-New page:
-
-`src/pages/TalkLive.jsx`
 
 Route:
 
@@ -276,86 +269,121 @@ Entry points:
 - Finish & Launch -> `Enter CREAPD Live`
 - Talk navigation -> `Live — Studio`
 
-Current cockpit loads the existing owned Talk production/session from Neon and displays:
+### First cockpit — USER TESTED + PASSED
 
-- show state: READY / ON AIR / PAUSED / SHOW ENDED
+The first CREAPD Live execution cockpit loaded the real owned Talk production/session from Neon and exposed:
+
+- READY / ON AIR / PAUSED / SHOW ENDED state
 - overall elapsed clock
-- current rundown segment
-- planned segment duration / elapsed / planned time remaining
-- host notes / topic talking points / debate questions when relevant
+- current segment
+- segment elapsed / planned time left
+- host notes / topic talking points / debate questions
 - next segment preview
 - run-of-show list with completed/active state
 - clip-marker counts
-- confirmed guest count
-- owned Production Package readiness
-- OBS connection status
-- Program Monitor placeholder clearly stating broadcast picture is not connected yet
+- guest/package readiness
+- OBS connection placeholder
+- Start Show
+- Pause / Resume
+- Clip This Moment
+- Next Segment
+- End Show
 
-Current controls use the **existing owned Talk session/event actions** through Production Core; no new Vercel serverless function was added:
+User manually tested the cockpit and reported that it **worked seamlessly**. Treat the first owned live-session state machine as PASSED unless a later regression proves otherwise.
 
-- `Start Show`
-- `Pause / Resume`
-- `Clip This Moment`
-- `Next Segment`
-- `End Show`
+### Teleprompter refinement — BUILT + DEPLOYED, NOT YET USER TESTED
 
-These actions write through `talk_start_session` / `talk_session_event` into the existing Neon `talk_sessions`, `talk_segments`, and `talk_events` foundation.
+User requested the teleprompter be immediately to the **right of the future video/program monitor**, with the segment list moved down.
 
-Important first-slice limitation: the visual Program Monitor is intentionally a placeholder. There is no camera/WebRTC transport or OBS WebSocket connection yet. First prove the show-execution state machine before layering broadcast transport/control on top.
+Implemented in:
+
+`src/pages/TalkLive.jsx`
+
+Commit:
+
+`79703004fc2697523d973de56de51666174caafe`
+
+Vercel: **SUCCESS / DEPLOYED**.
+
+New layout:
+
+- top left: **Program Monitor**
+- top right: **Teleprompter**
+- below: **Current Segment + Up Next**
+- below that: **Run of Show** moved out of the former right sidebar and displayed as a multi-column segment grid
+- sticky Show Control remains at the bottom
+
+Teleprompter behavior:
+
+- prefers a topic-specific `host_script` asset when available
+- otherwise uses the matched topic's talking points
+- otherwise uses current segment notes
+- otherwise falls back to the global host script
+- automatically scrolls back to the top when the current segment changes
+- provides `A−` / `A+` text-size controls
+- shows current topic/segment context in its header
+- shows up to three current-topic debate/conversation prompts beneath the primary copy
+
+This is still a browser-side teleprompter display only. Auto-scroll speed control, mirrored display, detached host monitor/window, OBS integration, and real Program Monitor video remain later refinements.
 
 ## 10. Talk Acceptance Status
 
 ### PASSED
 
-- Heavy owned Talk production build itself
+- Heavy owned Talk production build
 - Neon persistence for generated production
 - Research batching/checkpointing under realistic load
 - Topics display and approval path
 - Guided downstream user walkthrough through Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
-- JSON export executes successfully (now reclassified as Advanced Data Export)
+- JSON export executes successfully as Advanced Data Export
+- first CREAPD Live show-execution cockpit
+- live session state/control path as exercised by user
 
-### STILL TO TEST / PARTIAL
+### DEPLOYED / NEEDS USER TEST
 
-- CREAPD Live first cockpit
-- Live session start/pause/resume/next/clip/end persistence
-- leaving Live and re-entering while a show is active
-- guest add/confirm/edit/delete semantics and persistence cleanup
-- asset approve/unapprove persistence under a fresh focused regression
+- side-by-side Program Monitor + Teleprompter layout
+- teleprompter content switching / reset-to-top / font sizing
+- Run of Show moved below the top studio row
+
+### STILL PARTIAL / FUTURE
+
+- guest shortlist/invite/confirm semantics
+- asset approve/unapprove focused regression
 - shared Production Package -> Presentation Studio/editor handoff for Talk
 - legacy monolithic Talk build retirement
 - user-facing Show Book / ZIP export
 - OBS WebSocket execution
 - real Program Monitor/browser overlays
-- Host/Teleprompter refinements
+- teleprompter auto-scroll / mirror / detached display refinements
 - post-show clipping/transcription
 
-Talk Studio overall remains **PARTIAL** until CREAPD Live and the remaining downstream/shared flow are accepted.
+Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 cleanup gates are complete, even though its core owned build and first live-execution cockpit have passed.
 
 ## 11. Current Exact Next Action
 
-**User-test the first CREAPD Live cockpit on Preview.**
+**User-test the new CREAPD Live teleprompter layout on Preview.**
 
-Use the existing `We Are America` Talk production; do not rebuild just to enter Live.
+Use the existing `We Are America` production; do not rebuild it.
 
 Acceptance path:
 
 1. Hard-refresh the `backend/vercel-foundation` Preview.
-2. Open Talk Dashboard or Finish & Launch.
-3. Click **Enter Studio / Enter CREAPD Live**.
-4. Before starting, confirm the page shows the correct production, rundown, current/next segment, host material, and READY state.
-5. Click **Start Show**. Confirm ON AIR, timer movement, and first segment activation.
-6. Click **Clip This Moment**. Confirm the marker count persists.
-7. Click **Next Segment**. Confirm the previous segment becomes complete and the next becomes active.
-8. Test **Pause -> Resume**.
-9. Leave CREAPD Live and re-enter it. Confirm active session/segment state is still there.
-10. Only after the above passes, click **End Show** and confirm SHOW ENDED.
-11. Report any confusing instruction, timer behavior, dead control, wrong host notes, persistence issue, or navigation problem.
+2. Enter **CREAPD Live**.
+3. Confirm the **Program Monitor is on the left** and the **Teleprompter is immediately to its right** on a desktop-size viewport.
+4. Confirm the Run of Show is now below rather than occupying the right column.
+5. Start/resume a show session and confirm the teleprompter shows sensible material for the current segment.
+6. Use `A−` / `A+` and confirm text sizing works without breaking layout.
+7. Advance to the next segment and confirm the teleprompter changes with the segment and resets to the top.
+8. Confirm the live controls still work after the layout change.
+9. Report any poor script selection, duplicated text, bad overflow, eye-line/layout issue, or state regression.
+
+After this passes, the next major CREAPD Live layer is **OBS integration / real Program Monitor + overlays**, while separate Talk cleanup continues for guest semantics, legacy Base44 fallback retirement, Show Book export, and shared Presentation Studio handoff.
 
 Do not touch `main`.
 
 ## 12. Remaining Studios / Major Areas
 
-- Talk — current focus until Live/shared downstream acceptance passes
+- Talk — current focus until Live/shared downstream cleanup is done
 - Cooking
 - Sports
 - Cosmo
@@ -367,7 +395,6 @@ Do not touch `main`.
 - Presentation Studio/editor full regression
 - user-facing Show Book/export packaging
 - OBS/live execution
-- Host Mode
 - post-show clipping/transcription
 - organizations/team/RBAC/RLS
 - final Base44 audit/removal
