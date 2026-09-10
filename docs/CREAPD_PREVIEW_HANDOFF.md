@@ -297,7 +297,7 @@ Frontend control:
 - button label: **Start New Run**
 - creates the new session, starts Segment 1, then reloads the cockpit onto the new active run
 
-Latest functional commit:
+Latest functional commit before OBS work:
 
 `acfb320d8d56984f5460876cedf9d4ed1344fddb` — `Scope CREAPD Live restart data load to live route`
 
@@ -306,6 +306,62 @@ Vercel: **SUCCESS / DEPLOYED**.
 User manually tested the completed-show restart flow and reported that it worked exactly as intended. Treat repeat-run behavior as **PASSED**.
 
 Important data-model note: previous session/event history is retained. The current Talk segment rows are shared production rows, so their per-run runtime fields are reset for the new run; historical run reconstruction should use the session/event log until a future per-session segment-run table is added.
+
+### OBS local bridge foundation — USER TESTED + CONNECTION PASSED
+
+Owned OBS bridge work is now active in Preview.
+
+Core implementation:
+
+- `server/obsBridge.js`
+- `src/components/talk/TalkObsBridgeControl.jsx`
+- `public/creapd-obs-bridge.ps1`
+- routed through existing `/api/creapd/production/core`; no new Vercel function added
+
+Neon migration `005` was prepared/tested on a temporary branch, explicitly approved by the user, and then **APPLIED** to the active Preview branch. Owned tables:
+
+- `creapd.obs_bridges`
+- `creapd.obs_commands`
+
+Migration record verified:
+
+- version `005`
+- description: `Owned local OBS bridge pairing, heartbeat, scene state, and command queue`
+
+Architecture:
+
+- OBS stays local on the creator's computer.
+- Local bridge connects to OBS WebSocket v5 at `ws://127.0.0.1:4455` by default.
+- Bridge makes outbound HTTPS requests to CREAPD.
+- CREAPD stores bridge heartbeat/state and a command queue in Neon.
+- Preview uses Vercel Automation Protection Bypass because the Preview deployment is protected; this is a testing-only deployment concern, not intended as a normal end-user step.
+- Final-user direction is a one-click installed bridge/desktop helper or OBS plugin, not PowerShell/manual developer plumbing.
+
+Relevant commits:
+
+- `b01bf2c428d226b5b01902cd27896b7d162c08f8` — first owned OBS bridge stack
+- `f097c600743a1b3e11c3b5127c818cdae8e264e3` — improved OBS handshake diagnostics
+- `5709f06cf2b4a711d5f5061a0f5503cf6b1149e1` — added Preview protection bypass support to the local bridge; Vercel **SUCCESS / DEPLOYED**
+- `70b54a4da21f851732c413bf0e525ace6f528d18` — sync Program Monitor badge/copy with live OBS bridge state; Vercel status **PENDING at handoff update time**
+
+User test on 2026-09-10:
+
+- PowerShell bridge launched successfully.
+- OBS WebSocket authentication succeeded.
+- Bridge reported `OBS connected. Scene: Scene`.
+- CREAPD Live OBS Control changed green and displayed **“OBS is under CREAPD control.”**
+- UI showed current scene `Scene`, OBS Studio `32.1.2`, WebSocket `5.7.3`.
+- Neon independently verified bridge row status `connected`, `obs_connected = true`, endpoint `ws://127.0.0.1:4455`, current scene `Scene`, current heartbeat, and `last_error = null`.
+
+Treat **local OBS pairing/authentication + heartbeat/state round-trip as TESTED + PASSED**.
+
+Not yet PASSED:
+
+- user has not yet confirmed that clicking **Take** in CREAPD changes the actual OBS Program scene
+- real video/program-picture rendering in the Program Monitor is not built yet
+- browser overlays/lower thirds are not built yet
+
+The screenshot that confirmed the first connection also exposed a stale UI mismatch: OBS Control was green while the Program Monitor badge still said `OBS: disconnected`. Commit `70b54a4...` makes the Program Monitor poll the owned bridge state directly and render connected/online/disconnected accurately; this still needs deploy + user verification.
 
 ## 10. Talk Acceptance Status
 
@@ -325,6 +381,9 @@ Important data-model note: previous session/event history is retained. The curre
 - new run starts at Segment 1 with fresh clock/runtime state
 - prior completed session remains historical rather than becoming active again
 - repeat-run control path is user-tested
+- local OBS WebSocket pairing/authentication through CREAPD bridge
+- OBS heartbeat/state round-trip into owned Neon bridge state
+- CREAPD Live displaying real OBS Studio/WebSocket version and current-scene metadata
 
 ### STILL PARTIAL / FUTURE
 
@@ -333,8 +392,9 @@ Important data-model note: previous session/event history is retained. The curre
 - shared Production Package -> Presentation Studio/editor handoff for Talk
 - legacy monolithic Talk build retirement
 - user-facing Show Book / ZIP export
-- OBS WebSocket execution
-- real Program Monitor/browser overlays
+- OBS scene-change command acceptance via **Take**
+- real Program Monitor/video preview
+- browser overlays/lower thirds
 - teleprompter auto-scroll / mirror / detached display
 - post-show clipping/transcription
 - future per-session segment-run history model if detailed rehearsal-vs-broadcast analytics are needed
@@ -343,18 +403,16 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Begin the next CREAPD Live layer: OBS integration / real Program Monitor + overlays on Preview.**
-
-Do not add a new Vercel serverless function; continue using the existing Production Core architecture and reusable server modules.
+**Finish acceptance of the first OBS control slice, then move into the real Program Monitor / overlays layer.**
 
 Immediate goals:
 
-1. Inspect current OBS/browser-overlay related code and dependencies in `backend/vercel-foundation` before adding anything.
-2. Define how CREAPD Live connects to OBS without making Vercel responsible for local media transport.
-3. Replace the Program Monitor placeholder with a safe first real-video/program-preview path.
-4. Add an owned command/event path for scene changes and overlays while preserving the already-passed Talk session state machine.
-5. Keep the Program Monitor + Teleprompter desktop layout unchanged unless testing proves a reason to alter it.
-6. Build/test in Preview only; do not touch `main`.
+1. Confirm Vercel success for `70b54a4da21f851732c413bf0e525ace6f528d18`.
+2. Have Berna hard-refresh CREAPD Live while the bridge is running and verify the Program Monitor now shows the same connected OBS state as the OBS Control panel.
+3. Add/create at least one second OBS scene if needed, choose it from CREAPD Live, click **Take**, and confirm OBS actually changes Program scenes.
+4. Verify the changed current scene round-trips back into CREAPD and Neon.
+5. Once scene control is PASSED, begin the safe real Program Monitor path and browser-source overlays/lower thirds while preserving the current Program Monitor + Teleprompter desktop layout.
+6. Preview only; do not touch `main`.
 
 Separate Talk cleanup still remains for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
 
