@@ -8,6 +8,10 @@ const AGENT_ACTIONS = new Set([
 const USER_COMMANDS = new Set([
   'set_scene',
   'refresh_state',
+  'start_recording',
+  'stop_recording',
+  'pause_recording',
+  'resume_recording',
 ]);
 
 function clean(value, fallback = '') {
@@ -257,9 +261,6 @@ async function updateBridgeHeartbeat(sql, bridge, body) {
     RETURNING *
   `;
 
-  // Keep the current Talk cockpit's persisted OBS indicator aligned while the
-  // local bridge is actively checking in. Stale/offline rendering is still
-  // computed from obs_bridges.last_seen_at so a dead bridge does not look live.
   await sql`
     UPDATE creapd.talk_sessions
     SET obs_connection_status = ${obsConnected ? 'connected' : 'bridge_online'}, updated_at = now()
