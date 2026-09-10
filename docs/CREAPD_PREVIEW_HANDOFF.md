@@ -2,15 +2,15 @@
 
 > **READ THIS FIRST IN A NEW CHAT / NEW WORK SESSION.**
 >
-> This file is the persistent handoff for the CREAPD rebuild. Update it after every meaningful migration, regression test, architecture decision, or blocker so a future session can inspect GitHub/Vercel and resume without relying on chat memory.
+> This file is the persistent handoff for the CREAPD rebuild. Before changing code, inspect this file, the current `backend/vercel-foundation` branch head, and Vercel status. Update this file after every meaningful migration/test checkpoint.
 
 ## 1. Mission
 
 CREAPD is being rebuilt and fully tested **before anything is promoted to the live site**.
 
-The goal is not to patch the current live/Base44 application feature-by-feature. The goal is to finish a **fully operational, launch-ready CREAPD in Preview**, migrate runtime ownership off Base44, regression-test the entire product, and only then promote the completed rebuild to production in one deliberate launch step.
+The goal is a **fully operational, launch-ready CREAPD in Preview**, with runtime ownership migrated off Base44. Only after the entire product is upgraded, regression-tested, demo-tested, and audited do we promote the completed rebuild to `main`.
 
-The user specifically wants CREAPD to be dependable enough that live demonstrations do not randomly fail.
+The user specifically wants CREAPD dependable enough that demonstrations do not randomly fail.
 
 ### Definition of launch-ready
 
@@ -18,17 +18,17 @@ CREAPD is not launch-ready until:
 
 - Every Production Studio works end-to-end in Preview.
 - Shared production flows work across Studios.
-- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, and regeneration flows.
+- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, and regeneration.
 - Critical runtime behavior no longer depends on Base44 entities, backend functions, auth, AI integrations, or hidden fallbacks.
 - Failure states are explicit; no endless Initializing states, blank pages, silent failures, or dead buttons.
-- The shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
-- We can run multiple realistic demonstrations from the CREAPD home screen without knowing the path in advance.
-- A final repository-wide Base44 audit is complete.
-- Only after the full Preview build passes do we promote to `main` and perform a production smoke test.
+- Shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
+- Multiple realistic demos can be run from the CREAPD home screen.
+- Final repository-wide Base44 audit is complete.
+- Only then is Preview promoted to `main` and production smoke-tested.
 
 ## 2. Branch / Environment Rules
 
-### Development and testing branch
+### Development/testing branch
 
 `backend/vercel-foundation`
 
@@ -36,7 +36,7 @@ CREAPD is not launch-ready until:
 
 `https://project-1nufq-git-backend-vercel-foundation-texasnomadgames.vercel.app/`
 
-### Vercel project
+### Vercel
 
 - Project: `project-1nufq`
 - Team slug: `texasnomadgames`
@@ -48,37 +48,35 @@ CREAPD is not launch-ready until:
 
 **Treat `main` as frozen. Do not implement migration work there.**
 
-As of 2026-09-10, `main` was intentionally restored to:
+`main` was intentionally restored to:
 
 `ca03bf2af028cc2cf62e915c2e47c41ee6a0f214` — `Add explicit presentation editor exit`
 
-Do not promote Preview work to `main` until the entire CREAPD rebuild is ready for launch.
+The experimental Talk/client-side Base44 work accidentally made on `main` was removed. Do not resurrect it as the migration architecture.
 
-### Important mistake that was corrected
+## 3. Current Preview Checkpoint — 2026-09-10
 
-The following experimental changes were accidentally made on `main` and then removed by resetting `main` back to `ca03bf2...`:
+### Functional code head
 
-- `a081145...` Rename presentation library to Assembly Projects
-- `94f6540...` Clarify Assembly Project terminology
-- `3321142...` Add reusable client production package adapter
-- `a5612f9...` Add client-side Talk production engine
-- `fc6ae7d...` Route Talk builds through client engine
+`6c398d3bc76884152f6a12f8cb35adf4ebcfd100` — `Route Talk asset approvals through owned backend`
 
-**Do not resurrect those Talk changes as the migration architecture.** They bypassed Base44 backend functions but still depended heavily on the Base44 SDK and were not the owned Vercel/Neon architecture we want.
+Vercel status for this commit: **SUCCESS / DEPLOYED**.
 
-## 3. Current Preview Baseline
+### Important Vercel architecture discovery
 
-Last functional code commit before this handoff file:
+Preview already had 12 Vercel serverless API functions. The first attempt to add separate Talk API routes created function #13 and caused Vercel deployment failures.
 
-`98dc0b470d8efe5c9f7263dc6f51264a5f7a9476` — `Fix Research Manager JSX syntax`
+Those failed deployments are **superseded history**, not active runtime problems.
 
-Vercel status for that commit: **success**.
+The fix was to consolidate Talk behind the existing owned Production Core endpoint instead of adding many Studio-specific Vercel functions.
 
-Previous migration commit:
+**Current pattern:**
 
-`7ec41bf67dfccff089a5370d9a67b167256a82be` — `Route Research point actions through owned backend`
+`React Studio UI -> /api/creapd/production/core -> Studio server module -> Neon / owned services`
 
-The branch is intentionally divergent from `main`. **Do not broad-merge or sync branches.** Port only deliberate, reviewed changes.
+This is now the preferred pattern for later Studios where practical because it avoids Vercel function-count pressure and gives CREAPD one shared production gateway.
+
+Do not re-add `/api/creapd/talk/configuration.js` or `/api/creapd/talk/production.js` as separate functions unless the hosting architecture changes.
 
 ## 4. Architecture Direction
 
@@ -88,47 +86,46 @@ Preview is becoming the **new CREAPD**, not merely a patched copy of the old one
 
 - Frontend: React/Vite on Vercel
 - Backend/API: owned `/api/creapd/*` Vercel routes
+- Shared Studio gateway: `/api/creapd/production/core`
 - Primary persistent data: Neon/Postgres
 - Owned client: `src/api/creapdClient.js`
-- Neon-aware auth path: `shouldUseNeonAuth()` / owned authentication work
-- Base44 may remain temporarily as compatibility/fallback while migrating, but it is not the final source of truth.
+- Neon-aware auth: `shouldUseNeonAuth()` / owned auth path
+- Base44 may temporarily remain as compatibility/fallback for unmigrated areas, but is not the final source of truth.
 
 ### Migration rule
 
-A Studio is not considered migrated merely because a Base44 backend function was replaced with browser-side Base44 SDK calls.
+A Studio is not migrated merely because a Base44 backend function was replaced with browser-side Base44 SDK calls.
 
-The target is owned data authority and owned server/API behavior. Prefer:
+Target:
 
 **React UI -> CREAPD API -> Neon / owned services**
 
-over:
+not:
 
 **React UI -> Base44 entities/functions/integrations**
 
-### Zero-Cost Upgrade & Architecture Blueprint
+### Blueprint north star
 
-The project is also using the user-provided document **“CREAPD: Zero-Cost Technical & Strategic Upgrade Blueprint”** as a north-star architecture reference.
+The user-provided **CREAPD Zero-Cost Technical & Strategic Upgrade Blueprint** is an architecture reference. Preserve its goals while adapting them to CREAPD's existing owned stack:
 
-Key principles to preserve while adapting them to our existing stack:
+- Edge/local hybridization
+- zero/near-zero validation cost
+- multi-agent editorial intelligence
+- model/provider fallback architecture
+- OBS WebSocket integration
+- browser-source overlays
+- Host/Teleprompter mode
+- live segment/timestamp logging
+- post-show transcription + local FFmpeg clipping
+- future multi-tenant organizations/shows/memberships/RLS
 
-- Edge/local hybridization.
-- Zero/near-zero infrastructure cost during validation.
-- Multi-agent editorial intelligence rather than one giant opaque generation step.
-- Cloud model fallback strategy, with local inference as a future fallback.
-- OBS WebSocket integration for live execution.
-- Dynamic browser-source overlays.
-- Dedicated Host/Teleprompter mode.
-- Live segment/timestamp logging.
-- Post-show transcription and local FFmpeg clipping pipeline.
-- Multi-tenant organizations/shows/memberships/RLS architecture.
+Do not add Supabase/NextAuth/Lucia merely because the blueprint names them if Neon/current owned infrastructure already satisfies the requirement.
 
-Do not blindly add Supabase, NextAuth, Lucia, or other providers named in the blueprint if Neon/current owned infrastructure already satisfies the requirement. Preserve the architectural goal rather than the provider name.
+## 5. Research Studio — REFERENCE IMPLEMENTATION
 
-## 5. Research Studio Status — REFERENCE IMPLEMENTATION
+Research remains the strongest tested migration reference.
 
-Research is currently the strongest migration reference.
-
-### Owned Research API routes already present
+Owned Research routes include:
 
 - `/api/creapd/research/production.js`
 - `/api/creapd/research/configuration.js`
@@ -138,162 +135,132 @@ Research is currently the strongest migration reference.
 - `/api/creapd/research/archive.js`
 - `/api/creapd/research/voice-upload.js`
 
-Owned engines include examples such as:
+Controlled Research regression passed the important path:
 
-- `server/researchPackageEngine.js`
-- `server/mediaGateway.js`
+- points persisted
+- approve worked
+- package count changed
+- navigate away/back preserved state
+- reject/restore worked
+- package/editor opened
+- explicit Exit Editor works
 
-### Research point migration
+Known non-blocking issue: Escape does not reliably exit Present mode. User explicitly does not care about this right now.
 
-`src/pages/ResearchManager.jsx` was changed so Neon Preview writes go through the owned backend:
+Research is a reference implementation, not something to ship independently.
 
-- Approve -> `/research/production` action `approve_point`
-- Reject/restore/unapprove -> `set_point_status`
-- Generate package -> `generate_package`
+## 6. Presentation Studio
 
-The stored point status remains `pending`, but the UI label was changed to **Awaiting Review** so users do not confuse review state with a failed research process.
+Preview contains an owned Presentation Studio more advanced than `main`.
 
-### Research regression result
+It reads owned production data through `/production/core`, opens `/editor/:id`, uses owned delete/update/editor actions, and should not be overwritten with the older `main` Presentation/Assembly implementation without inspection.
 
-The controlled Research test passed the important functional path:
+## 7. Talk Studio 2.0 — CURRENT STATUS
 
-- Points persisted.
-- Approve worked.
-- Package count changed.
-- Navigation away/back preserved state.
-- Reject/restore worked.
-- Package/editor flow opened.
-- Explicit Exit Editor works.
+### Status vocabulary
 
-Known non-blocking issue:
+- Code foundation: **BUILT**
+- Vercel: **DEPLOYED**
+- Neon migration 004: **APPLIED + VERIFIED**
+- User end-to-end Talk test: **NOT TESTED YET**
+- Talk Studio overall: **PARTIAL** until real Preview acceptance testing passes
 
-- Escape key still does not reliably exit Present mode. User explicitly said this is not important; defer unless it becomes part of another issue.
+### Neon migration
 
-Research should be treated as a **reference implementation**, not something to ship independently.
+Migration file:
 
-## 6. Presentation Studio Status
+`server/migrations/004_talk_studio.sql`
 
-Preview already contains a more advanced owned Presentation Studio than `main`.
+Migration `004` was first prepared and tested on a temporary Neon migration branch, then explicitly approved by the user and applied to the active Preview database on 2026-09-10.
 
-`src/pages/Presentations.jsx` in Preview:
+Verified active tables:
 
-- Uses `creapdApi.get('/production/core?limit=200')` when owned Preview auth is active.
-- Lists Presentation Studio projects across production Studios.
-- Describes projects as arriving after an approved Production Package is dispatched from a Production Studio.
-- Opens `/editor/:id`.
-- Uses owned `/production/core` action `delete_presentation_studio` for Preview deletes.
-- Displays an **OWNED** badge when using the owned path.
+- `creapd.talk_production_configurations`
+- `creapd.talk_topics`
+- `creapd.talk_research_items`
+- `creapd.talk_guests`
+- `creapd.talk_segments`
+- `creapd.talk_assets`
+- `creapd.talk_sessions`
+- `creapd.talk_events`
 
-Do not overwrite this architecture with the older `main` Presentation/Assembly implementation without inspection.
+`creapd.schema_migrations` contains version `004`: `Owned Talk Studio persistence, agent intelligence fields, and live session event foundation`.
 
-## 7. Current Focus — Talk Studio 2.0
+The schema includes Blueprint-forward fields such as:
 
-Talk Studio is the next migration target.
+- research verification status/notes/confidence
+- counter-perspectives
+- debate questions
+- runtime segment state
+- actual segment start/end/duration
+- clip marker counts
+- OBS scene/overlay payload fields
+- Host View state
+- Talk session/event logging
 
-### Critical decision
+### Talk server modules
 
-Do **not** merely recreate the old Base44 Talk backend in the browser.
+- `server/talkEngine.js` — owned Talk intelligence/build engine
+- `server/talkStudio.js` — owned Talk persistence/actions
+- `api/creapd/production/core.js` — shared gateway now exposes Talk operations
 
-Build Talk on `backend/vercel-foundation` using the owned Vercel/Neon architecture and use it as the first Studio to substantially implement the Zero-Cost Blueprint.
+Talk intelligence direction is:
 
-### Intended Talk architecture
+**research -> verification -> counter-perspective/debate -> synthesis -> rundown -> host/production assets -> owned Production Package**
 
-#### Owned data model
+### Talk frontend wiring already moved to owned path in Preview
 
-Move Talk configuration and generated/runtime data into Neon ownership, including at minimum:
+Relevant pages/hooks include:
 
-- Talk configuration/show profile
-- Topics
-- Research items
-- Guests
-- Rundown segments
-- Assets
-- Production Package link/state
-- Live show/session runtime state
-- Segment timestamps / markers
+- `src/hooks/useTalkProduction.js`
+- `src/pages/TalkConfigure.jsx`
+- `src/pages/TalkDashboard.jsx`
+- `src/pages/TalkTopics.jsx`
+- `src/pages/TalkGuests.jsx`
+- `src/pages/TalkAssets.jsx`
+- `src/pages/TalkRundown.jsx`
 
-Design new records with future organization/show ownership in mind so multi-tenant support does not require a total rewrite later.
+Owned Preview behavior includes:
 
-#### Owned Talk API
+- configuration save/build through Production Core
+- Talk production reads through Production Core
+- refresh/rebuild through owned path
+- topic approval/unapproval through owned path
+- guest create/update/delete/confirm through owned path
+- asset approval/unapproval through owned path
 
-Create a clean `/api/creapd/talk/*` server/API boundary for:
+Unmigrated/future Talk features still include full Host Mode execution UI, OBS bridge execution, and post-show clipping/transcription implementation. The Neon event/session foundation exists so these can be added without redesigning persistence.
 
-- configuration read/write
-- research generation
-- topic/research state
-- guests
-- rundown generation/update
-- assets
-- package generation/dispatch
-- live session/segment state
+## 8. Talk Acceptance Test — NEXT GATE
 
-Avoid `base44.functions.invoke('buildTalkProduction', ...)` as the final architecture.
+Talk is **not PASSED** just because Vercel is green and the database migration exists.
 
-#### Talk Agent Engine
+The user must exercise the actual Preview flow.
 
-Split intelligence into understandable roles instead of one giant generation prompt. Blueprint-inspired roles:
+Required test sequence:
 
-- Intake/research agent
-- Fact-check / verification agent
-- Counter-perspective / debate agent
-- Broadcast dossier / synthesis agent
-- Rundown / host production agent
+1. Hard-refresh the `backend/vercel-foundation` Preview.
+2. Open Talk Studio and create/configure a new Talk production from scratch.
+3. Click **Build Production** and confirm the build completes instead of hanging/falling back.
+4. Confirm Dashboard populates.
+5. Open Research and inspect generated owned research.
+6. Open Topics; approve/unapprove at least one topic and verify persistence.
+7. Open Guests; add a guest, confirm/unconfirm, delete or edit as applicable, navigate away/back, verify persistence.
+8. Open Rundown and confirm structured segments/timing exist.
+9. Open AI Assets; approve/unapprove an asset and verify persistence.
+10. Confirm an owned Production Package exists for the Talk build.
+11. Navigate away, refresh, return, and verify the Talk production persists.
+12. If package/dispatch UI is available, send it through the shared Presentation Studio/editor path and reopen it.
+13. Intentionally trigger at least one recoverable error later in regression testing and verify a clear failure state.
+14. Confirm the tested Talk path does not silently invoke `buildTalkProduction` on Base44.
 
-The exact model provider can change. Architect the engine so primary/fallback providers can be swapped without changing Studio logic.
-
-#### Talk Host Mode
-
-Talk should eventually have a first-class live Host Mode with:
-
-- large current-segment talking points
-- countdown / elapsed time
-- upcoming segment
-- guest/context information
-- next / hold / pause controls
-- `Clip This Moment`
-- push graphic / overlay actions
-- keyboard navigation
-
-#### Live session logging
-
-Even before FFmpeg automation is finished, Talk execution should record:
-
-- real segment start/end
-- transitions
-- pauses/holds
-- clip markers
-- planned vs actual duration
-
-This metadata becomes the basis for future transcription and automated clipping.
-
-#### OBS foundation
-
-Add the architecture required for future OBS WebSocket v5 integration and browser-source overlays. It does not all need to ship in the first Talk coding pass, but Talk data/events should not be designed in a way that blocks it.
-
-## 8. Talk Acceptance Test Before Marking Green
-
-A Talk Studio migration is not green until Preview can complete and persist this path:
-
-1. Create/configure a Talk production from scratch.
-2. Generate owned research.
-3. See verification/counter-perspective outputs where applicable.
-4. Generate/edit topics and rundown.
-5. Generate assets/scripts.
-6. Create the owned Production Package.
-7. Dispatch/open the result in the shared Presentation Studio where appropriate.
-8. Open/exit/reopen editor/project state without loss.
-9. Exercise Host Mode / runtime state once implemented.
-10. Navigate away, refresh, log out/in, return, and verify persistence.
-11. Intentionally cause at least one recoverable failure and verify the UI reports it clearly.
-12. Confirm the tested path does not silently fall back to a Base44 backend function.
-
-Only after the user performs the real Preview test should Talk be marked passed.
+Only after the real Preview test passes should Talk be marked **PASSED**.
 
 ## 9. Remaining Studios / Major Areas
 
-Not yet fully migrated/tested as part of the launch-ready Preview build:
+Not yet fully migrated/tested for launch-ready Preview:
 
-- Talk — current focus
+- Talk — current testing focus
 - Cooking
 - Sports
 - Cosmo
@@ -304,84 +271,60 @@ Not yet fully migrated/tested as part of the launch-ready Preview build:
 - Shared Dispatch
 - Presentation Studio/editor full regression
 - Export
-- OBS/live execution foundation
+- OBS/live execution
 - Host Mode
-- Post-show clipping/transcription foundation
-- Organizations/team/RBAC/RLS architecture
+- Post-show clipping/transcription
+- Organizations/team/RBAC/RLS
 - Final Base44 audit/removal
 
-Sequence may change based on dependency complexity, but do not promote individual Studio work to production along the way.
+Do not promote individual Studio work to production along the way.
 
 ## 10. Base44 Removal Audit — FINAL GATE
 
-Before launch, search the entire Preview codebase for at least:
+Before launch, search Preview for at least:
 
 - `@base44/sdk`
 - `base44.entities`
 - `base44.functions`
 - `base44.integrations`
-- `createClient(` Base44 construction
+- Base44 `createClient(` construction
 - Base44 app URLs / app IDs / tokens
 - compatibility adapters
 - fallback branches
 - old service-role assumptions
 
-For each remaining reference, classify it as:
-
-1. Removed/replaced,
-2. Temporary one-time migration utility,
-3. Explicitly isolated compatibility code scheduled for deletion,
-4. A blocker.
+Classify every remaining reference as removed/replaced, one-time migration utility, isolated compatibility scheduled for deletion, or blocker.
 
 Do not call CREAPD fully migrated while critical runtime behavior still depends on Base44.
 
-## 11. Work-Session Update Protocol
+## 11. Work-Session Protocol
 
-At the end of every meaningful work block, update this file with:
+After every meaningful work block, update this file with:
 
-- Date/time.
-- Branch.
-- Last code commit SHA.
-- What changed.
-- Which files/routes were touched.
-- Vercel status.
-- What the user actually tested.
-- PASS / FAIL / PARTIAL result.
-- Known blockers/non-blockers.
-- Exact next action.
+- date
+- branch
+- latest functional code commit
+- what changed
+- affected files/routes
+- Vercel status
+- database migration status
+- what the user actually tested
+- BUILT / DEPLOYED / TESTED / PASSED / PARTIAL / BLOCKED
+- known issues
+- exact next action
 
-### Status vocabulary
-
-Use these consistently:
-
-- **BUILT** — code exists.
-- **DEPLOYED** — Vercel status is successful.
-- **TESTED** — user exercised the actual Preview flow.
-- **PASSED** — acceptance behavior worked and persisted.
-- **PARTIAL** — some path worked but important behavior remains unverified/broken.
-- **BLOCKED** — cannot progress without resolving an issue.
-
-Never use “passed” just because code compiled or Vercel deployed.
+Never use **PASSED** merely because code compiled or Vercel deployed.
 
 ## 12. Current Exact Next Action
 
-**Talk Studio 2.0 architecture audit on `backend/vercel-foundation`.**
+**Run the first real end-to-end Talk Studio Preview test against Neon migration 004.**
 
-Before writing code:
+Start at `/talk/configure` on the `backend/vercel-foundation` Preview, create a fresh Talk production, click **Build Production**, and report/screenshot the first unexpected behavior if anything fails.
 
-1. Inspect current Preview Talk pages/hooks/entities/backend dependencies.
-2. Identify every Base44 read/write/function/integration used by Talk.
-3. Map the required Neon tables/data model.
-4. Map the owned `/api/creapd/talk/*` endpoints.
-5. Reuse Research/Production Core patterns where appropriate rather than creating a second architecture.
-6. Then implement the first owned Talk vertical slice in Preview.
-
-Do not touch `main` while doing this.
+Do not touch `main`.
 
 ---
 
 ### Quick resume prompt for a future session
 
-If a new chat begins, use:
-
-> Open `docs/CREAPD_PREVIEW_HANDOFF.md` from the `backend/vercel-foundation` branch of `davidhambern-ship-it/creapd`, inspect the current branch head and Vercel status, and resume from the **Current Exact Next Action**. Do not modify `main`.
+> Open `docs/CREAPD_PREVIEW_HANDOFF.md` from `backend/vercel-foundation` in `davidhambern-ship-it/creapd`, inspect the current branch head and Vercel status, and resume from **Current Exact Next Action**. Do not modify `main`.
