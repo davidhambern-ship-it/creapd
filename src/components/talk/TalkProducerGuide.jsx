@@ -11,6 +11,7 @@ const STEPS = [
   { key: 'rundown', label: 'Rundown', path: '/talk/rundown' },
   { key: 'assets', label: 'AI Assets', path: '/talk/assets' },
   { key: 'export', label: 'Export', path: '/talk/export' },
+  { key: 'live', label: 'Live Studio', path: '/talk/live' },
 ];
 
 export default function TalkProducerGuide({
