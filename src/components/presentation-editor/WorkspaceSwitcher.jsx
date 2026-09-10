@@ -1,10 +1,25 @@
 import React from 'react';
-import { Palette, Zap, FolderOpen, FileText, ShieldCheck, Play, Cpu } from 'lucide-react';
+import { Palette, Zap, FolderOpen, FileText, ShieldCheck, Play, Cpu, ArrowLeft } from 'lucide-react';
 import { WORKSPACE_MODES, WORKSPACE_ORDER } from '@/hooks/useWorkspaceMode';
 
 const ICON_MAP = { Palette, Zap, FolderOpen, FileText, ShieldCheck, Play, Cpu };
 
 export default function WorkspaceSwitcher({ activeMode, onModeChange }) {
+  if (activeMode === 'present') {
+    return (
+      <div className="cpe-ws-switcher">
+        <button
+          className="cpe-ws-btn active"
+          onClick={() => onModeChange('design')}
+          title="Back to Editor (Esc)"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span className="cpe-ws-label">Back to Editor</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="cpe-ws-switcher">
       {WORKSPACE_ORDER.map(key => {
