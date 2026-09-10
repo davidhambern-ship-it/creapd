@@ -97,6 +97,7 @@ export const ASSET_TYPE_LABELS = {
   host_intro: 'Host Intro',
   host_outro: 'Host Outro',
   guest_intro: 'Guest Intro',
+  lower_third: 'Lower Third',
   talking_points: 'Talking Points',
   discussion_questions: 'Discussion Questions',
   audience_prompts: 'Audience Prompts',
