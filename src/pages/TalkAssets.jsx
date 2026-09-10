@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { ASSET_TYPE_LABELS } from '@/lib/talkConstants';
 import { Loader2, Mic2, Sparkles, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, Volume2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -42,13 +43,13 @@ export default function TalkAssets() {
     refresh();
   };
 
-  // Group assets by type
   const grouped = assets.reduce((acc, asset) => {
     const type = asset.asset_type;
     if (!acc[type]) acc[type] = [];
     acc[type].push(asset);
     return acc;
   }, {});
+  const approvedCount = assets.filter(asset => asset.status === 'approved').length;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -59,6 +60,21 @@ export default function TalkAssets() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">AI-generated host scripts, talking points, prompts, and production notes</p>
       </div>
+
+      <TalkProducerGuide
+        currentStep="assets"
+        title="Review the material CREAPD prepared for the people running the show"
+        instructions={[
+          'Open the important assets and read them as if you were about to go on air. Check scripts, questions, prompts, and production notes for tone and usefulness.',
+          'Approve the assets you are comfortable using. You do not need to approve optional promotional material you do not plan to use.',
+          'When the production material is ready, move to Export for the final package check.',
+        ]}
+        readyText={`${approvedCount} of ${assets.length} asset${assets.length === 1 ? '' : 's'} approved`}
+        nextPath="/talk/export"
+        nextLabel="Final Package & Export"
+        nextDescription="Export is the last checkpoint before you take the production package out of Talk Studio."
+        note="Approval means ready for use. Unapproved assets remain available for review and do not have to block the rest of the show."
+      />
 
       {assets.length === 0 ? (
         <div className="glass-panel p-8 text-center">
