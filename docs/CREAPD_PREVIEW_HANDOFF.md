@@ -287,18 +287,22 @@ User test on 2026-09-10:
 
 Treat local pairing/auth, heartbeat/state, scene discovery, CREAPD scene commands, and scene-state round-trip as **TESTED + PASSED**.
 
-### Local real Program Monitor — BUILT + DEPLOYED, NOT YET USER TESTED
+### Local real Program Monitor — USER TESTED, BLACK-FRAME FIX DEPLOYED, RETEST REQUIRED
 
-Latest functional commit:
+Initial implementation commit:
 
 `735c5fc6d0c2a053bea7c312bea7e9197988a50f` — `Mount local OBS program monitor in CREAPD Live`
 
-Vercel: **SUCCESS / DEPLOYED** on 2026-09-10.
+Black-frame repair commit:
+
+`09ce2bd4e712bdaf7041cb2c6468fc95d731aca4` — `Attach OBS program stream after video mount`
+
+Vercel for `09ce2bd4...`: **SUCCESS / DEPLOYED** on 2026-09-10.
 
 Files:
 
-- `src/components/talk/TalkProgramMonitor.jsx` — new local Program Monitor layer
-- `src/components/creap/CREAPModeLayout.jsx` — mounts Program Monitor on the authenticated shell; component self-scopes to `/talk/live`
+- `src/components/talk/TalkProgramMonitor.jsx` — local Program Monitor layer and black-frame repair
+- `src/components/creap/CREAPModeLayout.jsx` — mounts Program Monitor on authenticated shell; component self-scopes to `/talk/live`
 
 Implementation direction:
 
@@ -317,18 +321,42 @@ Key behavior:
 - stops media tracks cleanly when feed closes/unmounts
 - preserves the existing Program Monitor + Teleprompter desktop layout by rendering into the existing monitor box rather than restructuring `TalkLive.jsx`
 
+User test on 2026-09-10 of the initial deployed monitor:
+
+- CREAPD showed **LOCAL PROGRAM FEED**
+- selected device displayed **OBS Virtual Camera**
+- current scene displayed **Scene**
+- OBS bridge badge remained connected and showed **OBS Connected · Scene**
+- the Program Monitor picture area itself remained black
+
+This test proves browser device discovery/acquisition and OBS bridge state were functioning, but real picture rendering was **PARTIAL / FAILED**.
+
+Root cause found in `TalkProgramMonitor.jsx`:
+
+- `openDevice()` acquired and stored the MediaStream while `previewState` was still `requesting`
+- the `<video>` element only renders when `previewState === 'live'`
+- therefore `videoRef.current` was null at the moment the code tried to assign `srcObject`
+- state then changed to `live`, rendering an empty video element with no stream attached
+
+Repair in `09ce2bd4...`:
+
+- stream acquisition still occurs first
+- state changes to `live`
+- a dedicated effect runs after the video element mounts
+- that effect assigns the stored `streamRef.current` to `videoRef.current.srcObject` and invokes playback
+
 No Neon schema/database changes were required for this slice.
 
-Acceptance still required from Berna in real Preview:
+Retest acceptance required from Berna:
 
-1. Start **OBS Virtual Camera** in OBS.
-2. Hard-refresh CREAPD Live while the already-passed OBS bridge remains running.
-3. Click **Open Program Feed** and allow Chrome camera permission if prompted.
-4. Confirm actual OBS Program picture appears in the Program Monitor.
-5. Use **Take** to switch OBS scenes and confirm the picture inside CREAPD visibly follows the Program output.
+1. Keep OBS bridge running and OBS Virtual Camera started.
+2. Hard-refresh CREAPD Live.
+3. Open the Program Feed again.
+4. Confirm actual OBS Program picture appears instead of black.
+5. Use CREAPD **Take** to switch scenes and confirm the displayed picture follows the OBS Program output.
 6. Confirm Teleprompter/show controls remain unaffected.
 
-Do **not** mark the real Program Monitor PASSED until those behaviors are exercised successfully.
+Do **not** mark the real Program Monitor PASSED until the repaired build is successfully exercised.
 
 Still future after monitor acceptance:
 
@@ -361,9 +389,11 @@ Still future after monitor acceptance:
 - **Take** command changes the actual OBS Program scene
 - scene change result round-trips back into CREAPD/Neon
 
-### BUILT + DEPLOYED / NEEDS USER TEST
+### TESTED / RETEST REQUIRED
 
-- local OBS Virtual Camera -> CREAPD Program Monitor video path (`735c5fc6...`)
+- local OBS Virtual Camera -> CREAPD Program Monitor device acquisition and state display
+- initial picture rendering exposed a black-frame mount-order bug
+- repair commit `09ce2bd4...` is BUILT + DEPLOYED but not yet user-tested
 
 ### STILL PARTIAL / FUTURE
 
@@ -383,20 +413,18 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**User-test the deployed local Program Monitor in Preview.**
+**Retest the repaired local Program Monitor in Preview.**
 
 Immediate acceptance sequence:
 
-1. Keep the CREAPD OBS bridge running and connected.
-2. In OBS click **Start Virtual Camera**.
-3. Hard-refresh CREAPD Live.
-4. Click **Open Program Feed** in the top-left Program Monitor.
-5. Allow camera permission in Chrome if asked.
-6. Confirm the real OBS Program picture appears locally in CREAPD.
-7. Switch from `Scene` to `Scene 2` (or another scene) using CREAPD **Take** and confirm the Program Monitor visibly follows the switch.
-8. Verify Teleprompter and existing show controls still behave normally.
+1. Keep the CREAPD OBS bridge running and OBS Virtual Camera started.
+2. Hard-refresh CREAPD Live.
+3. Click **Open Program Feed**.
+4. Confirm the real OBS Program picture now appears locally in CREAPD.
+5. Switch from `Scene` to `Scene 2` (or another scene) using CREAPD **Take** and confirm the Program Monitor visibly follows the switch.
+6. Verify Teleprompter and existing show controls still behave normally.
 
-If successful, mark local Program Monitor **TESTED + PASSED** and move directly to browser-source overlays/lower thirds. If it fails, capture the exact in-monitor error/permission/device state and patch Preview only.
+If successful, mark local Program Monitor **TESTED + PASSED** and move directly to browser-source overlays/lower thirds. If it still fails, capture the exact Program Monitor state and patch Preview only.
 
 Separate Talk cleanup still remains for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
 
