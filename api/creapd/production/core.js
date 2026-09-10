@@ -1,6 +1,7 @@
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
+import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
 import { runPresentationStudioWorkers } from '../../../server/presentationStudioWorkers.js';
 import {
@@ -46,7 +47,7 @@ function success(response, action, payload = {}) {
   });
 }
 
-async function handlePost(request, response, sql, ownerUserId) {
+async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   const body = request.body && typeof request.body === 'object' ? request.body : {};
   const action = String(body.action || '').trim();
 
@@ -55,6 +56,17 @@ async function handlePost(request, response, sql, ownerUserId) {
   }
 
   try {
+    if (action.startsWith('talk_')) {
+      const result = await runTalkStudioAction({
+        sql,
+        ownerUserId,
+        ownerEmail,
+        action,
+        body,
+      });
+      return success(response, action, result);
+    }
+
     switch (action) {
       case 'approve_package_and_handoff': {
         const result = await handoffPackageToPresentationStudio({
@@ -302,7 +314,12 @@ export default async function handler(request, response) {
     const ownerUserId = String(user.id);
 
     if (request.method === 'POST') {
-      return await handlePost(request, response, sql, ownerUserId);
+      return await handlePost(request, response, sql, ownerUserId, user.email || null);
+    }
+
+    if (String(request.query?.studio || '').toLowerCase() === 'talk') {
+      const talkData = await readTalkStudio(sql, ownerUserId, request.query?.configuration_id);
+      return success(response, 'talk_read', talkData);
     }
 
     const data = await readProductionCore(sql, ownerUserId, {
