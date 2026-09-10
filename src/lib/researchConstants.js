@@ -92,7 +92,8 @@ export const TOPIC_STATUS_LABELS = {
   selected: 'Selected',
   used: 'Used',
   rejected: 'Rejected',
-  archived: 'Archived'
+  archived: 'Archived',
+  failed: 'Failed'
 };
 
 export const ICON_MAP = {
