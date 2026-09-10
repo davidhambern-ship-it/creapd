@@ -4,6 +4,11 @@ import { readProductionCore } from '../../../server/productionCore.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
+import {
+  isObsBridgeAgentAction,
+  runObsBridgeAgentAction,
+  runObsBridgeUserAction,
+} from '../../../server/obsBridge.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
 import { runPresentationStudioWorkers } from '../../../server/presentationStudioWorkers.js';
 import {
@@ -61,6 +66,16 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   }
 
   try {
+    if (action.startsWith('obs_')) {
+      const result = await runObsBridgeUserAction({
+        sql,
+        ownerUserId,
+        action,
+        body,
+      });
+      return success(response, action, result);
+    }
+
     // Talk's expensive AI work is deliberately split into separate requests.
     // Research is checkpointed in Neon before the production stage starts, so
     // a later failure can be retried without losing completed intelligence.
@@ -336,6 +351,20 @@ export default async function handler(request, response) {
 
   try {
     const sql = getSql();
+
+    // The desktop/local OBS bridge cannot reuse a browser login session. It
+    // authenticates with a one-time-shown, hashed device token and only gets
+    // access to its own heartbeat/command queue operations. Keeping this on the
+    // existing Production Core route avoids another Vercel function.
+    if (request.method === 'POST') {
+      const body = request.body && typeof request.body === 'object' ? request.body : {};
+      const action = String(body.action || '').trim();
+      if (isObsBridgeAgentAction(action)) {
+        const result = await runObsBridgeAgentAction({ sql, action, body });
+        return success(response, action, result);
+      }
+    }
+
     const { user } = await requireCreapdUser(request);
     const ownerUserId = String(user.id);
 
@@ -361,11 +390,12 @@ export default async function handler(request, response) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    if ([400, 401, 403].includes(error?.status)) {
+    if ([400, 401, 403, 404, 409].includes(error?.status)) {
       return response.status(error.status).json({
         ok: false,
         service: 'creapd-production-core',
         error: error.code || 'authentication_required',
+        diagnostic: safeError(error),
       });
     }
 
