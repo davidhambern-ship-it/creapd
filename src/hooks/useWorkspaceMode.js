@@ -50,7 +50,7 @@ export const WORKSPACE_MODES = {
   review: {
     label: 'Review',
     icon: 'ShieldCheck',
-    focus: 'Verification',
+    focus: 'Manual verification',
     canvasFlex: 4,
     timelineFlex: 3,
     sidePanelWidth: 420,
@@ -69,6 +69,8 @@ export const WORKSPACE_MODES = {
     showSlideRail: false,
     sidePanel: 'none',
   },
+  // Kept in the registry for the later worker-training phase, but deliberately
+  // removed from WORKSPACE_ORDER so normal Editor use cannot invoke metered AI.
   ai: {
     label: 'AI',
     icon: 'Cpu',
@@ -82,11 +84,16 @@ export const WORKSPACE_MODES = {
   },
 };
 
-export const WORKSPACE_ORDER = ['design', 'animate', 'media', 'script', 'review', 'present', 'ai'];
+export const WORKSPACE_ORDER = ['design', 'animate', 'media', 'script', 'review', 'present'];
 
 export function useWorkspaceMode() {
   const [workspaceMode, setWorkspaceMode] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY) || 'design'; } catch { return 'design'; }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return WORKSPACE_ORDER.includes(saved) ? saved : 'design';
+    } catch {
+      return 'design';
+    }
   });
 
   const [modePrefs, setModePrefs] = useState(() => {
@@ -94,8 +101,9 @@ export function useWorkspaceMode() {
   });
 
   const changeMode = useCallback((mode) => {
-    setWorkspaceMode(mode);
-    try { localStorage.setItem(STORAGE_KEY, mode); } catch {}
+    const safeMode = WORKSPACE_ORDER.includes(mode) ? mode : 'design';
+    setWorkspaceMode(safeMode);
+    try { localStorage.setItem(STORAGE_KEY, safeMode); } catch {}
   }, []);
 
   const updateModePref = useCallback((key, value) => {
