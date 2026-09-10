@@ -66,6 +66,51 @@ function assetRequested(automation, key) {
   return automation.length === 0 || automation.includes(key);
 }
 
+function buildIdentityLowerThirdAssets(configuration, guests) {
+  const productionName = clean(configuration.production_name, 'Talk Show');
+  const hostName = clean(configuration.host_name);
+  const label = clean(configuration.station_name, 'CREAPD LIVE');
+  const lowerThirds = [];
+
+  if (hostName || productionName) {
+    lowerThirds.push({
+      type: 'lower_third',
+      title: `Lower Third: ${hostName || productionName}`,
+      content: json({
+        title: hostName || productionName,
+        subtitle: hostName ? `Host · ${productionName}` : clean(configuration.show_format),
+        label,
+        kind: 'host',
+      }),
+      associatedTopic: '',
+    });
+  }
+
+  for (const guest of guests || []) {
+    const guestName = clean(guest.guest_name);
+    if (!guestName) continue;
+    const role = clean(guest.title_role);
+    const organization = clean(guest.organization);
+    const subtitle = role && organization
+      ? `${role} · ${organization}`
+      : role || organization || productionName;
+
+    lowerThirds.push({
+      type: 'lower_third',
+      title: `Lower Third: ${guestName}`,
+      content: json({
+        title: guestName,
+        subtitle,
+        label,
+        kind: 'guest',
+      }),
+      associatedTopic: '',
+    });
+  }
+
+  return lowerThirds;
+}
+
 function buildProductionPrompt(configuration, topics, researchItems, guests) {
   const automation = parseArray(configuration.ai_automation);
   const compactTopics = topics.map(topic => ({
@@ -299,6 +344,11 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
     addAsset('Generate Production Notes', 'production_notes', 'Production Notes', data.production_notes);
     addAsset('Generate Host Script', 'host_script', 'Host Script', data.host_script);
     addAsset('Generate Co-Host Script', 'cohost_script', 'Co-Host Script', data.cohost_script);
+
+    // Identity lower thirds are deterministic production assets, not creative AI copy.
+    // They must always exist for Live graphics even when an older configuration predates
+    // lower-third automation options or the user did not request promotional assets.
+    assets.push(...buildIdentityLowerThirdAssets(configuration, guests));
 
     if (assetRequested(automation, 'Generate Talking Points')) {
       for (const topic of topics) {
