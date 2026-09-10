@@ -7,13 +7,17 @@ import { creapdApi } from '@/api/creapdClient';
 
 export default function TalkLiveRestartControl() {
   const location = useLocation();
+  if (location.pathname !== '/talk/live') return null;
+  return <TalkLiveRestartInner />;
+}
+
+function TalkLiveRestartInner() {
   const [searchParams] = useSearchParams();
   const configId = searchParams.get('config_id') || undefined;
   const { config, segments, session, source, loading } = useTalkProduction(configId);
   const [restarting, setRestarting] = useState(false);
   const [error, setError] = useState('');
 
-  if (location.pathname !== '/talk/live') return null;
   if (loading || source !== 'neon' || !config || session?.status !== 'complete') return null;
 
   const handleRestart = async () => {
