@@ -34,8 +34,8 @@ export function useTalkProduction(configId) {
 
     try {
       if (ownedPreview) {
-        const query = configId ? `?configuration_id=${encodeURIComponent(configId)}` : '';
-        const data = await creapdApi.get(`/talk/production${query}`);
+        const suffix = configId ? `&configuration_id=${encodeURIComponent(configId)}` : '';
+        const data = await creapdApi.get(`/production/core?studio=talk${suffix}`);
         const activeConfig = data?.configuration || null;
 
         if (!activeConfig) {
