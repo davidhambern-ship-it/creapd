@@ -231,7 +231,7 @@ function Get-CreapdOverlayHtml([string]$Title, [string]$Subtitle, [string]$Label
   $safeSubtitle = [Net.WebUtility]::HtmlEncode([string]$Subtitle)
   $safeLabel = [Net.WebUtility]::HtmlEncode([string]$Label)
   $stateClass = $(if ($Visible) { 'show' } else { 'hidden' })
-  $subtitleMarkup = $(if ([string]::IsNullOrWhiteSpace($safeSubtitle)) { '' } else { "<div class=\"subtitle\">$safeSubtitle</div>" })
+  $subtitleMarkup = $(if ([string]::IsNullOrWhiteSpace($safeSubtitle)) { '' } else { "<div class=`"subtitle`">$safeSubtitle</div>" })
 
   return @"
 <!doctype html>
@@ -444,7 +444,8 @@ function Run-CreapdCommand($Command) {
           recording_paused = $script:RecordingPaused
           recording_timecode = $script:RecordingTimecode
         }
-        foreach ($key in (Get-OverlayResult).Keys) { $result[$key] = (Get-OverlayResult)[$key] }
+        $overlay = Get-OverlayResult
+        foreach ($key in $overlay.Keys) { $result[$key] = $overlay[$key] }
         Complete-CreapdCommand $Command $true $result
       }
 
