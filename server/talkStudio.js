@@ -452,18 +452,58 @@ export async function runTalkStudioAction({ sql, ownerUserId, ownerEmail, action
 
     case 'talk_start_session': {
       const configuration = await requireConfiguration(sql, ownerUserId, body.configuration_id);
-      let [session] = await sql`SELECT * FROM creapd.talk_sessions WHERE configuration_id=${configuration.id} AND owner_user_id=${String(ownerUserId)} ORDER BY updated_at DESC LIMIT 1`;
-      if (!session) {
+      const ownerId = String(ownerUserId);
+      let [session] = await sql`
+        SELECT * FROM creapd.talk_sessions
+        WHERE configuration_id=${configuration.id} AND owner_user_id=${ownerId}
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `;
+
+      const completedSession = session?.status === 'complete' ? session : null;
+      if (!session || completedSession) {
+        if (completedSession) {
+          await sql`
+            UPDATE creapd.talk_segments
+            SET runtime_status='queued', actual_start_at=NULL, actual_end_at=NULL,
+                actual_duration_seconds=NULL, clip_marker_count=0, updated_at=now()
+            WHERE configuration_id=${configuration.id} AND owner_user_id=${ownerId}
+          `;
+        }
+
+        const hostViewState = completedSession
+          ? JSON.stringify({ run_mode: 'restart', previous_session_id: completedSession.id })
+          : '{}';
+
         [session] = await sql`
-          INSERT INTO creapd.talk_sessions (id, configuration_id, owner_user_id, episode_id, status, started_at, host_view_state)
-          VALUES (${randomUUID()}, ${configuration.id}, ${String(ownerUserId)}, ${configuration.episode_id || null}, 'live', now(), '{}'::jsonb)
+          INSERT INTO creapd.talk_sessions (
+            id, configuration_id, owner_user_id, episode_id, status, started_at, ended_at,
+            paused_at, elapsed_seconds, obs_connection_status, host_view_state
+          ) VALUES (
+            ${randomUUID()}, ${configuration.id}, ${ownerId}, ${configuration.episode_id || null},
+            'live', now(), NULL, NULL, 0, 'disconnected', ${hostViewState}::jsonb
+          )
           RETURNING *
         `;
       } else {
-        [session] = await sql`UPDATE creapd.talk_sessions SET status='live', started_at=COALESCE(started_at, now()), ended_at=NULL, paused_at=NULL, updated_at=now() WHERE id=${session.id} AND owner_user_id=${String(ownerUserId)} RETURNING *`;
+        [session] = await sql`
+          UPDATE creapd.talk_sessions
+          SET status='live', started_at=COALESCE(started_at, now()), ended_at=NULL,
+              paused_at=NULL, updated_at=now()
+          WHERE id=${session.id} AND owner_user_id=${ownerId}
+          RETURNING *
+        `;
       }
-      await sql`INSERT INTO creapd.talk_events (id, session_id, configuration_id, owner_user_id, event_type, payload) VALUES (${randomUUID()}, ${session.id}, ${configuration.id}, ${String(ownerUserId)}, 'session_start', '{}'::jsonb)`;
-      return { session: withDates(session) };
+
+      await sql`
+        INSERT INTO creapd.talk_events (
+          id, session_id, configuration_id, owner_user_id, event_type, payload
+        ) VALUES (
+          ${randomUUID()}, ${session.id}, ${configuration.id}, ${ownerId}, 'session_start',
+          ${JSON.stringify(completedSession ? { source: 'creapd-live', new_run: true, previous_session_id: completedSession.id } : { source: 'creapd-live', new_run: false })}::jsonb
+        )
+      `;
+      return { session: withDates(session), new_run: Boolean(completedSession) };
     }
 
     case 'talk_session_event':
