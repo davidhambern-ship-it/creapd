@@ -12,6 +12,8 @@ const USER_COMMANDS = new Set([
   'stop_recording',
   'pause_recording',
   'resume_recording',
+  'show_lower_third',
+  'clear_overlay',
 ]);
 
 function clean(value, fallback = '') {
@@ -167,12 +169,22 @@ async function enqueueCommand(sql, ownerUserId, body) {
     throw makeError('Unsupported OBS command', 'OBS_COMMAND_UNSUPPORTED');
   }
 
-  const payload = body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
-    ? body.payload
+  let payload = body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload)
+    ? { ...body.payload }
     : {};
 
   if (commandType === 'set_scene' && !clean(payload.scene_name)) {
     throw makeError('scene_name is required', 'OBS_SCENE_NAME_REQUIRED');
+  }
+
+  if (commandType === 'show_lower_third') {
+    const title = clean(payload.title);
+    if (!title) throw makeError('Lower-third title is required', 'OBS_LOWER_THIRD_TITLE_REQUIRED');
+    payload = {
+      title: title.slice(0, 120),
+      subtitle: clean(payload.subtitle).slice(0, 180),
+      label: clean(payload.label, 'CREAPD LIVE').slice(0, 40),
+    };
   }
 
   const [command] = await sql`
