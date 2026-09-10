@@ -207,23 +207,7 @@ This route is standalone/full-screen.
 
 ### First execution cockpit — USER TESTED + PASSED
 
-User manually tested:
-
-- READY / ON AIR / PAUSED / SHOW ENDED state
-- elapsed clock
-- current segment
-- planned/elapsed segment timing
-- host notes
-- next segment
-- Run of Show
-- Start Show
-- Pause / Resume
-- Clip This Moment
-- Next Segment
-- leaving/re-entering the studio
-- End Show
-
-User reported it **worked seamlessly**.
+User manually tested READY / ON AIR / PAUSED / SHOW ENDED state, elapsed/current/planned timing, host notes, next segment, Run of Show, Start/Pause/Resume/Clip/Next/End, and live-session re-entry. User reported it **worked seamlessly**.
 
 ### Teleprompter layout — USER VISUALLY ACCEPTED
 
@@ -239,17 +223,7 @@ Desktop layout:
 - below that: **Run of Show**
 - sticky Show Control at bottom
 
-Teleprompter behavior:
-
-- topic-specific host script when available
-- otherwise matched topic talking points
-- otherwise segment notes
-- otherwise global host script
-- resets scroll to top when the active segment changes
-- `A−` / `A+` text sizing
-- conversation/debate prompts below main copy when available
-
-User reviewed the new side-by-side layout and said **“it looks good.”**
+Teleprompter behavior includes topic-specific script, talking-point/notes/global fallbacks, scroll reset on segment change, `A−` / `A+`, and conversation/debate prompts. User said the layout **“looks good.”**
 
 ### Repeat-run behavior — USER TESTED + PASSED
 
@@ -259,15 +233,13 @@ Product rule:
 
 Backend repair: `805c4f06514d3556151b93fdf988f29f949a83bd` — `Allow completed Talk shows to start a new run`
 
-Frontend restart control is `src/components/talk/TalkLiveRestartControl.jsx`, mounted only for `/talk/live` and labeled **Start New Run** when the latest session is complete.
+Frontend restart control: `src/components/talk/TalkLiveRestartControl.jsx`, mounted only for `/talk/live`, labeled **Start New Run** when latest session is complete.
 
 Latest functional restart commit before OBS work:
 
 `acfb320d8d56984f5460876cedf9d4ed1344fddb` — `Scope CREAPD Live restart data load to live route`
 
-Vercel: **SUCCESS / DEPLOYED**.
-
-User manually tested the completed-show restart flow and reported that it worked exactly as intended. Repeat-run behavior is **PASSED**.
+Vercel: **SUCCESS / DEPLOYED**. User manually tested it and repeat-run behavior is **PASSED**.
 
 Important data-model note: previous session/event history is retained. Current Talk segment rows are shared production rows, so per-run runtime fields are reset for the new run; historical run reconstruction should use the session/event log until a future per-session segment-run table is added.
 
@@ -287,11 +259,6 @@ Neon migration `005` was prepared/tested on a temporary branch, explicitly appro
 - `creapd.obs_bridges`
 - `creapd.obs_commands`
 
-Migration record:
-
-- version `005`
-- description: `Owned local OBS bridge pairing, heartbeat, scene state, and command queue`
-
 Architecture:
 
 - OBS stays local on the creator's computer.
@@ -307,40 +274,67 @@ Relevant commits:
 - `f097c600743a1b3e11c3b5127c818cdae8e264e3` — improved OBS handshake diagnostics
 - `5709f06cf2b4a711d5f5061a0f5503cf6b1149e1` — Preview protection bypass support; Vercel **SUCCESS / DEPLOYED**
 - `70b54a4da21f851732c413bf0e525ace6f528d18` — sync Program Monitor OBS badge/copy with live bridge state
-- `2445285b8612d1339e4ca63a42289877a9750ebe` — previous handoff checkpoint; Vercel **SUCCESS / DEPLOYED**
 
 User test on 2026-09-10:
 
-- PowerShell bridge launched successfully.
-- OBS WebSocket authentication succeeded.
-- Bridge reported `OBS connected. Scene: Scene`.
-- CREAPD Live OBS Control changed green and displayed **“OBS is under CREAPD control.”**
-- UI showed current scene `Scene`, OBS Studio `32.1.2`, WebSocket `5.7.3`.
-- Neon independently verified bridge status `connected`, `obs_connected = true`, endpoint `ws://127.0.0.1:4455`, current heartbeat, and `last_error = null`.
-- Berna created/used a second scene and clicked **Take** in CREAPD Live.
-- Actual OBS Program scene changed from `Scene` to `Scene 2`.
-- CREAPD/bridge round-trip returned `current_scene = Scene 2`.
-- Berna then changed back to `Scene`; that command also completed successfully.
-- Neon independently verified both `set_scene` commands as `completed`, with no errors and the expected returned current-scene values.
+- bridge launched and OBS WebSocket authentication succeeded
+- CREAPD Live showed **“OBS is under CREAPD control”**
+- UI returned OBS Studio `32.1.2`, WebSocket `5.7.3`, current scene
+- Neon independently verified connected heartbeat with `last_error = null`
+- Berna clicked **Take** in CREAPD Live and actual OBS changed from `Scene` to `Scene 2`
+- scene result round-tripped back into CREAPD/Neon
+- changing back to `Scene` also completed successfully
 
-Treat the following as **TESTED + PASSED**:
+Treat local pairing/auth, heartbeat/state, scene discovery, CREAPD scene commands, and scene-state round-trip as **TESTED + PASSED**.
 
-- local OBS pairing/authentication
-- heartbeat/state round-trip
-- OBS scene discovery
-- CREAPD Live -> command queue -> local bridge -> OBS scene change
-- OBS -> bridge -> CREAPD/Neon current-scene round-trip
+### Local real Program Monitor — BUILT + DEPLOYED, NOT YET USER TESTED
 
-The first real OBS control slice is complete.
+Latest functional commit:
 
-Still not PASSED:
+`735c5fc6d0c2a053bea7c312bea7e9197988a50f` — `Mount local OBS program monitor in CREAPD Live`
 
-- real OBS program-picture/video rendering inside the CREAPD Program Monitor
+Vercel: **SUCCESS / DEPLOYED** on 2026-09-10.
+
+Files:
+
+- `src/components/talk/TalkProgramMonitor.jsx` — new local Program Monitor layer
+- `src/components/creap/CREAPModeLayout.jsx` — mounts Program Monitor on the authenticated shell; component self-scopes to `/talk/live`
+
+Implementation direction:
+
+`OBS Program -> OBS Virtual Camera -> browser getUserMedia() -> CREAPD Program Monitor`
+
+Key behavior:
+
+- video remains entirely local to the creator's computer; CREAPD does not relay frames through Vercel or store them in Neon
+- monitor audio is intentionally disabled/muted to prevent echo
+- monitor polls owned OBS bridge state and only enables the feed when OBS control is connected
+- detects OBS Virtual Camera when browser device labels are available
+- asks for browser camera permission when necessary, then re-enumerates devices
+- remembers selected program-video device locally using `localStorage`
+- provides a manual video-device selector if OBS Virtual Camera cannot be auto-matched
+- shows current OBS scene alongside the local feed
+- stops media tracks cleanly when feed closes/unmounts
+- preserves the existing Program Monitor + Teleprompter desktop layout by rendering into the existing monitor box rather than restructuring `TalkLive.jsx`
+
+No Neon schema/database changes were required for this slice.
+
+Acceptance still required from Berna in real Preview:
+
+1. Start **OBS Virtual Camera** in OBS.
+2. Hard-refresh CREAPD Live while the already-passed OBS bridge remains running.
+3. Click **Open Program Feed** and allow Chrome camera permission if prompted.
+4. Confirm actual OBS Program picture appears in the Program Monitor.
+5. Use **Take** to switch OBS scenes and confirm the picture inside CREAPD visibly follows the Program output.
+6. Confirm Teleprompter/show controls remain unaffected.
+
+Do **not** mark the real Program Monitor PASSED until those behaviors are exercised successfully.
+
+Still future after monitor acceptance:
+
 - browser-source overlays/lower thirds
 - automatic segment-to-scene mapping
 - final one-click end-user bridge/desktop helper packaging
-
-The Program Monitor OBS badge/state sync is **BUILT + DEPLOYED**; it should be visually rechecked during the next Program Monitor test rather than treated as separately PASSED yet.
 
 ## 10. Talk Acceptance Status
 
@@ -367,6 +361,10 @@ The Program Monitor OBS badge/state sync is **BUILT + DEPLOYED**; it should be v
 - **Take** command changes the actual OBS Program scene
 - scene change result round-trips back into CREAPD/Neon
 
+### BUILT + DEPLOYED / NEEDS USER TEST
+
+- local OBS Virtual Camera -> CREAPD Program Monitor video path (`735c5fc6...`)
+
 ### STILL PARTIAL / FUTURE
 
 - guest shortlist/invite/confirm semantics
@@ -374,7 +372,6 @@ The Program Monitor OBS badge/state sync is **BUILT + DEPLOYED**; it should be v
 - shared Production Package -> Presentation Studio/editor handoff for Talk
 - legacy monolithic Talk build retirement
 - user-facing Show Book / ZIP export
-- real Program Monitor/video preview
 - browser overlays/lower thirds
 - automatic segment-to-scene mappings
 - teleprompter auto-scroll / mirror / detached display
@@ -386,17 +383,20 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Begin the real Program Monitor layer on Preview now that owned OBS scene control is PASSED.**
+**User-test the deployed local Program Monitor in Preview.**
 
-Immediate goals:
+Immediate acceptance sequence:
 
-1. Inspect the current bridge/OBS capabilities and choose the safest zero-cost way to display the real OBS Program picture inside CREAPD Live without making Vercel transport local media.
-2. Keep the existing Program Monitor + Teleprompter desktop layout unchanged.
-3. Make the Program Monitor show real broadcast picture/state where feasible, with an explicit fallback when local preview transport is unavailable.
-4. Recheck that the Program Monitor OBS connected badge matches the already-passed bridge state.
-5. Add browser-source overlay/lower-third command architecture after the monitor path is stable.
-6. Preserve the already-passed Talk session state machine and OBS scene command flow.
-7. Preview only; do not touch `main`.
+1. Keep the CREAPD OBS bridge running and connected.
+2. In OBS click **Start Virtual Camera**.
+3. Hard-refresh CREAPD Live.
+4. Click **Open Program Feed** in the top-left Program Monitor.
+5. Allow camera permission in Chrome if asked.
+6. Confirm the real OBS Program picture appears locally in CREAPD.
+7. Switch from `Scene` to `Scene 2` (or another scene) using CREAPD **Take** and confirm the Program Monitor visibly follows the switch.
+8. Verify Teleprompter and existing show controls still behave normally.
+
+If successful, mark local Program Monitor **TESTED + PASSED** and move directly to browser-source overlays/lower thirds. If it fails, capture the exact in-monitor error/permission/device state and patch Preview only.
 
 Separate Talk cleanup still remains for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
 
