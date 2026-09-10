@@ -49,11 +49,20 @@ const guestSchema = objectSchema({
   talking_points: { type: 'string' },
 });
 
-const talkResearchSchema = objectSchema({
-  research_items: arraySchema(researchItemSchema),
-  topics: arraySchema(topicSchema),
-  suggested_guests: arraySchema(guestSchema),
-});
+function buildTalkResearchSchema(topicBatch) {
+  const topicNameSchema = { type: 'string', enum: topicBatch };
+  return objectSchema({
+    research_items: arraySchema(objectSchema({
+      ...researchItemSchema.properties,
+      topic_name: topicNameSchema,
+    })),
+    topics: arraySchema(objectSchema({
+      ...topicSchema.properties,
+      topic_name: topicNameSchema,
+    })),
+    suggested_guests: arraySchema(guestSchema),
+  });
+}
 
 const VALID_RELEVANCE = new Set(['high', 'medium', 'low']);
 const VALID_VERIFICATION = new Set(['verified', 'mixed', 'unverified', 'warning']);
@@ -141,7 +150,7 @@ OUTPUT CONTRACT:
 - Cover EVERY topic in this batch and no unrelated topics.
 - topic_name MUST exactly match one of these input strings: ${JSON.stringify(topicBatch)}.
 - Return exactly one topic dossier per input topic.
-- Return 1-2 concise research items per input topic.
+- Return 1-2 concise research items per input topic when useful. The topic dossier is the authoritative coverage record.
 - Each research summary: under 60 words.
 - generated_summary: under 100 words per topic.
 - talking_points: under 120 words per topic.
@@ -202,20 +211,64 @@ async function clearTopicBatch(sql, ownerId, configId, topicBatch) {
   }
 }
 
-function validateBatch(data, topicBatch) {
-  const topics = Array.isArray(data?.topics) ? data.topics : [];
-  const researchItems = Array.isArray(data?.research_items) ? data.research_items : [];
-  const returnedTopics = new Set(topics.map(topic => canonical(topic?.topic_name)));
-  const researchTopics = new Set(researchItems.map(item => canonical(item?.topic_name)));
-  const missingDossiers = topicBatch.filter(topic => !returnedTopics.has(canonical(topic)));
-  const missingResearch = topicBatch.filter(topic => !researchTopics.has(canonical(topic)));
+function normalizeAndValidateBatch(data, topicBatch) {
+  const rawTopics = Array.isArray(data?.topics) ? data.topics : [];
+  const rawResearchItems = Array.isArray(data?.research_items) ? data.research_items : [];
+  const dossierByTopic = new Map(rawTopics.map(topic => [canonical(topic?.topic_name), topic]));
+  const missingDossiers = topicBatch.filter(topic => !dossierByTopic.has(canonical(topic)));
 
-  if (missingDossiers.length || missingResearch.length) {
-    const error = new Error('Talk research batch returned incomplete topic coverage');
+  if (missingDossiers.length) {
+    const error = new Error('Talk research batch returned incomplete topic dossier coverage');
     error.code = 'TALK_RESEARCH_BATCH_INCOMPLETE';
-    error.details = { missing_dossiers: missingDossiers, missing_research: missingResearch };
+    error.details = { missing_dossiers: missingDossiers };
     throw error;
   }
+
+  const normalizedTopics = topicBatch.map(topicName => ({
+    ...dossierByTopic.get(canonical(topicName)),
+    topic_name: topicName,
+  }));
+
+  const normalizedResearchItems = rawResearchItems
+    .filter(item => topicBatch.some(topic => canonical(topic) === canonical(item?.topic_name)))
+    .map(item => {
+      const inputTopic = topicBatch.find(topic => canonical(topic) === canonical(item?.topic_name));
+      return { ...item, topic_name: inputTopic || clean(item?.topic_name) };
+    });
+
+  let syntheticResearchCount = 0;
+  for (const topicName of topicBatch) {
+    const alreadyCovered = normalizedResearchItems.some(item => canonical(item?.topic_name) === canonical(topicName));
+    if (alreadyCovered) continue;
+
+    const dossier = dossierByTopic.get(canonical(topicName)) || {};
+    const sourceLinks = Array.isArray(dossier.source_links) ? dossier.source_links : [];
+    const firstSourceUrl = sourceLinks.find(url => /^https:\/\//i.test(clean(url))) || '';
+    normalizedResearchItems.push({
+      topic_name: topicName,
+      title: `${topicName} — verified briefing`,
+      source: clean(dossier.sources, 'CREAPD verified topic dossier'),
+      source_url: firstSourceUrl,
+      category: 'verified topic briefing',
+      summary: clean(dossier.generated_summary, `Verified briefing for ${topicName}.`),
+      date: new Date().toISOString().slice(0, 10),
+      relevance: 'high',
+      verification_status: clean(dossier.verification_status, 'unverified'),
+      verification_notes: clean(
+        dossier.verification_notes,
+        'Derived from the verified topic dossier generated in this research batch.',
+      ),
+      confidence_score: clamp(dossier.confidence_score, 0, 100, 0),
+    });
+    syntheticResearchCount += 1;
+  }
+
+  return {
+    research_items: normalizedResearchItems,
+    topics: normalizedTopics,
+    suggested_guests: Array.isArray(data?.suggested_guests) ? data.suggested_guests : [],
+    synthetic_research_count: syntheticResearchCount,
+  };
 }
 
 export async function runTalkResearchStage({ sql, ownerUserId, configurationId }) {
@@ -277,7 +330,7 @@ export async function runTalkResearchStage({ sql, ownerUserId, configurationId }
     research_signature: signature,
     research_batch_count: batches.length,
     research_batches_completed: Math.floor(completedTopics.size / TOPICS_PER_BATCH),
-    research_completed_topics: Array.from(completedTopics),
+    research_completed_topics: topicsToResearch.filter(topic => completedTopics.has(canonical(topic))),
     research_response_ids: responseIds,
     checkpointed: true,
     recoverable: true,
@@ -299,7 +352,7 @@ export async function runTalkResearchStage({ sql, ownerUserId, configurationId }
         result = await generateStructuredGatewayResponse({
           webSearch: true,
           schemaName: 'creapd_talk_research_batch_v2',
-          schema: talkResearchSchema,
+          schema: buildTalkResearchSchema(pendingTopics),
           maxOutputTokens: 7000,
           timeoutMs: 85000,
           prompt: buildResearchPrompt(configuration, pendingTopics, sources, batchIndex, batches.length),
@@ -315,11 +368,10 @@ export async function runTalkResearchStage({ sql, ownerUserId, configurationId }
         throw error;
       }
 
-      const data = result.data || {};
-      validateBatch(data, pendingTopics);
-      const researchItems = Array.isArray(data.research_items) ? data.research_items : [];
-      const topics = Array.isArray(data.topics) ? data.topics : [];
-      const suggestedGuests = Array.isArray(data.suggested_guests) ? data.suggested_guests : [];
+      const data = normalizeAndValidateBatch(result.data || {}, pendingTopics);
+      const researchItems = data.research_items;
+      const topics = data.topics;
+      const suggestedGuests = data.suggested_guests;
 
       await clearTopicBatch(sql, ownerId, configId, pendingTopics);
 
@@ -331,6 +383,7 @@ export async function runTalkResearchStage({ sql, ownerUserId, configurationId }
         research_batch_count: batches.length,
         current_batch: batchIndex + 1,
         current_batch_elapsed_ms: result.elapsedMs,
+        synthetic_research_items: data.synthetic_research_count,
         model: result.model,
         gateway_auth_source: result.authSource,
         web_search_used: result.webSearchUsed,
