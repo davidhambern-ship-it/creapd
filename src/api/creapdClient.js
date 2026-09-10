@@ -100,6 +100,8 @@ function normalizePost(path, body = {}) {
     const actionMap = {
       build: 'talk_build',
       refresh: 'talk_refresh',
+      build_research: 'talk_build_research',
+      build_production: 'talk_build_production',
       set_topic_status: 'talk_set_topic_status',
       create_guest: 'talk_create_guest',
       update_guest: 'talk_update_guest',
@@ -121,18 +123,58 @@ function normalizePost(path, body = {}) {
   return { path, body };
 }
 
+async function postNormalized(path, body) {
+  const normalized = normalizePost(path, body ?? {});
+  return request(normalized.path, {
+    method: 'POST',
+    body: JSON.stringify(normalized.body),
+  });
+}
+
+async function runCheckpointedTalkBuild(body = {}) {
+  const configurationId = body?.configuration_id;
+  if (!configurationId) {
+    const error = new Error('Talk build requires configuration_id');
+    error.code = 'TALK_BUILD_CONFIGURATION_REQUIRED';
+    throw error;
+  }
+
+  const research = await postNormalized('/talk/production', {
+    ...body,
+    action: 'build_research',
+  });
+
+  const production = await postNormalized('/talk/production', {
+    ...body,
+    action: 'build_production',
+  });
+
+  return {
+    ...production,
+    stages: {
+      research: research?.result || research,
+      production: production?.result || production,
+    },
+    checkpointed: true,
+  };
+}
+
 export const creapdApi = {
   get(path) {
     return request(normalizeGetPath(path), { method: 'GET' });
   },
   post(path, body) {
-    const normalized = normalizePost(path, body ?? {});
-    return request(normalized.path, {
-      method: 'POST',
-      body: JSON.stringify(normalized.body),
-    });
+    if (
+      shouldUseNeonAuth() &&
+      path === '/talk/production' &&
+      ['build', 'refresh'].includes(body?.action)
+    ) {
+      return runCheckpointedTalkBuild(body);
+    }
+
+    return postNormalized(path, body);
   },
   request,
 };
 
-export { getStoredBase44Token, getAuthContext };
+export { getStoredBase44Token, getAuthContext, runCheckpointedTalkBuild };
