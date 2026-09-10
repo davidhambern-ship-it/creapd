@@ -138,6 +138,7 @@ export default function TalkDashboard() {
   const approvedTopics = topics.filter(topic => topic.status === 'approved').length;
   const confirmedGuests = guests.filter(guest => guest.status === 'confirmed').length;
   const approvedAssets = assets.filter(asset => asset.status === 'approved').length;
+  const livePath = `/talk/live?config_id=${encodeURIComponent(config.id)}`;
 
   const checklist = [
     { label: 'Configuration Saved', done: !!config.production_name },
@@ -170,7 +171,12 @@ export default function TalkDashboard() {
             <span className="!flex items-center gap-1"><Mic2 className="w-3.5 h-3.5" /> {config.show_format}</span>
           </div>
         </div>
-        <div className="!flex items-center gap-2">
+        <div className="!flex flex-wrap items-center gap-2">
+          {config.status === 'ready' && segments.length > 0 && (
+            <Button size="sm" asChild>
+              <Link to={livePath}><Radio className="w-4 h-4 mr-1" /> Enter Studio</Link>
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 mr-1" />
             Rebuild
@@ -200,7 +206,7 @@ export default function TalkDashboard() {
         instructions={[
           'Start with Research so you know what CREAPD found and verified.',
           'Choose the Discussion Topics you actually want, then set up any real guests or panelists.',
-          'Review the Rundown and AI Assets before the final Export checkpoint.',
+          'Review the Rundown and AI Assets before the final Export checkpoint and CREAPD Live.',
         ]}
         readyText={`${research.length} research · ${approvedTopics}/${topics.length} topics approved · ${confirmedGuests} guests confirmed · ${approvedAssets}/${assets.length} assets approved`}
         nextPath="/talk/research"
@@ -243,7 +249,10 @@ export default function TalkDashboard() {
         <Button size="sm" variant="outline" asChild><Link to="/talk/guests"><Users className="w-4 h-4 mr-1" /> Guests</Link></Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/rundown"><ClipboardList className="w-4 h-4 mr-1" /> Show Rundown</Link></Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/assets"><Sparkles className="w-4 h-4 mr-1" /> AI Assets</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/export"><Download className="w-4 h-4 mr-1" /> Export</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/talk/export"><Download className="w-4 h-4 mr-1" /> Finish & Launch</Link></Button>
+        {config.status === 'ready' && segments.length > 0 && (
+          <Button size="sm" asChild><Link to={livePath}><Radio className="w-4 h-4 mr-1" /> CREAPD Live</Link></Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
