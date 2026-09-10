@@ -4,6 +4,7 @@ import { CREAPModeProvider } from '@/context/CREAPModeContext';
 import LivingEnvironment from '@/components/environment/LivingEnvironment';
 import AppErrorBoundary from '@/components/shared/AppErrorBoundary';
 import TalkLiveRestartControl from '@/components/talk/TalkLiveRestartControl';
+import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
 import TalkObsBridgeControl from '@/components/talk/TalkObsBridgeControl';
 
 /**
@@ -24,6 +25,7 @@ export default function CREAPModeLayout() {
         <LivingEnvironment />
         <Outlet />
         <TalkLiveRestartControl />
+        <TalkProgramMonitor />
         <TalkObsBridgeControl />
       </AppErrorBoundary>
     </CREAPModeProvider>
