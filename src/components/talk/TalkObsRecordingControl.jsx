@@ -100,7 +100,7 @@ function TalkObsRecordingControlLive() {
   const recordingActive = Boolean(capabilities.recording_active);
   const recordingPaused = Boolean(capabilities.recording_paused);
   const recordingTimecode = String(capabilities.recording_timecode || '').trim();
-  const supportsRecording = capabilities.recording_control !== false;
+  const supportsRecording = capabilities.recording_control === true;
 
   return createPortal(
     <div className="mt-3 pt-3 border-t border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -119,7 +119,13 @@ function TalkObsRecordingControlLive() {
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">
-              {bridge === undefined ? 'Checking OBS…' : connected ? 'Ready to record' : 'Connect OBS to record'}
+              {bridge === undefined
+                ? 'Checking OBS…'
+                : !connected
+                  ? 'Connect OBS to record'
+                  : supportsRecording
+                    ? 'Ready to record'
+                    : 'Bridge update required'}
             </span>
           )}
         </div>
@@ -151,7 +157,7 @@ function TalkObsRecordingControlLive() {
                 recordingPaused ? 'resume-recording' : 'pause-recording',
                 recordingPaused ? 'resume_recording' : 'pause_recording',
               )}
-              disabled={!connected || Boolean(busy)}
+              disabled={!connected || !supportsRecording || Boolean(busy)}
             >
               {busy === 'pause-recording' || busy === 'resume-recording'
                 ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -164,7 +170,7 @@ function TalkObsRecordingControlLive() {
               size="sm"
               variant="destructive"
               onClick={() => runRecordingCommand('stop-recording', 'stop_recording')}
-              disabled={!connected || Boolean(busy)}
+              disabled={!connected || !supportsRecording || Boolean(busy)}
             >
               {busy === 'stop-recording'
                 ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
