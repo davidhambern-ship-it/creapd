@@ -168,6 +168,49 @@ async function createOrRotateBridge(sql, ownerUserId, name) {
   };
 }
 
+async function saveTalkSegmentScene(sql, ownerUserId, body) {
+  const ownerId = String(ownerUserId || '').trim();
+  const segmentId = clean(body.segment_id);
+  if (!segmentId) throw makeError('segment_id is required', 'OBS_SEGMENT_ID_REQUIRED');
+
+  const [existing] = await sql`
+    SELECT id, configuration_id
+    FROM creapd.talk_segments
+    WHERE id = ${segmentId}
+      AND owner_user_id = ${ownerId}
+    LIMIT 1
+  `;
+  if (!existing) throw makeError('Talk segment not found', 'TALK_SEGMENT_NOT_FOUND', 404);
+
+  const requestedConfigurationId = clean(body.configuration_id);
+  if (requestedConfigurationId && requestedConfigurationId !== existing.configuration_id) {
+    throw makeError('Talk segment does not belong to this production', 'OBS_SEGMENT_CONFIGURATION_MISMATCH', 409);
+  }
+
+  const sceneName = cleanNullable(body.scene_name);
+  if (sceneName && sceneName.length > 160) {
+    throw makeError('OBS scene name is too long', 'OBS_SCENE_NAME_TOO_LONG');
+  }
+
+  const [segment] = await sql`
+    UPDATE creapd.talk_segments
+    SET obs_scene = ${sceneName}, updated_at = now()
+    WHERE id = ${segmentId}
+      AND owner_user_id = ${ownerId}
+    RETURNING *
+  `;
+
+  return {
+    segment: {
+      ...segment,
+      order: segment.order_index,
+      created_date: segment.created_at || null,
+      updated_date: segment.updated_at || null,
+    },
+    mapping_saved: true,
+  };
+}
+
 async function enqueueCommand(sql, ownerUserId, body) {
   const ownerId = String(ownerUserId);
   const bridge = await findOwnedBridge(sql, ownerId, body.bridge_id);
@@ -245,6 +288,9 @@ export async function runObsBridgeUserAction({ sql, ownerUserId, action, body = 
       `;
       return { bridge: publicBridge(revoked), revoked: true };
     }
+
+    case 'obs_segment_scene_save':
+      return saveTalkSegmentScene(sql, ownerUserId, body);
 
     case 'obs_command_enqueue':
       return enqueueCommand(sql, ownerUserId, body);
