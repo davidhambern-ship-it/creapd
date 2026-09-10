@@ -28,8 +28,8 @@ export function useTalkProduction(configId) {
     setSession(null);
   }, []);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  const loadAll = useCallback(async ({ preserveUi = false } = {}) => {
+    if (!preserveUi) setLoading(true);
     setError(null);
 
     try {
@@ -104,14 +104,16 @@ export function useTalkProduction(configId) {
       console.error('useTalkProduction load error:', err);
       setError(err);
     } finally {
-      setLoading(false);
+      if (!preserveUi) setLoading(false);
     }
   }, [configId, clearProduction, ownedPreview]);
+
+  const refresh = useCallback(() => loadAll({ preserveUi: true }), [loadAll]);
 
   useBuildStatusRecovery({
     entityName: ownedPreview ? null : 'TalkProductionConfiguration',
     config,
-    onTerminal: loadAll,
+    onTerminal: refresh,
   });
 
   useEffect(() => {
@@ -129,7 +131,7 @@ export function useTalkProduction(configId) {
     session,
     loading,
     error,
-    refresh: loadAll,
+    refresh,
     source: ownedPreview ? 'neon' : 'base44',
   };
 }
