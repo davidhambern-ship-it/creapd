@@ -74,14 +74,62 @@ async function request(path, options = {}) {
   return data;
 }
 
+function normalizeGetPath(path) {
+  if (path === '/talk/production') {
+    return '/production/core?studio=talk';
+  }
+  if (path.startsWith('/talk/production?')) {
+    const query = path.slice('/talk/production?'.length);
+    return `/production/core?studio=talk&${query}`;
+  }
+  return path;
+}
+
+function normalizePost(path, body = {}) {
+  if (path === '/talk/configuration') {
+    return {
+      path: '/production/core',
+      body: {
+        action: 'talk_save_configuration',
+        configuration: body,
+      },
+    };
+  }
+
+  if (path === '/talk/production') {
+    const actionMap = {
+      build: 'talk_build',
+      refresh: 'talk_refresh',
+      set_topic_status: 'talk_set_topic_status',
+      create_guest: 'talk_create_guest',
+      update_guest: 'talk_update_guest',
+      delete_guest: 'talk_delete_guest',
+      set_asset_status: 'talk_set_asset_status',
+      set_segment_status: 'talk_set_segment_status',
+      start_session: 'talk_start_session',
+      session_event: 'talk_session_event',
+    };
+    return {
+      path: '/production/core',
+      body: {
+        ...body,
+        action: actionMap[body?.action] || body?.action,
+      },
+    };
+  }
+
+  return { path, body };
+}
+
 export const creapdApi = {
   get(path) {
-    return request(path, { method: 'GET' });
+    return request(normalizeGetPath(path), { method: 'GET' });
   },
   post(path, body) {
-    return request(path, {
+    const normalized = normalizePost(path, body ?? {});
+    return request(normalized.path, {
       method: 'POST',
-      body: JSON.stringify(body ?? {}),
+      body: JSON.stringify(normalized.body),
     });
   },
   request,
