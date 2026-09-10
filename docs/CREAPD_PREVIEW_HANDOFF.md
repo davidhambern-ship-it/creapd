@@ -240,7 +240,7 @@ User acceptance on 2026-09-10 — **TESTED + PASSED**:
 - OBS produced the recording file successfully.
 - top-header placement was accepted.
 
-### Local lower-third / browser-source graphics — TESTED, REPAIR BUILT + DEPLOYED, RETEST REQUIRED
+### Local lower-third / browser-source graphics — USER TESTED + PASSED
 
 Architecture:
 
@@ -260,30 +260,36 @@ First implementation commits:
 - `c95547f8a6642815b7a0cb9fe16a174f43231a18` — add top-header `TalkObsGraphicsControl.jsx`
 - `f4a2f1a4927458d2224a2f7fb87427afc4a1d3c5` — mount CREAPD Live graphics control
 
-Vercel for `f4a2f1a4...`: **SUCCESS / DEPLOYED** on 2026-09-10.
-
-First Berna test on 2026-09-10 — **TESTED, NOT PASSED**:
+First Berna test on 2026-09-10 exposed a real workflow bug:
 - Graphics panel opened successfully.
 - updated bridge/graphics capability was active.
-- user could edit the visible Name/Headline, Role/Subtitle, and Eyebrow fields.
+- user could edit visible Name/Headline, Role/Subtitle, and Eyebrow fields.
 - Preview still displayed generic fallback copy and **Show Lower Third** remained disabled.
 - root cause: `TexasNomad` and `Host · We Are America` were HTML placeholders only; component state initialized with an empty title, so the preview/button had no real lower-third value.
-- Neon inspection of the stress-test production confirmed there was **no `lower_third` asset** among its 19 existing Talk assets. Existing asset types included host scripts, discussion questions, social captions, thumbnail/presentation prompts, talking points, and clip suggestions, but no lower-third identity asset.
+- Neon inspection of the stress-test production confirmed there was **no `lower_third` asset** among its 19 existing Talk assets.
 
 Repair commits:
-- `7ac364ac01bf8667c4a612c7442cf26c6bfcf86b` — seed Live lower-third fields from an existing `lower_third` asset when available; otherwise derive a safe host/show fallback from the current Talk production. The actual on-air main line is now explicitly labeled **Lower Third — Main Line** and is directly editable. The panel also explains whether copy came from AI Assets/show setup/manual entry and keeps the action bar visible while scrolling.
+- `7ac364ac01bf8667c4a612c7442cf26c6bfcf86b` — seed Live lower-third fields from an existing `lower_third` asset when available; otherwise derive a safe host/show fallback from the current Talk production. The actual on-air main line is explicitly labeled **Lower Third — Main Line** and directly editable.
 - `0f0a3e6b7e8f12071ca2d71cf54f4c593892fcdc` — add `lower_third` display label to Talk asset labels.
-- `804fd8989560f5b4982119bdf796225bd9fdd627` — make the Talk production stage create deterministic host/guest identity lower-third assets from production data on future builds. Lower thirds are treated as reliable structured production assets rather than creative AI invention.
+- `804fd8989560f5b4982119bdf796225bd9fdd627` — make the Talk production stage create deterministic host/guest identity lower-third assets from production data on future builds.
 
 Vercel for latest functional repair `804fd898...`: **SUCCESS / DEPLOYED** on 2026-09-10.
 
-Current production compatibility:
-- The existing `We Are America` production does not need to be rebuilt just to test graphics.
-- Live now derives `TexasNomad` plus `Host · We Are America` from the existing configuration when no saved lower-third asset exists.
-- Future production builds will persist host/guest `lower_third` assets in `creapd.talk_assets`, so AI Assets/Live can consume them upstream.
-- The already-updated graphics-capable bridge does **not** need to be redownloaded for this UI/data repair.
+Compatibility behavior:
+- Existing `We Are America` does not need a rebuild just to use lower thirds.
+- Live derives `TexasNomad` plus `Host · We Are America` from existing configuration when no saved lower-third asset exists.
+- Future production builds persist host/guest `lower_third` assets in `creapd.talk_assets` for AI Assets/Live consumption.
+- The graphics-capable bridge did not need to be redownloaded for the UI/data repair.
 
-Do **not** mark lower-thirds PASSED until the repaired Show/Clear path is exercised in actual OBS Program/Program Monitor.
+Berna retest on 2026-09-10 — **TESTED + PASSED**:
+- repaired lower-third fields loaded as usable/editable values rather than fake placeholders.
+- **Show Lower Third** was enabled.
+- lower third appeared through the real local OBS graphics path.
+- editing the copy and using **Update Lower Third** worked.
+- **Clear Graphic** worked.
+- the core lower-third slice is now PASSED.
+
+Still unverified separately: leaving the overlay active and switching OBS scenes with CREAPD **Take** to confirm cross-scene persistence. Do not silently count that subtest as passed; carry it into the next graphics-layer test.
 
 ## 10. Talk Acceptance Status
 
@@ -302,12 +308,13 @@ Do **not** mark lower-thirds PASSED until the repaired Show/Clear path is exerci
 - top-header OBS recording controls
 - Start / Pause / Resume / Stop actual OBS recording from CREAPD
 - real OBS recording state/timecode and recording-file creation
+- local CREAPD lower-third Show / Update / Clear path
+- automatic `CREAPD Overlay` OBS Browser Source creation/update for the tested lower-third flow
+- production/show-setup lower-third prefill behavior
 
-### TESTED / REPAIR DEPLOYED / RETEST REQUIRED
-- local CREAPD lower-third generation
-- automatic `CREAPD Overlay` OBS Browser Source creation/update
-- lower-third Show / Update / Clear controls
-- lower-third persistence across reported OBS scenes
+### BUILT / PARTIAL TEST REQUIRED
+- lower-third persistence across scene changes while overlay remains active
+- future-build persisted host/guest `lower_third` asset generation (code deployed; existing stress-test production was not rebuilt solely for this)
 
 ### STILL PARTIAL / FUTURE
 - guest shortlist/invite/confirm semantics
@@ -326,21 +333,18 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Retest the repaired lower-third graphics path in Preview.**
+**Build the next CREAPD Live graphics layer: data-driven guest/topic graphics and automatic segment-to-overlay behavior in Preview.**
 
-Acceptance sequence:
-1. Keep the currently running graphics-capable OBS bridge running; no bridge redownload is required for this repair.
-2. Hard-refresh CREAPD Live with `Ctrl + Shift + R`.
-3. Open **Graphics** and verify the **Lower Third — Main Line** is prefilled from the show (`TexasNomad`) with second line `Host · We Are America`, or an existing saved lower-third asset if one exists.
-4. Confirm the main line, second line, and eyebrow are all directly editable and **Show Lower Third** is enabled.
-5. Click **Show Lower Third** and verify it appears in actual OBS Program and the local CREAPD Program Monitor.
-6. Edit the copy while it is live and click **Update Lower Third**; verify OBS updates.
-7. Click **Clear Graphic** and verify it disappears from OBS Program and Program Monitor.
-8. If Show/Update/Clear passes, switch scenes with CREAPD **Take** while the graphic is active and confirm the overlay remains available on the other scene.
+Immediate goals:
+1. Reuse owned Talk production data already loaded in CREAPD Live rather than asking the producer to retype guest/topic information.
+2. Add data-driven guest lower thirds using persisted/generated `lower_third` assets when available, with safe guest-name/title/organization fallback from `talk_guests`.
+3. Add a topic/segment graphic mode that can display the current topic or current segment title through the same local `CREAPD Overlay` Browser Source architecture.
+4. Define conservative automatic behavior tied to the passed Live state machine: segment changes may prepare/select the relevant graphic, but avoid unexpectedly covering Program without an explicit, understandable producer control unless the UX clearly opts into automation.
+5. Preserve manual Show / Update / Clear as an override at all times.
+6. During this next test block, leave a lower third active and use CREAPD **Take** to switch OBS scenes; verify the overlay survives or repair the local bridge/source attachment behavior if it does not.
+7. Keep all work on `backend/vercel-foundation`; do not modify `main`.
 
-If it fails, capture the PowerShell line beginning `Command failed:` plus a screenshot of OBS Sources/Program Monitor. Patch Preview only.
-
-If successful, mark lower thirds **TESTED + PASSED** and continue to data-driven guest/topic graphics and automatic segment-to-overlay behavior.
+After this layer is BUILT + DEPLOYED, user-test guest selection, topic/segment graphics, manual override, automatic behavior, and cross-scene overlay persistence in actual OBS Program + CREAPD Program Monitor before marking them PASSED.
 
 ## 12. Remaining Studios / Major Areas
 
