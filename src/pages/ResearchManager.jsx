@@ -389,6 +389,7 @@ export default function ResearchManager() {
                 style={typeFilter === 'all'
                   ? { background: 'hsl(190 50% 15% / 0.4)', color: 'hsl(190 80% 55%)' }
                   : { background: 'hsl(190 20% 12% / 0.2)', color: 'hsl(220 10% 55%)' }
+                }
               >
                 All
               </button>
