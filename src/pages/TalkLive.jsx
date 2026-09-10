@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   CircleDot,
-  Clock3,
   Flag,
   ListVideo,
   Loader2,
@@ -20,7 +19,6 @@ import {
   ScrollText,
   SkipForward,
   Square,
-  Users,
   WifiOff,
 } from 'lucide-react';
 
@@ -37,9 +35,7 @@ function formatClock(totalSeconds) {
   const hours = Math.floor(safe / 3600);
   const minutes = Math.floor((safe % 3600) / 60);
   const seconds = safe % 60;
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }
+  if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
@@ -96,18 +92,14 @@ export default function TalkLive() {
 
   useEffect(() => {
     let cancelled = false;
-
     const loadObsBridge = async () => {
       try {
-        const result = await creapdApi.post('/production/core', {
-          action: 'obs_bridge_get',
-        });
+        const result = await creapdApi.post('/production/core', { action: 'obs_bridge_get' });
         if (!cancelled) setObsBridge(result?.bridge || null);
       } catch {
         if (!cancelled) setObsBridge(null);
       }
     };
-
     loadObsBridge();
     const timer = window.setInterval(loadObsBridge, 2500);
     return () => {
@@ -120,12 +112,10 @@ export default function TalkLive() {
     () => segments.findIndex(segment => segment.id === session?.active_segment_id),
     [segments, session?.active_segment_id],
   );
-
   const firstIncompleteIndex = useMemo(() => {
     const index = segments.findIndex(segment => segment.runtime_status !== 'complete');
     return index >= 0 ? index : 0;
   }, [segments]);
-
   const currentIndex = activeIndex >= 0 ? activeIndex : firstIncompleteIndex;
   const currentSegment = session?.status === 'complete' ? null : (segments[currentIndex] || null);
   const nextSegment = currentSegment ? segments[currentIndex + 1] || null : null;
@@ -159,8 +149,6 @@ export default function TalkLive() {
 
   const hostScript = assetByType(assets, 'host_script');
   const currentTopicScript = topicAsset(assets, 'host_script', currentTopic?.topic_name);
-  const discussionQuestions = assetByType(assets, 'discussion_questions');
-  const productionNotes = assetByType(assets, 'production_notes');
   const confirmedGuests = guests.filter(guest => guest.status === 'confirmed');
   const isRunning = session?.status === 'live';
   const isPaused = session?.status === 'paused';
@@ -169,13 +157,6 @@ export default function TalkLive() {
   const obsConnected = Boolean(obsBridge?.connected);
   const obsOnline = Boolean(obsBridge?.online);
   const obsScene = obsBridge?.current_scene || null;
-  const obsStatusLabel = obsBridge === undefined
-    ? 'checking…'
-    : obsConnected
-      ? `connected${obsScene ? ` · ${obsScene}` : ''}`
-      : obsOnline
-        ? 'bridge online · OBS waiting'
-        : 'disconnected';
 
   const teleprompterText = useMemo(() => {
     if (!currentSegment) return 'The show is complete. Your live timing and clip markers are saved in CREAPD.';
@@ -250,7 +231,6 @@ export default function TalkLive() {
       show_elapsed_seconds: showElapsed,
       segment_elapsed_seconds: segmentElapsed,
     });
-
     if (nextSegment) {
       await sendSessionEvent('transition', null, {
         source: 'creapd-live',
@@ -327,8 +307,8 @@ export default function TalkLive() {
 
   return (
     <div className="min-h-screen bg-[#07090d] text-foreground">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/80 backdrop-blur-xl">
-        <div className="px-4 md:px-6 py-3 flex flex-wrap items-center gap-3 justify-between">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/88 backdrop-blur-xl">
+        <div className="px-4 md:px-6 py-2.5 flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="sm" asChild>
               <Link to="/talk/dashboard"><ArrowLeft className="w-4 h-4 mr-1" /> Talk</Link>
@@ -343,7 +323,7 @@ export default function TalkLive() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div id="talk-live-header-controls" className="flex flex-wrap items-center justify-end gap-1.5">
             <span className={`text-xs px-2.5 py-1 rounded-full border ${
               isRunning ? 'border-red-500/40 bg-red-500/15 text-red-300' :
               isPaused ? 'border-amber-500/40 bg-amber-500/15 text-amber-300' :
@@ -352,16 +332,51 @@ export default function TalkLive() {
             }`}>
               {isRunning ? '● ON AIR' : isPaused ? 'PAUSED' : isComplete ? 'SHOW ENDED' : 'READY'}
             </span>
-            <div className="font-mono text-lg min-w-[76px] text-right">{formatClock(showElapsed)}</div>
+            <div className="font-mono text-lg min-w-[72px] text-right px-1">{formatClock(showElapsed)}</div>
+
+            {!isRunning && !isPaused && !isComplete && (
+              <Button size="sm" className="h-8" onClick={handleStart} disabled={!canStart || Boolean(busy)}>
+                {busy === 'start' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Play className="w-3.5 h-3.5 mr-1.5" />}
+                Start
+              </Button>
+            )}
+
+            {(isRunning || isPaused) && (
+              <Button size="sm" variant="outline" className="h-8" onClick={handlePauseResume} disabled={Boolean(busy)}>
+                {busy === 'pause' || busy === 'resume'
+                  ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  : isPaused ? <Play className="w-3.5 h-3.5 mr-1.5" /> : <Pause className="w-3.5 h-3.5 mr-1.5" />}
+                {isPaused ? 'Resume' : 'Pause'}
+              </Button>
+            )}
+
+            {(isRunning || isPaused) && currentSegment && (
+              <Button size="sm" variant="outline" className="h-8" onClick={handleClip} disabled={Boolean(busy)}>
+                {busy === 'clip' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Flag className="w-3.5 h-3.5 mr-1.5" />}
+                Clip
+              </Button>
+            )}
+
+            {(isRunning || isPaused) && currentSegment && nextSegment && (
+              <Button size="sm" className="h-8" onClick={handleNext} disabled={Boolean(busy)}>
+                {busy === 'next' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <SkipForward className="w-3.5 h-3.5 mr-1.5" />}
+                Next
+              </Button>
+            )}
+
+            {(isRunning || isPaused) && (
+              <Button size="sm" variant="destructive" className="h-8" onClick={handleEnd} disabled={Boolean(busy)}>
+                {busy === 'end' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Square className="w-3.5 h-3.5 mr-1.5" />}
+                End
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="p-4 md:p-6 space-y-4 max-w-[1800px] mx-auto">
         {actionError && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {actionError}
-          </div>
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{actionError}</div>
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
@@ -370,27 +385,17 @@ export default function TalkLive() {
               <div className="absolute top-4 left-4 flex items-center gap-2 text-xs text-muted-foreground">
                 <MonitorPlay className="w-4 h-4" /> PROGRAM MONITOR
               </div>
+              <div id="talk-program-monitor-obs-control" className="absolute top-14 right-3 z-30" />
               <div className="text-center max-w-md px-6">
                 <MonitorPlay className={`w-14 h-14 mx-auto mb-4 ${obsConnected ? 'text-emerald-300/60' : obsOnline ? 'text-amber-300/50' : 'text-white/20'}`} />
-                <p className="font-medium">
-                  {obsConnected ? 'OBS control connected' : obsOnline ? 'OBS bridge online' : 'Broadcast picture comes next'}
-                </p>
+                <p className="font-medium">{obsConnected ? 'OBS control connected' : obsOnline ? 'OBS bridge online' : 'Broadcast picture comes next'}</p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {obsConnected
-                    ? `CREAPD is receiving live OBS state${obsScene ? ` for “${obsScene}”` : ''}. The next layer will bring the actual program picture into this monitor.`
+                    ? `CREAPD is receiving live OBS state${obsScene ? ` for “${obsScene}”` : ''}.`
                     : obsOnline
                       ? 'The local bridge is checking in to CREAPD, but OBS is not connected yet.'
-                      : 'Connect OBS to let CREAPD read and control the live broadcast engine. Program video preview is the next layer.'}
+                      : 'Connect OBS to let CREAPD read and control the live broadcast engine.'}
                 </p>
-              </div>
-              <div className={`absolute bottom-4 right-4 text-xs px-2 py-1 rounded border ${
-                obsConnected
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : obsOnline
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                    : 'bg-white/5 border-white/10 text-muted-foreground'
-              }`}>
-                OBS: {obsStatusLabel}
               </div>
             </div>
           </div>
@@ -402,45 +407,21 @@ export default function TalkLive() {
                   <ScrollText className="w-4 h-4 text-primary" />
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Teleprompter</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {currentTopic?.topic_name || currentSegment?.title || 'Current host copy'}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{currentTopic?.topic_name || currentSegment?.title || 'Current host copy'}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setTeleprompterSize(size => Math.max(20, size - 4))}
-                  className="h-8 min-w-8 px-2 rounded-md border border-white/10 bg-white/5 text-sm hover:bg-white/10"
-                  aria-label="Decrease teleprompter text size"
-                >
-                  A−
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTeleprompterSize(size => Math.min(54, size + 4))}
-                  className="h-8 min-w-8 px-2 rounded-md border border-white/10 bg-white/5 text-sm hover:bg-white/10"
-                  aria-label="Increase teleprompter text size"
-                >
-                  A+
-                </button>
+                <button type="button" onClick={() => setTeleprompterSize(size => Math.max(20, size - 4))} className="h-8 min-w-8 px-2 rounded-md border border-white/10 bg-white/5 text-sm hover:bg-white/10" aria-label="Decrease teleprompter text size">A−</button>
+                <button type="button" onClick={() => setTeleprompterSize(size => Math.min(54, size + 4))} className="h-8 min-w-8 px-2 rounded-md border border-white/10 bg-white/5 text-sm hover:bg-white/10" aria-label="Increase teleprompter text size">A+</button>
               </div>
             </div>
 
             <div ref={teleprompterRef} className="flex-1 overflow-y-auto max-h-[520px] px-6 md:px-8 py-7 scroll-smooth">
-              <div
-                className="whitespace-pre-line font-medium leading-[1.55] tracking-[0.01em]"
-                style={{ fontSize: `${teleprompterSize}px` }}
-              >
-                {teleprompterText}
-              </div>
-
+              <div className="whitespace-pre-line font-medium leading-[1.55] tracking-[0.01em]" style={{ fontSize: `${teleprompterSize}px` }}>{teleprompterText}</div>
               {Array.isArray(currentTopic?.debate_questions) && currentTopic.debate_questions.length > 0 && (
                 <div className="mt-10 pt-6 border-t border-white/10">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground mb-4">Conversation prompts</p>
                   <div className="space-y-4 text-lg leading-relaxed text-white/80">
-                    {currentTopic.debate_questions.slice(0, 3).map((question, index) => (
-                      <p key={index}>{index + 1}. {question}</p>
-                    ))}
+                    {currentTopic.debate_questions.slice(0, 3).map((question, index) => <p key={index}>{index + 1}. {question}</p>)}
                   </div>
                 </div>
               )}
@@ -456,9 +437,7 @@ export default function TalkLive() {
                 {currentSegment ? (
                   <>
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-xs px-2 py-1 rounded bg-primary/15 text-primary">
-                        {SEGMENT_TYPE_LABELS[currentSegment.segment_type] || currentSegment.segment_type}
-                      </span>
+                      <span className="text-xs px-2 py-1 rounded bg-primary/15 text-primary">{SEGMENT_TYPE_LABELS[currentSegment.segment_type] || currentSegment.segment_type}</span>
                       <span className="text-xs text-muted-foreground">Segment {currentIndex + 1} of {segments.length}</span>
                     </div>
                     <h2 className="text-2xl md:text-4xl font-heading font-bold leading-tight">{currentSegment.title || 'Untitled Segment'}</h2>
@@ -494,27 +473,15 @@ export default function TalkLive() {
                 <p className="text-xs text-muted-foreground mb-2">Segment {currentIndex + 2} of {segments.length}</p>
                 <h4 className="text-xl font-heading font-semibold">{nextSegment.title}</h4>
                 <div className="flex items-center gap-3 mt-3 text-sm text-muted-foreground">
-                  <span>{SEGMENT_TYPE_LABELS[nextSegment.segment_type] || nextSegment.segment_type}</span>
-                  <span>•</span>
-                  <span>{formatClock(nextSegment.duration_seconds)}</span>
+                  <span>{SEGMENT_TYPE_LABELS[nextSegment.segment_type] || nextSegment.segment_type}</span><span>•</span><span>{formatClock(nextSegment.duration_seconds)}</span>
                 </div>
                 {nextSegment.notes && <p className="text-sm text-muted-foreground mt-3 line-clamp-4">{nextSegment.notes}</p>}
               </>
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                {currentSegment ? 'This is the final rundown segment.' : 'No next segment.'}
-              </div>
-            )}
+            ) : <div className="text-sm text-muted-foreground">{currentSegment ? 'This is the final rundown segment.' : 'No next segment.'}</div>}
 
             <div className="border-t border-white/10 mt-5 pt-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Confirmed guests</span>
-                <span>{confirmedGuests.length}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-2">
-                <span className="text-muted-foreground">Production package</span>
-                <span className={packages.length ? 'text-emerald-300' : 'text-amber-300'}>{packages.length ? 'Ready' : 'Missing'}</span>
-              </div>
+              <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Confirmed guests</span><span>{confirmedGuests.length}</span></div>
+              <div className="flex items-center justify-between text-sm mt-2"><span className="text-muted-foreground">Production package</span><span className={packages.length ? 'text-emerald-300' : 'text-amber-300'}>{packages.length ? 'Ready' : 'Missing'}</span></div>
             </div>
           </div>
         </div>
@@ -531,76 +498,18 @@ export default function TalkLive() {
               return (
                 <div key={segment.id} className={`rounded-lg px-3 py-2 border ${active ? 'border-primary/40 bg-primary/10' : 'border-white/[0.04] bg-white/[0.025]'}`}>
                   <div className="flex items-start gap-2">
-                    <div className="pt-0.5">
-                      {complete ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : active ? <CircleDot className="w-4 h-4 text-red-400 animate-pulse" /> : <div className="w-4 h-4 rounded-full border border-white/20" />}
-                    </div>
+                    <div className="pt-0.5">{complete ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : active ? <CircleDot className="w-4 h-4 text-red-400 animate-pulse" /> : <div className="w-4 h-4 rounded-full border border-white/20" />}</div>
                     <div className="min-w-0 flex-1">
                       <p className={`text-sm truncate ${active ? 'font-semibold' : ''}`}>{index + 1}. {segment.title}</p>
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-1">
-                        <span>{SEGMENT_TYPE_LABELS[segment.segment_type] || segment.segment_type}</span>
-                        <span>{formatClock(segment.duration_seconds)}</span>
+                        <span>{SEGMENT_TYPE_LABELS[segment.segment_type] || segment.segment_type}</span><span>{formatClock(segment.duration_seconds)}</span>
                       </div>
-                      {Number(segment.clip_marker_count || 0) > 0 && (
-                        <p className="text-[11px] text-amber-300 mt-1">{segment.clip_marker_count} clip marker{Number(segment.clip_marker_count) === 1 ? '' : 's'}</p>
-                      )}
+                      {Number(segment.clip_marker_count || 0) > 0 && <p className="text-[11px] text-amber-300 mt-1">{segment.clip_marker_count} clip marker{Number(segment.clip_marker_count) === 1 ? '' : 's'}</p>}
                     </div>
                   </div>
                 </div>
               );
             })}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl p-4 md:p-5 sticky bottom-3 z-20 shadow-2xl">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Show Control</p>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
-                <span><Clock3 className="w-3 h-3 inline mr-1" />{formatClock(showElapsed)} elapsed</span>
-                <span><Users className="w-3 h-3 inline mr-1" />{guests.length} guest records</span>
-                {productionNotes?.content && <span>Production notes loaded</span>}
-                {discussionQuestions?.content && <span>Discussion prompts loaded</span>}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {!isRunning && !isPaused && !isComplete && (
-                <Button size="lg" onClick={handleStart} disabled={!canStart || Boolean(busy)}>
-                  {busy === 'start' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
-                  Start Show
-                </Button>
-              )}
-
-              {(isRunning || isPaused) && (
-                <Button size="lg" variant="outline" onClick={handlePauseResume} disabled={Boolean(busy)}>
-                  {busy === 'pause' || busy === 'resume'
-                    ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    : isPaused ? <Play className="w-4 h-4 mr-2" /> : <Pause className="w-4 h-4 mr-2" />}
-                  {isPaused ? 'Resume' : 'Pause'}
-                </Button>
-              )}
-
-              {(isRunning || isPaused) && currentSegment && (
-                <Button size="lg" variant="outline" onClick={handleClip} disabled={Boolean(busy)}>
-                  {busy === 'clip' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Flag className="w-4 h-4 mr-2" />}
-                  Clip This Moment
-                </Button>
-              )}
-
-              {(isRunning || isPaused) && currentSegment && nextSegment && (
-                <Button size="lg" onClick={handleNext} disabled={Boolean(busy)}>
-                  {busy === 'next' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <SkipForward className="w-4 h-4 mr-2" />}
-                  Next Segment
-                </Button>
-              )}
-
-              {(isRunning || isPaused) && (
-                <Button size="lg" variant="destructive" onClick={handleEnd} disabled={Boolean(busy)}>
-                  {busy === 'end' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Square className="w-4 h-4 mr-2" />}
-                  End Show
-                </Button>
-              )}
-            </div>
           </div>
         </section>
       </main>
