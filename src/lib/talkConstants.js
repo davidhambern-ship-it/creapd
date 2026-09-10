@@ -88,7 +88,8 @@ export const TALK_NAV_ITEMS = [
   { icon: 'Users', label: 'Blueprint — Guests', path: '/talk/guests', section: 'Blueprint' },
   { icon: 'Sparkles', label: 'Production — AI Assets', path: '/talk/assets', section: 'Production' },
   { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/talk/rundown', section: 'Assembly' },
-  { icon: 'Download', label: 'Assembly — Export', path: '/talk/export', section: 'Assembly' },
+  { icon: 'Mic2', label: 'Live — Studio', path: '/talk/live', section: 'Execution' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/talk/export', section: 'Delivery' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 
