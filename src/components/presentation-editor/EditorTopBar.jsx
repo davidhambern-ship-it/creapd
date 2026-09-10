@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Save, Undo2, Redo2, RefreshCw,
   Plus, Type, Image as ImageIcon, Square, ChevronDown,
-  AlignLeft, Captions, FolderOpen,
+  AlignLeft, Captions, FolderOpen, LogOut,
   Video, Music, PenTool, Shapes, BarChart3, Table as TableIcon,
   Minus, MessageSquare, Quote, Code, Sigma, QrCode, Box,
 } from 'lucide-react';
@@ -96,8 +96,8 @@ export default function EditorTopBar({
         <button className="cpe-icon-btn" onClick={onRedo} disabled={!canRedo} title="Redo"><Redo2 className="w-4 h-4" /></button>
 
         <div className="cpe-sep" />
-        <Link to="/presentations">
-          <button className="cpe-tool-btn"><FolderOpen className="w-4 h-4" /> Open</button>
+        <Link to="/presentations" title="Leave the editor and return to Presentations">
+          <button className="cpe-tool-btn"><LogOut className="w-4 h-4" /> Exit Editor</button>
         </Link>
 
         <div className="flex-1" />
