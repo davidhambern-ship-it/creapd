@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
@@ -12,38 +14,83 @@ import {
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
+  if (Array.isArray(str)) return str;
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
+function buildFailureMessage(config) {
+  if (config?.status !== 'failed') return '';
+  const metadata = config?.build_metadata && typeof config.build_metadata === 'object'
+    ? config.build_metadata
+    : {};
+  return metadata.message || 'The last Talk production build did not complete. You can retry it safely.';
+}
+
 export default function TalkDashboard() {
+  const ownedPreview = shouldUseNeonAuth();
   const { config, topics, research, guests, segments, assets, loading, refresh } = useTalkProduction();
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
 
-  // Poll if building
+  // Poll only the authoritative backend for terminal build state. On Preview,
+  // never reach back into Base44 just because a long Talk build is running.
   useEffect(() => {
-    if (config?.status === 'building') {
-      const interval = setInterval(async () => {
-        if (config?.id) {
-          const updated = await base44.entities.TalkProductionConfiguration.get(config.id);
-          if (updated && (updated.status === 'ready' || updated.status === 'failed')) {
-            clearInterval(interval);
-            refresh();
+    if (config?.status !== 'building' || !config?.id) return undefined;
+
+    let active = true;
+    const check = async () => {
+      try {
+        if (ownedPreview) {
+          const data = await creapdApi.get(`/talk/production?configuration_id=${encodeURIComponent(config.id)}`);
+          const updated = data?.configuration;
+          if (active && updated && ['ready', 'failed'].includes(updated.status)) {
+            await refresh();
           }
+          return;
         }
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [config?.status, config?.id, refresh]);
+
+        const updated = await base44.entities.TalkProductionConfiguration.get(config.id);
+        if (active && updated && ['ready', 'failed'].includes(updated.status)) {
+          await refresh();
+        }
+      } catch (err) {
+        console.error('Talk build status poll failed:', err);
+      }
+    };
+
+    const interval = setInterval(check, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [config?.status, config?.id, ownedPreview, refresh]);
 
   const handleRefresh = async () => {
     if (!config?.id) return;
     setRefreshing(true);
+    setRefreshError('');
     try {
-      await base44.entities.TalkProductionConfiguration.update(config.id, { status: 'building' });
-      await base44.functions.invoke('buildTalkProduction', { configuration_id: config.id });
-      refresh();
+      if (ownedPreview) {
+        // creapdClient turns this into two checkpointed owned stages:
+        // live research/verification, then rundown/assets/package assembly.
+        await creapdApi.post('/talk/production', {
+          action: 'refresh',
+          configuration_id: config.id,
+        });
+      } else {
+        await base44.entities.TalkProductionConfiguration.update(config.id, { status: 'building' });
+        await base44.functions.invoke('buildTalkProduction', { configuration_id: config.id });
+      }
+      await refresh();
     } catch (err) {
       console.error(err);
+      setRefreshError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Talk production refresh failed.'
+      );
+      await refresh().catch(() => {});
     } finally {
       setRefreshing(false);
     }
@@ -82,9 +129,9 @@ export default function TalkDashboard() {
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">Building Your Talk Production</h2>
-          <p className="text-muted-foreground mb-8">Generating research, topics, talking points, rundown, and AI assets...</p>
+          <p className="text-muted-foreground mb-8">CREAPD is running checkpointed research, verification, and production assembly. Larger shows can take a couple of minutes.</p>
           <div className="space-y-3 text-left">
-            {['Researching topics', 'Generating talking points', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
+            {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating production assets'].map((label, i) => (
               <div key={i} className="!flex items-center gap-3 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 <span className="text-muted-foreground">{label}...</span>
@@ -98,6 +145,7 @@ export default function TalkDashboard() {
 
   const aiAutomation = safeParse(config.ai_automation, []);
   const topicsList = safeParse(config.topics, []);
+  const buildFailure = refreshError || buildFailureMessage(config);
 
   const checklist = [
     { label: 'Configuration Saved', done: !!config.production_name },
@@ -144,6 +192,16 @@ export default function TalkDashboard() {
           </Button>
         </div>
       </div>
+
+      {buildFailure && (
+        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm !flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Last build needs attention</p>
+            <p className="mt-1">{buildFailure}</p>
+          </div>
+        </div>
+      )}
 
       {/* Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
