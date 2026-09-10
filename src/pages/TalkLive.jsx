@@ -86,11 +86,34 @@ export default function TalkLive() {
   const [actionError, setActionError] = useState('');
   const [tick, setTick] = useState(Date.now());
   const [teleprompterSize, setTeleprompterSize] = useState(30);
+  const [obsBridge, setObsBridge] = useState(undefined);
   const teleprompterRef = useRef(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadObsBridge = async () => {
+      try {
+        const result = await creapdApi.post('/production/core', {
+          action: 'obs_bridge_get',
+        });
+        if (!cancelled) setObsBridge(result?.bridge || null);
+      } catch {
+        if (!cancelled) setObsBridge(null);
+      }
+    };
+
+    loadObsBridge();
+    const timer = window.setInterval(loadObsBridge, 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   const activeIndex = useMemo(
@@ -143,6 +166,16 @@ export default function TalkLive() {
   const isPaused = session?.status === 'paused';
   const isComplete = session?.status === 'complete';
   const canStart = source === 'neon' && config?.status === 'ready' && segments.length > 0 && !isRunning && !isPaused && !isComplete;
+  const obsConnected = Boolean(obsBridge?.connected);
+  const obsOnline = Boolean(obsBridge?.online);
+  const obsScene = obsBridge?.current_scene || null;
+  const obsStatusLabel = obsBridge === undefined
+    ? 'checking…'
+    : obsConnected
+      ? `connected${obsScene ? ` · ${obsScene}` : ''}`
+      : obsOnline
+        ? 'bridge online · OBS waiting'
+        : 'disconnected';
 
   const teleprompterText = useMemo(() => {
     if (!currentSegment) return 'The show is complete. Your live timing and clip markers are saved in CREAPD.';
@@ -338,14 +371,26 @@ export default function TalkLive() {
                 <MonitorPlay className="w-4 h-4" /> PROGRAM MONITOR
               </div>
               <div className="text-center max-w-md px-6">
-                <MonitorPlay className="w-14 h-14 text-white/20 mx-auto mb-4" />
-                <p className="font-medium">Broadcast picture comes next</p>
+                <MonitorPlay className={`w-14 h-14 mx-auto mb-4 ${obsConnected ? 'text-emerald-300/60' : obsOnline ? 'text-amber-300/50' : 'text-white/20'}`} />
+                <p className="font-medium">
+                  {obsConnected ? 'OBS control connected' : obsOnline ? 'OBS bridge online' : 'Broadcast picture comes next'}
+                </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  CREAPD Live is running the show state now. OBS / camera transport is intentionally not connected in this Preview slice.
+                  {obsConnected
+                    ? `CREAPD is receiving live OBS state${obsScene ? ` for “${obsScene}”` : ''}. The next layer will bring the actual program picture into this monitor.`
+                    : obsOnline
+                      ? 'The local bridge is checking in to CREAPD, but OBS is not connected yet.'
+                      : 'Connect OBS to let CREAPD read and control the live broadcast engine. Program video preview is the next layer.'}
                 </p>
               </div>
-              <div className="absolute bottom-4 right-4 text-xs px-2 py-1 rounded bg-white/5 border border-white/10 text-muted-foreground">
-                OBS: {session?.obs_connection_status || 'disconnected'}
+              <div className={`absolute bottom-4 right-4 text-xs px-2 py-1 rounded border ${
+                obsConnected
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : obsOnline
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    : 'bg-white/5 border-white/10 text-muted-foreground'
+              }`}>
+                OBS: {obsStatusLabel}
               </div>
             </div>
           </div>
