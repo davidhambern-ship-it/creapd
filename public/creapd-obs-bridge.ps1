@@ -29,6 +29,7 @@ if ([string]::IsNullOrWhiteSpace($script:BridgeToken)) {
 }
 
 $script:ObsPassword = Read-SecretText "OBS WebSocket password (press Enter if authentication is disabled)"
+$script:VercelBypassSecret = Read-SecretText "Vercel Preview Bypass Secret (press Enter only if Preview protection is disabled)"
 $script:CreapdUrl = $CreapdUrl.TrimEnd('/')
 $script:ObsUrl = $ObsUrl
 $script:ObsSocket = $null
@@ -212,6 +213,13 @@ function Invoke-CreapdBridge([string]$Action, $Fields = @{}) {
     ContentType = 'application/json'
     Body = (ConvertTo-CompactJson $body)
   }
+
+  if (-not [string]::IsNullOrWhiteSpace($script:VercelBypassSecret)) {
+    $request.Headers = @{
+      'x-vercel-protection-bypass' = $script:VercelBypassSecret
+    }
+  }
+
   return Invoke-RestMethod @request
 }
 
@@ -299,6 +307,9 @@ while ($true) {
 
     if ($message -match 'code 4009|Authentication failed') {
       Write-Host "OBS rejected the WebSocket password. Stop the bridge with Ctrl+C, copy the current password from OBS Tools > WebSocket Server Settings, and run the bridge again." -ForegroundColor Red
+    }
+    if ($message -match '\(401\) Unauthorized') {
+      Write-Host "CREAPD Preview rejected the bridge request. If Preview protection is enabled, enter the Vercel Automation Bypass secret when the bridge starts." -ForegroundColor Red
     }
 
     try {
