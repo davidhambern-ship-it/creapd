@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
-import { Button } from '@/components/ui/button';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Loader2, Mic2, Lightbulb, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 
 export default function TalkTopics() {
@@ -42,6 +42,8 @@ export default function TalkTopics() {
     refresh();
   };
 
+  const approvedCount = topics.filter(topic => topic.status === 'approved').length;
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div>
@@ -51,6 +53,21 @@ export default function TalkTopics() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Topics with summaries, talking points, verification, and counter-perspectives</p>
       </div>
+
+      <TalkProducerGuide
+        currentStep="topics"
+        title="Choose the topics that actually make the show"
+        instructions={[
+          'Open More on any topic to inspect talking points, verification notes, counter-perspectives, and debate questions.',
+          'Approve the topics you want CREAPD to treat as part of the final show. Leave anything you do not want unapproved.',
+          'When your topic lineup feels right, move on to Guests. For panel or interview formats, this is where you set the people CREAPD should plan around.',
+        ]}
+        readyText={`${approvedCount} of ${topics.length} topic${topics.length === 1 ? '' : 's'} approved`}
+        nextPath="/talk/guests"
+        nextLabel="Set Up Guests"
+        nextDescription="Guests can be confirmed, added manually, or skipped when your format does not need them."
+        note="You do not have to approve every generated topic. Approval means: use this in my production."
+      />
 
       {topics.length === 0 ? (
         <div className="glass-panel p-8 text-center">
