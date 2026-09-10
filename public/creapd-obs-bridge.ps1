@@ -38,6 +38,11 @@ $script:ObsWebSocketVersion = $null
 $script:CurrentScene = $null
 $script:SceneNames = @()
 $script:LastSceneRefresh = [DateTime]::MinValue
+$script:RecordingActive = $false
+$script:RecordingPaused = $false
+$script:RecordingTimecode = $null
+$script:RecordingDuration = 0
+$script:RecordingBytes = 0
 
 function ConvertTo-CompactJson($Value) {
   return ($Value | ConvertTo-Json -Depth 12 -Compress)
@@ -194,6 +199,13 @@ function Refresh-ObsState([bool]$RefreshScenes = $false) {
     $script:SceneNames = $names
     $script:LastSceneRefresh = Get-Date
   }
+
+  $recordStatus = Invoke-ObsRequest 'GetRecordStatus' @{}
+  $script:RecordingActive = [bool]$recordStatus.outputActive
+  $script:RecordingPaused = [bool]$recordStatus.outputPaused
+  $script:RecordingTimecode = [string]$recordStatus.outputTimecode
+  $script:RecordingDuration = [int64]$recordStatus.outputDuration
+  $script:RecordingBytes = [int64]$recordStatus.outputBytes
 }
 
 function Invoke-CreapdBridge([string]$Action, $Fields = @{}) {
@@ -235,6 +247,22 @@ function Complete-CreapdCommand($Command, [bool]$Success, $Result = @{}, [string
   Invoke-CreapdBridge 'obs_bridge_agent_complete' $fields | Out-Null
 }
 
+function Get-RecordingResult($Extra = @{}) {
+  $result = @{
+    recording_active = $script:RecordingActive
+    recording_paused = $script:RecordingPaused
+    recording_timecode = $script:RecordingTimecode
+    recording_duration = $script:RecordingDuration
+    recording_bytes = $script:RecordingBytes
+  }
+  if ($Extra) {
+    foreach ($key in $Extra.Keys) {
+      $result[$key] = $Extra[$key]
+    }
+  }
+  return $result
+}
+
 function Run-CreapdCommand($Command) {
   try {
     switch ([string]$Command.command_type) {
@@ -254,7 +282,47 @@ function Run-CreapdCommand($Command) {
         Complete-CreapdCommand $Command $true @{
           current_scene = $script:CurrentScene
           scenes = $script:SceneNames
+          recording_active = $script:RecordingActive
+          recording_paused = $script:RecordingPaused
+          recording_timecode = $script:RecordingTimecode
         }
+      }
+
+      'start_recording' {
+        Invoke-ObsRequest 'StartRecord' @{} | Out-Null
+        Start-Sleep -Milliseconds 200
+        Refresh-ObsState -RefreshScenes $false
+        Complete-CreapdCommand $Command $true (Get-RecordingResult)
+        Write-Host "Recording started." -ForegroundColor Red
+      }
+
+      'stop_recording' {
+        $stopped = Invoke-ObsRequest 'StopRecord' @{}
+        Start-Sleep -Milliseconds 200
+        Refresh-ObsState -RefreshScenes $false
+        $extra = @{}
+        if ($stopped.outputPath) { $extra.output_path = [string]$stopped.outputPath }
+        Complete-CreapdCommand $Command $true (Get-RecordingResult $extra)
+        Write-Host "Recording stopped." -ForegroundColor Yellow
+        if ($stopped.outputPath) {
+          Write-Host "Saved recording: $($stopped.outputPath)" -ForegroundColor DarkGray
+        }
+      }
+
+      'pause_recording' {
+        Invoke-ObsRequest 'PauseRecord' @{} | Out-Null
+        Start-Sleep -Milliseconds 150
+        Refresh-ObsState -RefreshScenes $false
+        Complete-CreapdCommand $Command $true (Get-RecordingResult)
+        Write-Host "Recording paused." -ForegroundColor Yellow
+      }
+
+      'resume_recording' {
+        Invoke-ObsRequest 'ResumeRecord' @{} | Out-Null
+        Start-Sleep -Milliseconds 150
+        Refresh-ObsState -RefreshScenes $false
+        Complete-CreapdCommand $Command $true (Get-RecordingResult)
+        Write-Host "Recording resumed." -ForegroundColor Green
       }
 
       default {
@@ -290,6 +358,12 @@ while ($true) {
       scenes = $script:SceneNames
       capabilities = @{
         scene_control = $true
+        recording_control = $true
+        recording_active = $script:RecordingActive
+        recording_paused = $script:RecordingPaused
+        recording_timecode = $script:RecordingTimecode
+        recording_duration = $script:RecordingDuration
+        recording_bytes = $script:RecordingBytes
         protocol = 'obs-websocket-v5'
         bridge = 'powershell'
       }
