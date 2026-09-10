@@ -93,6 +93,21 @@ function TalkProgramMonitorLive() {
 
   useEffect(() => () => stopStream(), [stopStream]);
 
+  useEffect(() => {
+    if (previewState !== 'live') return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+
+    video.play().catch(err => {
+      console.warn('[CREAPD Live] Program Monitor autoplay was blocked:', err);
+    });
+  }, [previewState]);
+
   const refreshDevices = useCallback(async () => {
     if (!navigator.mediaDevices?.enumerateDevices) return [];
     const all = await navigator.mediaDevices.enumerateDevices();
@@ -128,10 +143,6 @@ function TalkProgramMonitorLive() {
       try { window.localStorage.setItem(SAVED_DEVICE_KEY, actualDeviceId); } catch {}
     }
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play().catch(() => {});
-    }
     setPreviewState('live');
     setError('');
     await refreshDevices();
