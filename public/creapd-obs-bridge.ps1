@@ -43,6 +43,15 @@ $script:RecordingPaused = $false
 $script:RecordingTimecode = $null
 $script:RecordingDuration = 0
 $script:RecordingBytes = 0
+$script:OverlayInputName = 'CREAPD Overlay'
+$script:OverlayVisible = $false
+$script:OverlayTitle = $null
+$script:OverlaySubtitle = $null
+$script:OverlayLabel = $null
+$script:OverlayFile = $null
+$script:VideoWidth = 1920
+$script:VideoHeight = 1080
+$script:OverlayDirectory = Join-Path $env:LOCALAPPDATA 'CREAPD\obs-overlays'
 
 function ConvertTo-CompactJson($Value) {
   return ($Value | ConvertTo-Json -Depth 12 -Compress)
@@ -151,6 +160,15 @@ function Connect-Obs {
   $version = Invoke-ObsRequest 'GetVersion' @{}
   $script:ObsStudioVersion = [string]$version.obsVersion
   $script:ObsWebSocketVersion = [string]$version.obsWebSocketVersion
+
+  try {
+    $video = Invoke-ObsRequest 'GetVideoSettings' @{}
+    if ([int]$video.baseWidth -gt 0) { $script:VideoWidth = [int]$video.baseWidth }
+    if ([int]$video.baseHeight -gt 0) { $script:VideoHeight = [int]$video.baseHeight }
+  } catch {
+    Write-Host "Using 1920x1080 for the CREAPD overlay canvas." -ForegroundColor DarkGray
+  }
+
   $script:LastSceneRefresh = [DateTime]::MinValue
   Refresh-ObsState -RefreshScenes $true
 
@@ -206,6 +224,146 @@ function Refresh-ObsState([bool]$RefreshScenes = $false) {
   $script:RecordingTimecode = [string]$recordStatus.outputTimecode
   $script:RecordingDuration = [int64]$recordStatus.outputDuration
   $script:RecordingBytes = [int64]$recordStatus.outputBytes
+}
+
+function Get-CreapdOverlayHtml([string]$Title, [string]$Subtitle, [string]$Label, [bool]$Visible) {
+  $safeTitle = [Net.WebUtility]::HtmlEncode([string]$Title)
+  $safeSubtitle = [Net.WebUtility]::HtmlEncode([string]$Subtitle)
+  $safeLabel = [Net.WebUtility]::HtmlEncode([string]$Label)
+  $stateClass = $(if ($Visible) { 'show' } else { 'hidden' })
+  $subtitleMarkup = $(if ([string]::IsNullOrWhiteSpace($safeSubtitle)) { '' } else { "<div class=\"subtitle\">$safeSubtitle</div>" })
+
+  return @"
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: rgba(0,0,0,0); font-family: Arial, Helvetica, sans-serif; }
+  .stage { position: relative; width: 100vw; height: 100vh; }
+  .lower { position: absolute; left: 5.2vw; bottom: 6.5vh; min-width: 420px; max-width: 72vw; display: flex; align-items: stretch; filter: drop-shadow(0 14px 28px rgba(0,0,0,.45)); transform-origin: left bottom; }
+  .accent { width: 10px; border-radius: 12px 0 0 12px; background: linear-gradient(180deg,#8b5cf6,#d946ef); }
+  .card { min-width: 0; padding: 17px 25px 18px 22px; border-radius: 0 12px 12px 0; background: linear-gradient(105deg,rgba(10,11,18,.97),rgba(25,22,38,.94)); border: 1px solid rgba(255,255,255,.15); border-left: 0; }
+  .label { display: inline-flex; align-items: center; margin-bottom: 7px; font-size: 15px; line-height: 1; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #c4b5fd; }
+  .title { font-size: 42px; line-height: 1.04; font-weight: 850; letter-spacing: -.025em; color: #fff; white-space: normal; text-wrap: balance; }
+  .subtitle { margin-top: 7px; font-size: 23px; line-height: 1.18; font-weight: 500; color: rgba(255,255,255,.76); }
+  .show .lower { animation: creapdIn .46s cubic-bezier(.16,1,.3,1) both; }
+  .hidden .lower { opacity: 0; transform: translateX(-36px); }
+  @keyframes creapdIn { from { opacity: 0; transform: translateX(-70px) scale(.97); } to { opacity: 1; transform: translateX(0) scale(1); } }
+</style>
+</head>
+<body class="$stateClass">
+  <div class="stage">
+    <div class="lower">
+      <div class="accent"></div>
+      <div class="card">
+        <div class="label">$safeLabel</div>
+        <div class="title">$safeTitle</div>
+        $subtitleMarkup
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+"@
+}
+
+function Write-CreapdOverlayFile([string]$Title, [string]$Subtitle, [string]$Label, [bool]$Visible) {
+  if (-not (Test-Path -LiteralPath $script:OverlayDirectory)) {
+    New-Item -ItemType Directory -Path $script:OverlayDirectory -Force | Out-Null
+  }
+
+  $stamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  $path = Join-Path $script:OverlayDirectory "creapd-overlay-$stamp.html"
+  $html = Get-CreapdOverlayHtml $Title $Subtitle $Label $Visible
+  Set-Content -LiteralPath $path -Value $html -Encoding UTF8
+  $script:OverlayFile = $path
+  return $path
+}
+
+function Ensure-CreapdOverlayInput([string]$LocalFile) {
+  $inputList = Invoke-ObsRequest 'GetInputList' @{}
+  $existingInput = @($inputList.inputs) | Where-Object { [string]$_.inputName -eq $script:OverlayInputName } | Select-Object -First 1
+
+  $settings = @{
+    is_local_file = $true
+    local_file = $LocalFile
+    width = $script:VideoWidth
+    height = $script:VideoHeight
+    fps = 30
+    shutdown = $false
+    restart_when_active = $false
+    reroute_audio = $false
+  }
+
+  if (-not $existingInput) {
+    Invoke-ObsRequest 'CreateInput' @{
+      sceneName = $script:CurrentScene
+      inputName = $script:OverlayInputName
+      inputKind = 'browser_source'
+      inputSettings = $settings
+      sceneItemEnabled = $true
+    } | Out-Null
+  } else {
+    Invoke-ObsRequest 'SetInputSettings' @{
+      inputName = $script:OverlayInputName
+      inputSettings = $settings
+      overlay = $true
+    } | Out-Null
+  }
+
+  foreach ($sceneName in @($script:SceneNames)) {
+    if ([string]::IsNullOrWhiteSpace([string]$sceneName)) { continue }
+    try {
+      Invoke-ObsRequest 'GetSceneItemId' @{
+        sceneName = [string]$sceneName
+        sourceName = $script:OverlayInputName
+      } | Out-Null
+    } catch {
+      try {
+        Invoke-ObsRequest 'CreateSceneItem' @{
+          sceneName = [string]$sceneName
+          sourceName = $script:OverlayInputName
+          sceneItemEnabled = $true
+        } | Out-Null
+      } catch {
+        Write-Host "Overlay warning for scene '$sceneName': $($_.Exception.Message)" -ForegroundColor DarkYellow
+      }
+    }
+  }
+}
+
+function Set-CreapdLowerThird([string]$Title, [string]$Subtitle, [string]$Label) {
+  if ([string]::IsNullOrWhiteSpace($Title)) { throw 'Lower-third title is required.' }
+  if ([string]::IsNullOrWhiteSpace($Label)) { $Label = 'CREAPD LIVE' }
+
+  $file = Write-CreapdOverlayFile $Title $Subtitle $Label $true
+  Ensure-CreapdOverlayInput $file
+  $script:OverlayVisible = $true
+  $script:OverlayTitle = $Title
+  $script:OverlaySubtitle = $Subtitle
+  $script:OverlayLabel = $Label
+}
+
+function Clear-CreapdOverlay {
+  $file = Write-CreapdOverlayFile '' '' '' $false
+  Ensure-CreapdOverlayInput $file
+  $script:OverlayVisible = $false
+  $script:OverlayTitle = $null
+  $script:OverlaySubtitle = $null
+  $script:OverlayLabel = $null
+}
+
+function Get-OverlayResult {
+  return @{
+    overlay_visible = $script:OverlayVisible
+    overlay_title = $script:OverlayTitle
+    overlay_subtitle = $script:OverlaySubtitle
+    overlay_label = $script:OverlayLabel
+    overlay_input_name = $script:OverlayInputName
+  }
 }
 
 function Invoke-CreapdBridge([string]$Action, $Fields = @{}) {
@@ -279,13 +437,15 @@ function Run-CreapdCommand($Command) {
 
       'refresh_state' {
         Refresh-ObsState -RefreshScenes $true
-        Complete-CreapdCommand $Command $true @{
+        $result = @{
           current_scene = $script:CurrentScene
           scenes = $script:SceneNames
           recording_active = $script:RecordingActive
           recording_paused = $script:RecordingPaused
           recording_timecode = $script:RecordingTimecode
         }
+        foreach ($key in (Get-OverlayResult).Keys) { $result[$key] = (Get-OverlayResult)[$key] }
+        Complete-CreapdCommand $Command $true $result
       }
 
       'start_recording' {
@@ -323,6 +483,21 @@ function Run-CreapdCommand($Command) {
         Refresh-ObsState -RefreshScenes $false
         Complete-CreapdCommand $Command $true (Get-RecordingResult)
         Write-Host "Recording resumed." -ForegroundColor Green
+      }
+
+      'show_lower_third' {
+        $title = [string]$Command.payload.title
+        $subtitle = [string]$Command.payload.subtitle
+        $label = [string]$Command.payload.label
+        Set-CreapdLowerThird $title $subtitle $label
+        Complete-CreapdCommand $Command $true (Get-OverlayResult)
+        Write-Host "Lower third ON -> $title" -ForegroundColor Magenta
+      }
+
+      'clear_overlay' {
+        Clear-CreapdOverlay
+        Complete-CreapdCommand $Command $true (Get-OverlayResult)
+        Write-Host "CREAPD overlay cleared." -ForegroundColor DarkMagenta
       }
 
       default {
@@ -364,6 +539,12 @@ while ($true) {
         recording_timecode = $script:RecordingTimecode
         recording_duration = $script:RecordingDuration
         recording_bytes = $script:RecordingBytes
+        overlay_control = $true
+        overlay_visible = $script:OverlayVisible
+        overlay_title = $script:OverlayTitle
+        overlay_subtitle = $script:OverlaySubtitle
+        overlay_label = $script:OverlayLabel
+        overlay_input_name = $script:OverlayInputName
         protocol = 'obs-websocket-v5'
         bridge = 'powershell'
       }
