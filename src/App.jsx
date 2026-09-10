@@ -65,6 +65,7 @@ import TalkGuests from '@/pages/TalkGuests';
 import TalkRundown from '@/pages/TalkRundown';
 import TalkAssets from '@/pages/TalkAssets';
 import TalkExport from '@/pages/TalkExport';
+import TalkLive from '@/pages/TalkLive';
 import CookingConfigure from '@/pages/CookingConfigure';
 import CookingDashboard from '@/pages/CookingDashboard';
 import CookingResearch from '@/pages/CookingResearch';
@@ -212,6 +213,9 @@ const AuthenticatedApp = () => {
         {/* Onboarding & Production Type Selection */}
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/production-types" element={<Navigate to="/" replace />} />
+
+        {/* CREAPD Live — standalone show execution cockpit */}
+        <Route path="/talk/live" element={<TalkLive />} />
 
         {/* Music Production */}
         <Route element={<MusicLayout />}>
