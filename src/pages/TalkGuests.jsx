@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +76,9 @@ export default function TalkGuests() {
     refresh();
   };
 
+  const confirmedCount = guests.filter(guest => guest.status === 'confirmed').length;
+  const formatNeedsGuests = ['Interview Show', 'Panel Discussion', 'Debate'].includes(config.show_format);
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div className="!flex items-center justify-between">
@@ -90,6 +94,21 @@ export default function TalkGuests() {
           {adding ? 'Cancel' : 'Add Guest'}
         </Button>
       </div>
+
+      <TalkProducerGuide
+        currentStep="guests"
+        title={formatNeedsGuests ? 'Set the people CREAPD should plan the show around' : 'Add guests if this production needs them'}
+        instructions={[
+          'AI Suggested means CREAPD found a possible guest; it does not mean that person is booked or has agreed to appear.',
+          'Add the actual people you expect to use, then mark a guest Confirmed when you intend to plan around them.',
+          'When the guest list is settled, review the Rundown to make sure the show flow and timing make sense.',
+        ]}
+        readyText={`${confirmedCount} confirmed · ${guests.length} total guest${guests.length === 1 ? '' : 's'}`}
+        nextPath="/talk/rundown"
+        nextLabel="Review Show Rundown"
+        nextDescription="The rundown is CREAPD's proposed order and timing for the production."
+        note={formatNeedsGuests && guests.length === 0 ? `${config.show_format} usually needs at least one participant. Add your panelists/guest(s), or return to Setup if this show is intentionally guest-free.` : 'Guests are optional for formats that do not depend on another participant.'}
+      />
 
       {adding && (
         <div className="glass-panel p-5 space-y-4">
