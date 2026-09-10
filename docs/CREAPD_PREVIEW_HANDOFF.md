@@ -156,8 +156,6 @@ Passed in Preview:
 - Start / Pause / Resume / Clip / Next / End
 - leaving/re-entering Live during a run
 
-User reported the first cockpit worked seamlessly.
-
 ### Teleprompter layout — USER VISUALLY ACCEPTED
 Commit:
 `79703004fc2697523d973de56de51666174caafe` — `Put teleprompter beside CREAPD Live program monitor`
@@ -200,12 +198,6 @@ Architecture:
 - Preview uses Vercel Automation Protection Bypass only because Preview is protected.
 - Final users must not receive the PowerShell/manual-token workflow; final direction is a one-click installed bridge/desktop helper or OBS plugin.
 
-Relevant OBS commits:
-- `b01bf2c428d226b5b01902cd27896b7d162c08f8` — first owned OBS bridge stack
-- `f097c600743a1b3e11c3b5127c818cdae8e264e3` — improved OBS handshake diagnostics
-- `5709f06cf2b4a711d5f5061a0f5503cf6b1149e1` — Preview protection bypass support
-- `70b54a4da21f851732c413bf0e525ace6f528d18` — sync Program Monitor OBS state
-
 User-tested and PASSED:
 - local OBS pairing/authentication
 - heartbeat/state round-trip
@@ -222,97 +214,92 @@ Implementation direction:
 Initial implementation:
 `735c5fc6d0c2a053bea7c312bea7e9197988a50f` — `Mount local OBS program monitor in CREAPD Live`
 
-Initial real Preview test found a black-frame rendering bug even though CREAPD had correctly acquired `OBS Virtual Camera`. Root cause: the MediaStream was acquired before the `<video>` element mounted, so `videoRef.current` was null when `srcObject` was first assigned.
-
-Repair:
+Black-frame repair:
 `09ce2bd4e712bdaf7041cb2c6468fc95d731aca4` — `Attach OBS program stream after video mount`
-
-Vercel for `09ce2bd4...`: **SUCCESS / DEPLOYED**.
 
 Retest on 2026-09-10 — **TESTED + PASSED**:
 - OBS bridge remained connected.
 - OBS Virtual Camera remained active.
-- CREAPD Live showed **LOCAL PROGRAM FEED**.
-- Program Monitor rendered the actual live OBS Program picture instead of black.
-- UI identified `OBS Virtual Camera · Scene`.
-- OBS connected badge remained green.
-- Teleprompter/show layout remained intact in the same Live cockpit.
-- User supplied screenshot visibly confirming the real OBS Program picture inside CREAPD Live and reported: **“IT WORKED!!! OMG!! Literally brought tears to me eyes....”**
+- CREAPD Live rendered the actual OBS Program picture.
+- Teleprompter/show layout remained intact.
 
-Treat the local real Program Monitor video path as **TESTED + PASSED**.
-
-Important architecture behavior:
-- Program video remains entirely local to the creator’s machine.
-- CREAPD does not relay Program frames through Vercel or store them in Neon.
-- Monitor audio remains intentionally muted/disabled to prevent echo.
-- selected video device is remembered locally.
+Program video remains entirely local; CREAPD does not relay frames through Vercel or store them in Neon. Monitor audio is intentionally muted/disabled to prevent echo.
 
 ### OBS recording controls — USER TESTED + PASSED
 
-Recording is implemented through the same owned OBS bridge/command queue. No additional Neon migration was required; `creapd.obs_commands` records the control commands and `obs_bridges.capabilities` carries real recording state/timecode.
+Recording uses the same owned OBS bridge/command queue. No additional Neon migration was required.
 
-Functional implementation commits:
-- `f313e9de0ab5d39212058a84e52b7231a7e16487` — add `TalkObsRecordingControl.jsx`
-- `2e7a92cdcc98f6b2d571fce955be190949c42bcc` — mount recording controls in CREAPD Live shell
-- `ee85e85732a50908a9fc0dfa640fcc9a60da2dc9` — allow owned OBS recording commands in server queue
+Key functional commits:
 - `905ce416f70d3f29b71f3dbf226bee533ed49b49` — add OBS recording status/control to PowerShell bridge
-- `b6af6cbb5f151a2cc010dabb37507626278d926c` — require a recording-capable bridge heartbeat before enabling recording buttons
 - `29bf549d16975a25fef0a7832c79f1c60fe72bca` — move recording controls into the always-visible CREAPD Live header
 
-Vercel for `29bf549d...`: **SUCCESS / DEPLOYED** on 2026-09-10.
-
-Implemented OBS WebSocket v5 requests:
-- `GetRecordStatus`
-- `StartRecord`
-- `StopRecord`
-- `PauseRecord`
-- `ResumeRecord`
-
-Final CREAPD Live behavior:
-- recording controls remain visible in the top-right Live header beside show state/clock; no scrolling is required
-- **Start Recording** is available when the connected bridge reports `recording_control = true`
-- active recording shows red **REC** state with the real OBS recording timecode
-- recording can be paused/resumed/stopped from CREAPD
-- recording itself remains local to OBS; CREAPD sends control commands and reads status only
-
 User acceptance on 2026-09-10 — **TESTED + PASSED**:
-- updated bridge was running and reported recording capability
-- top-header recording placement was manually tested and accepted
-- **Start Recording** from CREAPD started actual OBS recording
-- CREAPD displayed active **REC** state/timecode
-- **Pause Recording** paused the OBS recording
-- **Resume Recording** resumed it
-- **Stop Recording** stopped it
-- OBS produced the recording file successfully
-- user reported: **“It all worked!!!”**
+- Start Recording from CREAPD started actual OBS recording.
+- CREAPD displayed real REC state/timecode.
+- Pause / Resume / Stop all controlled OBS correctly.
+- OBS produced the recording file successfully.
+- top-header placement was accepted.
 
-Treat the complete CREAPD Live recording-control path as **TESTED + PASSED**.
+### Local lower-third / browser-source graphics — BUILT + DEPLOYED, USER TEST REQUIRED
+
+First graphics layer is now implemented in Preview.
+
+Architecture:
+
+`CREAPD Live text controls -> owned obs command queue -> local CREAPD OBS Bridge -> local HTML file -> OBS Browser Source (CREAPD Overlay) -> OBS Program -> local CREAPD Program Monitor`
+
+Important design decision:
+- OBS does **not** load a Vercel-hosted overlay page for this first layer.
+- The bridge writes the lower-third HTML locally under `%LOCALAPPDATA%\CREAPD\obs-overlays`.
+- The bridge creates/updates an OBS Browser Source named **CREAPD Overlay**.
+- The source is attached to all currently reported OBS scenes so the graphic can survive scene changes.
+- Graphic rendering remains local to the creator’s computer; CREAPD only sends text/state commands.
+- No new Vercel function and no Neon schema migration were required.
+
+Functional commits:
+- `33d402eccc5de1f4a7424e2704403dab6056701e` — allow `show_lower_third` / `clear_overlay` commands in owned OBS queue
+- `68bf7af43b827734bfbf0ee729efc38cbeb944d7` — local OBS Browser Source lower-third bridge with PowerShell HTML quoting repair
+- `c95547f8a6642815b7a0cb9fe16a174f43231a18` — add top-header `TalkObsGraphicsControl.jsx`
+- `f4a2f1a4927458d2224a2f7fb87427afc4a1d3c5` — mount CREAPD Live graphics control
+
+Vercel for latest functional commit `f4a2f1a4...`: **SUCCESS / DEPLOYED** on 2026-09-10.
+
+CREAPD Live now provides an always-visible top-header **Graphics** button with:
+- Name / Headline
+- Role / Subtitle
+- Eyebrow Label (default `CREAPD LIVE`)
+- local preview
+- **Show Lower Third** / **Update Lower Third**
+- **Clear Graphic**
+- live state changes to **Graphics ON** when the updated bridge reports an active overlay
+
+The currently running bridge from the recording test is one version old. The Graphics panel intentionally reports **Bridge update required** until Berna downloads/restarts the newest bridge, preventing unsupported graphics commands from being sent.
+
+Do **not** mark lower-thirds PASSED until the real OBS Program/Program Monitor test succeeds.
 
 ## 10. Talk Acceptance Status
 
 ### PASSED
-- heavy owned Talk generation
-- Neon persistence for generated production
+- heavy owned Talk generation and Neon persistence
 - research batching/checkpointing under realistic load
 - Topics display/approval
 - guided Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
 - Advanced JSON export execution
 - CREAPD Live state machine and show controls
-- Live re-entry
+- Live re-entry and completed-show Start New Run
 - Program Monitor + Teleprompter layout
-- completed-show **Start New Run**
-- fresh Segment 1/clock/runtime state on new run
-- prior completed session retained historically
-- OBS local pairing/authentication
-- OBS heartbeat/state round-trip
-- OBS scene discovery
-- CREAPD **Take** -> actual OBS scene change
-- OBS scene result round-trip into CREAPD/Neon
+- OBS local pairing/authentication and heartbeat/state round-trip
+- OBS scene discovery and CREAPD Take -> actual OBS scene change
 - real OBS Program picture rendered locally inside CREAPD Program Monitor
 - top-header OBS recording controls
 - Start / Pause / Resume / Stop actual OBS recording from CREAPD
-- real OBS recording state/timecode in CREAPD
-- OBS recording file creation after Stop
+- real OBS recording state/timecode and recording-file creation
+
+### BUILT + DEPLOYED / USER TEST REQUIRED
+- local CREAPD lower-third generation
+- automatic `CREAPD Overlay` OBS Browser Source creation/update
+- lower-third Show / Update / Clear controls
+- lower-third persistence across reported OBS scenes
 
 ### STILL PARTIAL / FUTURE
 - guest shortlist/invite/confirm semantics
@@ -320,8 +307,8 @@ Treat the complete CREAPD Live recording-control path as **TESTED + PASSED**.
 - shared Production Package -> Presentation Studio/editor handoff for Talk
 - legacy monolithic Talk build retirement
 - Show Book / ZIP export
-- browser-source overlays/lower thirds
-- automatic segment-to-scene mappings
+- richer graphics: topic cards, guest IDs from data, live text/tickers
+- automatic segment-to-scene/overlay mappings
 - teleprompter auto-scroll / mirror / detached display
 - post-show clipping/transcription
 - final installed desktop/OBS helper packaging
@@ -331,18 +318,22 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Begin browser-source overlays / lower-thirds integration on Preview.**
+**User-test the deployed lower-third graphics path in Preview.**
 
-Immediate goals:
-1. Inspect current Talk assets, rundown, guest data, and OBS bridge command capabilities for overlay-ready content.
-2. Define a CREAPD-owned overlay state model for lower thirds, topic/title cards, guest IDs, and simple live text without routing video through Vercel.
-3. Build a browser-source overlay surface that OBS can load as a Browser Source.
-4. Add owned Production Core actions / bridge commands for showing, updating, and clearing overlays while preserving PASSED scene and recording control.
-5. Add simple CREAPD Live controls for at least one real lower-third test.
-6. User-test the lower third appearing in actual OBS Program and verify the Program Monitor reflects it.
-7. Keep all work on `backend/vercel-foundation`; do not touch `main`.
+Acceptance sequence:
+1. Stop the currently running bridge with `Ctrl+C`.
+2. Download the newest `creapd-obs-bridge.ps1` from Preview and run it using the same valid CREAPD Bridge Token unless rotated, the OBS WebSocket password, and Preview bypass secret.
+3. Hard-refresh CREAPD Live.
+4. Open the top-header **Graphics** control; confirm it no longer says **Bridge update required**.
+5. Enter a real test lower third, for example title `TexasNomad`, subtitle `Host · We Are America`, label `CREAPD LIVE`.
+6. Click **Show Lower Third**.
+7. Verify OBS automatically creates a source named **CREAPD Overlay**, the lower third appears in actual OBS Program, and the local CREAPD Program Monitor shows the same graphic.
+8. Click **Clear Graphic** and verify it disappears from OBS Program and Program Monitor.
+9. If basic Show/Clear passes, switch OBS scenes with CREAPD Take while the graphic is active and confirm the overlay remains available on the other scene.
 
-After overlays are stable, continue toward automatic segment-to-scene/overlay mappings, teleprompter refinements, and post-show tooling.
+If it fails, capture the PowerShell line beginning `Command failed:` plus a screenshot of OBS Sources/Program Monitor. Patch Preview only.
+
+If successful, mark lower thirds **TESTED + PASSED** and continue to data-driven guest/topic graphics and automatic segment-to-overlay behavior.
 
 ## 12. Remaining Studios / Major Areas
 
