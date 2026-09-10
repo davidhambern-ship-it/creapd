@@ -2,47 +2,49 @@
 
 > **READ THIS FIRST IN A NEW CHAT / NEW WORK SESSION.**
 >
-> Before changing CREAPD, inspect this file, the current `backend/vercel-foundation` branch head, and Vercel status. Update this file after every meaningful migration/test checkpoint.
+> Before changing code, inspect this file, the current `backend/vercel-foundation` branch head, and Vercel status. Update this file after every meaningful migration/test checkpoint.
 
-## Mission
+## 1. Mission
 
 CREAPD is being rebuilt and fully tested **before anything is promoted to the live site**.
 
-Goal: a fully operational, launch-ready CREAPD in Preview with runtime ownership migrated off Base44. Only after the whole product is upgraded, regression-tested, demo-tested, and audited do we promote the completed rebuild to `main`.
+Goal: a **fully operational, launch-ready CREAPD in Preview**, with runtime ownership migrated off Base44. Only after the entire product is upgraded, regression-tested, demo-tested, and audited do we promote the completed rebuild to `main`.
 
 Launch-ready means:
 
 - Every Production Studio works end-to-end in Preview.
 - Shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
-- State survives refresh, navigation, logout/login, reopen, edit, reject/restore, and regeneration.
-- Critical runtime behavior no longer depends on Base44 entities, functions, auth, AI integrations, or hidden fallbacks.
-- Failure states are explicit; no endless initializing, blank pages, silent failures, or dead buttons.
+- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, and regeneration.
+- Critical runtime behavior no longer depends on Base44 entities, backend functions, auth, AI integrations, or hidden fallbacks.
+- Failure states are explicit; no endless Initializing states, blank pages, silent failures, or dead buttons.
+- CREAPD guides users through each workflow instead of assuming they already know what to do.
 - Multiple realistic demos can be run without special handling.
 - Final repository-wide Base44 audit is complete.
+- Only then is Preview promoted to `main` and production smoke-tested.
 
-## Environment Rules
+## 2. Branch / Environment Rules
 
-Development/testing branch:
+### Development/testing branch
 
 `backend/vercel-foundation`
 
-Preview URL:
+### Preview URL
 
 `https://project-1nufq-git-backend-vercel-foundation-texasnomadgames.vercel.app/`
 
-Vercel:
+### Vercel
 
 - Project: `project-1nufq`
 - Team slug: `texasnomadgames`
 - Team ID: `team_E9xyI6RoOjilno6YazF4Bksb`
 
-Neon:
+### Neon
 
 - Project: `bold-term-42963962`
 - Database: `neondb`
 - Active Preview branch: `br-round-cake-awfbwk2h`
 
-Live branch:
+### Live branch
 
 `main`
 
@@ -52,23 +54,36 @@ Live branch:
 
 `ca03bf2af028cc2cf62e915c2e47c41ee6a0f214` — `Add explicit presentation editor exit`
 
-## Architecture Direction
+Do not resurrect the accidental client-side Base44 Talk experiment from `main` as migration architecture.
 
-Preview is becoming the new CREAPD, not a patched copy of the old one.
+## 3. Architecture Direction
 
-Preferred owned Studio path:
+Preview is becoming the **new CREAPD**, not a patched copy of the old site.
 
-`React Studio UI -> /api/creapd/production/core -> Studio server module -> Neon / owned services`
+Preferred owned runtime:
 
-Important Vercel discovery: Preview already had 12 serverless API functions. Adding separate Talk API endpoints created function #13 and caused deployment failures. Talk was consolidated behind the existing Production Core endpoint. Do not re-add separate Talk Vercel functions unless hosting architecture changes.
+`React UI -> /api/creapd/production/core -> Studio server module -> Neon / owned services`
 
-`api/creapd/production/core.js` exports `maxDuration: 300`, but expensive Studio work should still be broken into checkpointed stages rather than one giant request.
+Current principles:
 
-The user-provided **CREAPD Zero-Cost Technical & Strategic Upgrade Blueprint** is a north-star reference: multi-agent editorial intelligence, edge/local hybridization, provider fallback, OBS WebSocket, browser overlays, Host/Teleprompter mode, session/timestamp logging, post-show transcription + local FFmpeg clipping, and future organization/show/member/RLS design.
+- React/Vite frontend on Vercel.
+- Shared owned Production Core gateway.
+- Neon/Postgres as primary persistent data.
+- `src/api/creapdClient.js` as owned frontend client.
+- Neon-aware auth via `shouldUseNeonAuth()`.
+- Base44 only as temporary compatibility for unmigrated areas.
+- A Studio is **not migrated** merely because a Base44 backend function was replaced by browser-side Base44 SDK calls.
+- The user-provided **CREAPD Zero-Cost Upgrade & Architecture Blueprint** is a north star: multi-agent editorial intelligence, edge/local hybridization, provider fallbacks, OBS WebSocket, browser overlays, Host/Teleprompter mode, live session/timestamp logging, post-show transcription + local FFmpeg clipping, and future organization/show/member/RLS design.
 
-## Research Studio
+### Vercel function-count lesson
 
-Research is the strongest tested migration reference.
+Preview already had 12 Vercel serverless API functions. Early Talk work added function #13 and deployments failed. Talk was consolidated behind the existing Production Core endpoint. Old red deployments are superseded history, not an active runtime issue.
+
+`api/creapd/production/core.js` currently exports `maxDuration: 300`, but expensive AI work should still be split/checkpointed rather than relying on one long request.
+
+## 4. Research Studio — Reference Implementation
+
+Research remains the strongest previously tested migration reference.
 
 Controlled regression passed:
 
@@ -80,39 +95,29 @@ Controlled regression passed:
 - package/editor opened
 - explicit Exit Editor works
 
-Known non-blocking issue: Escape does not reliably exit Present mode. User explicitly does not care right now.
+Known non-blocking issue: Escape does not reliably exit Present mode. User explicitly does not care about this right now.
 
-## Presentation Studio
+Research is a reference implementation, not something to ship independently.
 
-Preview contains an owned Presentation Studio more advanced than `main`. It reads owned production data through `/production/core`, opens `/editor/:id`, and uses owned delete/update/editor actions. Do not overwrite it with the older `main` implementation without inspection.
+## 5. Presentation Studio
 
-## Talk Studio 2.0 — Current Checkpoint
+Preview contains an owned Presentation Studio more advanced than `main`.
 
-### Status
+It reads owned production data through `/production/core`, opens `/editor/:id`, and uses owned update/delete/editor actions. Do not overwrite it with older `main` presentation code without inspection.
 
-- Neon migration 004: **APPLIED + VERIFIED**
-- Owned Talk read/write foundation: **DEPLOYED**
-- Talk test #1: **FAILED / DIAGNOSED** — old 50-second monolithic AI timeout
-- Repair #1: **DEPLOYED** — split Research and Production into separate checkpointed requests
-- Talk test #2: **FAILED / DIAGNOSED** — Research hit `AI_GATEWAY_OUTPUT_INCOMPLETE (max_output_tokens)`
-- Repair #2: **DEPLOYED** — Research batched 3 topics at a time with Neon checkpoints
-- Talk test #3: **FAILED / DIAGNOSED** — first batch returned all topic dossiers but omitted standalone research-item rows for Politics and Cryptocurrency
-- Repair #3: **DEPLOYED** — dossier coverage is authoritative; missing standalone research items are synthesized from the verified dossier instead of failing the batch
-- Talk overall: **PARTIAL** until the real acceptance path passes
+## 6. Talk Studio 2.0 — Current Checkpoint (2026-09-10)
 
-### Latest functional code head
+### Latest branch head
 
-`6904f5196c98ae23f7607f61a479bf77b0d2769f` — `Make Talk research batch coverage resilient`
+`b38be037f99e038dd86b8907d2def48226b73eee` — `Make Talk Dashboard a guided producer control room`
 
-Vercel status: **SUCCESS / DEPLOYED**.
+At the time this handoff update was written, Vercel status for this newest guided-UX head was **PENDING**. Verify it before asking the user to test the guide. The previous functional Talk build repairs are already deployed and proven by the user.
 
 ### Neon migration 004
 
-Migration file:
+Applied and verified in active Preview DB.
 
-`server/migrations/004_talk_studio.sql`
-
-Verified tables:
+Tables:
 
 - `creapd.talk_production_configurations`
 - `creapd.talk_topics`
@@ -123,14 +128,17 @@ Verified tables:
 - `creapd.talk_sessions`
 - `creapd.talk_events`
 
-Schema supports verification status/notes/confidence, counter-perspectives, debate questions, live segment state, actual timestamps/duration, clip markers, OBS fields, Host View state, and Talk session/event logging.
+Schema includes verification/confidence, counter-perspectives, debate questions, actual segment timing, clip markers, OBS scene/overlay fields, Host View state, and Talk session/event logging.
 
 ### Stress-test production
 
-Saved configuration:
+Saved config id:
+
+`af9ccc24-ba27-46f2-9b63-4025da1b4dbc`
+
+Production:
 
 - Name: `We Are America`
-- Configuration ID: `af9ccc24-ba27-46f2-9b63-4025da1b4dbc`
 - Host: `TexasNomad`
 - Format: `Panel Discussion`
 - Date: `2026-09-10`
@@ -138,172 +146,207 @@ Saved configuration:
 - Talk runtime: `110 min`
 - Sponsor runtime: `4 min`
 - Tone: `Conversational`
-- Topics: `8 selected`
-- Sources: `18 enabled`
-- Automation: `18 selected`
+- Topics: 8
+- Research sources: 18
+- Automation selections: 18
 
-Selected topics in Neon:
+### Talk failure history and fixes
 
-1. Local News
-2. Politics
-3. Cryptocurrency
-4. Social Issues
-5. Lifestyle
-6. Arts & Culture
-7. Education
-8. Technology
+#### Failure 1 — 50-second timeout
 
-Do **not** reduce this workload to make the test pass.
+Initial owned Talk engine used one monolithic AI request and failed at almost exactly its hard-coded 50-second limit.
 
-### Failure chronology and lessons
+Fix:
 
-#### Failure 1 — timeout
+- split into Research stage and Production stage
+- checkpoint Research in Neon before Production assembly
+- owned package creation
+- Production Core `maxDuration: 300`
+- no Base44 Dashboard polling/refresh on Preview
 
-Error: `The operation was aborted due to timeout`
+#### Failure 2 — AI `max_output_tokens`
 
-Root cause: one monolithic AI call with a hard-coded ~50-second cutoff. Neon did not half-write generated records.
+The first split still asked one strict Research response to contain all 8 topics. AI Gateway exhausted output budget before valid structured JSON completed.
 
-Repair:
+Fix:
 
-- `server/talkResearchEngine.js`
-- `server/talkProductionEngine.js`
-- `server/talkPackageEngine.js`
-- `api/creapd/production/core.js`
-- `src/api/creapdClient.js`
+- batch selected topics, maximum 3 per Research batch
+- 8-topic stress test becomes 3 + 3 + 2
+- checkpoint each successful batch immediately
+- record research signature/completed topics/response ids
+- resume completed work when unchanged configuration is retried
+
+#### Failure 3 — overly strict secondary-item coverage
+
+Batch 1 returned verified dossiers for Local News, Politics, and Cryptocurrency, but separate research-item rows only for Local News. Validator incorrectly failed the entire batch because Politics/Cryptocurrency lacked secondary rows.
+
+Fix:
+
+- verified topic dossier is authoritative coverage
+- if a valid dossier has no separate research item, CREAPD derives a compact research record from that dossier
+- batch schema constrains `topic_name` to actual requested topic names
+
+### Successful Talk build — VERIFIED
+
+User reran the exact same heavy production and reported **it worked**.
+
+Neon verification after the successful run:
+
+- config status: `ready`
+- `build_metadata.stage`: `complete`
+- 8 / 8 selected topics present
+- 16 research items
+- 4 AI guest suggestions
+- 13 rundown segments
+- 19 AI assets
+- 1 owned Talk Production Package
+- 1 Talk session
+- all 3 Research batches completed
+- production model: `openai/gpt-5.4-mini`
+
+At the time of DB inspection, all 8 topics were approved.
+
+This proves the core owned Talk build pipeline can handle the 8-topic / 120-minute stress test.
+
+### Talk owned frontend/backend paths
+
+Owned Preview behavior includes:
+
+- configuration save through Production Core
+- production reads through Production Core
+- checkpointed build/refresh through Production Core
+- topic approve/unapprove through owned path
+- guest create/update/delete/confirm through owned path
+- asset approve/unapprove through owned path
+- Dashboard polling/refresh through owned path
+- owned Talk Production Package creation
+
+Legacy `server/talkEngine.js` and `talk_build` / `talk_refresh` compatibility handlers still exist. After the repaired path is fully accepted, retire/hard-block the monolithic legacy path so it cannot become an accidental fallback.
+
+## 7. New UX Principle — CREAPD Must Guide the User
+
+User identified an important launch requirement after the successful Talk build: approving Discussion Topics left no obvious instruction about what to do next.
+
+New product rule:
+
+> **Never assume a CREAPD user already understands the production workflow. Every major page should explain what the user is doing, what decision they need to make, what “ready” means, and the next step.**
+
+A reusable component was added:
+
+`src/components/talk/TalkProducerGuide.jsx`
+
+Talk guided sequence:
+
+**Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Export**
+
+Guide wiring added to:
+
 - `src/pages/TalkDashboard.jsx`
-
-Talk build/refresh now runs Research checkpoint first, then Production assembly.
-
-#### Failure 2 — max output tokens
-
-Error: `AI Gateway output was incomplete (max_output_tokens)`
-
-Neon recorded `stage: research_failed`, `code: AI_GATEWAY_OUTPUT_INCOMPLETE`, `recoverable: true`.
-
-Root cause: even after splitting Research from Production, Research still tried to return all 8 topics in one strict structured response.
-
-Repair: Research batches selected topics, max 3 per AI request. The stress test becomes **3 + 3 + 2**. Successful batches checkpoint immediately in Neon and can be resumed.
-
-Architecture lesson for all later Studios:
-
-> **Large multi-topic AI jobs must be batched and checkpointed.**
-
-#### Failure 3 — incomplete topic coverage validator
-
-Error shown to user: `Talk research batch returned incomplete topic coverage`
-
-Neon proved the failure was batch 1 before any batch checkpoint was accepted:
-
-- `missing_dossiers: []`
-- `missing_research: ["Politics", "Cryptocurrency"]`
-- `research_batches_completed: 0`
-
-This means the AI returned verified dossiers for all three requested topics, but only returned standalone research-item rows for Local News. The validator incorrectly treated missing secondary rows as missing topic research.
-
-Repair in `server/talkResearchEngine.js` at `6904f519...`:
-
-- Topic dossier coverage is the hard requirement.
-- The batch schema now constrains `topic_name` to the exact input topic names.
-- If a verified dossier exists but no separate research-item row exists, CREAPD synthesizes one concise research record from that dossier.
-- Synthetic rows inherit the dossier's summary, source/source-link, verification status/notes, and confidence.
-- The batch is still rejected if an authoritative topic dossier is truly missing.
-
-No database migration was required for any of these runtime repairs.
-
-### Talk files / owned paths
-
-- `server/talkResearchEngine.js`
-- `server/talkProductionEngine.js`
-- `server/talkPackageEngine.js`
-- `server/talkStudio.js`
-- `api/creapd/production/core.js`
-- `src/api/creapdClient.js`
-- `src/hooks/useTalkProduction.js`
-- `src/pages/TalkConfigure.jsx`
-- `src/pages/TalkDashboard.jsx`
+- `src/pages/TalkResearch.jsx`
 - `src/pages/TalkTopics.jsx`
 - `src/pages/TalkGuests.jsx`
-- `src/pages/TalkAssets.jsx`
 - `src/pages/TalkRundown.jsx`
+- `src/pages/TalkAssets.jsx`
+- `src/pages/TalkExport.jsx`
 
-Owned Preview behavior already includes configuration save/read, checkpointed build/refresh, topic status, guest CRUD/confirm, asset status, and Dashboard polling through the owned backend.
+Behavior:
 
-### Legacy cleanup still required
+- shows current step / workflow progress
+- explains the task in plain language
+- explains what approval/confirmation means
+- distinguishes AI guest suggestions from actual booked/confirmed guests
+- compares rundown runtime with target
+- explains asset approval is “ready for use,” not mandatory for every optional asset
+- gives a clear Next Step button
+- Dashboard now starts a guided review instead of presenting only status widgets
+- Dashboard distinguishes **Generation Checklist** from human review decisions
 
-`server/talkEngine.js` and legacy `talk_build` / `talk_refresh` handlers in `server/talkStudio.js` still exist as compatibility code. The normal Preview path bypasses them, but before Talk is marked fully migrated they must be retired or hard-blocked so they cannot become an accidental fallback.
+This Talk Producer Guide should become a reusable design pattern for later Studios after it passes user testing.
 
-Future Talk features still include full Host Mode execution UI, OBS bridge execution, and post-show clipping/transcription implementation. Neon persistence is already designed for them.
+## 8. Talk Acceptance Status
 
-## Talk Acceptance Test — Current Gate
+### PASSED
 
-Hard-refresh Preview and rerun the same saved `We Are America` configuration with all 8 topics / 18 sources / 18 automations / 120-minute runtime.
+- Heavy owned Talk production build itself
+- Neon persistence for generated production
+- Research batching/checkpointing under realistic load
+- Topics display and topic approval path (user exercised Topics; DB showed approved topics)
 
-Expected progression:
+### STILL TO TEST / PARTIAL
 
-`researching` -> batch checkpoints -> `research_ready` -> `assembling_production` -> `complete`
+- Guided Producer Guide UI on newest Preview deployment
+- Guest add/confirm/edit/delete persistence across navigation
+- Rundown review UX and timing sanity
+- AI Asset approve/unapprove persistence
+- Export behavior
+- shared Production Package -> Presentation Studio/editor handoff for Talk
+- refresh/reopen persistence across the whole Talk path
+- explicit confirmation that no tested Talk action silently falls back to Base44
+- legacy monolithic Talk build retirement
+- Host Mode / OBS execution / post-show clipping/transcription (future Blueprint work)
 
-Expected final state:
+Talk Studio overall remains **PARTIAL**, even though the core build pipeline has now PASSED.
 
-- config `ready`
-- research > 0
-- all 8 selected topics represented
-- rundown > 0
-- assets > 0
-- owned Talk Production Package exists
-- Talk session exists and is `ready`
+## 9. Current Exact Next Action
 
-Then continue:
+1. Verify Vercel is green for `b38be037f99e038dd86b8907d2def48226b73eee`.
+2. Hard-refresh Preview.
+3. Open Talk Dashboard or Discussion Topics and inspect the new **Producer Guide**.
+4. Follow the guide through:
+   - Research
+   - Topics
+   - Guests
+   - Rundown
+   - AI Assets
+   - Export
+5. Test real actions along the way:
+   - topic unapprove/reapprove
+   - guest add + confirm/unconfirm + delete/edit if available
+   - asset approve/unapprove
+   - navigate away/back and refresh
+6. Report the first unclear instruction, dead end, persistence problem, or runtime issue.
 
-1. Inspect Research.
-2. Approve/unapprove a Topic; navigate away/back; verify persistence.
-3. Add/confirm/edit/delete a Guest; verify persistence.
-4. Inspect Rundown/timing.
-5. Approve/unapprove an Asset; verify persistence.
-6. Refresh/navigate away/return; verify all state persists.
-7. Send the Talk Production Package through shared Presentation Studio/editor when exposed.
-8. Reopen project/editor without loss.
-9. Confirm no tested Talk action silently falls back to Base44.
-10. Later intentionally trigger a recoverable error and confirm clear failure state + retained checkpoint.
+Do not touch `main`.
 
-If the next test fails, inspect Neon `build_metadata.stage`, `failure_details`, `research_completed_topics`, `research_batches_completed`, and generated row counts before changing code.
+## 10. Remaining Studios / Major Areas
 
-## Remaining Studios / Major Areas
-
-- Talk — current focus
+- Talk — current focus until guided downstream acceptance passes
 - Cooking
 - Sports
 - Cosmo
 - Music / Radio
 - Spiritual
 - News
-- Shared Production Package / Dispatch
+- shared Production Package flow across all Studios
+- shared Dispatch
 - Presentation Studio/editor full regression
 - Export
 - OBS/live execution
 - Host Mode
-- Post-show clipping/transcription
-- Organizations/team/RBAC/RLS
-- Final Base44 audit/removal
+- post-show clipping/transcription
+- organizations/team/RBAC/RLS
+- final Base44 audit/removal
 
 Do not promote individual Studio work to production along the way.
 
-## Final Base44 Audit Gate
+## 11. Final Base44 Removal Gate
 
-Before launch, search Preview for at least:
+Before launch search Preview for at least:
 
 - `@base44/sdk`
 - `base44.entities`
 - `base44.functions`
 - `base44.integrations`
 - Base44 `createClient(`
-- Base44 app URLs / app IDs / tokens
-- compatibility adapters
-- fallback branches
-- old service-role assumptions
+- Base44 app URLs / IDs / tokens
+- compatibility adapters/fallback branches
+- service-role assumptions
 
 Classify every remaining reference as removed/replaced, one-time migration utility, isolated compatibility scheduled for deletion, or blocker.
 
-## Status Vocabulary
+Do not call CREAPD fully migrated while critical runtime behavior still depends on Base44.
+
+## 12. Status Vocabulary / Protocol
 
 - **BUILT** — code exists
 - **DEPLOYED** — Vercel successful
@@ -312,16 +355,12 @@ Classify every remaining reference as removed/replaced, one-time migration utili
 - **PARTIAL** — important behavior remains unverified/broken
 - **BLOCKED** — cannot progress without resolving issue
 
-Never mark PASSED merely because code compiled or Vercel deployed.
+Never use **PASSED** merely because code compiled or Vercel deployed.
 
-## Current Exact Next Action
-
-**Retest the saved `We Are America` Talk production on Preview against functional commit `6904f519...`.**
-
-Do not touch `main`.
+After each meaningful work block record: date, branch, latest functional commit, what changed, files/routes, Vercel status, DB status, actual user test, result, known issues, and exact next action.
 
 ---
 
-### Quick resume prompt
+### Quick resume prompt for a future session
 
 > Open `docs/CREAPD_PREVIEW_HANDOFF.md` from `backend/vercel-foundation` in `davidhambern-ship-it/creapd`, inspect the current branch head and Vercel status, and resume from **Current Exact Next Action**. Do not modify `main`.
