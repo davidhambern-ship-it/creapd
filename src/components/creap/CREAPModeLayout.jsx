@@ -7,8 +7,7 @@ import TalkLiveRestartControl from '@/components/talk/TalkLiveRestartControl';
 import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
 import TalkObsBridgeControl from '@/components/talk/TalkObsBridgeControl';
 import TalkObsRecordingControl from '@/components/talk/TalkObsRecordingControl';
-import TalkObsGraphicsControl from '@/components/talk/TalkObsGraphicsControl';
-import TalkObsSceneCueControl from '@/components/talk/TalkObsSceneCueControl';
+import TalkLiveDirectorControl from '@/components/talk/TalkLiveDirectorControl';
 import TalkAutoRundownAdvance from '@/components/talk/TalkAutoRundownAdvance';
 
 /**
@@ -31,8 +30,7 @@ export default function CREAPModeLayout() {
         <TalkLiveRestartControl />
         <TalkProgramMonitor />
         <TalkObsRecordingControl />
-        <TalkObsGraphicsControl />
-        <TalkObsSceneCueControl />
+        <TalkLiveDirectorControl />
         <TalkAutoRundownAdvance />
         <TalkObsBridgeControl />
       </AppErrorBoundary>
