@@ -9,6 +9,7 @@ import TalkObsBridgeControl from '@/components/talk/TalkObsBridgeControl';
 import TalkObsRecordingControl from '@/components/talk/TalkObsRecordingControl';
 import TalkObsGraphicsControl from '@/components/talk/TalkObsGraphicsControl';
 import TalkObsSceneCueControl from '@/components/talk/TalkObsSceneCueControl';
+import TalkAutoRundownAdvance from '@/components/talk/TalkAutoRundownAdvance';
 
 /**
  * Thin layout route that wraps all authenticated pages in the CREAPModeProvider.
@@ -32,6 +33,7 @@ export default function CREAPModeLayout() {
         <TalkObsRecordingControl />
         <TalkObsGraphicsControl />
         <TalkObsSceneCueControl />
+        <TalkAutoRundownAdvance />
         <TalkObsBridgeControl />
       </AppErrorBoundary>
     </CREAPModeProvider>
