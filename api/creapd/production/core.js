@@ -2,6 +2,8 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
+import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
+import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
 import { runPresentationStudioWorkers } from '../../../server/presentationStudioWorkers.js';
 import {
@@ -24,7 +26,10 @@ import {
 } from '../../../server/presentationStudio.js';
 
 export const config = {
-  maxDuration: 60,
+  // Hobby + Fluid Compute currently supports up to 300 seconds. Talk's
+  // checkpointed stages each stay below this ceiling while allowing live web
+  // research enough time to finish without an arbitrary 50-second cutoff.
+  maxDuration: 300,
 };
 
 function safeError(error) {
@@ -56,6 +61,27 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   }
 
   try {
+    // Talk's expensive AI work is deliberately split into separate requests.
+    // Research is checkpointed in Neon before the production stage starts, so
+    // a later failure can be retried without losing completed intelligence.
+    if (action === 'talk_build_research') {
+      const result = await runTalkResearchStage({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+      });
+      return success(response, action, { result });
+    }
+
+    if (action === 'talk_build_production') {
+      const result = await runTalkProductionStage({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+      });
+      return success(response, action, { result });
+    }
+
     if (action.startsWith('talk_')) {
       const result = await runTalkStudioAction({
         sql,
