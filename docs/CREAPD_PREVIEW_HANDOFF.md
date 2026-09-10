@@ -14,6 +14,7 @@ Launch-ready means:
 
 - Every Production Studio works end-to-end in Preview.
 - Shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
+- CREAPD also supports **show execution** after production: Production Package -> CREAPD Live -> session/timing/events -> later OBS/overlays/clipping.
 - Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, and regeneration.
 - Critical runtime behavior no longer depends on Base44 entities, backend functions, auth, AI integrations, or hidden fallbacks.
 - Failure states are explicit; no endless Initializing states, blank pages, silent failures, or dead buttons.
@@ -107,11 +108,11 @@ It reads owned production data through `/production/core`, opens `/editor/:id`, 
 
 ## 6. Talk Studio 2.0 — Current Checkpoint (2026-09-10)
 
-### Latest branch head
+### Latest functional branch head before this documentation commit
 
-`b38be037f99e038dd86b8907d2def48226b73eee` — `Make Talk Dashboard a guided producer control room`
+`34409a8d78216100363802dc7bce3031a5ffa85f` — `Add CREAPD Live entry point to Talk dashboard`
 
-At the time this handoff update was written, Vercel status for this newest guided-UX head was **PENDING**. Verify it before asking the user to test the guide. The previous functional Talk build repairs are already deployed and proven by the user.
+Vercel status: **SUCCESS / DEPLOYED**.
 
 ### Neon migration 004
 
@@ -223,94 +224,138 @@ Owned Preview behavior includes:
 
 Legacy `server/talkEngine.js` and `talk_build` / `talk_refresh` compatibility handlers still exist. After the repaired path is fully accepted, retire/hard-block the monolithic legacy path so it cannot become an accidental fallback.
 
-## 7. New UX Principle — CREAPD Must Guide the User
+## 7. UX Principle — CREAPD Must Guide the User
 
-User identified an important launch requirement after the successful Talk build: approving Discussion Topics left no obvious instruction about what to do next.
-
-New product rule:
+Product rule:
 
 > **Never assume a CREAPD user already understands the production workflow. Every major page should explain what the user is doing, what decision they need to make, what “ready” means, and the next step.**
 
-A reusable component was added:
+Reusable component:
 
 `src/components/talk/TalkProducerGuide.jsx`
 
-Talk guided sequence:
+Talk guided sequence is now:
 
-**Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Export**
+**Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Export -> Live Studio**
 
-Guide wiring added to:
+Guide wiring exists across Dashboard, Research, Topics, Guests, Rundown, AI Assets, and Finish & Launch/Export.
 
-- `src/pages/TalkDashboard.jsx`
-- `src/pages/TalkResearch.jsx`
-- `src/pages/TalkTopics.jsx`
-- `src/pages/TalkGuests.jsx`
-- `src/pages/TalkRundown.jsx`
-- `src/pages/TalkAssets.jsx`
-- `src/pages/TalkExport.jsx`
+User manually walked the guided downstream path all the way through and successfully exported the show. The guidance was reported as good overall. Guest-status semantics remain a later UX cleanup: AI suggestions should not imply real-world booking/confirmation.
 
-Behavior:
+## 8. Export Decision
 
-- shows current step / workflow progress
-- explains the task in plain language
-- explains what approval/confirmation means
-- distinguishes AI guest suggestions from actual booked/confirmed guests
-- compares rundown runtime with target
-- explains asset approval is “ready for use,” not mandatory for every optional asset
-- gives a clear Next Step button
-- Dashboard now starts a guided review instead of presenting only status widgets
-- Dashboard distinguishes **Generation Checklist** from human review decisions
+The old Talk Export downloaded a `.json` file as if it were the normal user-facing show package. Windows may associate JSON with PowerShell/editor tooling, which made the result confusing to a normal user.
 
-This Talk Producer Guide should become a reusable design pattern for later Studios after it passes user testing.
+New product direction:
 
-## 8. Talk Acceptance Status
+- JSON remains available as **Advanced Data Export** for backup/integrations/developers.
+- Normal post-production action is **Enter CREAPD Live**.
+- A human-readable **Show Book / downloadable ZIP package** (PDF/rundown/scripts/source sheet/assets, with JSON tucked into an advanced folder) is a later export enhancement.
+
+`src/pages/TalkExport.jsx` now labels JSON correctly and guides users into CREAPD Live.
+
+## 9. CREAPD Live — FIRST EXECUTION COCKPIT
+
+Product decision: do **not** build a Riverside clone/media transport stack first. CREAPD should initially be the **brain + live control room**, with OBS becoming the broadcast engine later.
+
+First Preview execution slice is **BUILT + DEPLOYED**, but not yet user-tested.
+
+New page:
+
+`src/pages/TalkLive.jsx`
+
+Route:
+
+`/talk/live?config_id=<talk configuration id>`
+
+This route is standalone/full-screen rather than inside the normal Talk sidebar layout.
+
+Entry points:
+
+- Talk Dashboard -> `Enter Studio` / `CREAPD Live`
+- Finish & Launch -> `Enter CREAPD Live`
+- Talk navigation -> `Live — Studio`
+
+Current cockpit loads the existing owned Talk production/session from Neon and displays:
+
+- show state: READY / ON AIR / PAUSED / SHOW ENDED
+- overall elapsed clock
+- current rundown segment
+- planned segment duration / elapsed / planned time remaining
+- host notes / topic talking points / debate questions when relevant
+- next segment preview
+- run-of-show list with completed/active state
+- clip-marker counts
+- confirmed guest count
+- owned Production Package readiness
+- OBS connection status
+- Program Monitor placeholder clearly stating broadcast picture is not connected yet
+
+Current controls use the **existing owned Talk session/event actions** through Production Core; no new Vercel serverless function was added:
+
+- `Start Show`
+- `Pause / Resume`
+- `Clip This Moment`
+- `Next Segment`
+- `End Show`
+
+These actions write through `talk_start_session` / `talk_session_event` into the existing Neon `talk_sessions`, `talk_segments`, and `talk_events` foundation.
+
+Important first-slice limitation: the visual Program Monitor is intentionally a placeholder. There is no camera/WebRTC transport or OBS WebSocket connection yet. First prove the show-execution state machine before layering broadcast transport/control on top.
+
+## 10. Talk Acceptance Status
 
 ### PASSED
 
 - Heavy owned Talk production build itself
 - Neon persistence for generated production
 - Research batching/checkpointing under realistic load
-- Topics display and topic approval path (user exercised Topics; DB showed approved topics)
+- Topics display and approval path
+- Guided downstream user walkthrough through Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
+- JSON export executes successfully (now reclassified as Advanced Data Export)
 
 ### STILL TO TEST / PARTIAL
 
-- Guided Producer Guide UI on newest Preview deployment
-- Guest add/confirm/edit/delete persistence across navigation
-- Rundown review UX and timing sanity
-- AI Asset approve/unapprove persistence
-- Export behavior
+- CREAPD Live first cockpit
+- Live session start/pause/resume/next/clip/end persistence
+- leaving Live and re-entering while a show is active
+- guest add/confirm/edit/delete semantics and persistence cleanup
+- asset approve/unapprove persistence under a fresh focused regression
 - shared Production Package -> Presentation Studio/editor handoff for Talk
-- refresh/reopen persistence across the whole Talk path
-- explicit confirmation that no tested Talk action silently falls back to Base44
 - legacy monolithic Talk build retirement
-- Host Mode / OBS execution / post-show clipping/transcription (future Blueprint work)
+- user-facing Show Book / ZIP export
+- OBS WebSocket execution
+- real Program Monitor/browser overlays
+- Host/Teleprompter refinements
+- post-show clipping/transcription
 
-Talk Studio overall remains **PARTIAL**, even though the core build pipeline has now PASSED.
+Talk Studio overall remains **PARTIAL** until CREAPD Live and the remaining downstream/shared flow are accepted.
 
-## 9. Current Exact Next Action
+## 11. Current Exact Next Action
 
-1. Verify Vercel is green for `b38be037f99e038dd86b8907d2def48226b73eee`.
-2. Hard-refresh Preview.
-3. Open Talk Dashboard or Discussion Topics and inspect the new **Producer Guide**.
-4. Follow the guide through:
-   - Research
-   - Topics
-   - Guests
-   - Rundown
-   - AI Assets
-   - Export
-5. Test real actions along the way:
-   - topic unapprove/reapprove
-   - guest add + confirm/unconfirm + delete/edit if available
-   - asset approve/unapprove
-   - navigate away/back and refresh
-6. Report the first unclear instruction, dead end, persistence problem, or runtime issue.
+**User-test the first CREAPD Live cockpit on Preview.**
+
+Use the existing `We Are America` Talk production; do not rebuild just to enter Live.
+
+Acceptance path:
+
+1. Hard-refresh the `backend/vercel-foundation` Preview.
+2. Open Talk Dashboard or Finish & Launch.
+3. Click **Enter Studio / Enter CREAPD Live**.
+4. Before starting, confirm the page shows the correct production, rundown, current/next segment, host material, and READY state.
+5. Click **Start Show**. Confirm ON AIR, timer movement, and first segment activation.
+6. Click **Clip This Moment**. Confirm the marker count persists.
+7. Click **Next Segment**. Confirm the previous segment becomes complete and the next becomes active.
+8. Test **Pause -> Resume**.
+9. Leave CREAPD Live and re-enter it. Confirm active session/segment state is still there.
+10. Only after the above passes, click **End Show** and confirm SHOW ENDED.
+11. Report any confusing instruction, timer behavior, dead control, wrong host notes, persistence issue, or navigation problem.
 
 Do not touch `main`.
 
-## 10. Remaining Studios / Major Areas
+## 12. Remaining Studios / Major Areas
 
-- Talk — current focus until guided downstream acceptance passes
+- Talk — current focus until Live/shared downstream acceptance passes
 - Cooking
 - Sports
 - Cosmo
@@ -320,7 +365,7 @@ Do not touch `main`.
 - shared Production Package flow across all Studios
 - shared Dispatch
 - Presentation Studio/editor full regression
-- Export
+- user-facing Show Book/export packaging
 - OBS/live execution
 - Host Mode
 - post-show clipping/transcription
@@ -329,7 +374,7 @@ Do not touch `main`.
 
 Do not promote individual Studio work to production along the way.
 
-## 11. Final Base44 Removal Gate
+## 13. Final Base44 Removal Gate
 
 Before launch search Preview for at least:
 
@@ -346,7 +391,7 @@ Classify every remaining reference as removed/replaced, one-time migration utili
 
 Do not call CREAPD fully migrated while critical runtime behavior still depends on Base44.
 
-## 12. Status Vocabulary / Protocol
+## 14. Status Vocabulary / Protocol
 
 - **BUILT** — code exists
 - **DEPLOYED** — Vercel successful
