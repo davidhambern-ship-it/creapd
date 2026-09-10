@@ -6,6 +6,7 @@ import ResearchTrackerBar from '@/components/research/ResearchTrackerBar';
 import GlobalBreakRoom from '@/components/shared/GlobalBreakRoom';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
 import { POINT_TYPE_LABELS, POINT_TYPE_COLORS } from '@/lib/researchConstants';
 import {
@@ -18,9 +19,15 @@ function safeParse(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
+function pointStatusLabel(status) {
+  if (status === 'pending') return 'Awaiting Review';
+  if (!status) return 'Unknown';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Points' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'pending', label: 'Awaiting Review' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'used', label: 'Used' }
@@ -136,6 +143,49 @@ export default function ResearchManager() {
   }
 
   const handleStatusChange = async (point, newStatus) => {
+    if (shouldUseNeonAuth()) {
+      if (newStatus === 'approved') {
+        setApproving(point.id);
+        try {
+          await creapdApi.post('/research/production', {
+            action: 'approve_point',
+            point_id: point.id,
+          });
+        } catch (err) {
+          console.error('Owned approval/package generation failed:', err);
+          setBreakRoomTitle('Package Generation Failed');
+          setBreakRoomSubtitle(point.title || 'Research point');
+          setBreakRoomStatus('failed');
+          setBreakRoomError(
+            err?.data?.diagnostic?.message ||
+            err?.message ||
+            'The point was sent for approval, but CREAPD could not generate its production package.'
+          );
+        } finally {
+          setApproving(null);
+          await refresh();
+        }
+        return;
+      }
+
+      try {
+        await creapdApi.post('/research/production', {
+          action: 'set_point_status',
+          point_id: point.id,
+          status: newStatus,
+        });
+        await refresh();
+      } catch (err) {
+        console.error('Owned point status update failed:', err);
+        setBreakRoomTitle('Point Update Failed');
+        setBreakRoomSubtitle(point.title || 'Research point');
+        setBreakRoomStatus('failed');
+        setBreakRoomError(err?.message || 'CREAPD could not update this point.');
+      }
+      return;
+    }
+
+    // Temporary Base44 fallback for sessions that have not moved to Neon auth yet.
     if (newStatus !== 'approved') {
       await base44.entities.ResearchPoint.update(point.id, { status: newStatus });
       refresh();
@@ -210,20 +260,31 @@ export default function ResearchManager() {
     setBreakRoomStatus('loading');
     setBreakRoomError(null);
     try {
-      const preferredModels = safeParse(config.preferred_models, ['gemini_3_flash', 'gpt_5_mini', 'claude_sonnet_4_6']);
-      await base44.functions.invoke('buildResearchProduction', {
-        research_point_id: point.id,
-        tone: config.tone,
-        reading_style: config.reading_style,
-        audience: config.target_audience,
-        target_runtime: `${config.total_show_runtime} Minutes`,
-        preferred_models: preferredModels
-      });
+      if (shouldUseNeonAuth()) {
+        await creapdApi.post('/research/production', {
+          action: 'generate_package',
+          point_id: point.id,
+        });
+      } else {
+        const preferredModels = safeParse(config.preferred_models, ['gemini_3_flash', 'gpt_5_mini', 'claude_sonnet_4_6']);
+        await base44.functions.invoke('buildResearchProduction', {
+          research_point_id: point.id,
+          tone: config.tone,
+          reading_style: config.reading_style,
+          audience: config.target_audience,
+          target_runtime: `${config.total_show_runtime} Minutes`,
+          preferred_models: preferredModels
+        });
+      }
       setBreakRoomStatus('ready');
     } catch (err) {
       console.error('Package generation failed:', err);
       setBreakRoomStatus('failed');
-      setBreakRoomError(err?.message || 'Package generation failed. You can retry from the Point Manager.');
+      setBreakRoomError(
+        err?.data?.diagnostic?.message ||
+        err?.message ||
+        'Package generation failed. You can retry from the Point Manager.'
+      );
     } finally {
       setGenerating(null);
     }
@@ -262,7 +323,7 @@ export default function ResearchManager() {
 
   const stats = [
     { label: 'TOTAL', value: points.length },
-    { label: 'PENDING', value: points.filter(p => p.status === 'pending').length },
+    { label: 'REVIEW QUEUE', value: points.filter(p => p.status === 'pending').length },
     { label: 'APPROVED', value: points.filter(p => p.status === 'approved').length },
     { label: 'PACKAGES', value: packages.length },
   ];
@@ -328,7 +389,6 @@ export default function ResearchManager() {
                 style={typeFilter === 'all'
                   ? { background: 'hsl(190 50% 15% / 0.4)', color: 'hsl(190 80% 55%)' }
                   : { background: 'hsl(190 20% 12% / 0.2)', color: 'hsl(220 10% 55%)' }
-                }
               >
                 All
               </button>
@@ -396,7 +456,7 @@ export default function ResearchManager() {
                       point.status === 'used' ? { background: 'hsl(190 50% 15% / 0.3)', color: 'hsl(190 70% 55%)' } :
                       { background: 'hsl(220 15% 18% / 0.3)', color: 'hsl(220 10% 55%)' }
                     }>
-                      {point.status}
+                      {pointStatusLabel(point.status)}
                     </span>
                   </div>
 
@@ -522,7 +582,7 @@ export default function ResearchManager() {
                   {approving === point.id && (
                     <div className="mt-3 p-3 rounded-lg flex items-center gap-2" style={{ background: 'hsl(152 50% 15% / 0.1)' }}>
                       <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'hsl(152 60% 50%)' }} />
-                      <p className="text-sm" style={{ color: 'hsl(152 60% 50%)' }}>Sending to Gemini for Story Summary & Fact Check...</p>
+                      <p className="text-sm" style={{ color: 'hsl(152 60% 50%)' }}>Creating production package and fact check...</p>
                     </div>
                   )}
 
