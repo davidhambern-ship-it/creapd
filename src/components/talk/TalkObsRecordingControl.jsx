@@ -4,10 +4,15 @@ import { Circle, Loader2, Pause, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { creapdApi } from '@/api/creapdClient';
 
-function findShowControlTarget() {
-  const labels = Array.from(document.querySelectorAll('p'));
-  const label = labels.find(node => node.textContent?.trim() === 'Show Control');
-  return label?.closest('section') || null;
+function findHeaderControlTarget() {
+  const header = document.querySelector('header');
+  if (!header) return null;
+
+  const statuses = new Set(['● ON AIR', 'PAUSED', 'SHOW ENDED', 'READY']);
+  const status = Array.from(header.querySelectorAll('span'))
+    .find(node => statuses.has(node.textContent?.trim()));
+
+  return status?.parentElement || null;
 }
 
 function cleanError(err, fallback) {
@@ -28,7 +33,7 @@ function TalkObsRecordingControlLive() {
     let observer;
 
     const locate = () => {
-      const next = findShowControlTarget();
+      const next = findHeaderControlTarget();
       if (!cancelled && next) {
         setTarget(next);
         return true;
@@ -102,84 +107,83 @@ function TalkObsRecordingControlLive() {
   const recordingTimecode = String(capabilities.recording_timecode || '').trim();
   const supportsRecording = capabilities.recording_control === true;
 
-  return createPortal(
-    <div className="mt-3 pt-3 border-t border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">OBS Recording</span>
-          {recordingActive ? (
-            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-semibold ${
-              recordingPaused
-                ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                : 'border-red-500/35 bg-red-500/10 text-red-200'
-            }`}>
-              <span className={`h-2 w-2 rounded-full ${recordingPaused ? 'bg-amber-400' : 'bg-red-500 animate-pulse'}`} />
-              {recordingPaused ? 'RECORDING PAUSED' : 'REC'}
-              {recordingTimecode ? ` · ${recordingTimecode}` : ''}
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              {bridge === undefined
-                ? 'Checking OBS…'
-                : !connected
-                  ? 'Connect OBS to record'
-                  : supportsRecording
-                    ? 'Ready to record'
-                    : 'Bridge update required'}
-            </span>
-          )}
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-1">
-          Recording is performed by OBS on this computer. CREAPD only sends the control command and reads recording status.
-        </p>
-        {error && <p className="text-xs text-red-300 mt-1">{error}</p>}
-      </div>
+  const stateLabel = bridge === undefined
+    ? 'OBS…'
+    : !connected
+      ? 'REC unavailable'
+      : !supportsRecording
+        ? 'Bridge update required'
+        : recordingActive
+          ? recordingPaused
+            ? 'REC paused'
+            : 'REC'
+          : 'REC ready';
 
-      <div className="flex flex-wrap gap-2 shrink-0">
-        {!recordingActive ? (
+  return createPortal(
+    <div className="flex items-center gap-1.5 pl-2 ml-1 border-l border-white/10" title={error || 'OBS recording controls'}>
+      <span className={`hidden 2xl:inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold whitespace-nowrap ${
+        error
+          ? 'border-red-500/40 bg-red-500/10 text-red-200'
+          : recordingActive
+            ? recordingPaused
+              ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+              : 'border-red-500/35 bg-red-500/10 text-red-200'
+            : 'border-white/10 bg-white/5 text-muted-foreground'
+      }`}>
+        {recordingActive && (
+          <span className={`h-2 w-2 rounded-full ${recordingPaused ? 'bg-amber-400' : 'bg-red-500 animate-pulse'}`} />
+        )}
+        {error ? 'REC ERROR' : stateLabel}
+        {!error && recordingActive && recordingTimecode ? ` · ${recordingTimecode}` : ''}
+      </span>
+
+      {!recordingActive ? (
+        <Button
+          size="sm"
+          variant="destructive"
+          className="h-8 px-2.5"
+          onClick={() => runRecordingCommand('start-recording', 'start_recording')}
+          disabled={!connected || !supportsRecording || Boolean(busy)}
+          title={!connected ? 'Connect OBS to record' : !supportsRecording ? 'Restart with the updated CREAPD OBS Bridge' : 'Start OBS recording'}
+        >
+          {busy === 'start-recording'
+            ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            : <Circle className="w-3.5 h-3.5 mr-1.5 fill-current" />}
+          Record
+        </Button>
+      ) : (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5"
+            onClick={() => runRecordingCommand(
+              recordingPaused ? 'resume-recording' : 'pause-recording',
+              recordingPaused ? 'resume_recording' : 'pause_recording',
+            )}
+            disabled={!connected || !supportsRecording || Boolean(busy)}
+          >
+            {busy === 'pause-recording' || busy === 'resume-recording'
+              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              : recordingPaused
+                ? <Play className="w-3.5 h-3.5 mr-1.5" />
+                : <Pause className="w-3.5 h-3.5 mr-1.5" />}
+            {recordingPaused ? 'Resume REC' : 'Pause REC'}
+          </Button>
           <Button
             size="sm"
             variant="destructive"
-            onClick={() => runRecordingCommand('start-recording', 'start_recording')}
+            className="h-8 px-2.5"
+            onClick={() => runRecordingCommand('stop-recording', 'stop_recording')}
             disabled={!connected || !supportsRecording || Boolean(busy)}
           >
-            {busy === 'start-recording'
-              ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              : <Circle className="w-4 h-4 mr-2 fill-current" />}
-            Start Recording
+            {busy === 'stop-recording'
+              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              : <Square className="w-3.5 h-3.5 mr-1.5 fill-current" />}
+            Stop REC
           </Button>
-        ) : (
-          <>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => runRecordingCommand(
-                recordingPaused ? 'resume-recording' : 'pause-recording',
-                recordingPaused ? 'resume_recording' : 'pause_recording',
-              )}
-              disabled={!connected || !supportsRecording || Boolean(busy)}
-            >
-              {busy === 'pause-recording' || busy === 'resume-recording'
-                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                : recordingPaused
-                  ? <Play className="w-4 h-4 mr-2" />
-                  : <Pause className="w-4 h-4 mr-2" />}
-              {recordingPaused ? 'Resume Recording' : 'Pause Recording'}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => runRecordingCommand('stop-recording', 'stop_recording')}
-              disabled={!connected || !supportsRecording || Boolean(busy)}
-            >
-              {busy === 'stop-recording'
-                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                : <Square className="w-4 h-4 mr-2 fill-current" />}
-              Stop Recording
-            </Button>
-          </>
-        )}
-      </div>
+        </>
+      )}
     </div>,
     target,
   );
