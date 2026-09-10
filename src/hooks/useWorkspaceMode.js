@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 const STORAGE_KEY = 'cpe-workspace-mode';
 
@@ -97,6 +97,20 @@ export function useWorkspaceMode() {
     setWorkspaceMode(mode);
     try { localStorage.setItem(STORAGE_KEY, mode); } catch {}
   }, []);
+
+  useEffect(() => {
+    if (workspaceMode !== 'present') return;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        changeMode('design');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [workspaceMode, changeMode]);
 
   const updateModePref = useCallback((key, value) => {
     setModePrefs(prev => {
