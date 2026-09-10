@@ -193,11 +193,13 @@ function Invoke-CreapdBridge([string]$Action, $Fields = @{}) {
     }
   }
 
-  return Invoke-RestMethod \
-    -Method Post \
-    -Uri "$($script:CreapdUrl)/api/creapd/production/core" \
-    -ContentType 'application/json' \
-    -Body (ConvertTo-CompactJson $body)
+  $request = @{
+    Method = 'Post'
+    Uri = "$($script:CreapdUrl)/api/creapd/production/core"
+    ContentType = 'application/json'
+    Body = (ConvertTo-CompactJson $body)
+  }
+  return Invoke-RestMethod @request
 }
 
 function Complete-CreapdCommand($Command, [bool]$Success, $Result = @{}, [string]$ErrorMessage = $null) {
