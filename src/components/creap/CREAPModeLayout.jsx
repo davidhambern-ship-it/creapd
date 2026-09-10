@@ -6,6 +6,7 @@ import AppErrorBoundary from '@/components/shared/AppErrorBoundary';
 import TalkLiveRestartControl from '@/components/talk/TalkLiveRestartControl';
 import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
 import TalkObsBridgeControl from '@/components/talk/TalkObsBridgeControl';
+import TalkObsRecordingControl from '@/components/talk/TalkObsRecordingControl';
 
 /**
  * Thin layout route that wraps all authenticated pages in the CREAPModeProvider.
@@ -26,6 +27,7 @@ export default function CREAPModeLayout() {
         <Outlet />
         <TalkLiveRestartControl />
         <TalkProgramMonitor />
+        <TalkObsRecordingControl />
         <TalkObsBridgeControl />
       </AppErrorBoundary>
     </CREAPModeProvider>
