@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Button } from '@/components/ui/button';
-import { Loader2, Mic2, Download, FileText, Package, CheckCircle2 } from 'lucide-react';
+import { Loader2, Mic2, Download, Package, CheckCircle2 } from 'lucide-react';
 
 export default function TalkExport() {
   const { config, topics, segments, assets, research, guests, loading } = useTalkProduction();
@@ -40,7 +41,7 @@ export default function TalkExport() {
         topics,
         research,
         guests,
-        segments: segments,
+        segments,
         assets,
         exported_at: new Date().toISOString()
       };
@@ -64,6 +65,7 @@ export default function TalkExport() {
     { label: 'Rundown Segments', count: segments.length, done: segments.length > 0 },
     { label: 'AI Assets', count: assets.length, done: assets.length > 0 },
   ];
+  const completeCount = exportItems.filter(item => item.done).length;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -74,6 +76,19 @@ export default function TalkExport() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Export your complete talk production package</p>
       </div>
+
+      <TalkProducerGuide
+        currentStep="export"
+        title="Final check: make sure the production package contains what you expect"
+        instructions={[
+          'Use the summary below to confirm that research, topics, guests, rundown, and assets are present.',
+          'If something is missing, use the workflow steps above to go back to that section before exporting.',
+          'When the package looks complete, export it. This is the handoff point out of the current Talk Studio workflow.',
+        ]}
+        readyText={`${completeCount} of ${exportItems.length} package sections contain data`}
+        nextDescription="CREAPD should never make you guess whether a package is ready; this page is the final checklist."
+        note="Guests can legitimately be empty for guest-free formats, so an empty Guests row is not automatically an error."
+      />
 
       <div className="glass-panel p-5">
         <h3 className="font-heading font-semibold mb-4 !flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Export Summary</h3>
