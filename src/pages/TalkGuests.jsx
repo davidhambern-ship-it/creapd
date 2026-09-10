@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Mic2, Users, Plus, Trash2, UserCircle } from 'lucide-react';
 
 export default function TalkGuests() {
-  const { config, guests, loading, refresh } = useTalkProduction();
+  const { config, guests, loading, refresh, source } = useTalkProduction();
   const [adding, setAdding] = useState(false);
   const [newGuest, setNewGuest] = useState({ guest_name: '', title_role: '', bio: '', talking_points: '' });
 
@@ -33,24 +34,44 @@ export default function TalkGuests() {
 
   const handleAddGuest = async () => {
     if (!newGuest.guest_name.trim()) return;
-    await base44.entities.TalkGuest.create({
-      configuration_id: config.id,
-      ...newGuest,
-      status: 'pending'
-    });
+    if (source === 'neon') {
+      await creapdApi.post('/talk/production', {
+        action: 'create_guest',
+        configuration_id: config.id,
+        guest: { ...newGuest, status: 'pending' },
+      });
+    } else {
+      await base44.entities.TalkGuest.create({
+        configuration_id: config.id,
+        ...newGuest,
+        status: 'pending'
+      });
+    }
     setNewGuest({ guest_name: '', title_role: '', bio: '', talking_points: '' });
     setAdding(false);
     refresh();
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.TalkGuest.delete(id);
+    if (source === 'neon') {
+      await creapdApi.post('/talk/production', { action: 'delete_guest', guest_id: id });
+    } else {
+      await base44.entities.TalkGuest.delete(id);
+    }
     refresh();
   };
 
   const toggleStatus = async (guest) => {
     const newStatus = guest.status === 'confirmed' ? 'pending' : 'confirmed';
-    await base44.entities.TalkGuest.update(guest.id, { status: newStatus });
+    if (source === 'neon') {
+      await creapdApi.post('/talk/production', {
+        action: 'update_guest',
+        guest_id: guest.id,
+        patch: { status: newStatus },
+      });
+    } else {
+      await base44.entities.TalkGuest.update(guest.id, { status: newStatus });
+    }
     refresh();
   };
 
@@ -111,6 +132,7 @@ export default function TalkGuests() {
                   <div>
                     <h3 className="font-medium">{guest.guest_name}</h3>
                     {guest.title_role && <p className="text-xs text-muted-foreground">{guest.title_role}</p>}
+                    {guest.organization && <p className="text-xs text-muted-foreground">{guest.organization}</p>}
                   </div>
                 </div>
                 <button onClick={() => handleDelete(guest.id)} className="text-muted-foreground hover:text-destructive">
@@ -118,20 +140,26 @@ export default function TalkGuests() {
                 </button>
               </div>
               {guest.bio && <p className="text-sm text-muted-foreground">{guest.bio}</p>}
+              {guest.expertise && <p className="text-xs text-muted-foreground">Expertise: {guest.expertise}</p>}
               {guest.talking_points && (
                 <div className="p-2 rounded bg-secondary/30">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Talking Points</p>
                   <p className="text-sm whitespace-pre-line">{guest.talking_points}</p>
                 </div>
               )}
-              <button
-                onClick={() => toggleStatus(guest)}
-                className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
-                  guest.status === 'confirmed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {guest.status === 'confirmed' ? '✓ Confirmed' : 'Pending'}
-              </button>
+              <div className="!flex items-center gap-2">
+                <button
+                  onClick={() => toggleStatus(guest)}
+                  className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
+                    guest.status === 'confirmed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {guest.status === 'confirmed' ? '✓ Confirmed' : 'Pending'}
+                </button>
+                {guest.guest_source === 'ai' && (
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary">AI Suggested</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
