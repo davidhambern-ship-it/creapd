@@ -267,7 +267,7 @@ Teleprompter behavior:
 
 User reviewed the new side-by-side layout and said **“it looks good.”**
 
-### Repeat-run bug — FOUND + REPAIRED, NEEDS USER TEST
+### Repeat-run behavior — USER TESTED + PASSED
 
 User found that once a show reached `SHOW ENDED`, there was no way to start it again.
 
@@ -303,6 +303,8 @@ Latest functional commit:
 
 Vercel: **SUCCESS / DEPLOYED**.
 
+User manually tested the completed-show restart flow and reported that it worked exactly as intended. Treat repeat-run behavior as **PASSED**.
+
 Important data-model note: previous session/event history is retained. The current Talk segment rows are shared production rows, so their per-run runtime fields are reset for the new run; historical run reconstruction should use the session/event log until a future per-session segment-run table is added.
 
 ## 10. Talk Acceptance Status
@@ -319,15 +321,10 @@ Important data-model note: previous session/event history is retained. The curre
 - live start/pause/resume/next/clip/end path
 - Live re-entry during a run
 - side-by-side Program Monitor + Teleprompter layout visually accepted
-
-### DEPLOYED / NEEDS USER TEST
-
 - **Start New Run** after `SHOW ENDED`
-- verify new run starts at Segment 1
-- verify clock resets
-- verify prior run does not become the active session
-- verify clip counters/runtime state reset for the new run
-- verify Pause/Next/End still work on Run #2
+- new run starts at Segment 1 with fresh clock/runtime state
+- prior completed session remains historical rather than becoming active again
+- repeat-run control path is user-tested
 
 ### STILL PARTIAL / FUTURE
 
@@ -346,25 +343,20 @@ Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 c
 
 ## 11. Current Exact Next Action
 
-**Test the completed-show restart path on Preview.**
+**Begin the next CREAPD Live layer: OBS integration / real Program Monitor + overlays on Preview.**
 
-Use the existing ended `We Are America` production.
+Do not add a new Vercel serverless function; continue using the existing Production Core architecture and reusable server modules.
 
-1. Hard-refresh Preview and enter CREAPD Live.
-2. Confirm the completed run still shows `SHOW ENDED`.
-3. Confirm a **Start New Run** card/button appears.
-4. Click **Start New Run**.
-5. Confirm the cockpit returns to `ON AIR` and starts at Segment 1.
-6. Confirm the overall show clock starts fresh rather than continuing the old run's elapsed time.
-7. Confirm the Run of Show is reset for the new run and previous clip counters are not carried into the active run.
-8. Test **Clip This Moment**, **Next Segment**, and **Pause/Resume** once on Run #2.
-9. Leave Live and re-enter; confirm Run #2 remains active.
-10. End Run #2 and confirm `SHOW ENDED` again and **Start New Run** becomes available again.
-11. Report any duplicated session, stale timer, stale segment state, or confusing wording.
+Immediate goals:
 
-After repeat-run acceptance passes, next major CREAPD Live layer is **OBS integration / real Program Monitor + overlays**, while Talk cleanup continues for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
+1. Inspect current OBS/browser-overlay related code and dependencies in `backend/vercel-foundation` before adding anything.
+2. Define how CREAPD Live connects to OBS without making Vercel responsible for local media transport.
+3. Replace the Program Monitor placeholder with a safe first real-video/program-preview path.
+4. Add an owned command/event path for scene changes and overlays while preserving the already-passed Talk session state machine.
+5. Keep the Program Monitor + Teleprompter desktop layout unchanged unless testing proves a reason to alter it.
+6. Build/test in Preview only; do not touch `main`.
 
-Do not touch `main`.
+Separate Talk cleanup still remains for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
 
 ## 12. Remaining Studios / Major Areas
 
