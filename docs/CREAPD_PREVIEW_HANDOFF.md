@@ -14,8 +14,8 @@ Launch-ready means:
 
 - Every Production Studio works end-to-end in Preview.
 - Shared flow works: **Studio -> research/content -> Production Package -> Dispatch -> Presentation Studio -> Editor -> review/present/export**.
-- CREAPD also supports **show execution**: Production Package -> CREAPD Live -> session/timing/events -> later OBS/overlays/clipping.
-- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, regeneration, and live-session re-entry.
+- Show execution works: **Production Package -> CREAPD Live -> session/timing/events -> OBS/overlays -> post-show clipping**.
+- Data survives refresh, navigation, logout/login, reopen, edit, reject/restore, regeneration, live-session re-entry, and repeat show runs.
 - Critical runtime behavior no longer depends on Base44 entities, backend functions, auth, AI integrations, or hidden fallbacks.
 - Failure states are explicit; no endless Initializing states, blank pages, silent failures, or dead buttons.
 - CREAPD guides users through each workflow instead of assuming they already know what to do.
@@ -65,7 +65,7 @@ Preferred owned runtime:
 
 `React UI -> /api/creapd/production/core -> Studio server module -> Neon / owned services`
 
-Current principles:
+Principles:
 
 - React/Vite frontend on Vercel.
 - Shared owned Production Core gateway.
@@ -74,7 +74,7 @@ Current principles:
 - Neon-aware auth via `shouldUseNeonAuth()`.
 - Base44 only as temporary compatibility for unmigrated areas.
 - A Studio is **not migrated** merely because a Base44 backend function was replaced by browser-side Base44 SDK calls.
-- The user-provided **CREAPD Zero-Cost Upgrade & Architecture Blueprint** is a north star: multi-agent editorial intelligence, edge/local hybridization, provider fallbacks, OBS WebSocket, browser overlays, Host/Teleprompter mode, live session/timestamp logging, post-show transcription + local FFmpeg clipping, and future organization/show/member/RLS design.
+- The user-provided **CREAPD Zero-Cost Upgrade & Architecture Blueprint** is a north star: multi-agent editorial intelligence, provider fallbacks, OBS WebSocket, browser overlays, Host/Teleprompter mode, live session/timestamp logging, local FFmpeg clipping, and future organization/show/member/RLS design.
 
 ### Vercel function-count lesson
 
@@ -106,34 +106,11 @@ Preview contains an owned Presentation Studio more advanced than `main`.
 
 It reads owned production data through `/production/core`, opens `/editor/:id`, and uses owned update/delete/editor actions. Do not overwrite it with older `main` presentation code without inspection.
 
-## 6. Talk Studio 2.0 — Current Checkpoint (2026-09-10)
-
-### Latest functional branch head before this documentation commit
-
-`79703004fc2697523d973de56de51666174caafe` — `Put teleprompter beside CREAPD Live program monitor`
-
-Vercel status: **SUCCESS / DEPLOYED**.
-
-### Neon migration 004
-
-Applied and verified in active Preview DB.
-
-Tables:
-
-- `creapd.talk_production_configurations`
-- `creapd.talk_topics`
-- `creapd.talk_research_items`
-- `creapd.talk_guests`
-- `creapd.talk_segments`
-- `creapd.talk_assets`
-- `creapd.talk_sessions`
-- `creapd.talk_events`
-
-Schema includes verification/confidence, counter-perspectives, debate questions, actual segment timing, clip markers, OBS scene/overlay fields, Host View state, and Talk session/event logging.
+## 6. Talk Studio 2.0 — Core Build Status
 
 ### Stress-test production
 
-Saved config id:
+Config id:
 
 `af9ccc24-ba27-46f2-9b63-4025da1b4dbc`
 
@@ -151,233 +128,241 @@ Production:
 - Research sources: 18
 - Automation selections: 18
 
-### Talk failure history and fixes
+### Neon migration 004 — APPLIED
 
-#### Failure 1 — 50-second timeout
+Owned Talk tables:
 
-Initial owned Talk engine used one monolithic AI request and failed at almost exactly its hard-coded 50-second limit.
+- `creapd.talk_production_configurations`
+- `creapd.talk_topics`
+- `creapd.talk_research_items`
+- `creapd.talk_guests`
+- `creapd.talk_segments`
+- `creapd.talk_assets`
+- `creapd.talk_sessions`
+- `creapd.talk_events`
 
-Fix:
+Schema includes verification/confidence, counter-perspectives, debate questions, actual segment timing, clip markers, OBS scene/overlay fields, Host View state, and Talk session/event logging.
 
-- split into Research stage and Production stage
-- checkpoint Research in Neon before Production assembly
-- owned package creation
-- Production Core `maxDuration: 300`
-- no Base44 Dashboard polling/refresh on Preview
+### Failure history / architectural fixes
 
-#### Failure 2 — AI `max_output_tokens`
+1. **50-second AI timeout** — monolithic Talk build was split into checkpointed Research and Production stages.
+2. **AI max_output_tokens** — Research Stage was split into topic batches, max 3 topics per batch; the 8-topic test becomes 3 + 3 + 2.
+3. **Overly strict research-item coverage** — verified topic dossier became authoritative coverage; secondary research-item rows can be derived from the verified dossier when omitted.
 
-The first split still asked one strict Research response to contain all 8 topics. AI Gateway exhausted output budget before valid structured JSON completed.
+### Successful Talk build — USER TESTED + NEON VERIFIED
 
-Fix:
+The exact heavy production above completed successfully.
 
-- batch selected topics, maximum 3 per Research batch
-- 8-topic stress test becomes 3 + 3 + 2
-- checkpoint each successful batch immediately
-- record research signature/completed topics/response ids
-- resume completed work when unchanged configuration is retried
-
-#### Failure 3 — overly strict secondary-item coverage
-
-Batch 1 returned verified dossiers for Local News, Politics, and Cryptocurrency, but separate research-item rows only for Local News. Validator incorrectly failed the entire batch because Politics/Cryptocurrency lacked secondary rows.
-
-Fix:
-
-- verified topic dossier is authoritative coverage
-- if a valid dossier has no separate research item, CREAPD derives a compact research record from that dossier
-- batch schema constrains `topic_name` to actual requested topic names
-
-### Successful Talk build — VERIFIED
-
-User reran the exact same heavy production and reported **it worked**.
-
-Neon verification after the successful run:
+Neon verification:
 
 - config status: `ready`
 - `build_metadata.stage`: `complete`
-- 8 / 8 selected topics present
+- 8 / 8 selected topics
 - 16 research items
 - 4 AI guest suggestions
 - 13 rundown segments
 - 19 AI assets
 - 1 owned Talk Production Package
-- 1 Talk session
+- 1 Talk session from the generated production
 - all 3 Research batches completed
 - production model: `openai/gpt-5.4-mini`
 
-This proves the core owned Talk build pipeline can handle the 8-topic / 120-minute stress test.
+Core owned Talk generation is **PASSED**.
 
-### Talk owned frontend/backend paths
+### Owned Talk paths
 
-Owned Preview behavior includes:
+Preview-owned behavior includes:
 
 - configuration save through Production Core
 - production reads through Production Core
 - checkpointed build/refresh through Production Core
-- topic approve/unapprove through owned path
-- guest create/update/delete/confirm through owned path
-- asset approve/unapprove through owned path
-- Dashboard polling/refresh through owned path
-- owned Talk Production Package creation
-- live-session start/event persistence through owned path
+- topic approve/unapprove
+- guest create/update/delete/confirm
+- asset approve/unapprove
+- Dashboard polling/refresh
+- owned Production Package creation
+- live-session start/event persistence
 
-Legacy `server/talkEngine.js` and `talk_build` / `talk_refresh` compatibility handlers still exist. After the repaired path is fully accepted, retire/hard-block the monolithic legacy path so it cannot become an accidental fallback.
+Legacy `server/talkEngine.js` and monolithic `talk_build` / `talk_refresh` compatibility handlers still exist. Retire/hard-block them after the modern path is fully accepted so they cannot become an accidental fallback.
 
-## 7. UX Principle — CREAPD Must Guide the User
+## 7. UX Rule — CREAPD Must Guide the User
 
 Product rule:
 
 > **Never assume a CREAPD user already understands the production workflow. Every major page should explain what the user is doing, what decision they need to make, what “ready” means, and the next step.**
 
-Reusable component:
-
-`src/components/talk/TalkProducerGuide.jsx`
-
 Talk guided sequence:
 
 **Setup -> Research -> Topics -> Guests -> Rundown -> AI Assets -> Finish & Launch -> CREAPD Live**
 
-User manually walked the guided downstream path all the way through and successfully exported the show. The guidance was reported as good overall.
+The user manually walked the guided downstream path all the way through and successfully exported the show. Guidance was reported as good overall.
 
-Guest-status semantics remain a later UX cleanup: AI suggestions should progress through a shortlist/invited/confirmed model and should not imply CREAPD actually contacted or booked a real guest.
+Guest-status semantics remain a later cleanup: AI suggestions should eventually progress through **Suggested/Shortlist -> Invited -> Confirmed/Declined** and should never imply CREAPD itself booked a real person.
 
 ## 8. Export Decision
 
-The old Talk Export downloaded a `.json` file as if it were the normal user-facing show package.
+JSON is no longer treated as the normal human-facing export.
 
-New product direction:
+Current direction:
 
-- JSON remains **Advanced Data Export** for backup/integrations/developers.
-- Normal post-production action is **Enter CREAPD Live**.
-- A human-readable **Show Book / downloadable ZIP package** (PDF/rundown/scripts/source sheet/assets, with JSON in an advanced folder) is a later export enhancement.
+- JSON = **Advanced Data Export** for backup/integrations/developers.
+- Primary action = **Enter CREAPD Live**.
+- Future human export = **Show Book / ZIP package** containing PDF/rundown/scripts/source sheet/assets, with JSON tucked into an advanced/data folder.
 
-`src/pages/TalkExport.jsx` labels JSON correctly and guides users into CREAPD Live.
+## 9. CREAPD Live — Current Status
 
-## 9. CREAPD Live — Show Execution Cockpit
-
-Product decision: do **not** build a Riverside clone/media transport stack first. CREAPD should initially be the **brain + live control room**, with OBS becoming the broadcast engine later.
+Product decision: do **not** build a Riverside clone/media transport stack first. CREAPD initially acts as the **brain + live control room**; OBS becomes the broadcast engine later.
 
 Route:
 
 `/talk/live?config_id=<talk configuration id>`
 
-This route is standalone/full-screen rather than inside the normal Talk sidebar layout.
+This route is standalone/full-screen.
 
-Entry points:
+### First execution cockpit — USER TESTED + PASSED
 
-- Talk Dashboard -> `Enter Studio` / `CREAPD Live`
-- Finish & Launch -> `Enter CREAPD Live`
-- Talk navigation -> `Live — Studio`
-
-### First cockpit — USER TESTED + PASSED
-
-The first CREAPD Live execution cockpit loaded the real owned Talk production/session from Neon and exposed:
+User manually tested:
 
 - READY / ON AIR / PAUSED / SHOW ENDED state
-- overall elapsed clock
+- elapsed clock
 - current segment
-- segment elapsed / planned time left
-- host notes / topic talking points / debate questions
-- next segment preview
-- run-of-show list with completed/active state
-- clip-marker counts
-- guest/package readiness
-- OBS connection placeholder
+- planned/elapsed segment timing
+- host notes
+- next segment
+- Run of Show
 - Start Show
 - Pause / Resume
 - Clip This Moment
 - Next Segment
+- leaving/re-entering the studio
 - End Show
 
-User manually tested the cockpit and reported that it **worked seamlessly**. Treat the first owned live-session state machine as PASSED unless a later regression proves otherwise.
+User reported it **worked seamlessly**.
 
-### Teleprompter refinement — BUILT + DEPLOYED, NOT YET USER TESTED
-
-User requested the teleprompter be immediately to the **right of the future video/program monitor**, with the segment list moved down.
-
-Implemented in:
-
-`src/pages/TalkLive.jsx`
+### Teleprompter layout — USER VISUALLY ACCEPTED
 
 Commit:
 
-`79703004fc2697523d973de56de51666174caafe`
+`79703004fc2697523d973de56de51666174caafe` — `Put teleprompter beside CREAPD Live program monitor`
 
 Vercel: **SUCCESS / DEPLOYED**.
 
-New layout:
+Desktop layout:
 
 - top left: **Program Monitor**
 - top right: **Teleprompter**
 - below: **Current Segment + Up Next**
-- below that: **Run of Show** moved out of the former right sidebar and displayed as a multi-column segment grid
-- sticky Show Control remains at the bottom
+- below that: **Run of Show**
+- sticky Show Control at bottom
 
 Teleprompter behavior:
 
-- prefers a topic-specific `host_script` asset when available
-- otherwise uses the matched topic's talking points
-- otherwise uses current segment notes
-- otherwise falls back to the global host script
-- automatically scrolls back to the top when the current segment changes
-- provides `A−` / `A+` text-size controls
-- shows current topic/segment context in its header
-- shows up to three current-topic debate/conversation prompts beneath the primary copy
+- topic-specific host script when available
+- otherwise matched topic talking points
+- otherwise segment notes
+- otherwise global host script
+- resets scroll to top when the active segment changes
+- `A−` / `A+` text sizing
+- conversation/debate prompts below main copy when available
 
-This is still a browser-side teleprompter display only. Auto-scroll speed control, mirrored display, detached host monitor/window, OBS integration, and real Program Monitor video remain later refinements.
+User reviewed the new side-by-side layout and said **“it looks good.”**
+
+### Repeat-run bug — FOUND + REPAIRED, NEEDS USER TEST
+
+User found that once a show reached `SHOW ENDED`, there was no way to start it again.
+
+Product rule:
+
+> **End Show ends one run/session; it must not permanently lock the prepared production.**
+
+Backend repair:
+
+`805c4f06514d3556151b93fdf988f29f949a83bd` — `Allow completed Talk shows to start a new run`
+
+Behavior when `talk_start_session` is called after a completed session:
+
+- keeps the completed session record
+- creates a **fresh Talk session** for the new run
+- resets shared rundown runtime state to `queued`
+- clears actual start/end/duration fields for the new run
+- resets current clip-marker counters for the new run
+- records the previous session id in new session host-view metadata
+- writes a new `session_start` event identifying the run as a restart
+
+Frontend control:
+
+- `src/components/talk/TalkLiveRestartControl.jsx`
+- mounted only for `/talk/live`
+- appears when the latest session status is `complete`
+- button label: **Start New Run**
+- creates the new session, starts Segment 1, then reloads the cockpit onto the new active run
+
+Latest functional commit:
+
+`acfb320d8d56984f5460876cedf9d4ed1344fddb` — `Scope CREAPD Live restart data load to live route`
+
+Vercel: **SUCCESS / DEPLOYED**.
+
+Important data-model note: previous session/event history is retained. The current Talk segment rows are shared production rows, so their per-run runtime fields are reset for the new run; historical run reconstruction should use the session/event log until a future per-session segment-run table is added.
 
 ## 10. Talk Acceptance Status
 
 ### PASSED
 
-- Heavy owned Talk production build
+- Heavy owned Talk generation
 - Neon persistence for generated production
 - Research batching/checkpointing under realistic load
 - Topics display and approval path
-- Guided downstream user walkthrough through Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
-- JSON export executes successfully as Advanced Data Export
+- guided review through Research -> Topics -> Guests -> Rundown -> AI Assets -> Export
+- Advanced JSON export execution
 - first CREAPD Live show-execution cockpit
-- live session state/control path as exercised by user
+- live start/pause/resume/next/clip/end path
+- Live re-entry during a run
+- side-by-side Program Monitor + Teleprompter layout visually accepted
 
 ### DEPLOYED / NEEDS USER TEST
 
-- side-by-side Program Monitor + Teleprompter layout
-- teleprompter content switching / reset-to-top / font sizing
-- Run of Show moved below the top studio row
+- **Start New Run** after `SHOW ENDED`
+- verify new run starts at Segment 1
+- verify clock resets
+- verify prior run does not become the active session
+- verify clip counters/runtime state reset for the new run
+- verify Pause/Next/End still work on Run #2
 
 ### STILL PARTIAL / FUTURE
 
 - guest shortlist/invite/confirm semantics
-- asset approve/unapprove focused regression
+- focused asset approve/unapprove persistence regression
 - shared Production Package -> Presentation Studio/editor handoff for Talk
 - legacy monolithic Talk build retirement
 - user-facing Show Book / ZIP export
 - OBS WebSocket execution
 - real Program Monitor/browser overlays
-- teleprompter auto-scroll / mirror / detached display refinements
+- teleprompter auto-scroll / mirror / detached display
 - post-show clipping/transcription
+- future per-session segment-run history model if detailed rehearsal-vs-broadcast analytics are needed
 
-Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 cleanup gates are complete, even though its core owned build and first live-execution cockpit have passed.
+Talk Studio overall remains **PARTIAL** until remaining shared-flow and Base44 cleanup gates are complete.
 
 ## 11. Current Exact Next Action
 
-**User-test the new CREAPD Live teleprompter layout on Preview.**
+**Test the completed-show restart path on Preview.**
 
-Use the existing `We Are America` production; do not rebuild it.
+Use the existing ended `We Are America` production.
 
-Acceptance path:
+1. Hard-refresh Preview and enter CREAPD Live.
+2. Confirm the completed run still shows `SHOW ENDED`.
+3. Confirm a **Start New Run** card/button appears.
+4. Click **Start New Run**.
+5. Confirm the cockpit returns to `ON AIR` and starts at Segment 1.
+6. Confirm the overall show clock starts fresh rather than continuing the old run's elapsed time.
+7. Confirm the Run of Show is reset for the new run and previous clip counters are not carried into the active run.
+8. Test **Clip This Moment**, **Next Segment**, and **Pause/Resume** once on Run #2.
+9. Leave Live and re-enter; confirm Run #2 remains active.
+10. End Run #2 and confirm `SHOW ENDED` again and **Start New Run** becomes available again.
+11. Report any duplicated session, stale timer, stale segment state, or confusing wording.
 
-1. Hard-refresh the `backend/vercel-foundation` Preview.
-2. Enter **CREAPD Live**.
-3. Confirm the **Program Monitor is on the left** and the **Teleprompter is immediately to its right** on a desktop-size viewport.
-4. Confirm the Run of Show is now below rather than occupying the right column.
-5. Start/resume a show session and confirm the teleprompter shows sensible material for the current segment.
-6. Use `A−` / `A+` and confirm text sizing works without breaking layout.
-7. Advance to the next segment and confirm the teleprompter changes with the segment and resets to the top.
-8. Confirm the live controls still work after the layout change.
-9. Report any poor script selection, duplicated text, bad overflow, eye-line/layout issue, or state regression.
-
-After this passes, the next major CREAPD Live layer is **OBS integration / real Program Monitor + overlays**, while separate Talk cleanup continues for guest semantics, legacy Base44 fallback retirement, Show Book export, and shared Presentation Studio handoff.
+After repeat-run acceptance passes, next major CREAPD Live layer is **OBS integration / real Program Monitor + overlays**, while Talk cleanup continues for guest semantics, Show Book export, shared Presentation Studio handoff, and legacy Base44 fallback retirement.
 
 Do not touch `main`.
 
@@ -393,7 +378,7 @@ Do not touch `main`.
 - shared Production Package flow across all Studios
 - shared Dispatch
 - Presentation Studio/editor full regression
-- user-facing Show Book/export packaging
+- Show Book/export packaging
 - OBS/live execution
 - post-show clipping/transcription
 - organizations/team/RBAC/RLS
