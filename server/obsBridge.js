@@ -25,8 +25,13 @@ const OVERLAY_POSITIONS = new Set([
   'top_right',
 ]);
 
-const AGENT_HEARTBEAT_WRITE_MS = 6000;
-const BRIDGE_ONLINE_WINDOW_MS = 15000;
+const AGENT_HEARTBEAT_WRITE_MS = 15000;
+const BRIDGE_ONLINE_WINDOW_MS = 30000;
+const AGENT_AUTH_CACHE_TTL_MS = 30000;
+const AGENT_COMMAND_POLL_MS = 5000;
+
+const agentBridgeCache = new Map();
+const agentRuntime = new Map();
 
 function clean(value, fallback = '') {
   const text = String(value ?? '').trim();
@@ -133,6 +138,11 @@ async function requireAgentBridge(sql, bridgeToken) {
   const token = clean(bridgeToken);
   if (!token) throw makeError('Bridge token is required', 'OBS_BRIDGE_TOKEN_REQUIRED', 401);
   const hash = tokenHash(token);
+  const cached = agentBridgeCache.get(hash);
+  if (cached && Date.now() - cached.verifiedAt < AGENT_AUTH_CACHE_TTL_MS) {
+    return cached.bridge;
+  }
+
   const [bridge] = await sql`
     SELECT id, owner_user_id, status, obs_connected, obs_endpoint,
            obs_studio_version, obs_websocket_version, current_scene, scenes,
@@ -143,7 +153,14 @@ async function requireAgentBridge(sql, bridgeToken) {
     LIMIT 1
   `;
   if (!bridge) throw makeError('Bridge token is invalid or revoked', 'OBS_BRIDGE_TOKEN_INVALID', 401);
+
+  agentBridgeCache.set(hash, { bridge, verifiedAt: Date.now() });
   return bridge;
+}
+
+function resetAgentCaches() {
+  agentBridgeCache.clear();
+  agentRuntime.clear();
 }
 
 async function createOrRotateBridge(sql, ownerUserId, name) {
@@ -172,6 +189,8 @@ async function createOrRotateBridge(sql, ownerUserId, name) {
       RETURNING *
     `;
   }
+
+  resetAgentCaches();
 
   return {
     bridge: publicBridge(bridge),
@@ -263,6 +282,9 @@ async function enqueueCommand(sql, ownerUserId, body) {
     RETURNING id, bridge_id, command_type, payload, status, requested_at
   `;
 
+  const runtime = agentRuntime.get(bridge.id) || {};
+  agentRuntime.set(bridge.id, { ...runtime, lastCommandPollAt: 0 });
+
   return {
     command: {
       id: command.id,
@@ -298,6 +320,7 @@ export async function runObsBridgeUserAction({ sql, ownerUserId, action, body = 
         WHERE id = ${bridge.id} AND owner_user_id = ${String(ownerUserId)}
         RETURNING *
       `;
+      resetAgentCaches();
       return { bridge: publicBridge(revoked), revoked: true };
     }
 
@@ -316,7 +339,7 @@ function jsonEqual(left, right) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
-function heartbeatNeedsWrite(bridge, body, normalized) {
+function heartbeatNeedsWrite(bridge, normalized) {
   const lastSeen = bridge?.last_seen_at ? new Date(bridge.last_seen_at).getTime() : NaN;
   const heartbeatDue = !Number.isFinite(lastSeen) || Date.now() - lastSeen >= AGENT_HEARTBEAT_WRITE_MS;
   if (heartbeatDue) return true;
@@ -347,7 +370,7 @@ async function updateBridgeHeartbeat(sql, bridge, body) {
       : {},
   };
 
-  if (!heartbeatNeedsWrite(bridge, body, normalized)) {
+  if (!heartbeatNeedsWrite(bridge, normalized)) {
     return false;
   }
 
@@ -377,18 +400,27 @@ async function updateBridgeHeartbeat(sql, bridge, body) {
       AND obs_connection_status IS DISTINCT FROM ${connectionStatus}
   `;
 
+  const nowIso = new Date().toISOString();
+  bridge.status = connectionStatus;
+  bridge.obs_connected = normalized.obsConnected;
+  bridge.obs_endpoint = normalized.endpoint || bridge.obs_endpoint;
+  bridge.obs_studio_version = normalized.studioVersion || bridge.obs_studio_version;
+  bridge.obs_websocket_version = normalized.websocketVersion || bridge.obs_websocket_version;
+  bridge.current_scene = normalized.currentScene || bridge.current_scene;
+  if (normalized.scenes.length > 0) bridge.scenes = normalized.scenes;
+  if (Object.keys(normalized.capabilities).length > 0) bridge.capabilities = normalized.capabilities;
+  bridge.last_seen_at = nowIso;
+  bridge.last_error = normalized.lastError;
+
   return true;
 }
 
-async function pollBridge(sql, body) {
-  const bridge = await requireAgentBridge(sql, body.bridge_token);
-  const heartbeatWritten = await updateBridgeHeartbeat(sql, bridge, body);
-
-  const commands = await sql`
+async function claimPendingCommands(sql, bridgeId) {
+  return sql`
     WITH picked AS (
       SELECT id
       FROM creapd.obs_commands
-      WHERE bridge_id = ${bridge.id}
+      WHERE bridge_id = ${bridgeId}
         AND (
           status = 'pending'
           OR (status = 'claimed' AND claimed_at < now() - interval '15 seconds')
@@ -404,9 +436,24 @@ async function pollBridge(sql, body) {
     RETURNING command.id, command.command_type, command.payload,
               command.session_type, command.session_id, command.requested_at
   `;
+}
+
+async function pollBridge(sql, body) {
+  const bridge = await requireAgentBridge(sql, body.bridge_token);
+  const heartbeatWritten = await updateBridgeHeartbeat(sql, bridge, body);
+
+  const runtime = agentRuntime.get(bridge.id) || { lastCommandPollAt: 0 };
+  const now = Date.now();
+  let commands = [];
+  if (now - Number(runtime.lastCommandPollAt || 0) >= AGENT_COMMAND_POLL_MS) {
+    commands = await claimPendingCommands(sql, bridge.id);
+    runtime.lastCommandPollAt = now;
+    agentRuntime.set(bridge.id, runtime);
+  }
 
   return {
     heartbeat_written: heartbeatWritten,
+    next_poll_ms: AGENT_COMMAND_POLL_MS,
     commands: (commands || []).map(command => ({
       id: command.id,
       command_type: command.command_type,
@@ -448,12 +495,15 @@ async function completeCommand(sql, body) {
       SET current_scene = ${resultingScene}, last_error = NULL, updated_at = now()
       WHERE id = ${bridge.id}
     `;
+    bridge.current_scene = resultingScene;
+    bridge.last_error = null;
   } else if (!succeeded && errorText) {
     await sql`
       UPDATE creapd.obs_bridges
       SET last_error = ${errorText}, updated_at = now()
       WHERE id = ${bridge.id}
     `;
+    bridge.last_error = errorText;
   }
 
   return {
