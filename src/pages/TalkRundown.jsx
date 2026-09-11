@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import { Loader2, Mic2, ClipboardList, AlertCircle, Clock } from 'lucide-react';
 
@@ -26,6 +27,9 @@ export default function TalkRundown() {
   }
 
   const totalSeconds = segments.reduce((sum, s) => sum + (s.duration_seconds || 0), 0);
+  const targetSeconds = Number(config.total_show_runtime || 0) * 60;
+  const runtimeDelta = targetSeconds ? Math.abs(totalSeconds - targetSeconds) : 0;
+  const runtimeLooksClose = !targetSeconds || runtimeDelta <= 300;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -36,6 +40,21 @@ export default function TalkRundown() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Structured show timeline with segments and timings</p>
       </div>
+
+      <TalkProducerGuide
+        currentStep="rundown"
+        title="Make sure CREAPD's show flow matches the production you want to run"
+        instructions={[
+          'Read the rundown from top to bottom and make sure the segment order feels natural.',
+          'Check timing, sponsor breaks, transitions, intros, and outros against the runtime you configured.',
+          'If the structure looks right, move to AI Assets and review the scripts, prompts, and production material CREAPD created for this rundown.',
+        ]}
+        readyText={segments.length ? `${segments.length} segments · ${formatRuntime(totalSeconds)} generated${runtimeLooksClose ? ' · runtime is close to target' : ' · review runtime against your target'}` : 'No rundown is available yet'}
+        nextPath="/talk/assets"
+        nextLabel="Review AI Assets"
+        nextDescription="Assets are the host scripts, prompts, social copy, and production notes tied to this show."
+        note="If the rundown needs a major structural change, go back to Show Setup, adjust the production configuration, and rebuild rather than trying to force a bad plan forward."
+      />
 
       {segments.length === 0 ? (
         <div className="glass-panel p-8 text-center">
@@ -50,6 +69,12 @@ export default function TalkRundown() {
             <span className="font-medium">{segments.length}</span>
             <span className="text-muted-foreground ml-4">Total Runtime:</span>
             <span className="font-medium">{formatRuntime(totalSeconds)}</span>
+            {targetSeconds > 0 && (
+              <>
+                <span className="text-muted-foreground ml-4">Target:</span>
+                <span className={runtimeLooksClose ? 'font-medium text-emerald-400' : 'font-medium text-amber-400'}>{formatRuntime(targetSeconds)}</span>
+              </>
+            )}
           </div>
 
           <div className="glass-panel p-4 space-y-1">

@@ -1,4 +1,6 @@
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 
 const DEFAULT_MODEL = 'gemini_3_flash';
 
@@ -28,6 +30,17 @@ async function updateProgress(dossierId, stage, timings = {}, extra = {}) {
 
 export async function runResearchClient(topic) {
   if (!topic?.id) throw new Error('Research topic is required.');
+
+  // Preview/Neon cutover: retries and manual Research actions must use the same
+  // owned Vercel engine as CREAPr. The legacy browser-side engine below remains
+  // only for Base44-backed production until the migration is promoted.
+  if (shouldUseNeonAuth()) {
+    return creapdApi.post('/research/topic-action', {
+      action: 'start',
+      topic_id: topic.id,
+      research_depth: topic.research_depth || 'standard',
+    });
+  }
 
   const timings = {};
   const stageErrors = [];
@@ -241,6 +254,22 @@ export async function runResearchClient(topic) {
 
 export async function extractResearchPointsClient(topic, maxPoints = 10) {
   if (!topic?.id) throw new Error('Research topic is required.');
+
+  if (shouldUseNeonAuth()) {
+    const payload = await creapdApi.get(
+      `/research/dossier-status?topic_id=${encodeURIComponent(topic.id)}`
+    );
+    if (!payload?.dossier || payload.dossier.status !== 'ready') {
+      throw new Error('Research dossier is not ready.');
+    }
+    return {
+      success: true,
+      points_extracted: payload?.point_count || 0,
+      already_extracted: true,
+      source: 'neon',
+    };
+  }
+
   const currentTopic = await base44.entities.ResearchTopic.get(topic.id);
   if (!currentTopic?.dossier_id) throw new Error('No dossier found for this topic.');
 

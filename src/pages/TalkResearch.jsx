@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
-import { Loader2, Mic2, Search, AlertCircle, TrendingUp } from 'lucide-react';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
+import { Loader2, Mic2, Search, AlertCircle } from 'lucide-react';
 
 export default function TalkResearch() {
   const { config, research, loading } = useTalkProduction();
@@ -33,6 +34,20 @@ export default function TalkResearch() {
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Background research for your discussion topics</p>
       </div>
+
+      <TalkProducerGuide
+        currentStep="research"
+        title="Review the research before you lock your discussion topics"
+        instructions={[
+          'Scan the summaries and sources so you understand what CREAPD found.',
+          'Watch for weak, mixed, or questionable information that may need extra attention.',
+          'When the research looks usable, move to Topics and decide what actually belongs in the show.',
+        ]}
+        readyText={`${research.length} research item${research.length === 1 ? '' : 's'} available for review`}
+        nextPath="/talk/topics"
+        nextLabel="Review Discussion Topics"
+        nextDescription="Research informs the show; Topics is where you decide what CREAPD should actually use."
+      />
 
       {research.length === 0 ? (
         <div className="glass-panel p-8 text-center">

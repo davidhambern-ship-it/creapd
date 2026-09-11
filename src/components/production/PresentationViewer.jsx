@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, ChevronLeft, ChevronRight, X, Clock } from 'lucide-react';
+import { Play, Pause, ChevronLeft, ChevronRight, X, Clock, Volume2 } from 'lucide-react';
 
 function safeParse(str) {
   if (!str) return [];
@@ -38,14 +38,14 @@ const POS_CLASSES = {
 
 function fmt(seconds) {
   if (!seconds && seconds !== 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
+  const total = Math.max(0, Number(seconds || 0));
+  const m = Math.floor(total / 60);
+  const s = Math.floor(total % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function SceneSlide({ scene }) {
   const textElements = safeParse(scene.text_elements);
-  const imageElements = safeParse(scene.image_elements);
   const hasBgImage = !!scene.generated_image_url;
 
   return (
@@ -58,7 +58,7 @@ function SceneSlide({ scene }) {
           className="absolute inset-0 w-full h-full object-cover"
           initial={{ scale: 1.08 }}
           animate={{ scale: 1.02 }}
-          transition={{ duration: 8, ease: 'easeOut' }}
+          transition={{ duration: Math.max(4, Number(scene.duration_seconds || 8)), ease: 'easeOut' }}
         />
       ) : (
         <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-berna-navy via-secondary to-primary/20" />
@@ -108,11 +108,11 @@ function SceneSlide({ scene }) {
             const isLowerThird = el.element_type === 'lower_third' || el.position === 'lower_third';
             return (
               <motion.div
-                key={`text-${idx}`}
+                key={el.element_id || `text-${idx}`}
                 className={isLowerThird ? '' : `flex ${posClass}`}
                 initial={variant.initial}
                 animate={variant.animate}
-                transition={{ delay: 0.5 + idx * 0.3, duration: 0.5, ease: 'easeOut' }}
+                transition={{ delay: 0.35 + idx * 0.25, duration: 0.5, ease: 'easeOut' }}
               >
                 <div className={isLowerThird
                   ? 'inline-block px-4 py-2 rounded-lg bg-black/70 backdrop-blur-md border-l-4 border-accent'
@@ -139,20 +139,38 @@ function SceneSlide({ scene }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.5 }}
         >
-          <p className="text-xs text-white/60">🎨 {scene.visual_theme}</p>
+          <p className="text-xs text-white/60">{scene.visual_theme}</p>
         </motion.div>
       )}
     </div>
   );
 }
 
-export default function PresentationViewer({ scenes, onClose }) {
+export default function PresentationViewer({ scenes = [], segments = [], onClose }) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [elapsedDuration, setElapsedDuration] = useState(0);
   const timerRef = useRef(null);
+  const audioRef = useRef(null);
+  const activeSegmentRef = useRef(-1);
 
+  const normalizedSegments = useMemo(
+    () => (Array.isArray(segments) ? segments : [])
+      .filter(segment => segment?.audio_url && Number(segment?.end_time) > Number(segment?.start_time))
+      .sort((a, b) => Number(a.start_time || 0) - Number(b.start_time || 0)),
+    [segments],
+  );
+
+  const hasAudioTimeline = normalizedSegments.length > 0;
   const currentScene = scenes[currentIdx];
   const isLast = currentIdx === scenes.length - 1;
+
+  const totalDuration = useMemo(() => {
+    if (hasAudioTimeline) {
+      return Math.max(...normalizedSegments.map(segment => Number(segment.end_time || 0)), 0);
+    }
+    return scenes.reduce((sum, scene) => sum + Number(scene.duration_seconds || 0), 0);
+  }, [hasAudioTimeline, normalizedSegments, scenes]);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -160,6 +178,81 @@ export default function PresentationViewer({ scenes, onClose }) {
       timerRef.current = null;
     }
   };
+
+  const findSegmentIndexForTime = useCallback((globalTime) => {
+    if (!normalizedSegments.length) return -1;
+    const time = Math.max(0, Number(globalTime || 0));
+    const found = normalizedSegments.findIndex((segment, index) => {
+      const start = Number(segment.start_time || 0);
+      const end = Number(segment.end_time || start);
+      return time >= start && (time < end || index === normalizedSegments.length - 1);
+    });
+    return found >= 0 ? found : (time < Number(normalizedSegments[0].start_time || 0) ? 0 : normalizedSegments.length - 1);
+  }, [normalizedSegments]);
+
+  const findSceneIndexForTime = useCallback((globalTime) => {
+    if (!scenes.length) return 0;
+    const time = Math.max(0, Number(globalTime || 0));
+    const found = scenes.findIndex((scene, index) => {
+      const start = Number(scene.voice_start_time ?? scenes.slice(0, index).reduce((sum, item) => sum + Number(item.duration_seconds || 0), 0));
+      const end = Number(scene.voice_end_time ?? (start + Number(scene.duration_seconds || 0)));
+      return time >= start && (time < end || index === scenes.length - 1);
+    });
+    return found >= 0 ? found : 0;
+  }, [scenes]);
+
+  const playAudio = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const playPromise = audio.play();
+    if (playPromise?.catch) {
+      playPromise.catch(error => {
+        console.warn('[CREAPD PRESENTATION AUDIO]', error);
+        setIsPlaying(false);
+      });
+    }
+  }, []);
+
+  const seekAudioToGlobalTime = useCallback((globalTime, shouldPlay = false) => {
+    if (!hasAudioTimeline || !audioRef.current) return;
+
+    const segmentIndex = findSegmentIndexForTime(globalTime);
+    const segment = normalizedSegments[segmentIndex];
+    if (!segment) return;
+
+    const audio = audioRef.current;
+    const segmentStart = Number(segment.start_time || 0);
+    const localTarget = Math.max(0, Math.min(
+      Number(segment.duration_seconds || (Number(segment.end_time || 0) - segmentStart)),
+      Number(globalTime || 0) - segmentStart,
+    ));
+
+    const applySeek = () => {
+      try {
+        const maxSeek = Number.isFinite(audio.duration) && audio.duration > 0
+          ? Math.max(0, Math.min(localTarget, Math.max(0, audio.duration - 0.01)))
+          : localTarget;
+        audio.currentTime = maxSeek;
+      } catch {}
+      if (shouldPlay) playAudio();
+    };
+
+    const sourceChanged = activeSegmentRef.current !== segmentIndex || audio.src !== segment.audio_url;
+    if (sourceChanged) {
+      audio.pause();
+      activeSegmentRef.current = segmentIndex;
+      audio.src = segment.audio_url;
+      audio.load();
+      if (audio.readyState >= 1) {
+        applySeek();
+      } else {
+        audio.addEventListener('loadedmetadata', applySeek, { once: true });
+      }
+      return;
+    }
+
+    applySeek();
+  }, [findSegmentIndexForTime, hasAudioTimeline, normalizedSegments, playAudio]);
 
   const goToNext = useCallback(() => {
     if (currentIdx < scenes.length - 1) {
@@ -171,38 +264,118 @@ export default function PresentationViewer({ scenes, onClose }) {
 
   useEffect(() => {
     clearTimer();
-    if (isPlaying) {
+    if (!hasAudioTimeline && isPlaying) {
       const duration = currentScene?.duration_seconds || 5;
       timerRef.current = setTimeout(goToNext, duration * 1000);
     }
     return clearTimer;
-  }, [isPlaying, currentIdx, currentScene, goToNext]);
+  }, [hasAudioTimeline, isPlaying, currentIdx, currentScene, goToNext]);
 
-  const handlePrev = () => {
+  useEffect(() => () => {
     clearTimer();
-    if (currentIdx > 0) setCurrentIdx(prev => prev - 1);
+    audioRef.current?.pause();
+  }, []);
+
+  const handleAudioTimeUpdate = () => {
+    const audio = audioRef.current;
+    const segment = normalizedSegments[activeSegmentRef.current];
+    if (!audio || !segment) return;
+
+    const globalTime = Number(segment.start_time || 0) + Number(audio.currentTime || 0);
+    setElapsedDuration(globalTime);
+    setCurrentIdx(previous => {
+      const nextIndex = findSceneIndexForTime(globalTime);
+      return nextIndex === previous ? previous : nextIndex;
+    });
   };
 
-  const handlePlayPause = () => {
-    setIsPlaying(prev => !prev);
+  const handleAudioEnded = () => {
+    const currentSegmentIndex = activeSegmentRef.current;
+    const nextSegment = normalizedSegments[currentSegmentIndex + 1];
+
+    if (isPlaying && nextSegment) {
+      const nextTime = Number(nextSegment.start_time || 0);
+      setElapsedDuration(nextTime);
+      setCurrentIdx(findSceneIndexForTime(nextTime));
+      seekAudioToGlobalTime(nextTime, true);
+      return;
+    }
+
+    setElapsedDuration(totalDuration);
+    setCurrentIdx(Math.max(0, scenes.length - 1));
+    setIsPlaying(false);
+  };
+
+  const sceneStartTime = useCallback((index) => {
+    const scene = scenes[index];
+    if (!scene) return 0;
+    if (Number.isFinite(Number(scene.voice_start_time))) return Number(scene.voice_start_time);
+    return scenes.slice(0, index).reduce((sum, item) => sum + Number(item.duration_seconds || 0), 0);
+  }, [scenes]);
+
+  const jumpToScene = (index) => {
+    const nextIndex = Math.max(0, Math.min(scenes.length - 1, index));
+    clearTimer();
+    setCurrentIdx(nextIndex);
+    const target = sceneStartTime(nextIndex);
+    setElapsedDuration(target);
+    if (hasAudioTimeline) seekAudioToGlobalTime(target, isPlaying);
+  };
+
+  const handlePrev = () => {
+    if (currentIdx > 0) jumpToScene(currentIdx - 1);
   };
 
   const handleNext = () => {
-    clearTimer();
-    if (currentIdx < scenes.length - 1) setCurrentIdx(prev => prev + 1);
+    if (currentIdx < scenes.length - 1) jumpToScene(currentIdx + 1);
   };
 
-  const totalDuration = scenes.reduce((sum, s) => sum + (s.duration_seconds || 0), 0);
-  const elapsedDuration = scenes.slice(0, currentIdx).reduce((sum, s) => sum + (s.duration_seconds || 0), 0);
+  const handlePlayPause = () => {
+    if (!hasAudioTimeline) {
+      setIsPlaying(prev => !prev);
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (isPlaying) {
+      audio?.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    const startTime = elapsedDuration >= totalDuration ? 0 : elapsedDuration;
+    if (elapsedDuration >= totalDuration) {
+      setCurrentIdx(0);
+      setElapsedDuration(0);
+    }
+    setIsPlaying(true);
+    seekAudioToGlobalTime(startTime, true);
+  };
+
+  const fallbackElapsed = scenes.slice(0, currentIdx).reduce((sum, scene) => sum + Number(scene.duration_seconds || 0), 0);
+  const displayElapsed = hasAudioTimeline ? elapsedDuration : fallbackElapsed;
+  const progress = totalDuration > 0
+    ? Math.min(100, Math.max(0, (displayElapsed / totalDuration) * 100))
+    : ((currentIdx + 1) / Math.max(1, scenes.length)) * 100;
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      {hasAudioTimeline && (
+        <audio
+          ref={audioRef}
+          preload="metadata"
+          className="hidden"
+          onTimeUpdate={handleAudioTimeUpdate}
+          onEnded={handleAudioEnded}
+        />
+      )}
+
       {/* Slide area */}
       <div className="flex-1 relative flex items-center justify-center">
         <div className="relative w-full h-full max-w-[1920px] mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentScene?.id || currentIdx}
+              key={currentScene?.id || currentScene?.slide_id || currentIdx}
               className="absolute inset-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -246,8 +419,8 @@ export default function PresentationViewer({ scenes, onClose }) {
           <span className="text-xs text-white/60 font-mono w-8">{currentIdx + 1}</span>
           <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
-              style={{ width: `${((currentIdx + 1) / scenes.length) * 100}%` }}
+              className="h-full rounded-full bg-primary transition-all duration-200"
+              style={{ width: `${progress}%` }}
             />
           </div>
           <span className="text-xs text-white/60 font-mono w-8">{scenes.length}</span>
@@ -262,9 +435,16 @@ export default function PresentationViewer({ scenes, onClose }) {
               {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
             <div className="text-sm text-white/70">
-              <span className="font-medium text-white">{currentScene?.slide_title}</span>
-              <span className="ml-2 text-xs text-white/50">
-                {fmt(elapsedDuration)} / {fmt(totalDuration)}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-white">{currentScene?.slide_title}</span>
+                {hasAudioTimeline && (
+                  <span className="flex items-center gap-1 text-[10px] text-cyan-300">
+                    <Volume2 className="w-3 h-3" /> Kokoro master timeline
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-white/50">
+                {fmt(displayElapsed)} / {fmt(totalDuration)}
               </span>
             </div>
           </div>

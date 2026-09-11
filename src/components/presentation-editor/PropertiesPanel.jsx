@@ -12,11 +12,10 @@ const TEXT_TYPES = ['text', 'lower_third', 'caption'];
 export default function PropertiesPanel({
   presentation, slide, selectedId, selectedElement, selectedElements,
   zoom, onUpdatePresentation, onUpdateSlide, onUpdateElement, onDeleteElement,
-  onRegenerateElement, onDuplicateElement, onBringForward, onSendBackward,
+  onDuplicateElement, onBringForward, onSendBackward,
   onDuplicateSlide, onDeleteSlide, onMoveSlideForward, onMoveSlideBackward,
   onCopy, onCut, onPaste, onAlign, onDistribute, onZoom,
 }) {
-  // ── Multiple selection (§17) ──
   if (selectedElements && selectedElements.length > 1) {
     return (
       <MultiSelectInspector
@@ -28,7 +27,6 @@ export default function PropertiesPanel({
     );
   }
 
-  // ── Single element selected ──
   if (selectedElement) {
     const props = {
       element: selectedElement, onUpdate: onUpdateElement, onDelete: onDeleteElement,
@@ -36,19 +34,18 @@ export default function PropertiesPanel({
     };
 
     if (TEXT_TYPES.includes(selectedElement.type)) {
-      return <TextInspector {...props} onRegenerate={onRegenerateElement}
+      return <TextInspector {...props}
         onDuplicate={onDuplicateElement} onCopy={onCopy} onCut={onCut} onPaste={onPaste} />;
     }
     if (selectedElement.type === 'image') {
-      return <ImageInspector {...props} slide={slide} presentation={presentation} onRegenerate={onRegenerateElement} />;
+      return <ImageInspector {...props} slide={slide} presentation={presentation} />;
     }
     if (selectedElement.type === 'shape') {
       return <ShapeInspector {...props} />;
     }
-    return <GenericElementInspector {...props} onRegenerate={onRegenerateElement} label={selectedElement.type} />;
+    return <GenericElementInspector {...props} label={selectedElement.type} />;
   }
 
-  // ── Slide selected (clicking on canvas background) ──
   if (slide && (selectedId === '__slide__' || selectedId === null || selectedId === undefined || selectedId === '__title__' || selectedId === '__body__')) {
     return (
       <SlideInspector slide={slide} selectedId={selectedId} onUpdate={onUpdateSlide}
@@ -57,6 +54,5 @@ export default function PropertiesPanel({
     );
   }
 
-  // ── Nothing selected — presentation-level controls (§4) ──
   return <PresentationInspector presentation={presentation} onUpdate={onUpdatePresentation} zoom={zoom} onZoom={onZoom} />;
 }

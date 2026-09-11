@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import CreaprFocusBar from '@/components/creapr/CreaprFocusBar';
-import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import {
   Loader2, FlaskConical, FileText, ChevronDown, ChevronUp, CheckCircle2,
-  AlertCircle, Clock, Users, Building2, BarChart3, ShieldCheck, Brain, Target
+  Clock, Users, Building2, BarChart3, ShieldCheck, Brain, Target
 } from 'lucide-react';
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function safeParse(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return value;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 export default function ResearchDossier() {
   const researchData = useResearchProduction();
-  const { config, topics, points, dossiers, loading, refresh } = researchData;
+  const { config, topics, dossiers, loading, refresh } = researchData;
   const [expanded, setExpanded] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
 
   if (loading) {
     return (
@@ -38,7 +41,6 @@ export default function ResearchDossier() {
     );
   }
 
-  // Link dossiers to their topics
   const dossiersWithTopics = dossiers.map(d => ({
     dossier: d,
     topic: topics.find(t => t.id === d.topic_id),
@@ -47,7 +49,7 @@ export default function ResearchDossier() {
   const readyCount = dossiers.filter(d => d.status === 'ready').length;
   const researchingCount = dossiers.filter(d => d.status === 'researching').length;
   const avgConfidence = dossiers.length > 0
-    ? Math.round(dossiers.reduce((sum, d) => sum + (d.confidence_score || 0), 0) / dossiers.length)
+    ? Math.round(dossiers.reduce((sum, d) => sum + Number(d.confidence_score || 0), 0) / dossiers.length)
     : 0;
 
   const stats = [
@@ -58,15 +60,25 @@ export default function ResearchDossier() {
   ];
 
   const handleApprove = async (dossier) => {
-    await base44.entities.ResearchDossier.update(dossier.id, { status: 'ready' });
-    refresh();
+    if (!dossier?.id || approvingId) return;
+    setApprovingId(dossier.id);
+    try {
+      await creapdApi.post('/research/dossier-action', {
+        dossier_id: dossier.id,
+        status: 'ready',
+      });
+      await refresh();
+    } catch (error) {
+      console.error('Dossier approval failed:', error);
+    } finally {
+      setApprovingId(null);
+    }
   };
 
   return (
     <div className="h-full overflow-y-auto">
       <CreaprFocusBar researchData={researchData} />
 
-      {/* Header */}
       <div className="px-4 md:px-6 pt-4 pb-3 cc-animate-fade-up">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'hsl(190 50% 15% / 0.3)', border: '1px solid hsl(190 40% 28% / 0.4)' }}>
@@ -79,7 +91,6 @@ export default function ResearchDossier() {
         </div>
       </div>
 
-      {/* Stats Row */}
       <div className="px-4 md:px-6 pb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((s, i) => {
           const Icon = s.icon;
@@ -100,7 +111,6 @@ export default function ResearchDossier() {
         })}
       </div>
 
-      {/* Dossier Cards */}
       <div className="px-4 md:px-6 pb-6">
         {dossiersWithTopics.length === 0 ? (
           <div className="cc-glass-card p-8 text-center cc-animate-fade-up">
@@ -119,10 +129,10 @@ export default function ResearchDossier() {
               const counterArgs = safeParse(dossier.counter_arguments, []);
               const dataStats = safeParse(dossier.data_and_statistics, []);
               const coverageAngles = safeParse(dossier.coverage_angles, []);
+              const isApproving = approvingId === dossier.id;
 
               return (
                 <div key={dossier.id} className={`cc-glass-card cc-animate-fade-up cc-stagger-${Math.min((dIdx % 6) + 1, 6)}`}>
-                  {/* Card Header */}
                   <div className="p-4 flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -142,12 +152,12 @@ export default function ResearchDossier() {
                       <h3 className="font-medium text-sm">{dossier.research_query}</h3>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {dossier.confidence_score > 0 && (
+                      {Number(dossier.confidence_score || 0) > 0 && (
                         <div className="flex items-center gap-1.5">
                           <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(190 20% 12% / 0.5)' }}>
-                            <div className="h-full rounded-full" style={{ width: `${dossier.confidence_score}%`, background: 'linear-gradient(90deg, hsl(190 55% 45%), hsl(152 60% 50%))' }} />
+                            <div className="h-full rounded-full" style={{ width: `${Number(dossier.confidence_score)}%`, background: 'linear-gradient(90deg, hsl(190 55% 45%), hsl(152 60% 50%))' }} />
                           </div>
-                          <span className="text-xs font-mono" style={{ color: 'hsl(35 90% 60%)' }}>{dossier.confidence_score}%</span>
+                          <span className="text-xs font-mono" style={{ color: 'hsl(35 90% 60%)' }}>{Number(dossier.confidence_score)}%</span>
                         </div>
                       )}
                       <button
@@ -160,7 +170,6 @@ export default function ResearchDossier() {
                     </div>
                   </div>
 
-                  {/* Quick Preview */}
                   {dossier.executive_summary && (
                     <div className="px-4 pb-3">
                       <p className="text-sm text-muted-foreground">
@@ -169,10 +178,8 @@ export default function ResearchDossier() {
                     </div>
                   )}
 
-                  {/* Expanded Content */}
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-3">
-                      {/* Context & Background */}
                       {dossier.context_and_background && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(190 40% 12% / 0.15)' }}>
                           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'hsl(190 70% 55%)' }}>Context & Background</p>
@@ -180,7 +187,6 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Key Facts */}
                       {keyFacts.length > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Key Facts</p>
@@ -195,7 +201,6 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Key People & Organizations */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {keyPeople.length > 0 && (
                           <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
@@ -229,7 +234,6 @@ export default function ResearchDossier() {
                         )}
                       </div>
 
-                      {/* Timeline */}
                       {timeline.length > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
                           <p className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(35 90% 60%)' }}>
@@ -249,7 +253,6 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Counter Arguments */}
                       {counterArgs.length > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(270 30% 12% / 0.15)' }}>
                           <p className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(270 80% 70%)' }}>
@@ -263,7 +266,6 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Data & Statistics */}
                       {dataStats.length > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
                           <p className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(190 70% 55%)' }}>
@@ -277,7 +279,6 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Coverage Angles */}
                       {coverageAngles.length > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(152 40% 12% / 0.15)' }}>
                           <p className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(152 60% 50%)' }}>
@@ -291,7 +292,6 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Sources */}
                       {sources.length > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'hsl(220 15% 12% / 0.3)' }}>
                           <p className="text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'hsl(190 70% 55%)' }}>
@@ -309,14 +309,15 @@ export default function ResearchDossier() {
                         </div>
                       )}
 
-                      {/* Approve button */}
                       {dossier.status !== 'ready' && (
                         <button
                           onClick={() => handleApprove(dossier)}
-                          className="w-full py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                          disabled={!!approvingId}
+                          className="w-full py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                           style={{ background: 'hsl(152 50% 15% / 0.2)', border: '1px solid hsl(152 50% 28% / 0.3)', color: 'hsl(152 60% 50%)' }}
                         >
-                          <CheckCircle2 className="w-4 h-4" /> Approve Dossier
+                          {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                          {isApproving ? 'Approving...' : 'Approve Dossier'}
                         </button>
                       )}
                     </div>

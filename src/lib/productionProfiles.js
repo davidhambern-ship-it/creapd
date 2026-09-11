@@ -2,10 +2,12 @@ import {
   Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush, FlaskConical
 } from 'lucide-react';
 
-export const PRODUCTION_PROFILES = [
+// Canonical CREAPD terminology: Production Studio.
+// Legacy aliases remain at the bottom of this file while older pages migrate.
+export const PRODUCTION_STUDIOS = [
   {
     key: 'news',
-    label: 'News Production',
+    label: 'News Studio',
     shortLabel: 'News',
     description: 'Daily news briefings, breaking news, story queues, teleprompter scripts, and broadcast production packages.',
     icon: Newspaper,
@@ -16,20 +18,20 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-blue-500/10',
     accentBorder: 'border-blue-500/20',
     spotlightFeature: 'Story Manager',
-    spotlightDescription: 'Turn approved stories into complete broadcast-ready Story Packages with scripts, voice, media, fact checks, and AI-directed presentations.',
+    spotlightDescription: 'Turn approved stories into complete broadcast-ready Production Packages with scripts, voice, media, fact checks, and everything the Presentation Studio needs.',
     workflow: [
       'Select or import stories into the Story Queue',
-      'Generate a complete Story Package with AI',
-      'Generate voiceover, thumbnail, story image, and promo video',
-      'Direct the AI Presentation Director (APD) to create a timed presentation',
-      'Export or share your finished production'
+      'Generate a complete Production Package with AI workers',
+      'Generate voiceover, thumbnail, story image, and supporting media',
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Teleprompter scripts, voiceovers, thumbnails, story images, promo videos, AI-directed presentations',
+    outputs: 'Teleprompter scripts, voiceovers, thumbnails, story images, production assets, approved Production Packages',
     examples: ['Daily News Briefing', 'Breaking News Report', 'Weekly Recap Show']
   },
   {
     key: 'spiritual',
-    label: 'Spiritual Production',
+    label: 'Spiritual Studio',
     shortLabel: 'Spiritual',
     description: 'Sermons, Bible studies, devotionals, worship services, prayer meetings, and faith-based content for any tradition.',
     icon: Church,
@@ -40,20 +42,20 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-amber-500/10',
     accentBorder: 'border-amber-500/20',
     spotlightFeature: 'Message Builder',
-    spotlightDescription: 'Build meaningful messages from Scripture, generate teaching materials, create voiceovers, and direct complete presentation-ready sermons or studies.',
+    spotlightDescription: 'Build meaningful messages from Scripture, teaching materials, narration, visuals, and complete Production Packages ready for the Presentation Studio.',
     workflow: [
       'Research scripture, topics, and study materials',
-      'Build a Message with sections, narration, and slides',
-      'Generate voiceovers and visual assets for each scene',
-      'Direct the presentation timeline with the AI Presentation Director',
-      'Export or share your finished production'
+      'Build the message structure, narration, and teaching assets',
+      'Generate voiceovers and visual assets',
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Sermon scripts, scripture references, voiceovers, presentation scenes, teaching materials, study guides',
+    outputs: 'Sermon scripts, scripture references, voiceovers, teaching materials, study guides, approved Production Packages',
     examples: ['Sunday Sermon', 'Bible Study Session', 'Daily Devotional']
   },
   {
     key: 'talk',
-    label: 'Talk Production',
+    label: 'Talk Studio',
     shortLabel: 'Talk',
     description: 'Talk shows, interview programs, panel discussions, and conversation-driven content.',
     icon: Mic2,
@@ -64,20 +66,20 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-pink-500/10',
     accentBorder: 'border-pink-500/20',
     spotlightFeature: 'Topic Builder',
-    spotlightDescription: 'Develop show topics, talking points, host notes, episode structures, and presentation-ready discussion segments.',
+    spotlightDescription: 'Develop show topics, talking points, host notes, episode structures, media, and approved Production Packages.',
     workflow: [
-      'Choose a topic and define your show format',
-      'Generate a show package with talking points and host notes',
+      'Choose a topic and define the show format',
+      'Generate talking points, host notes, questions, and segment assets',
       'Generate voice and media assets for each segment',
-      'Direct the presentation with the AI Presentation Director',
-      'Export or share your finished production'
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Topic outlines, talking points, host notes, episode structures, presentation segments',
+    outputs: 'Topic outlines, talking points, host notes, episode structures, media assets, approved Production Packages',
     examples: ['Interview Show', 'Panel Discussion', 'Daily Talk Show']
   },
   {
     key: 'music',
-    label: 'Music Production',
+    label: 'Music Studio',
     shortLabel: 'Music',
     description: 'Radio shows, music shows, playlist-based livestreams, countdown shows, and artist spotlights.',
     icon: Music,
@@ -88,20 +90,20 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-purple-500/10',
     accentBorder: 'border-purple-500/20',
     spotlightFeature: 'Music Show Builder',
-    spotlightDescription: 'Build radio-ready show rundowns, generate host scripts, manage playlists, and produce music commentary segments.',
+    spotlightDescription: 'Build radio-ready rundowns, host scripts, playlists, commentary segments, media assets, and complete Production Packages.',
     workflow: [
-      'Configure your show profile and brand',
-      'Research music topics and build your show rundown',
+      'Configure your Show and brand',
+      'Research music topics and build the rundown',
       'Generate host scripts and playlist segments',
-      'Produce and assemble media assets',
-      'Export your finished show'
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Show scripts, playlist segments, artist facts, host notes, show rundowns',
+    outputs: 'Show scripts, playlist segments, artist facts, host notes, show rundowns, approved Production Packages',
     examples: ['Morning Radio Show', 'Artist Spotlight', 'Countdown Show']
   },
   {
     key: 'sports',
-    label: 'Sports Production',
+    label: 'Sports Studio',
     shortLabel: 'Sports',
     description: 'Game previews, recaps, scoreboard updates, athlete interviews, and sports commentary shows.',
     icon: Trophy,
@@ -112,20 +114,20 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-orange-500/10',
     accentBorder: 'border-orange-500/20',
     spotlightFeature: 'Game Desk',
-    spotlightDescription: 'Build sports shows with game previews, recaps, scoreboard updates, athlete interviews, host scripts, voiceovers, and presentation-ready sports content.',
+    spotlightDescription: 'Build sports programs with game research, previews, recaps, statistics, scripts, voiceovers, and complete Production Packages.',
     workflow: [
-      'Select sports and define your show format',
-      'Generate games, matchups, research, and athlete profiles with AI',
-      'Generate host scripts, co-host scripts, and voiceover audios',
-      'Build a timed show rundown with game previews and analysis segments',
-      'Export or share your finished production'
+      'Select sports and define the show format',
+      'Generate matchups, research, athlete profiles, and analysis',
+      'Generate host scripts, co-host scripts, voiceovers, and graphics',
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Game previews, key matchups, stats & figures, host scripts, voiceovers, show rundowns, presentation prompts',
+    outputs: 'Game previews, key matchups, stats, scripts, voiceovers, show rundowns, approved Production Packages',
     examples: ['Game Preview', 'Post-Game Analysis', 'Scoreboard Show']
   },
   {
     key: 'cooking',
-    label: 'Cooking Production',
+    label: 'Cooking Studio',
     shortLabel: 'Cooking',
     description: 'Recipe shows, cooking tutorials, ingredient spotlights, and culinary entertainment programs.',
     icon: ChefHat,
@@ -136,22 +138,22 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-green-500/10',
     accentBorder: 'border-green-500/20',
     spotlightFeature: 'Recipe Studio',
-    spotlightDescription: 'Build cooking shows with recipes, ingredient spotlights, technique demos, host scripts, voiceovers, and presentation-ready culinary content.',
+    spotlightDescription: 'Build cooking programs with recipes, ingredient spotlights, technique demos, scripts, voiceovers, visuals, and complete Production Packages.',
     workflow: [
-      'Select cuisines and define your show format',
-      'Generate recipes, research, and ingredient spotlights with AI',
-      'Generate host scripts, co-host scripts, and voiceover audios',
-      'Build a timed show rundown with cooking segments',
-      'Export or share your finished production'
+      'Select cuisines and define the show format',
+      'Generate recipes, research, and ingredient spotlights',
+      'Generate scripts, voiceovers, graphics, and demonstration assets',
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Recipes, cooking instructions, ingredient guides, host scripts, voiceovers, show rundowns, presentation prompts',
+    outputs: 'Recipes, cooking instructions, ingredient guides, scripts, voiceovers, demonstration assets, approved Production Packages',
     examples: ['Step-by-Step Tutorial', 'Cuisine Exploration', 'Ingredient Spotlight']
   },
   {
     key: 'research',
-    label: 'Research Production',
+    label: 'Research Studio',
     shortLabel: 'Research',
-    description: 'Deep research investigations, multi-model synthesized packages, and evidence-based production assets from any topic.',
+    description: 'Deep research investigations, synthesized findings, evidence, and production-ready assets from any topic.',
     icon: FlaskConical,
     available: true,
     path: '/research/dashboard',
@@ -160,20 +162,20 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-cyan-500/10',
     accentBorder: 'border-cyan-500/20',
     spotlightFeature: 'Point Card System',
-    spotlightDescription: 'Define research topics, run deep AI research with internet context, extract structured Point Cards, and generate multi-model synthesized production packages from approved findings.',
+    spotlightDescription: 'Define research topics, run deep research, extract structured Point Cards, and generate complete Production Packages from approved findings.',
     workflow: [
       'Define research topics and production parameters',
-      'Run deep research with internet-sourced context',
-      'Extract structured Point Cards from research dossiers',
-      'Approve points and generate multi-model synthesized packages',
-      'Export or share your research production'
+      'Run deep research and build verified dossiers',
+      'Extract and approve structured Point Cards',
+      'Generate, review, and approve complete Production Packages',
+      'Send approved packages to the Presentation Studio for direction and editing'
     ],
-    outputs: 'Research dossiers, Point Cards, teleprompter scripts, talking points, fact-check notes, visual prompts',
+    outputs: 'Research dossiers, Point Cards, teleprompter scripts, talking points, fact-check notes, visual assets, approved Production Packages',
     examples: ['Deep Investigation', 'Expert Briefing', 'Research-Driven Documentary']
   },
   {
     key: 'cosmo',
-    label: 'Cosmo Production',
+    label: 'Cosmo Studio',
     shortLabel: 'Cosmo',
     description: 'Health & beauty shows, skincare tutorials, wellness programs, product reviews, and cosmetic education content.',
     icon: Brush,
@@ -184,22 +186,28 @@ export const PRODUCTION_PROFILES = [
     accentBg: 'bg-pink-500/10',
     accentBorder: 'border-pink-500/20',
     spotlightFeature: 'Beauty Studio',
-    spotlightDescription: 'Build health & beauty shows with topic research, tutorials, expert interviews, host scripts, voiceovers, and presentation-ready wellness content.',
+    spotlightDescription: 'Build health and beauty programs with research, tutorials, expert interviews, scripts, voiceovers, visuals, and complete Production Packages.',
     workflow: [
-      'Select health & beauty topics and define your show format',
-      'Generate research, topic summaries, and talking points with AI',
-      'Generate host scripts, co-host scripts, and voiceover audios',
-      'Build a timed show rundown with tutorial and demo segments',
-      'Export or share your finished production'
+      'Select health and beauty topics and define the show format',
+      'Generate research, topic summaries, and talking points',
+      'Generate scripts, voiceovers, tutorials, and media assets',
+      'Approve the Production Package and send a copy to the Presentation Studio',
+      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Topic summaries, talking points, host scripts, voiceovers, show rundowns, presentation prompts',
+    outputs: 'Topic summaries, talking points, scripts, voiceovers, tutorial assets, show rundowns, approved Production Packages',
     examples: ['Skincare Tutorial', 'Product Review', 'Wellness Q&A']
   },
 ];
 
-export const ACTIVE_PROFILES = PRODUCTION_PROFILES.filter(p => p.available);
-export const COMING_SOON_PROFILES = PRODUCTION_PROFILES.filter(p => !p.available);
+export const ACTIVE_STUDIOS = PRODUCTION_STUDIOS.filter(studio => studio.available);
+export const COMING_SOON_STUDIOS = PRODUCTION_STUDIOS.filter(studio => !studio.available);
 
-export function getProfileByKey(key) {
-  return PRODUCTION_PROFILES.find(p => p.key === key);
+export function getStudioByKey(key) {
+  return PRODUCTION_STUDIOS.find(studio => studio.key === key);
 }
+
+// Legacy aliases for pages that have not been renamed internally yet.
+export const PRODUCTION_PROFILES = PRODUCTION_STUDIOS;
+export const ACTIVE_PROFILES = ACTIVE_STUDIOS;
+export const COMING_SOON_PROFILES = COMING_SOON_STUDIOS;
+export const getProfileByKey = getStudioByKey;

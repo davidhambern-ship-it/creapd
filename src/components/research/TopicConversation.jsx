@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/input';
 import {
   Loader2, Mic, Send, X, Radio
@@ -68,6 +70,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const [creapSettings, setCreapSettings] = useState(null);
 
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { speakingRef.current = speaking; }, [speaking]);
@@ -157,15 +160,14 @@ export default function TopicConversation({ config, onClose, embedded = false })
     cleanupAudio();
     setSpeaking(false);
   };
-
   const startPolling = (topicId) => {
     const poll = async () => {
       try {
-        const dossiers = await base44.entities.ResearchDossier.filter(
-          { topic_id: topicId }, '-created_date', 1
+        const payload = await creapdApi.get(
+          `/research/dossier-status?topic_id=${encodeURIComponent(topicId)}`
         );
-        if (dossiers?.length > 0) {
-          const d = dossiers[0];
+        const d = payload?.dossier || null;
+        if (d) {
           const meta = safeParse(d.orchestration_metadata, {});
           if (meta.current_stage) setResearchStage(meta.current_stage);
           if (d.status === 'ready') { stopPolling(); handleResearchComplete(topicId, d); return; }
@@ -210,8 +212,10 @@ export default function TopicConversation({ config, onClose, embedded = false })
     }
     let pCount = 0;
     try {
-      const points = await base44.entities.ResearchPoint.filter({ topic_id: topicId }, '-created_date', 50);
-      pCount = points.length;
+      const payload = await creapdApi.get(
+        `/research/dossier-status?topic_id=${encodeURIComponent(topicId)}`
+      );
+      pCount = payload?.point_count || 0;
     } catch {}
     const sourceCount = safeParse(dossier.sources, []).length;
     researchReadyRef.current = { topicId, pointCount: pCount, sourceCount };
@@ -421,10 +425,9 @@ export default function TopicConversation({ config, onClose, embedded = false })
   };
 
   useEffect(() => {
-    base44.auth.me().then(user => {
-      if (user?.full_name) userNameRef.current = user.full_name;
-    }).catch(() => {});
-  }, []);
+    const displayName = user?.full_name || user?.name || user?.display_name || '';
+    if (displayName) userNameRef.current = displayName;
+  }, [user]);
 
   useEffect(() => {
     if (initializedRef.current) return;

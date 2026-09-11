@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field } from './shared';
 import { Loader2, Search, Check } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 
 const POPULAR_SETS = [
   { prefix: 'mdi', name: 'Material Design' },
@@ -27,7 +26,6 @@ export default function IconifyIconPicker({ colorScheme, onInsert }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [inserting, setInserting] = useState(false);
   const debounceRef = useRef(null);
 
   const buildIconUrl = (iconName) => {
@@ -59,30 +57,15 @@ export default function IconifyIconPicker({ colorScheme, onInsert }) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
-  const insertIcon = async () => {
+  const insertIcon = () => {
     if (!selected) return;
-    setInserting(true);
-    setError(null);
-    try {
-      const url = buildIconUrl(selected);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Fetch failed');
-      const svgText = await res.text();
-      const blob = new Blob([svgText], { type: 'image/svg+xml' });
-      const file = new File([blob], `icon-${selected.replace('/', '-')}.svg`, { type: 'image/svg+xml' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      onInsert(file_url);
-      setSelected(null);
-    } catch (err) {
-      setError(err.message || 'Failed to insert icon');
-    } finally {
-      setInserting(false);
-    }
+    onInsert(buildIconUrl(selected));
+    setSelected(null);
   };
 
   return (
     <div className="space-y-2">
-      <Field label="Search Icons (200K+)">
+      <Field label="Search Icons (free Iconify library)">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
           <input
@@ -99,9 +82,7 @@ export default function IconifyIconPicker({ colorScheme, onInsert }) {
           <p className="text-[10px] text-muted-foreground">Popular icon sets:</p>
           <div className="grid grid-cols-3 gap-1">
             {POPULAR_SETS.slice(0, 6).map(s => (
-              <Button key={s.prefix} variant="outline" size="sm"
-                className="h-6 text-[9px] px-1"
-                onClick={() => setQuery(s.prefix)}>
+              <Button key={s.prefix} variant="outline" size="sm" className="h-6 text-[9px] px-1" onClick={() => setQuery(s.prefix)}>
                 {s.name}
               </Button>
             ))}
@@ -109,8 +90,7 @@ export default function IconifyIconPicker({ colorScheme, onInsert }) {
           <p className="text-[10px] text-muted-foreground pt-1">Try:</p>
           <div className="flex flex-wrap gap-1">
             {SUGGESTIONS.map(s => (
-              <button key={s} onClick={() => setQuery(s)}
-                className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 hover:bg-muted text-muted-foreground">
+              <button key={s} onClick={() => setQuery(s)} className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 hover:bg-muted text-muted-foreground">
                 {s}
               </button>
             ))}
@@ -118,37 +98,27 @@ export default function IconifyIconPicker({ colorScheme, onInsert }) {
         </div>
       )}
 
-      {loading && (
-        <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
-      )}
-
+      {loading && <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>}
       {error && <p className="text-[10px] text-destructive">{error}</p>}
 
       {results.length > 0 && (
         <div className="grid grid-cols-4 gap-1 max-h-40 overflow-y-auto">
           {results.map(icon => (
-            <button key={icon}
-              onClick={() => setSelected(icon)}
-              className={`flex items-center justify-center aspect-square rounded-md border transition ${
-                selected === icon ? 'border-primary bg-primary/10' : 'border-border bg-muted/30 hover:bg-muted/50'
-              }`}>
+            <button key={icon} onClick={() => setSelected(icon)} className={`flex items-center justify-center aspect-square rounded-md border transition ${selected === icon ? 'border-primary bg-primary/10' : 'border-border bg-muted/30 hover:bg-muted/50'}`}>
               <img src={buildIconUrl(icon)} alt={icon} className="w-6 h-6" />
             </button>
           ))}
         </div>
       )}
 
-      {results.length === 0 && !loading && query && (
-        <p className="text-[10px] text-muted-foreground text-center py-2">No icons found</p>
-      )}
+      {results.length === 0 && !loading && query && <p className="text-[10px] text-muted-foreground text-center py-2">No icons found</p>}
 
       {selected && (
         <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-muted/30">
           <img src={buildIconUrl(selected)} alt={selected} className="w-8 h-8" />
           <span className="text-[10px] font-mono text-muted-foreground flex-1 truncate">{selected}</span>
-          <Button variant="default" size="sm" className="h-7 text-[10px]" disabled={inserting} onClick={insertIcon}>
-            {inserting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-            {inserting ? '...' : 'Insert'}
+          <Button variant="default" size="sm" className="h-7 text-[10px]" onClick={insertIcon}>
+            <Check className="w-3 h-3" /> Insert
           </Button>
         </div>
       )}
