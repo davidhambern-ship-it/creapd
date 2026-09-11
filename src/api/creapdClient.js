@@ -4,6 +4,9 @@ import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
 const liveReadCache = new Map();
 const liveReadInFlight = new Map();
 let liveReadEpoch = 0;
+let neonAuthContextCache = null;
+
+const NEON_AUTH_CONTEXT_TTL_MS = 30000;
 
 function getStoredBase44Token() {
   if (typeof window === 'undefined') return appParams.token || null;
@@ -126,11 +129,23 @@ async function cachedLiveRead(key, kind, loader, { force = false } = {}) {
   return promise;
 }
 
-async function getAuthContext() {
+async function getAuthContext({ force = false } = {}) {
   if (shouldUseNeonAuth()) {
-    // The Neon session already contains the signed JWT. Reading it directly
-    // avoids a second SDK session lookup through getJWTToken(), which currently
-    // fails in this beta client with an invalid fetch-method error.
+    const now = Date.now();
+    if (
+      !force
+      && neonAuthContextCache?.token
+      && now - neonAuthContextCache.at < NEON_AUTH_CONTEXT_TTL_MS
+    ) {
+      return {
+        provider: 'neon',
+        token: neonAuthContextCache.token,
+      };
+    }
+
+    // The session already contains the signed JWT. Cache the token briefly so
+    // Live synchronization does not call Neon Auth again for every API poll.
+    // The CREAPD backend still verifies the JWT on every protected request.
     const sessionResult = await neonAuth.getSession();
     const session = sessionResult?.data?.session;
     const token =
@@ -138,6 +153,8 @@ async function getAuthContext() {
       session?.access_token ||
       session?.accessToken ||
       null;
+
+    neonAuthContextCache = token ? { token, at: now } : null;
 
     return {
       provider: 'neon',
@@ -151,8 +168,8 @@ async function getAuthContext() {
   };
 }
 
-async function request(path, options = {}) {
-  const auth = await getAuthContext();
+async function request(path, options = {}, authRetry = false) {
+  const auth = await getAuthContext({ force: authRetry });
   const headers = new Headers(options.headers || {});
 
   headers.set('Accept', 'application/json');
@@ -179,6 +196,13 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
+    // A cached JWT can cross its expiry boundary. Refresh the Neon session once
+    // and retry transparently; a second 401 is a real authentication failure.
+    if (response.status === 401 && auth.provider === 'neon' && !authRetry) {
+      neonAuthContextCache = null;
+      return request(path, options, true);
+    }
+
     const error = new Error(data?.error || `CREAPD API request failed (${response.status})`);
     error.status = response.status;
     error.data = data;
@@ -356,6 +380,9 @@ export const creapdApi = {
   },
   invalidateLiveState(options) {
     invalidateLiveReadCache(options);
+  },
+  clearAuthCache() {
+    neonAuthContextCache = null;
   },
   request,
 };
