@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
@@ -22,6 +22,7 @@ function buildFailureMessage(config) {
 }
 
 export default function TalkDashboard() {
+  const navigate = useNavigate();
   const ownedPreview = shouldUseNeonAuth();
   const { config, topics, research, guests, segments, assets, loading, refresh } = useTalkProduction();
   const [refreshing, setRefreshing] = useState(false);
@@ -104,8 +105,8 @@ export default function TalkDashboard() {
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">No Talk Production Found</h2>
           <p className="text-muted-foreground mb-6">Start with Show Setup. CREAPD will ask the production questions, build the research and production package, then guide you through reviewing it.</p>
-          <Button asChild size="lg">
-            <Link to="/talk/configure">Start Show Setup</Link>
+          <Button type="button" size="lg" onClick={() => navigate('/talk/configure')}>
+            Start Show Setup
           </Button>
         </div>
       </div>
