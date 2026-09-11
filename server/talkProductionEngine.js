@@ -11,6 +11,11 @@ const objectSchema = properties => ({
 const arraySchema = items => ({ type: 'array', items });
 const stringArraySchema = arraySchema({ type: 'string' });
 
+const topicScriptSchema = objectSchema({
+  topic_name: { type: 'string' },
+  script: { type: 'string' },
+});
+
 const segmentSchema = objectSchema({
   order: { type: 'number' },
   segment_type: { type: 'string' },
@@ -19,6 +24,7 @@ const segmentSchema = objectSchema({
   start_time: { type: 'string' },
   end_time: { type: 'string' },
   notes: { type: 'string' },
+  topic_name: { type: 'string' },
 });
 
 const talkProductionSchema = objectSchema({
@@ -26,6 +32,7 @@ const talkProductionSchema = objectSchema({
   host_intro: { type: 'string' },
   host_outro: { type: 'string' },
   host_script: { type: 'string' },
+  topic_scripts: arraySchema(topicScriptSchema),
   cohost_script: { type: 'string' },
   guest_intro: { type: 'string' },
   discussion_questions: { type: 'string' },
@@ -64,6 +71,13 @@ function json(value, fallback = {}) {
 
 function assetRequested(automation, key) {
   return automation.length === 0 || automation.includes(key);
+}
+
+function canonicalTopicName(topics, requestedName) {
+  const needle = clean(requestedName).toLowerCase();
+  if (!needle) return '';
+  const topic = (topics || []).find(item => clean(item?.topic_name).toLowerCase() === needle);
+  return topic ? clean(topic.topic_name) : '';
 }
 
 function buildIdentityLowerThirdAssets(configuration, guests) {
@@ -172,8 +186,8 @@ GUEST CONTEXT:
 ${JSON.stringify(compactGuests)}
 
 PRODUCTION JOBS:
-1. RUNDOWN PRODUCER — build a coherent practical show rundown using only these segment types: intro, host_monologue, interview, panel_discussion, debate, solo_commentary, audience_qa, sponsor_break, station_id, transition, outro.
-2. HOST PRODUCER — write host opening/closing, guest intro, and a broadcast-ready host script grounded in the verified material.
+1. RUNDOWN PRODUCER — build a coherent practical show rundown using only these segment types: intro, host_monologue, interview, panel_discussion, debate, solo_commentary, audience_qa, sponsor_break, station_id, transition, outro. Every substantive segment must identify its primary verified topic in topic_name using the exact topic_name from VERIFIED TOPIC DOSSIERS. Use an empty string only when the segment is genuinely not about one topic, such as a generic intro, sponsor break, station ID, transition, or outro.
+2. HOST PRODUCER — write the host opening/closing, guest intro, one global broadcast-ready anchor host script, AND one natural spoken teleprompter script for every verified topic. Topic scripts are what the host should actually say on-air, not producer directions or bullet-point notes.
 3. CO-HOST PRODUCER — write complementary co-host material when appropriate; do not merely repeat the host.
 4. ENGAGEMENT PRODUCER — create discussion questions and audience prompts that use the counter-perspective/debate material.
 5. PROMOTION / PRESENTATION PRODUCER — create concise social copy, hashtags, thumbnail prompt, presentation prompt, and internal production notes.
@@ -181,9 +195,11 @@ PRODUCTION JOBS:
 OUTPUT CONTRACT:
 - Rundown durations must approximately fill the configured total runtime. Use realistic sponsor/transition/intro/outro timing.
 - For long shows, create enough substantive segments to make the rundown usable, but avoid dozens of tiny filler segments.
-- host_script: under 5,000 characters; it is a demo-ready anchor script, not a verbatim 120-minute transcript.
+- Every rundown item MUST return topic_name. For substantive topic segments it must exactly match one verified topic_name; otherwise return an empty string.
+- host_script: under 5,000 characters; it is a compact whole-show anchor script, not a verbatim full-runtime transcript.
+- topic_scripts: return exactly one item for every verified topic. topic_name must exactly match the verified topic name. Each script should normally be about 180-350 words of natural spoken host copy, grounded only in the verified checkpoint. It must be teleprompter-ready prose, not instructions such as “introduce the topic,” not a bullet list, and not a summary addressed to the producer. For interview/debate topics, write the host's setup, framing, transitions, and usable questions without inventing guest answers.
 - cohost_script: under 3,500 characters.
-- host_intro and host_outro: each under 500 words.
+- host_intro and host_outro: each under 500 words and written as spoken copy.
 - discussion_questions: 5-8 strong questions, line-separated.
 - audience_prompts: 3-5 concise prompts, line-separated.
 - social_captions: exactly 3 concise captions.
@@ -279,7 +295,7 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
       webSearch: false,
       schemaName: 'creapd_talk_production_v2',
       schema: talkProductionSchema,
-      maxOutputTokens: 6500,
+      maxOutputTokens: 9000,
       timeoutMs: 180000,
       prompt: buildProductionPrompt(configuration, topics, researchItems, guests),
     });
@@ -310,6 +326,8 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
     for (let index = 0; index < rundown.length; index += 1) {
       const segment = rundown[index] || {};
       const segmentType = VALID_SEGMENT_TYPES.has(segment.segment_type) ? segment.segment_type : 'solo_commentary';
+      const topicName = canonicalTopicName(topics, segment.topic_name);
+      const segmentPayload = json({ ...metadata, topic_name: topicName });
       await sql`
         INSERT INTO creapd.talk_segments (
           id, configuration_id, owner_user_id, order_index, segment_type, title,
@@ -320,7 +338,7 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
           ${Number.isFinite(Number(segment.order)) ? Math.trunc(Number(segment.order)) : index},
           ${segmentType}, ${clean(segment.title)}, ${Math.max(0, Number(segment.duration_seconds) || 0)},
           ${clean(segment.start_time)}, ${clean(segment.end_time)}, ${clean(segment.notes)},
-          'ready', 'queued', 'creapd-vercel', ${metaJson}::jsonb
+          'ready', 'queued', 'creapd-vercel', ${segmentPayload}::jsonb
         )
       `;
     }
@@ -344,6 +362,21 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
     addAsset('Generate Production Notes', 'production_notes', 'Production Notes', data.production_notes);
     addAsset('Generate Host Script', 'host_script', 'Host Script', data.host_script);
     addAsset('Generate Co-Host Script', 'cohost_script', 'Co-Host Script', data.cohost_script);
+
+    if (assetRequested(automation, 'Generate Host Script')) {
+      const topicScripts = Array.isArray(data.topic_scripts) ? data.topic_scripts : [];
+      for (const topic of topics) {
+        const topicName = clean(topic.topic_name);
+        const script = topicScripts.find(item => clean(item?.topic_name).toLowerCase() === topicName.toLowerCase());
+        if (!script || !clean(script.script)) continue;
+        assets.push({
+          type: 'host_script',
+          title: `Host Script: ${topicName}`,
+          content: clean(script.script),
+          associatedTopic: topicName,
+        });
+      }
+    }
 
     // Identity lower thirds are deterministic production assets, not creative AI copy.
     // They must always exist for Live graphics even when an older configuration predates
