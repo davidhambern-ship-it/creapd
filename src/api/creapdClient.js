@@ -3,6 +3,7 @@ import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
 
 const liveReadCache = new Map();
 const liveReadInFlight = new Map();
+let liveReadEpoch = 0;
 
 function getStoredBase44Token() {
   if (typeof window === 'undefined') return appParams.token || null;
@@ -27,7 +28,12 @@ function livePollTtl(kind) {
 }
 
 function clearLiveReadCache() {
+  liveReadEpoch += 1;
   liveReadCache.clear();
+  // A request that began before a mutation must never be reused afterward.
+  // Its promise may still finish, but the epoch check below prevents it from
+  // repopulating the cache with pre-mutation state.
+  liveReadInFlight.clear();
 }
 
 function cacheKeyForGet(path) {
@@ -53,10 +59,13 @@ async function cachedLiveRead(key, kind, loader, { force = false } = {}) {
     if (inFlight) return inFlight;
   }
 
+  const requestEpoch = liveReadEpoch;
   const promise = Promise.resolve()
     .then(loader)
     .then(value => {
-      liveReadCache.set(key, { value, at: Date.now() });
+      if (requestEpoch === liveReadEpoch) {
+        liveReadCache.set(key, { value, at: Date.now() });
+      }
       return value;
     })
     .finally(() => {
