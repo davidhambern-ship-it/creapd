@@ -25,6 +25,9 @@ const OVERLAY_POSITIONS = new Set([
   'top_right',
 ]);
 
+const AGENT_HEARTBEAT_WRITE_MS = 6000;
+const BRIDGE_ONLINE_WINDOW_MS = 15000;
+
 function clean(value, fallback = '') {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -61,7 +64,7 @@ function normalizeScenes(value) {
 function bridgeIsOnline(row) {
   if (!row?.last_seen_at) return false;
   const lastSeen = new Date(row.last_seen_at).getTime();
-  return Number.isFinite(lastSeen) && Date.now() - lastSeen < 10000;
+  return Number.isFinite(lastSeen) && Date.now() - lastSeen < BRIDGE_ONLINE_WINDOW_MS;
 }
 
 function publicBridge(row) {
@@ -102,7 +105,10 @@ async function findOwnedBridge(sql, ownerUserId, requestedBridgeId = null) {
   let rows;
   if (bridgeId) {
     rows = await sql`
-      SELECT * FROM creapd.obs_bridges
+      SELECT id, owner_user_id, name, token_hint, status, obs_connected,
+             obs_endpoint, obs_studio_version, obs_websocket_version, current_scene,
+             scenes, capabilities, last_seen_at, last_error, revoked_at, created_at, updated_at
+      FROM creapd.obs_bridges
       WHERE id = ${bridgeId}
         AND owner_user_id = ${ownerId}
         AND revoked_at IS NULL
@@ -110,7 +116,10 @@ async function findOwnedBridge(sql, ownerUserId, requestedBridgeId = null) {
     `;
   } else {
     rows = await sql`
-      SELECT * FROM creapd.obs_bridges
+      SELECT id, owner_user_id, name, token_hint, status, obs_connected,
+             obs_endpoint, obs_studio_version, obs_websocket_version, current_scene,
+             scenes, capabilities, last_seen_at, last_error, revoked_at, created_at, updated_at
+      FROM creapd.obs_bridges
       WHERE owner_user_id = ${ownerId}
         AND revoked_at IS NULL
       ORDER BY updated_at DESC
@@ -125,7 +134,10 @@ async function requireAgentBridge(sql, bridgeToken) {
   if (!token) throw makeError('Bridge token is required', 'OBS_BRIDGE_TOKEN_REQUIRED', 401);
   const hash = tokenHash(token);
   const [bridge] = await sql`
-    SELECT * FROM creapd.obs_bridges
+    SELECT id, owner_user_id, status, obs_connected, obs_endpoint,
+           obs_studio_version, obs_websocket_version, current_scene, scenes,
+           capabilities, last_seen_at, last_error, revoked_at
+    FROM creapd.obs_bridges
     WHERE token_hash = ${hash}
       AND revoked_at IS NULL
     LIMIT 1
@@ -248,7 +260,7 @@ async function enqueueCommand(sql, ownerUserId, body) {
       ${randomUUID()}, ${bridge.id}, ${ownerId}, ${cleanNullable(body.session_type)}, ${cleanNullable(body.session_id)},
       ${commandType}, ${json(payload)}::jsonb, 'pending'
     )
-    RETURNING *
+    RETURNING id, bridge_id, command_type, payload, status, requested_at
   `;
 
   return {
@@ -300,49 +312,77 @@ export async function runObsBridgeUserAction({ sql, ownerUserId, action, body = 
   }
 }
 
-async function updateBridgeHeartbeat(sql, bridge, body) {
-  const obsConnected = Boolean(body.obs_connected);
-  const scenes = normalizeScenes(body.scenes);
-  const currentScene = cleanNullable(body.current_scene);
-  const endpoint = cleanNullable(body.obs_endpoint);
-  const studioVersion = cleanNullable(body.obs_studio_version);
-  const websocketVersion = cleanNullable(body.obs_websocket_version);
-  const lastError = cleanNullable(body.last_error);
-  const capabilities = body.capabilities && typeof body.capabilities === 'object' && !Array.isArray(body.capabilities)
-    ? body.capabilities
-    : {};
+function jsonEqual(left, right) {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
 
-  const [updated] = await sql`
+function heartbeatNeedsWrite(bridge, body, normalized) {
+  const lastSeen = bridge?.last_seen_at ? new Date(bridge.last_seen_at).getTime() : NaN;
+  const heartbeatDue = !Number.isFinite(lastSeen) || Date.now() - lastSeen >= AGENT_HEARTBEAT_WRITE_MS;
+  if (heartbeatDue) return true;
+
+  if (Boolean(bridge.obs_connected) !== normalized.obsConnected) return true;
+  if (normalized.currentScene && normalized.currentScene !== cleanNullable(bridge.current_scene)) return true;
+  if (normalized.endpoint && normalized.endpoint !== cleanNullable(bridge.obs_endpoint)) return true;
+  if (normalized.studioVersion && normalized.studioVersion !== cleanNullable(bridge.obs_studio_version)) return true;
+  if (normalized.websocketVersion && normalized.websocketVersion !== cleanNullable(bridge.obs_websocket_version)) return true;
+  if (normalized.lastError !== cleanNullable(bridge.last_error)) return true;
+  if (normalized.scenes.length > 0 && !jsonEqual(normalized.scenes, bridge.scenes || [])) return true;
+  if (Object.keys(normalized.capabilities).length > 0 && !jsonEqual(normalized.capabilities, bridge.capabilities || {})) return true;
+
+  return false;
+}
+
+async function updateBridgeHeartbeat(sql, bridge, body) {
+  const normalized = {
+    obsConnected: Boolean(body.obs_connected),
+    scenes: normalizeScenes(body.scenes),
+    currentScene: cleanNullable(body.current_scene),
+    endpoint: cleanNullable(body.obs_endpoint),
+    studioVersion: cleanNullable(body.obs_studio_version),
+    websocketVersion: cleanNullable(body.obs_websocket_version),
+    lastError: Boolean(body.obs_connected) ? null : cleanNullable(body.last_error),
+    capabilities: body.capabilities && typeof body.capabilities === 'object' && !Array.isArray(body.capabilities)
+      ? body.capabilities
+      : {},
+  };
+
+  if (!heartbeatNeedsWrite(bridge, body, normalized)) {
+    return false;
+  }
+
+  const connectionStatus = normalized.obsConnected ? 'connected' : 'bridge_online';
+  await sql`
     UPDATE creapd.obs_bridges
-    SET status = ${obsConnected ? 'connected' : 'bridge_online'},
-        obs_connected = ${obsConnected},
-        obs_endpoint = COALESCE(${endpoint}, obs_endpoint),
-        obs_studio_version = COALESCE(${studioVersion}, obs_studio_version),
-        obs_websocket_version = COALESCE(${websocketVersion}, obs_websocket_version),
-        current_scene = COALESCE(${currentScene}, current_scene),
-        scenes = CASE WHEN ${scenes.length} > 0 THEN ${JSON.stringify(scenes)}::jsonb ELSE scenes END,
-        capabilities = CASE WHEN ${Object.keys(capabilities).length} > 0 THEN ${JSON.stringify(capabilities)}::jsonb ELSE capabilities END,
+    SET status = ${connectionStatus},
+        obs_connected = ${normalized.obsConnected},
+        obs_endpoint = COALESCE(${normalized.endpoint}, obs_endpoint),
+        obs_studio_version = COALESCE(${normalized.studioVersion}, obs_studio_version),
+        obs_websocket_version = COALESCE(${normalized.websocketVersion}, obs_websocket_version),
+        current_scene = COALESCE(${normalized.currentScene}, current_scene),
+        scenes = CASE WHEN ${normalized.scenes.length} > 0 THEN ${JSON.stringify(normalized.scenes)}::jsonb ELSE scenes END,
+        capabilities = CASE WHEN ${Object.keys(normalized.capabilities).length} > 0 THEN ${JSON.stringify(normalized.capabilities)}::jsonb ELSE capabilities END,
         last_seen_at = now(),
-        last_error = ${lastError},
+        last_error = ${normalized.lastError},
         updated_at = now()
     WHERE id = ${bridge.id}
       AND revoked_at IS NULL
-    RETURNING *
   `;
 
   await sql`
     UPDATE creapd.talk_sessions
-    SET obs_connection_status = ${obsConnected ? 'connected' : 'bridge_online'}, updated_at = now()
+    SET obs_connection_status = ${connectionStatus}, updated_at = now()
     WHERE owner_user_id = ${bridge.owner_user_id}
       AND status IN ('live', 'paused')
+      AND obs_connection_status IS DISTINCT FROM ${connectionStatus}
   `;
 
-  return updated;
+  return true;
 }
 
 async function pollBridge(sql, body) {
   const bridge = await requireAgentBridge(sql, body.bridge_token);
-  const updated = await updateBridgeHeartbeat(sql, bridge, body);
+  const heartbeatWritten = await updateBridgeHeartbeat(sql, bridge, body);
 
   const commands = await sql`
     WITH picked AS (
@@ -361,11 +401,12 @@ async function pollBridge(sql, body) {
     SET status = 'claimed', claimed_at = now(), updated_at = now()
     FROM picked
     WHERE command.id = picked.id
-    RETURNING command.*
+    RETURNING command.id, command.command_type, command.payload,
+              command.session_type, command.session_id, command.requested_at
   `;
 
   return {
-    bridge: publicBridge(updated),
+    heartbeat_written: heartbeatWritten,
     commands: (commands || []).map(command => ({
       id: command.id,
       command_type: command.command_type,
@@ -396,7 +437,7 @@ async function completeCommand(sql, body) {
     WHERE id = ${commandId}
       AND bridge_id = ${bridge.id}
       AND owner_user_id = ${bridge.owner_user_id}
-    RETURNING *
+    RETURNING id, status, command_type, result, error, completed_at
   `;
   if (!command) throw makeError('OBS command not found', 'OBS_COMMAND_NOT_FOUND', 404);
 
