@@ -331,12 +331,28 @@ async function runCheckpointedTalkBuild(body = {}) {
     action: 'build_production',
   });
 
+  let media = null;
+  let mediaWarning = null;
+  try {
+    media = await request('/talk/media', {
+      method: 'POST',
+      body: JSON.stringify({ configuration_id: configurationId }),
+    });
+  } catch (error) {
+    mediaWarning = {
+      code: error?.data?.diagnostic?.code || error?.data?.error || error?.code || 'TALK_MEDIA_GENERATION_FAILED',
+      message: error?.data?.diagnostic?.message || error?.message || 'Talk image generation could not complete.',
+    };
+  }
+
   return {
     ...production,
     stages: {
       research: research?.result || research,
       production: production?.result || production,
+      media: media?.result || media,
     },
+    ...(mediaWarning ? { media_warning: mediaWarning } : {}),
     checkpointed: true,
   };
 }
