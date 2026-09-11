@@ -351,7 +351,6 @@ function heartbeatNeedsWrite(bridge, normalized) {
   if (normalized.websocketVersion && normalized.websocketVersion !== cleanNullable(bridge.obs_websocket_version)) return true;
   if (normalized.lastError !== cleanNullable(bridge.last_error)) return true;
   if (normalized.scenes.length > 0 && !jsonEqual(normalized.scenes, bridge.scenes || [])) return true;
-  if (Object.keys(normalized.capabilities).length > 0 && !jsonEqual(normalized.capabilities, bridge.capabilities || {})) return true;
 
   return false;
 }
