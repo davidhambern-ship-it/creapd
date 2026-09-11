@@ -22,6 +22,12 @@ import {
   WifiOff,
 } from 'lucide-react';
 
+const TOPIC_MATCH_STOPWORDS = new Set([
+  'about', 'after', 'again', 'against', 'being', 'between', 'could', 'from', 'have', 'into',
+  'more', 'most', 'only', 'other', 'over', 'should', 'their', 'there', 'these', 'they', 'this',
+  'through', 'under', 'very', 'what', 'when', 'where', 'which', 'while', 'with', 'would', 'your',
+]);
+
 function secondsBetween(start, end) {
   if (!start) return 0;
   const startMs = new Date(start).getTime();
@@ -39,13 +45,73 @@ function formatClock(totalSeconds) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function segmentTopicName(segment) {
+  if (!segment) return '';
+  if (segment.topic_name) return String(segment.topic_name).trim();
+
+  let payload = segment.source_payload;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      payload = null;
+    }
+  }
+
+  return payload && typeof payload === 'object'
+    ? String(payload.topic_name || '').trim()
+    : '';
+}
+
+function keywordSet(value) {
+  return new Set(
+    String(value || '')
+      .toLowerCase()
+      .match(/[a-z0-9']+/g)
+      ?.filter(word => word.length >= 4 && !TOPIC_MATCH_STOPWORDS.has(word))
+      || [],
+  );
+}
+
 function findTopicForSegment(segment, topics) {
   if (!segment) return null;
+  const availableTopics = Array.isArray(topics) ? topics : [];
+
+  const explicitName = segmentTopicName(segment).toLowerCase();
+  if (explicitName) {
+    const explicit = availableTopics.find(topic => String(topic.topic_name || '').trim().toLowerCase() === explicitName);
+    if (explicit) return explicit;
+  }
+
   const haystack = `${segment.title || ''} ${segment.notes || ''}`.toLowerCase();
-  return topics.find(topic => {
+  const direct = availableTopics.find(topic => {
     const needle = String(topic.topic_name || '').trim().toLowerCase();
     return needle && haystack.includes(needle);
-  }) || null;
+  });
+  if (direct) return direct;
+
+  if (['intro', 'outro', 'sponsor_break', 'station_id', 'transition'].includes(segment.segment_type)) {
+    return null;
+  }
+
+  const segmentWords = keywordSet(haystack);
+  if (!segmentWords.size) return null;
+
+  let bestTopic = null;
+  let bestScore = 0;
+  for (const topic of availableTopics) {
+    const topicWords = keywordSet(`${topic.topic_name || ''} ${topic.generated_summary || ''} ${topic.talking_points || ''}`);
+    let score = 0;
+    for (const word of segmentWords) {
+      if (topicWords.has(word)) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestTopic = topic;
+    }
+  }
+
+  return bestScore >= 2 ? bestTopic : null;
 }
 
 function assetByType(assets, type) {
@@ -107,6 +173,40 @@ export default function TalkLive() {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (source !== 'neon') return undefined;
+
+    let cancelled = false;
+    let syncing = false;
+
+    const syncLiveState = async () => {
+      if (cancelled || syncing || (typeof document !== 'undefined' && document.hidden)) return;
+      syncing = true;
+      try {
+        // creapdApi coalesces this with the Director/graphics/rundown readers and,
+        // after bootstrap, fetches only the lightweight Live snapshot. Calling
+        // refresh here keeps the visible rundown + teleprompter in lockstep with
+        // AUTO without restoring the old full-production polling pattern.
+        await refresh();
+      } finally {
+        syncing = false;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) syncLiveState();
+    };
+
+    const timer = window.setInterval(syncLiveState, 1000);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [refresh, source]);
 
   const activeIndex = useMemo(
     () => segments.findIndex(segment => segment.id === session?.active_segment_id),
