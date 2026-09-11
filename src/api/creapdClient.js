@@ -36,9 +36,6 @@ function invalidateLiveReadCache({ dropTalkBase = false } = {}) {
 
   for (const [key, entry] of liveReadCache.entries()) {
     if (key.startsWith('talk:') && !dropTalkBase) {
-      // Preserve the full bootstrap object so the next sync can merge a tiny
-      // Live snapshot into it rather than downloading all static production
-      // data again after every segment/OBS mutation.
       liveReadCache.set(key, { ...entry, at: 0 });
     } else {
       liveReadCache.delete(key);
@@ -86,8 +83,6 @@ function mergeTalkLiveSnapshot(base, live) {
     session: live.session
       ? { ...(base.session || {}), ...live.session }
       : null,
-    // These are intentionally absent from the lightweight Live snapshot and
-    // remain available from the one-time full production bootstrap.
     research: base.research || [],
     guests: base.guests || [],
     assets: base.assets || [],
@@ -143,9 +138,6 @@ async function getAuthContext({ force = false } = {}) {
       };
     }
 
-    // The session already contains the signed JWT. Cache the token briefly so
-    // Live synchronization does not call Neon Auth again for every API poll.
-    // The CREAPD backend still verifies the JWT on every protected request.
     const sessionResult = await neonAuth.getSession();
     const session = sessionResult?.data?.session;
     const token =
@@ -196,8 +188,6 @@ async function request(path, options = {}, authRetry = false) {
   }
 
   if (!response.ok) {
-    // A cached JWT can cross its expiry boundary. Refresh the Neon session once
-    // and retry transparently; a second 401 is a real authentication failure.
     if (response.status === 401 && auth.provider === 'neon' && !authRetry) {
       neonAuthContextCache = null;
       return request(path, options, true);
@@ -240,6 +230,7 @@ function normalizePost(path, body = {}) {
       refresh: 'talk_refresh',
       build_research: 'talk_build_research',
       build_production: 'talk_build_production',
+      generate_media: 'talk_generate_media',
       set_topic_status: 'talk_set_topic_status',
       create_guest: 'talk_create_guest',
       update_guest: 'talk_update_guest',
@@ -267,6 +258,7 @@ function mutationChangesStaticTalkData(action) {
     'talk_refresh',
     'talk_build_research',
     'talk_build_production',
+    'talk_generate_media',
     'talk_save_configuration',
     'talk_create_guest',
     'talk_update_guest',
@@ -302,9 +294,6 @@ async function postNormalized(path, body) {
     body: JSON.stringify(normalized.body),
   });
 
-  // Live mutations invalidate immediately. Session/segment/OBS changes can
-  // keep the one-time full Talk bootstrap and refresh with a lightweight
-  // snapshot; actions that alter static production data drop the base entirely.
   if (isTalkLivePage()) {
     invalidateLiveReadCache({
       dropTalkBase: mutationChangesStaticTalkData(normalized.body?.action),
@@ -334,9 +323,9 @@ async function runCheckpointedTalkBuild(body = {}) {
   let media = null;
   let mediaWarning = null;
   try {
-    media = await request('/talk/media', {
-      method: 'POST',
-      body: JSON.stringify({ configuration_id: configurationId }),
+    media = await postNormalized('/talk/production', {
+      action: 'generate_media',
+      configuration_id: configurationId,
     });
   } catch (error) {
     mediaWarning = {
