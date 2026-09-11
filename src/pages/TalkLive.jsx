@@ -147,6 +147,8 @@ export default function TalkLive() {
     ? Math.max(0, plannedSegmentSeconds - segmentElapsed)
     : 0;
 
+  const hostIntro = assetByType(assets, 'host_intro');
+  const hostOutro = assetByType(assets, 'host_outro');
   const hostScript = assetByType(assets, 'host_script');
   const currentTopicScript = topicAsset(assets, 'host_script', currentTopic?.topic_name);
   const confirmedGuests = guests.filter(guest => guest.status === 'confirmed');
@@ -160,12 +162,17 @@ export default function TalkLive() {
 
   const teleprompterText = useMemo(() => {
     if (!currentSegment) return 'The show is complete. Your live timing and clip markers are saved in CREAPD.';
+    if (currentSegment.segment_type === 'intro') {
+      if (hostIntro?.content) return hostIntro.content;
+      if (hostScript?.content) return hostScript.content;
+    }
+    if (currentSegment.segment_type === 'outro' && hostOutro?.content) return hostOutro.content;
     if (currentTopicScript?.content) return currentTopicScript.content;
     if (currentTopic?.talking_points) return currentTopic.talking_points;
     if (currentSegment.notes) return currentSegment.notes;
     if (hostScript?.content) return hostScript.content;
     return 'No teleprompter copy was generated for this segment. Use the current segment title and rundown notes as your cue.';
-  }, [currentSegment, currentTopicScript?.content, currentTopic?.talking_points, hostScript?.content]);
+  }, [currentSegment, hostIntro?.content, hostOutro?.content, currentTopicScript?.content, currentTopic?.talking_points, hostScript?.content]);
 
   const runAction = async (label, action) => {
     if (busy) return;
