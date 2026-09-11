@@ -2,6 +2,7 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
+import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
 import {
@@ -373,8 +374,11 @@ export default async function handler(request, response) {
     }
 
     if (String(request.query?.studio || '').toLowerCase() === 'talk') {
-      const talkData = await readTalkStudio(sql, ownerUserId, request.query?.configuration_id);
-      return success(response, 'talk_read', talkData);
+      const view = String(request.query?.view || '').trim().toLowerCase();
+      const talkData = view === 'live_state'
+        ? await readTalkLiveState(sql, ownerUserId, request.query?.configuration_id)
+        : await readTalkStudio(sql, ownerUserId, request.query?.configuration_id);
+      return success(response, view === 'live_state' ? 'talk_live_state' : 'talk_read', talkData);
     }
 
     const data = await readProductionCore(sql, ownerUserId, {
