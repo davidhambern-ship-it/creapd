@@ -26,9 +26,10 @@ function TalkAutoRundownAdvanceLive({ configId }) {
       }
     };
 
-    const readProduction = async () => {
+    const readProduction = async ({ fresh = false } = {}) => {
       const suffix = configId ? `&configuration_id=${encodeURIComponent(configId)}` : '';
-      return creapdApi.get(`/production/core?studio=talk${suffix}`);
+      const path = `/production/core?studio=talk${suffix}`;
+      return fresh ? creapdApi.getFresh(path) : creapdApi.get(path);
     };
 
     const sendEvent = async (sessionId, eventType, segmentId = null, payload = {}) => {
@@ -75,6 +76,10 @@ function TalkAutoRundownAdvanceLive({ configId }) {
       checkingRef.current = true;
 
       try {
+        // Normal checks share the CREAPD Live read cache with Director,
+        // graphics automation, and the Live page. Elapsed time still advances
+        // locally from actual_start_at, so a cached snapshot does not make the
+        // segment timer less precise.
         const production = await readProduction();
         if (cancelled) return;
 
@@ -112,9 +117,10 @@ function TalkAutoRundownAdvanceLive({ configId }) {
         advancingRef.current = true;
 
         try {
-          // Re-read immediately before mutating state so a manual Next Segment
-          // click at the same moment cannot double-advance the rundown.
-          const latest = await readProduction();
+          // Bypass the shared polling cache immediately before mutating state so
+          // a manual Next Segment click at the same moment cannot double-advance
+          // the rundown even though routine Live reads are now coalesced.
+          const latest = await readProduction({ fresh: true });
           const latestSession = latest?.session || null;
           if (
             latestSession?.status !== 'live'
