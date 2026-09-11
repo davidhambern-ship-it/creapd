@@ -1,6 +1,9 @@
 import { appParams } from '@/lib/app-params';
 import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
 
+const liveReadCache = new Map();
+const liveReadInFlight = new Map();
+
 function getStoredBase44Token() {
   if (typeof window === 'undefined') return appParams.token || null;
 
@@ -10,6 +13,60 @@ function getStoredBase44Token() {
     window.localStorage?.getItem('token') ||
     null
   );
+}
+
+function isTalkLivePage() {
+  return typeof window !== 'undefined' && window.location?.pathname === '/talk/live';
+}
+
+function livePollTtl(kind) {
+  if (typeof document !== 'undefined' && document.hidden) {
+    return kind === 'bridge' ? 10000 : 15000;
+  }
+  return kind === 'bridge' ? 2000 : 3000;
+}
+
+function clearLiveReadCache() {
+  liveReadCache.clear();
+}
+
+function cacheKeyForGet(path) {
+  if (!isTalkLivePage()) return null;
+  if (!path.startsWith('/production/core?')) return null;
+  const query = path.slice(path.indexOf('?') + 1);
+  const params = new URLSearchParams(query);
+  if (String(params.get('studio') || '').toLowerCase() !== 'talk') return null;
+  return `talk:${path}`;
+}
+
+async function cachedLiveRead(key, kind, loader, { force = false } = {}) {
+  if (!key) return loader();
+
+  const now = Date.now();
+  const cached = liveReadCache.get(key);
+  if (!force && cached && now - cached.at < livePollTtl(kind)) {
+    return cached.value;
+  }
+
+  if (!force) {
+    const inFlight = liveReadInFlight.get(key);
+    if (inFlight) return inFlight;
+  }
+
+  const promise = Promise.resolve()
+    .then(loader)
+    .then(value => {
+      liveReadCache.set(key, { value, at: Date.now() });
+      return value;
+    })
+    .finally(() => {
+      if (liveReadInFlight.get(key) === promise) {
+        liveReadInFlight.delete(key);
+      }
+    });
+
+  liveReadInFlight.set(key, promise);
+  return promise;
 }
 
 async function getAuthContext() {
@@ -125,10 +182,34 @@ function normalizePost(path, body = {}) {
 
 async function postNormalized(path, body) {
   const normalized = normalizePost(path, body ?? {});
-  return request(normalized.path, {
+  const isBridgeRead = (
+    isTalkLivePage()
+    && normalized.path === '/production/core'
+    && normalized.body?.action === 'obs_bridge_get'
+  );
+
+  if (isBridgeRead) {
+    const bridgeId = String(normalized.body?.bridge_id || 'owned');
+    return cachedLiveRead(
+      `bridge:${bridgeId}`,
+      'bridge',
+      () => request(normalized.path, {
+        method: 'POST',
+        body: JSON.stringify(normalized.body),
+      }),
+    );
+  }
+
+  const result = await request(normalized.path, {
     method: 'POST',
     body: JSON.stringify(normalized.body),
   });
+
+  // Any successful mutation can change session, segment, scene, graphic, or
+  // recording state. Drop the shared Live cache so the next reader goes to the
+  // server immediately instead of waiting for the normal polling TTL.
+  if (isTalkLivePage()) clearLiveReadCache();
+  return result;
 }
 
 async function runCheckpointedTalkBuild(body = {}) {
@@ -159,9 +240,23 @@ async function runCheckpointedTalkBuild(body = {}) {
   };
 }
 
+async function getNormalized(path, { force = false } = {}) {
+  const normalized = normalizeGetPath(path);
+  const key = cacheKeyForGet(normalized);
+  return cachedLiveRead(
+    key,
+    'talk',
+    () => request(normalized, { method: 'GET' }),
+    { force },
+  );
+}
+
 export const creapdApi = {
   get(path) {
-    return request(normalizeGetPath(path), { method: 'GET' });
+    return getNormalized(path);
+  },
+  getFresh(path) {
+    return getNormalized(path, { force: true });
   },
   post(path, body) {
     if (
@@ -173,6 +268,9 @@ export const creapdApi = {
     }
 
     return postNormalized(path, body);
+  },
+  invalidateLiveState() {
+    clearLiveReadCache();
   },
   request,
 };
