@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const DEFAULT_NEON_AUTH_URL = 'https://ep-green-king-awdola9h.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
+const DEFAULT_NEON_AUTH_URL = 'https://ep-silent-cell-awl5kkn3.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
 const NEON_AUTH_URL = process.env.NEON_AUTH_URL || DEFAULT_NEON_AUTH_URL;
 const JWKS_URL = `${NEON_AUTH_URL}/.well-known/jwks.json`;
 const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
