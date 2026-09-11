@@ -53,6 +53,7 @@ $script:OverlayFile = $null
 $script:VideoWidth = 1920
 $script:VideoHeight = 1080
 $script:OverlayDirectory = Join-Path $env:LOCALAPPDATA 'CREAPD\obs-overlays'
+$script:NextPollMs = 5000
 
 function ConvertTo-CompactJson($Value) {
   return ($Value | ConvertTo-Json -Depth 12 -Compress)
@@ -543,7 +544,7 @@ function Run-CreapdCommand($Command) {
 
 Write-Host "CREAPD: $($script:CreapdUrl)" -ForegroundColor DarkGray
 Write-Host "OBS:    $($script:ObsUrl)" -ForegroundColor DarkGray
-Write-Host "Bridge: 2026.09.10-overlay2" -ForegroundColor DarkGray
+Write-Host "Bridge: 2026.09.11-low-traffic" -ForegroundColor DarkGray
 Write-Host "Press Ctrl+C to stop the bridge." -ForegroundColor DarkGray
 Write-Host ""
 
@@ -580,7 +581,7 @@ while ($true) {
         overlay_input_name = $script:OverlayInputName
         protocol = 'obs-websocket-v5'
         bridge = 'powershell'
-        bridge_version = '2026.09.10-overlay2'
+        bridge_version = '2026.09.11-low-traffic'
       }
       last_error = $null
     }
@@ -589,7 +590,14 @@ while ($true) {
       Run-CreapdCommand $command
     }
 
-    Start-Sleep -Milliseconds 1200
+    if ($poll.next_poll_ms) {
+      try {
+        $script:NextPollMs = [Math]::Max(3000, [Math]::Min(15000, [int]$poll.next_poll_ms))
+      } catch {
+        $script:NextPollMs = 5000
+      }
+    }
+    Start-Sleep -Milliseconds $script:NextPollMs
   } catch {
     $message = $_.Exception.Message
     Write-Host "Bridge waiting: $message" -ForegroundColor Yellow
@@ -617,6 +625,6 @@ while ($true) {
       $script:ObsSocket = $null
     }
 
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 5
   }
 }
