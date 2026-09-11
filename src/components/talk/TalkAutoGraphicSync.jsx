@@ -6,10 +6,36 @@ function clean(value) {
   return String(value ?? '').trim();
 }
 
+function segmentTopicName(segment) {
+  if (!segment) return '';
+  if (segment.topic_name) return clean(segment.topic_name);
+
+  let payload = segment.source_payload;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      payload = null;
+    }
+  }
+
+  return payload && typeof payload === 'object'
+    ? clean(payload.topic_name)
+    : '';
+}
+
 function findTopicForSegment(segment, topics) {
   if (!segment) return null;
+  const availableTopics = Array.isArray(topics) ? topics : [];
+  const explicitName = segmentTopicName(segment).toLowerCase();
+
+  if (explicitName) {
+    const explicit = availableTopics.find(topic => clean(topic?.topic_name).toLowerCase() === explicitName);
+    if (explicit) return explicit;
+  }
+
   const haystack = `${clean(segment.title)} ${clean(segment.notes)}`.toLowerCase();
-  return (Array.isArray(topics) ? topics : []).find(topic => {
+  return availableTopics.find(topic => {
     const topicName = clean(topic?.topic_name).toLowerCase();
     return topicName && haystack.includes(topicName);
   }) || null;
