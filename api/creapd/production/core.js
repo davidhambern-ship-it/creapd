@@ -5,6 +5,7 @@ import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
+import { generateTalkImages } from '../../../server/talkMedia.js';
 import {
   isObsBridgeAgentAction,
   runObsBridgeAgentAction,
@@ -32,9 +33,6 @@ import {
 } from '../../../server/presentationStudio.js';
 
 export const config = {
-  // Hobby + Fluid Compute currently supports up to 300 seconds. Talk's
-  // checkpointed stages each stay below this ceiling while allowing live web
-  // research enough time to finish without an arbitrary 50-second cutoff.
   maxDuration: 300,
 };
 
@@ -77,9 +75,6 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
       return success(response, action, result);
     }
 
-    // Talk's expensive AI work is deliberately split into separate requests.
-    // Research is checkpointed in Neon before the production stage starts, so
-    // a later failure can be retried without losing completed intelligence.
     if (action === 'talk_build_research') {
       const result = await runTalkResearchStage({
         sql,
@@ -91,6 +86,15 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
 
     if (action === 'talk_build_production') {
       const result = await runTalkProductionStage({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+      });
+      return success(response, action, { result });
+    }
+
+    if (action === 'talk_generate_media') {
+      const result = await generateTalkImages({
         sql,
         ownerUserId,
         configurationId: body.configuration_id,
@@ -298,8 +302,6 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         return success(response, action, result);
       }
 
-      // Temporary compatibility action. New CREAPD architecture hands approved
-      // Production Packages to the Presentation Studio and directs them there.
       case 'assemble_research_presentation': {
         const result = await assembleResearchPresentation({
           sql,
@@ -353,10 +355,6 @@ export default async function handler(request, response) {
   try {
     const sql = getSql();
 
-    // The desktop/local OBS bridge cannot reuse a browser login session. It
-    // authenticates with a one-time-shown, hashed device token and only gets
-    // access to its own heartbeat/command queue operations. Keeping this on the
-    // existing Production Core route avoids another Vercel function.
     if (request.method === 'POST') {
       const body = request.body && typeof request.body === 'object' ? request.body : {};
       const action = String(body.action || '').trim();
