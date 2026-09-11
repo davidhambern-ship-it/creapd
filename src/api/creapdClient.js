@@ -27,13 +27,20 @@ function livePollTtl(kind) {
   return kind === 'bridge' ? 2000 : 3000;
 }
 
-function clearLiveReadCache() {
+function invalidateLiveReadCache({ dropTalkBase = false } = {}) {
   liveReadEpoch += 1;
-  liveReadCache.clear();
-  // A request that began before a mutation must never be reused afterward.
-  // Its promise may still finish, but the epoch check below prevents it from
-  // repopulating the cache with pre-mutation state.
   liveReadInFlight.clear();
+
+  for (const [key, entry] of liveReadCache.entries()) {
+    if (key.startsWith('talk:') && !dropTalkBase) {
+      // Preserve the full bootstrap object so the next sync can merge a tiny
+      // Live snapshot into it rather than downloading all static production
+      // data again after every segment/OBS mutation.
+      liveReadCache.set(key, { ...entry, at: 0 });
+    } else {
+      liveReadCache.delete(key);
+    }
+  }
 }
 
 function cacheKeyForGet(path) {
@@ -42,7 +49,48 @@ function cacheKeyForGet(path) {
   const query = path.slice(path.indexOf('?') + 1);
   const params = new URLSearchParams(query);
   if (String(params.get('studio') || '').toLowerCase() !== 'talk') return null;
+  if (String(params.get('view') || '').toLowerCase() === 'live_state') return null;
   return `talk:${path}`;
+}
+
+function toLiveStatePath(path) {
+  const question = path.indexOf('?');
+  if (question < 0) return path;
+  const base = path.slice(0, question);
+  const params = new URLSearchParams(path.slice(question + 1));
+  params.set('view', 'live_state');
+  return `${base}?${params.toString()}`;
+}
+
+function mergeRowsById(baseRows, liveRows) {
+  if (!Array.isArray(liveRows)) return Array.isArray(baseRows) ? baseRows : [];
+  const baseMap = new Map((Array.isArray(baseRows) ? baseRows : []).map(row => [row?.id, row]));
+  return liveRows.map(row => ({ ...(baseMap.get(row?.id) || {}), ...row }));
+}
+
+function mergeTalkLiveSnapshot(base, live) {
+  if (!base) return live;
+  if (!live) return base;
+
+  return {
+    ...base,
+    ...live,
+    configuration: live.configuration
+      ? { ...(base.configuration || {}), ...live.configuration }
+      : base.configuration,
+    topics: mergeRowsById(base.topics, live.topics),
+    segments: mergeRowsById(base.segments, live.segments),
+    session: live.session
+      ? { ...(base.session || {}), ...live.session }
+      : null,
+    // These are intentionally absent from the lightweight Live snapshot and
+    // remain available from the one-time full production bootstrap.
+    research: base.research || [],
+    guests: base.guests || [],
+    assets: base.assets || [],
+    packages: base.packages || [],
+    live_state: true,
+  };
 }
 
 async function cachedLiveRead(key, kind, loader, { force = false } = {}) {
@@ -189,6 +237,22 @@ function normalizePost(path, body = {}) {
   return { path, body };
 }
 
+function mutationChangesStaticTalkData(action) {
+  return [
+    'talk_build',
+    'talk_refresh',
+    'talk_build_research',
+    'talk_build_production',
+    'talk_save_configuration',
+    'talk_create_guest',
+    'talk_update_guest',
+    'talk_delete_guest',
+    'talk_set_topic_status',
+    'talk_set_asset_status',
+    'talk_set_segment_status',
+  ].includes(String(action || ''));
+}
+
 async function postNormalized(path, body) {
   const normalized = normalizePost(path, body ?? {});
   const isBridgeRead = (
@@ -214,10 +278,14 @@ async function postNormalized(path, body) {
     body: JSON.stringify(normalized.body),
   });
 
-  // Any successful mutation can change session, segment, scene, graphic, or
-  // recording state. Drop the shared Live cache so the next reader goes to the
-  // server immediately instead of waiting for the normal polling TTL.
-  if (isTalkLivePage()) clearLiveReadCache();
+  // Live mutations invalidate immediately. Session/segment/OBS changes can
+  // keep the one-time full Talk bootstrap and refresh with a lightweight
+  // snapshot; actions that alter static production data drop the base entirely.
+  if (isTalkLivePage()) {
+    invalidateLiveReadCache({
+      dropTalkBase: mutationChangesStaticTalkData(normalized.body?.action),
+    });
+  }
   return result;
 }
 
@@ -252,12 +320,20 @@ async function runCheckpointedTalkBuild(body = {}) {
 async function getNormalized(path, { force = false } = {}) {
   const normalized = normalizeGetPath(path);
   const key = cacheKeyForGet(normalized);
-  return cachedLiveRead(
-    key,
-    'talk',
-    () => request(normalized, { method: 'GET' }),
-    { force },
-  );
+
+  if (!key) {
+    return request(normalized, { method: 'GET' });
+  }
+
+  const cached = liveReadCache.get(key);
+  const loader = cached?.value
+    ? async () => {
+        const live = await request(toLiveStatePath(normalized), { method: 'GET' });
+        return mergeTalkLiveSnapshot(cached.value, live);
+      }
+    : () => request(normalized, { method: 'GET' });
+
+  return cachedLiveRead(key, 'talk', loader, { force });
 }
 
 export const creapdApi = {
@@ -278,8 +354,8 @@ export const creapdApi = {
 
     return postNormalized(path, body);
   },
-  invalidateLiveState() {
-    clearLiveReadCache();
+  invalidateLiveState(options) {
+    invalidateLiveReadCache(options);
   },
   request,
 };
