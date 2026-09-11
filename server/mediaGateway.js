@@ -126,31 +126,12 @@ async function generateImageBytes({ prompt, model = DEFAULT_IMAGE_MODEL }) {
   };
 }
 
-export function hasOwnedMediaStorageConfig() {
-  return Boolean(String(process.env.BLOB_READ_WRITE_TOKEN || '').trim());
-}
-
-export async function generateAndStoreResearchMedia({
-  packageId,
-  mediaType,
-  prompt,
-}) {
-  if (!packageId || !['image', 'thumbnail'].includes(mediaType)) {
-    const error = new Error(
-      mediaType === 'audio'
-        ? 'Research voice generation is browser-local only; paid server TTS is disabled.'
-        : 'Unsupported Research media request',
-    );
-    error.code = mediaType === 'audio' ? 'LOCAL_VOICE_REQUIRED' : 'MEDIA_REQUEST_INVALID';
-    error.status = mediaType === 'audio' ? 409 : 400;
-    throw error;
-  }
-
+async function generateAndStoreImage({ namespace, ownerId, mediaType, prompt }) {
   const generated = await generateImageBytes({ prompt });
   const pathname = [
     'creapd',
-    'research',
-    String(packageId),
+    namespace,
+    String(ownerId),
     `${mediaType}-${Date.now()}-${randomUUID()}.${generated.extension}`,
   ].join('/');
 
@@ -171,4 +152,52 @@ export async function generateAndStoreResearchMedia({
     pathname: blob.pathname,
     warnings: generated.warnings || [],
   };
+}
+
+export function hasOwnedMediaStorageConfig() {
+  return Boolean(String(process.env.BLOB_READ_WRITE_TOKEN || '').trim());
+}
+
+export async function generateAndStoreResearchMedia({
+  packageId,
+  mediaType,
+  prompt,
+}) {
+  if (!packageId || !['image', 'thumbnail'].includes(mediaType)) {
+    const error = new Error(
+      mediaType === 'audio'
+        ? 'Research voice generation is browser-local only; paid server TTS is disabled.'
+        : 'Unsupported Research media request',
+    );
+    error.code = mediaType === 'audio' ? 'LOCAL_VOICE_REQUIRED' : 'MEDIA_REQUEST_INVALID';
+    error.status = mediaType === 'audio' ? 409 : 400;
+    throw error;
+  }
+
+  return generateAndStoreImage({
+    namespace: 'research',
+    ownerId: packageId,
+    mediaType,
+    prompt,
+  });
+}
+
+export async function generateAndStoreTalkMedia({
+  configurationId,
+  mediaType,
+  prompt,
+}) {
+  if (!configurationId || !['thumbnail', 'presentation'].includes(mediaType)) {
+    const error = new Error('Unsupported Talk image request');
+    error.code = 'TALK_MEDIA_REQUEST_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  return generateAndStoreImage({
+    namespace: 'talk',
+    ownerId: configurationId,
+    mediaType,
+    prompt,
+  });
 }
