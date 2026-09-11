@@ -103,7 +103,7 @@ Legacy `server/talkEngine.js` plus monolithic `talk_build` / `talk_refresh` comp
 
 Route: `/talk/live?config_id=<talk configuration id>`
 
-### Live state machine — TESTED + PASSED
+### Live state machine — TESTED + PASSED before current UI consolidation
 - READY / ON AIR / PAUSED / SHOW ENDED
 - Start / Pause / Resume / Clip / Next / End
 - timing/current/next/rundown
@@ -219,7 +219,7 @@ Design:
 - final segment does NOT auto-End Show
 - recovery path starts the first incomplete segment if a request interruption leaves the live session between segments
 
-User found the original Auto Take only reacted after an operator-created segment change. Timed auto-run was added, but the user paused acceptance testing to request the Live control-room consolidation below.
+User found the original Auto Take only reacted after an operator-created segment change. Timed auto-run was added, but acceptance testing was interrupted by the Live control-room consolidation below.
 
 Status: **BUILT + DEPLOYED, NOT YET PASSED**.
 
@@ -237,12 +237,14 @@ Functional commits:
 - `7c0dadb67554eabdff3c59386f72480b0fe56ee0` — replace separately mounted Graphics + Scene Cue controls with unified Director control
 - `a7c9cd8f86ee9be916ef32a97257074903ee72f5` — move show transport controls to the top Live header; remove bottom sticky Show Control; add Program Monitor OBS control dock target
 - `9db09c80b6855854a4cda199170645caf78148c0` — dock OBS bridge control inside Program Monitor area and keep bridge setup/diagnostics/manual fallback there
+- `550f6aab83d583047c5ab38668298d704ace727b` — repair missing Director/OBS shell background by adding support for the `/97` Tailwind opacity used by the new panels
+- `80dc309b88d80ce419892acac54390a800a51974` — move the proven completed-run restart control into the top Live header as **Start New Run**
 
-Vercel combined status for `9db09c80...`: **SUCCESS / DEPLOYED**.
+Vercel combined status for `80dc309b...`: **SUCCESS / DEPLOYED**.
 
 New UI/behavior:
 - top header is now the primary control strip:
-  - ON AIR / PAUSED / READY status
+  - ON AIR / PAUSED / READY / SHOW ENDED status
   - show clock
   - Start / Pause / Resume
   - Clip
@@ -250,6 +252,7 @@ New UI/behavior:
   - End
   - existing recording controls
   - unified **Director** control
+  - **Start New Run** appears in the same header after End Show
 - old bottom sticky Show Control removed
 - old standalone Graphics and Scene Cue components are no longer mounted
 - unified **Director Controls** shares one Talk production snapshot and one OBS bridge snapshot for both Graphics and Scenes
@@ -265,26 +268,35 @@ New UI/behavior:
 - no Neon migration
 - no bridge redownload required
 
+User-reported consolidation regressions repaired:
+1. **Director appeared transparent over the Program Monitor.** Cause: the new shell used `bg-[#090b10]/97`, but Tailwind was not generating opacity `97`, so the background utility failed. Commit `550f6aab...` adds that opacity support. This fix is DEPLOYED but still needs visual user confirmation.
+2. **After End Show there was no obvious way to start again.** The underlying restart path was still valid, but it remained in the old floating `TalkLiveRestartControl`. Commit `80dc309b...` portals that same proven action into `talk-live-header-controls`; `Start New Run` now appears beside the other top controls when `session.status === 'complete'`. This fix is DEPLOYED but not yet user-tested.
+
 Important acceptance rule:
-The underlying graphics, recording, Program Monitor, scene Take, and show transport functionality had passed before this UI consolidation, but the **new consolidated UI itself is not PASSED until the user exercises it**.
+The underlying graphics, recording, Program Monitor, scene Take, repeat-run backend, and show transport functionality had passed before this UI consolidation, but the **new consolidated UI itself is not PASSED until the user exercises it**.
 
 ## 9. Current Exact Next Action
 
-**User-test the consolidated CREAPD Live control room in Preview before adding another feature.**
+**Continue user-testing the consolidated CREAPD Live control room in Preview.**
 
-Acceptance pass:
+Immediate regression checks:
 1. Hard-refresh CREAPD Live.
-2. Confirm top bar contains show status/clock plus Pause/Resume, Clip, Next, End, Record, and Director as applicable.
-3. Confirm the old bottom Show Control bar is gone.
-4. Confirm there is only one Director window for Graphics + Scenes rather than separate Graphics and Scene Cue windows.
-5. In Director → Graphics, confirm Host/Guest/Topic/Custom, positioning, Show/Update/Clear still work.
-6. In Director → Scenes & Automation, confirm saved mappings are present, Take Cue works, manual scene Take works, and the Auto toggle is preserved.
-7. Confirm Graphics and Scenes report the same Current Segment in the Director summary.
-8. Confirm OBS Connection control appears in/near Program Monitor instead of floating over the page.
-9. Confirm Program Monitor video remains continuous while using Next Segment and scene Take.
-10. Then resume the still-pending timed auto-run acceptance: arm automation and let a non-final segment expire without pressing Next. Confirm automatic segment advance + mapped scene Auto Take + continuous Program Monitor.
+2. Open Director and confirm it now has an opaque/dark readable shell rather than letting the Program Monitor bleed through the controls.
+3. End the current show and confirm status becomes **SHOW ENDED**.
+4. Confirm **Start New Run** appears in the top header.
+5. Click **Start New Run** and confirm CREAPD creates a fresh run, resets to Segment 1, starts a fresh segment timer, and preserves prior session/event history.
+6. Confirm the Program Monitor and OBS controls remain available after the fresh run starts.
 
-If all of that passes, mark the consolidated control center and timed scene automation TESTED + PASSED and choose the next CREAPD Live layer.
+Then resume broader control-center acceptance:
+- confirm top bar transport + Record + Director
+- Graphics Host/Guest/Topic/Custom + position + Show/Update/Clear
+- Scenes mappings + Take Cue + manual Take + automation toggle
+- Graphics and Scenes reference the same current segment
+- OBS Connection is docked near Program Monitor
+- Program Monitor stays continuous through manual Next/Take
+- finally arm Timed Run + Auto Take and let a non-final segment expire without pressing Next; confirm automatic segment advance + mapped scene Auto Take + continuous Program Monitor
+
+Do not add another feature until these consolidated-control regressions and timed auto-run are confirmed.
 
 ## 10. Talk Acceptance Summary
 
@@ -294,7 +306,7 @@ If all of that passes, mark the consolidated control center and timed scene auto
 - topic review/approval
 - guided Talk setup through Export
 - Advanced JSON export
-- Live state machine / repeat-run
+- Live state machine / repeat-run backend behavior
 - Program Monitor / Teleprompter
 - Program Monitor continuity through manual segment changes
 - OBS bridge auth/state/manual Take
@@ -306,6 +318,8 @@ If all of that passes, mark the consolidated control center and timed scene auto
 ### BUILT + DEPLOYED / USER TEST REQUIRED
 - consolidated top Live control strip
 - unified Director Graphics + Scenes control
+- opaque Director / OBS control shell repair
+- top-header Start New Run after End Show
 - docked OBS control near Program Monitor
 - scene mapping / Take Cue through unified Director
 - timed automatic rundown advancement + Auto Take
