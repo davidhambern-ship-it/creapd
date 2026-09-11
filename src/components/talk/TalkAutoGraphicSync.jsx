@@ -50,16 +50,8 @@ function buildSegmentGraphicCue(production) {
       };
 }
 
-function sameGraphic(left, right) {
-  if (!left || !right) return false;
-  return clean(left.title) === clean(right.title)
-    && clean(left.subtitle) === clean(right.subtitle)
-    && clean(left.label).toUpperCase() === clean(right.label).toUpperCase();
-}
-
 function TalkAutoGraphicSyncLive({ configId }) {
-  const previousSegmentIdRef = useRef(null);
-  const previousCueRef = useRef(null);
+  const syncedSegmentIdRef = useRef(null);
   const checkingRef = useRef(false);
   const syncingRef = useRef(false);
 
@@ -88,7 +80,7 @@ function TalkAutoGraphicSyncLive({ configId }) {
     };
 
     const check = async () => {
-      if (cancelled || checkingRef.current) return;
+      if (cancelled || checkingRef.current || syncingRef.current) return;
       checkingRef.current = true;
 
       try {
@@ -97,43 +89,20 @@ function TalkAutoGraphicSyncLive({ configId }) {
 
         const cue = buildSegmentGraphicCue(production);
         const segmentId = cue?.segmentId || null;
-        const previousSegmentId = previousSegmentIdRef.current;
-        const previousCue = previousCueRef.current;
 
-        if (previousSegmentId === null) {
-          previousSegmentIdRef.current = segmentId;
-          previousCueRef.current = cue;
-          return;
-        }
-
-        if (!segmentId || segmentId === previousSegmentId) {
-          previousCueRef.current = cue;
-          return;
-        }
-
-        // Lock onto the new rundown segment immediately so repeated polls cannot
-        // queue the same graphic update while the local bridge is still working.
-        previousSegmentIdRef.current = segmentId;
-        previousCueRef.current = cue;
-
-        if (!automationEnabled() || syncingRef.current || !cue?.title) return;
+        if (!automationEnabled() || !segmentId || !cue?.title) return;
+        if (segmentId === syncedSegmentIdRef.current) return;
         if (!bridge?.connected || !bridge?.id) return;
 
         const capabilities = bridge?.capabilities && typeof bridge.capabilities === 'object'
           ? bridge.capabilities
           : {};
-        if (capabilities.overlay_control !== true || capabilities.overlay_visible !== true) return;
+        if (capabilities.overlay_control !== true) return;
 
-        const liveGraphic = {
-          title: capabilities.overlay_title,
-          subtitle: capabilities.overlay_subtitle,
-          label: capabilities.overlay_label,
-        };
-
-        // Only replace an overlay that is still exactly the previous segment cue.
-        // Host, guest, or manually edited custom graphics remain producer-owned.
-        if (!sameGraphic(liveGraphic, previousCue)) return;
-
+        // AUTO owns rundown graphic transitions. A producer can still put a Host,
+        // Guest, or Custom graphic on-air during the current segment; CREAPD does
+        // not fight that manual choice mid-segment. When the rundown advances,
+        // however, AUTO restores the new segment/topic cue automatically.
         syncingRef.current = true;
         try {
           await creapdApi.post('/production/core', {
@@ -147,6 +116,7 @@ function TalkAutoGraphicSyncLive({ configId }) {
               position: clean(capabilities.overlay_position) || 'bottom_left',
             },
           });
+          syncedSegmentIdRef.current = segmentId;
         } finally {
           window.setTimeout(() => {
             syncingRef.current = false;
