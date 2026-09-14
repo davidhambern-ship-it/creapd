@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Button } from '@/components/ui/button';
-import { Loader2, Mic2, Download, FileText, Package, CheckCircle2 } from 'lucide-react';
+import { Code2, Download, Loader2, Mic2, Package, CheckCircle2, Radio } from 'lucide-react';
 
 export default function TalkExport() {
   const { config, topics, segments, assets, research, guests, loading } = useTalkProduction();
@@ -40,7 +42,7 @@ export default function TalkExport() {
         topics,
         research,
         guests,
-        segments: segments,
+        segments,
         assets,
         exported_at: new Date().toISOString()
       };
@@ -48,12 +50,12 @@ export default function TalkExport() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${config.production_name.replace(/\s+/g, '_')}_export.json`;
+      a.download = `${config.production_name.replace(/\s+/g, '_')}_data.json`;
       a.click();
       URL.revokeObjectURL(url);
       setExporting(false);
       setExportResult({ success: true, count: topics.length + research.length + guests.length + segments.length + assets.length });
-    }, 1500);
+    }, 500);
   };
 
   const exportItems = [
@@ -64,19 +66,36 @@ export default function TalkExport() {
     { label: 'Rundown Segments', count: segments.length, done: segments.length > 0 },
     { label: 'AI Assets', count: assets.length, done: assets.length > 0 },
   ];
+  const completeCount = exportItems.filter(item => item.done).length;
+  const livePath = `/talk/live?config_id=${encodeURIComponent(config.id)}`;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold !flex items-center gap-2">
           <Download className="w-5 h-5 text-primary" />
-          Export
+          Finish & Launch
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Export your complete talk production package</p>
+        <p className="text-sm text-muted-foreground mt-1">Confirm the production is complete, then run the show or export its underlying data.</p>
       </div>
 
+      <TalkProducerGuide
+        currentStep="export"
+        title="Final check: make sure the production contains what you expect"
+        instructions={[
+          'Use the summary below to confirm that research, topics, guests, rundown, and assets are present.',
+          'If something is missing, use the workflow steps above to go back to that section before you start the show.',
+          'When you are satisfied, enter CREAPD Live. That is where the rundown becomes an active show-control environment.',
+        ]}
+        readyText={`${completeCount} of ${exportItems.length} production sections contain data`}
+        nextPath={livePath}
+        nextLabel="Enter CREAPD Live"
+        nextDescription="CREAPD Live loads this production into the show-execution cockpit with segment timing, host notes, clip markers, and live controls."
+        note="Guests can legitimately be empty for guest-free formats, so an empty Guests row is not automatically an error."
+      />
+
       <div className="glass-panel p-5">
-        <h3 className="font-heading font-semibold mb-4 !flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Export Summary</h3>
+        <h3 className="font-heading font-semibold mb-4 !flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Production Summary</h3>
         <div className="space-y-2">
           {exportItems.map((item, i) => (
             <div key={i} className="!flex items-center justify-between py-2 border-b border-white/[0.03] last:border-0">
@@ -94,22 +113,51 @@ export default function TalkExport() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="glass-panel p-5 border-primary/20">
+          <div className="!flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 !flex items-center justify-center shrink-0">
+              <Radio className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-heading font-semibold">Run the Show</h3>
+              <p className="text-sm text-muted-foreground mt-1">Open the CREAPD Live cockpit and execute this rundown segment by segment.</p>
+            </div>
+          </div>
+          <Button asChild className="mt-4 w-full">
+            <Link to={livePath}>Enter CREAPD Live</Link>
+          </Button>
+        </div>
+
+        <div className="glass-panel p-5">
+          <div className="!flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-secondary/50 !flex items-center justify-center shrink-0">
+              <Code2 className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="font-heading font-semibold">Advanced Data Export</h3>
+              <p className="text-sm text-muted-foreground mt-1">JSON is a machine-readable backup/integration file. It is not intended to be the human-readable show book.</p>
+            </div>
+          </div>
+          <Button onClick={handleExport} disabled={exporting} variant="outline" className="mt-4 w-full">
+            {exporting ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Exporting...</>
+            ) : (
+              <><Download className="w-4 h-4 mr-2" /> Download JSON Data</>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">A printable Show Book / ZIP package is a separate user-facing export that will be added later.</p>
+        </div>
+      </div>
+
       {exportResult && (
         <div className="glass-panel p-4 border-emerald-500/20">
           <div className="!flex items-center gap-2 text-emerald-400">
             <CheckCircle2 className="w-5 h-5" />
-            <p className="text-sm font-medium">Export complete! {exportResult.count} items exported.</p>
+            <p className="text-sm font-medium">JSON data export complete — {exportResult.count} production records included.</p>
           </div>
         </div>
       )}
-
-      <Button onClick={handleExport} disabled={exporting} size="lg">
-        {exporting ? (
-          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Exporting...</>
-        ) : (
-          <><Download className="w-4 h-4 mr-2" /> Export Production Package</>
-        )}
-      </Button>
     </div>
   );
 }

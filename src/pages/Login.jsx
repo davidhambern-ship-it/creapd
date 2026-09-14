@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { neonAuth, shouldUseNeonAuth } from "@/api/neonAuthClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,14 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
+      if (shouldUseNeonAuth()) {
+        const result = await neonAuth.signIn.email({ email, password });
+        if (result?.error) {
+          throw new Error(result.error.message || "Invalid email or password");
+        }
+      } else {
+        await base44.auth.loginViaEmailPassword(email, password);
+      }
       window.location.href = "/";
     } catch (err) {
       setError(err.message || "Invalid email or password");
@@ -28,8 +36,27 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", "/");
+  const handleGoogle = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      if (shouldUseNeonAuth()) {
+        const result = await neonAuth.signIn.social({
+          provider: "google",
+          callbackURL: `${window.location.origin}/`,
+          errorCallbackURL: `${window.location.origin}/login`,
+        });
+        if (result?.error) {
+          throw new Error(result.error.message || "Google sign-in failed");
+        }
+        return;
+      }
+
+      base44.auth.loginWithProvider("google", "/");
+    } catch (err) {
+      setError(err.message || "Google sign-in failed");
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,6 +77,7 @@ export default function Login() {
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6 bg-white text-black hover:bg-white/90 border-0"
         onClick={handleGoogle}
+        disabled={loading}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
         Continue with Google

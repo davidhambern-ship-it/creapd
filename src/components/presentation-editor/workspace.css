@@ -1,5 +1,57 @@
 /* ═══ Workspace Modes System (WMS) ═══ */
 
+/* ── Presentation Studio chrome hierarchy ── */
+.cpe-global-toolbar {
+  background: hsl(var(--cpe-surface));
+  min-height: 46px;
+}
+
+.cpe-studio-roombar {
+  background: hsl(var(--cpe-bg) / 0.82);
+  border-top: 1px solid hsl(var(--cpe-border-soft));
+  border-bottom: 1px solid hsl(var(--cpe-border-soft));
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.cpe-roombar-label {
+  flex-shrink: 0;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--cpe-text-dim));
+}
+
+.cpe-room-toolbar {
+  background: hsl(var(--cpe-surface-2) / 0.72);
+  border-bottom: 1px solid hsl(var(--cpe-border-soft));
+}
+
+.cpe-room-title {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: hsl(var(--cpe-text));
+}
+
+.cpe-room-hint {
+  font-size: 0.625rem;
+  color: hsl(var(--cpe-text-dim));
+}
+
+.cpe-director-btn {
+  color: hsl(var(--cpe-accent));
+  border-color: hsl(var(--cpe-accent) / 0.22);
+  background: hsl(var(--cpe-accent) / 0.06);
+}
+
+.cpe-director-btn:hover:not(:disabled) {
+  border-color: hsl(var(--cpe-accent) / 0.4);
+  background: hsl(var(--cpe-accent) / 0.12);
+}
+
 /* ── Workspace Switcher ── */
 .cpe-ws-switcher {
   display: flex;
@@ -9,6 +61,7 @@
   border: 1px solid hsl(var(--cpe-border-soft));
   border-radius: 0.375rem;
   padding: 1px;
+  flex-shrink: 0;
 }
 
 .cpe-ws-btn {
@@ -45,6 +98,7 @@
 @media (max-width: 1024px) {
   .cpe-ws-label { display: none; }
   .cpe-ws-btn { padding: 0.25rem 0.375rem; }
+  .cpe-roombar-label { display: none; }
 }
 
 /* ── Add Menu Group Labels ── */
@@ -62,13 +116,26 @@
 .cpe-ws-side-panel {
   border-left: 1px solid hsl(var(--cpe-border));
   background: hsl(var(--cpe-surface) / 0.5);
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .cpe-side-panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
   background: hsl(var(--cpe-surface) / 0.3);
+}
+
+/* Any expandable panel content can grow beyond the viewport and remains reachable. */
+.cpe-ws-side-panel > * {
+  min-height: 0;
+  flex-shrink: 0;
 }
 
 .cpe-panel-header {

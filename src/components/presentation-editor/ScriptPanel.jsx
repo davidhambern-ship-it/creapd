@@ -34,17 +34,17 @@ export default function ScriptPanel({ slide, presentation, onUpdateSlide }) {
 
   const handleNotesChange = (val) => {
     setSpeakerNotes(val);
-    onUpdateSlide?.(slide?.id, { speaker_notes: val });
+    onUpdateSlide?.({ speaker_notes: val });
   };
 
   const handleScriptChange = (val) => {
     setBodyText(val);
-    onUpdateSlide?.(slide?.id, { body_text: val });
+    onUpdateSlide?.({ body_text: val });
   };
 
   const handleTitleChange = (val) => {
     setTitle(val);
-    onUpdateSlide?.(slide?.id, { title: val });
+    onUpdateSlide?.({ title: val });
   };
 
   const slideTimeline = parseTiming(slide?.slide_timeline);

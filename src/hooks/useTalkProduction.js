@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useBuildStatusRecovery } from '@/hooks/useBuildStatusRecovery';
 
 export function useTalkProduction(configId) {
+  const ownedPreview = shouldUseNeonAuth();
   const [config, setConfig] = useState(null);
   const [topics, setTopics] = useState([]);
   const [research, setResearch] = useState([]);
   const [guests, setGuests] = useState([]);
   const [segments, setSegments] = useState([]);
   const [assets, setAssets] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,13 +24,36 @@ export function useTalkProduction(configId) {
     setGuests([]);
     setSegments([]);
     setAssets([]);
+    setPackages([]);
+    setSession(null);
   }, []);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  const loadAll = useCallback(async ({ preserveUi = false } = {}) => {
+    if (!preserveUi) setLoading(true);
     setError(null);
 
     try {
+      if (ownedPreview) {
+        const suffix = configId ? `&configuration_id=${encodeURIComponent(configId)}` : '';
+        const data = await creapdApi.get(`/production/core?studio=talk${suffix}`);
+        const activeConfig = data?.configuration || null;
+
+        if (!activeConfig) {
+          clearProduction();
+          return;
+        }
+
+        setConfig(activeConfig);
+        setTopics(data?.topics || []);
+        setResearch(data?.research || []);
+        setGuests(data?.guests || []);
+        setSegments(data?.segments || []);
+        setAssets(data?.assets || []);
+        setPackages(data?.packages || []);
+        setSession(data?.session || null);
+        return;
+      }
+
       let activeId = configId;
       let activeConfig = null;
 
@@ -66,6 +94,9 @@ export function useTalkProduction(configId) {
         }
       });
 
+      setPackages([]);
+      setSession(null);
+
       if (partialFailure) {
         setError(new Error('Some Talk production data could not be loaded. Refresh to retry.'));
       }
@@ -73,19 +104,34 @@ export function useTalkProduction(configId) {
       console.error('useTalkProduction load error:', err);
       setError(err);
     } finally {
-      setLoading(false);
+      if (!preserveUi) setLoading(false);
     }
-  }, [configId, clearProduction]);
+  }, [configId, clearProduction, ownedPreview]);
+
+  const refresh = useCallback(() => loadAll({ preserveUi: true }), [loadAll]);
 
   useBuildStatusRecovery({
-    entityName: 'TalkProductionConfiguration',
+    entityName: ownedPreview ? null : 'TalkProductionConfiguration',
     config,
-    onTerminal: loadAll,
+    onTerminal: refresh,
   });
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
 
-  return { config, topics, research, guests, segments, assets, loading, error, refresh: loadAll };
+  return {
+    config,
+    topics,
+    research,
+    guests,
+    segments,
+    assets,
+    packages,
+    session,
+    loading,
+    error,
+    refresh,
+    source: ownedPreview ? 'neon' : 'base44',
+  };
 }

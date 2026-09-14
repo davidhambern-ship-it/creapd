@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useResearchProduction } from '@/hooks/useResearchProduction';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { runResearchClient, extractResearchPointsClient } from '@/lib/researchClientEngine';
 import { Loader2, ArrowRight, Sparkles, BookOpen, FlaskConical, Database, Settings, Clock, FileText, Layers } from 'lucide-react';
 import TopicsCabinet from '@/components/rpp/topics/TopicsCabinet';
@@ -33,7 +35,7 @@ export default function ResearchTopics() {
   const researchingCount = topics.filter(t => t.status === 'researching').length;
   const researchedCount = topics.filter(t => t.status === 'researched' || t.status === 'in_review').length;
   const usedCount = topics.filter(t => t.status === 'used').length;
-  const totalSources = topics.reduce((sum, t) => sum + (t.source_count || 0), 0);
+  const totalSources = topics.reduce((sum, t) => sum + (t.source_count || t.sources_count || 0), 0);
 
   const pipelineActive = topics.some(t => t.pipeline_stage && t.pipeline_stage !== 'idle' && t.pipeline_stage !== 'complete');
   const pipelineComplete = topics.some(t => t.pipeline_stage === 'complete');
@@ -48,9 +50,19 @@ export default function ResearchTopics() {
   };
 
   useEffect(() => {
-    base44.auth.me().then(u => {
-      if (u && u.full_name) setUserName(u.full_name.split(' ')[0]);
-    }).catch(() => {});
+    let cancelled = false;
+
+    creapdApi.get('/auth/me')
+      .then(payload => {
+        if (cancelled) return;
+        const fullName = payload?.user?.display_name || payload?.user?.full_name || '';
+        if (fullName) setUserName(fullName.split(' ')[0]);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading && !config) {
@@ -131,8 +143,25 @@ export default function ResearchTopics() {
   };
 
   const handleDelete = async (topic) => {
-    await base44.entities.ResearchTopic.delete(topic.id);
-    refresh();
+    setResearchError(null);
+    try {
+      if (shouldUseNeonAuth()) {
+        await creapdApi.post('/research/topic-action', {
+          action: 'delete',
+          topic_id: topic.id,
+        });
+      } else {
+        await base44.entities.ResearchTopic.delete(topic.id);
+      }
+      refresh();
+    } catch (err) {
+      console.error('Failed to delete topic:', err);
+      if (err?.status === 409 && err?.data?.error === 'topic_has_research_data') {
+        setResearchError('This topic already has research data, so CREAPD protected it from hard deletion. Archive support is the next migration step.');
+      } else {
+        setResearchError(err?.message || 'Topic could not be deleted.');
+      }
+    }
   };
 
   const firstName = userName || 'Producer';

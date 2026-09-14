@@ -3,6 +3,13 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { CREAPModeProvider } from '@/context/CREAPModeContext';
 import LivingEnvironment from '@/components/environment/LivingEnvironment';
 import AppErrorBoundary from '@/components/shared/AppErrorBoundary';
+import TalkLiveRestartControl from '@/components/talk/TalkLiveRestartControl';
+import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
+import TalkObsBridgeControl from '@/components/talk/TalkObsBridgeControl';
+import TalkObsRecordingControl from '@/components/talk/TalkObsRecordingControl';
+import TalkLiveDirectorControl from '@/components/talk/TalkLiveDirectorControl';
+import TalkAutoRundownAdvance from '@/components/talk/TalkAutoRundownAdvance';
+import TalkAutoGraphicSync from '@/components/talk/TalkAutoGraphicSync';
 
 /**
  * Thin layout route that wraps all authenticated pages in the CREAPModeProvider.
@@ -21,6 +28,13 @@ export default function CREAPModeLayout() {
       <AppErrorBoundary resetKey={location.pathname}>
         <LivingEnvironment />
         <Outlet />
+        <TalkLiveRestartControl />
+        <TalkProgramMonitor />
+        <TalkObsRecordingControl />
+        <TalkLiveDirectorControl />
+        <TalkAutoRundownAdvance />
+        <TalkAutoGraphicSync />
+        <TalkObsBridgeControl />
       </AppErrorBoundary>
     </CREAPModeProvider>
   );

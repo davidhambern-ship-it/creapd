@@ -1,12 +1,21 @@
 {
-  "rewrites": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/creapd/**/*.js": {
+      "maxDuration": 60
+    }
+  },
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "https://creapd.base44.app/api/:path*"
+      "handle": "filesystem"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/api/(.*)",
+      "dest": "https://creapd.base44.app/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }

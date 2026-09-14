@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +31,7 @@ const STEPS = [
 
 function safeParse(str, fallback) {
   if (!str) return fallback;
+  if (Array.isArray(str)) return str;
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
@@ -36,6 +39,7 @@ export default function TalkConfigure() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editConfigId = searchParams.get('config_id');
+  const ownedPreview = shouldUseNeonAuth();
 
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
@@ -62,14 +66,25 @@ export default function TalkConfigure() {
   });
 
   useEffect(() => {
-    if (editConfigId) {
-      base44.entities.TalkProductionConfiguration.get(editConfigId).then(c => {
-        if (c) {
-          setConfig({ ...c, status: 'configuring' });
-        }
-      }).catch(() => {});
+    if (!editConfigId) return;
+
+    if (ownedPreview) {
+      creapdApi.get(`/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`)
+        .then(data => {
+          if (data?.configuration) {
+            setConfig({ ...data.configuration, status: 'configuring' });
+          }
+        })
+        .catch(() => {});
+      return;
     }
-  }, [editConfigId]);
+
+    base44.entities.TalkProductionConfiguration.get(editConfigId).then(c => {
+      if (c) {
+        setConfig({ ...c, status: 'configuring' });
+      }
+    }).catch(() => {});
+  }, [editConfigId, ownedPreview]);
 
   const updateConfig = (field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -98,23 +113,42 @@ export default function TalkConfigure() {
     setBuildError('');
     try {
       let savedConfig;
-      if (editConfigId) {
-        savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
+
+      if (ownedPreview) {
+        const saveResult = await creapdApi.post('/talk/configuration', {
+          ...config,
+          ...(editConfigId ? { id: editConfigId } : {}),
+        });
+        savedConfig = saveResult?.configuration;
+        if (!savedConfig?.id) throw new Error('Talk configuration did not return an id.');
+
+        await creapdApi.post('/talk/production', {
+          action: 'build',
+          configuration_id: savedConfig.id,
+        });
       } else {
-        savedConfig = await base44.entities.TalkProductionConfiguration.create(config);
+        if (editConfigId) {
+          savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
+        } else {
+          savedConfig = await base44.entities.TalkProductionConfiguration.create(config);
+        }
+
+        await base44.auth.updateMe({
+          default_production_type: 'talk',
+          default_production_config_id: savedConfig.id
+        });
+        await base44.entities.TalkProductionConfiguration.update(savedConfig.id, { is_default: true });
+        await base44.functions.invoke('buildTalkProduction', { configuration_id: savedConfig.id });
       }
-
-      await base44.auth.updateMe({
-        default_production_type: 'talk',
-        default_production_config_id: savedConfig.id
-      });
-      await base44.entities.TalkProductionConfiguration.update(savedConfig.id, { is_default: true });
-
-      await base44.functions.invoke('buildTalkProduction', { configuration_id: savedConfig.id });
 
       navigate('/talk/dashboard');
     } catch (err) {
-      setBuildError(err.message || 'Failed to build production. Please try again.');
+      setBuildError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Failed to build production. Please try again.'
+      );
       setBuilding(false);
     }
   };
@@ -301,9 +335,9 @@ export default function TalkConfigure() {
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">Building Your Talk Production</h2>
-          <p className="text-muted-foreground mb-8">Producer is generating research, topics, talking points, rundown, and AI assets. This takes about 30-60 seconds.</p>
+          <p className="text-muted-foreground mb-8">Talk Studio is researching, verifying, stress-testing perspectives, and assembling the production. This usually takes under a minute.</p>
           <div className="space-y-3 text-left">
-            {['Researching topics', 'Generating talking points', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
+            {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating host-ready assets'].map((label, i) => (
               <div key={i} className="!flex items-center gap-3 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 <span className="text-muted-foreground">{label}...</span>

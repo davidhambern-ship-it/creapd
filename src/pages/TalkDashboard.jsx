@@ -1,49 +1,88 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Button } from '@/components/ui/button';
-import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
+import { formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import {
   Mic2, RefreshCw, Lightbulb, Users, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
   Calendar, Radio, ArrowRight, Building2, Search
 } from 'lucide-react';
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function buildFailureMessage(config) {
+  if (config?.status !== 'failed') return '';
+  const metadata = config?.build_metadata && typeof config.build_metadata === 'object'
+    ? config.build_metadata
+    : {};
+  return metadata.message || 'The last Talk production build did not complete. You can retry it safely.';
 }
 
 export default function TalkDashboard() {
+  const navigate = useNavigate();
+  const ownedPreview = shouldUseNeonAuth();
   const { config, topics, research, guests, segments, assets, loading, refresh } = useTalkProduction();
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
 
-  // Poll if building
   useEffect(() => {
-    if (config?.status === 'building') {
-      const interval = setInterval(async () => {
-        if (config?.id) {
-          const updated = await base44.entities.TalkProductionConfiguration.get(config.id);
-          if (updated && (updated.status === 'ready' || updated.status === 'failed')) {
-            clearInterval(interval);
-            refresh();
+    if (config?.status !== 'building' || !config?.id) return undefined;
+
+    let active = true;
+    const check = async () => {
+      try {
+        if (ownedPreview) {
+          const data = await creapdApi.get(`/talk/production?configuration_id=${encodeURIComponent(config.id)}`);
+          const updated = data?.configuration;
+          if (active && updated && ['ready', 'failed'].includes(updated.status)) {
+            await refresh();
           }
+          return;
         }
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [config?.status, config?.id, refresh]);
+
+        const updated = await base44.entities.TalkProductionConfiguration.get(config.id);
+        if (active && updated && ['ready', 'failed'].includes(updated.status)) {
+          await refresh();
+        }
+      } catch (err) {
+        console.error('Talk build status poll failed:', err);
+      }
+    };
+
+    const interval = setInterval(check, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [config?.status, config?.id, ownedPreview, refresh]);
 
   const handleRefresh = async () => {
     if (!config?.id) return;
     setRefreshing(true);
+    setRefreshError('');
     try {
-      await base44.entities.TalkProductionConfiguration.update(config.id, { status: 'building' });
-      await base44.functions.invoke('buildTalkProduction', { configuration_id: config.id });
-      refresh();
+      if (ownedPreview) {
+        await creapdApi.post('/talk/production', {
+          action: 'refresh',
+          configuration_id: config.id,
+        });
+      } else {
+        await base44.entities.TalkProductionConfiguration.update(config.id, { status: 'building' });
+        await base44.functions.invoke('buildTalkProduction', { configuration_id: config.id });
+      }
+      await refresh();
     } catch (err) {
       console.error(err);
+      setRefreshError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Talk production refresh failed.'
+      );
+      await refresh().catch(() => {});
     } finally {
       setRefreshing(false);
     }
@@ -65,9 +104,9 @@ export default function TalkDashboard() {
             <Mic2 className="w-8 h-8 text-primary" />
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">No Talk Production Found</h2>
-          <p className="text-muted-foreground mb-6">Configure your talk production to get started. Producer will build everything automatically.</p>
-          <Button asChild size="lg">
-            <Link to="/talk/configure">Configure Production</Link>
+          <p className="text-muted-foreground mb-6">Start with Show Setup. CREAPD will ask the production questions, build the research and production package, then guide you through reviewing it.</p>
+          <Button type="button" size="lg" onClick={() => navigate('/talk/configure')}>
+            Start Show Setup
           </Button>
         </div>
       </div>
@@ -82,9 +121,9 @@ export default function TalkDashboard() {
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">Building Your Talk Production</h2>
-          <p className="text-muted-foreground mb-8">Generating research, topics, talking points, rundown, and AI assets...</p>
+          <p className="text-muted-foreground mb-8">CREAPD is running checkpointed research, verification, and production assembly. Larger shows can take a couple of minutes.</p>
           <div className="space-y-3 text-left">
-            {['Researching topics', 'Generating talking points', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
+            {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating production assets'].map((label, i) => (
               <div key={i} className="!flex items-center gap-3 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 <span className="text-muted-foreground">{label}...</span>
@@ -96,8 +135,11 @@ export default function TalkDashboard() {
     );
   }
 
-  const aiAutomation = safeParse(config.ai_automation, []);
-  const topicsList = safeParse(config.topics, []);
+  const buildFailure = refreshError || buildFailureMessage(config);
+  const approvedTopics = topics.filter(topic => topic.status === 'approved').length;
+  const confirmedGuests = guests.filter(guest => guest.status === 'confirmed').length;
+  const approvedAssets = assets.filter(asset => asset.status === 'approved').length;
+  const livePath = `/talk/live?config_id=${encodeURIComponent(config.id)}`;
 
   const checklist = [
     { label: 'Configuration Saved', done: !!config.production_name },
@@ -117,7 +159,6 @@ export default function TalkDashboard() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
-      {/* Header */}
       <div className="!flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="!flex items-center gap-2 mb-1">
@@ -131,21 +172,50 @@ export default function TalkDashboard() {
             <span className="!flex items-center gap-1"><Mic2 className="w-3.5 h-3.5" /> {config.show_format}</span>
           </div>
         </div>
-        <div className="!flex items-center gap-2">
+        <div className="!flex flex-wrap items-center gap-2">
+          {config.status === 'ready' && segments.length > 0 && (
+            <Button size="sm" asChild>
+              <Link to={livePath}><Radio className="w-4 h-4 mr-1" /> Enter Studio</Link>
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 mr-1" />
-            Refresh
+            Rebuild
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link to={`/talk/configure?config_id=${config.id}`}>
               <Settings className="w-4 h-4 mr-1" />
-              Edit Config
+              Edit Setup
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Overview */}
+      {buildFailure && (
+        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm !flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Last build needs attention</p>
+            <p className="mt-1">{buildFailure}</p>
+          </div>
+        </div>
+      )}
+
+      <TalkProducerGuide
+        currentStep="research"
+        title="CREAPD built the production. Now review it in order."
+        instructions={[
+          'Start with Research so you know what CREAPD found and verified.',
+          'Choose the Discussion Topics you actually want, then set up any real guests or panelists.',
+          'Review the Rundown and AI Assets before the final Export checkpoint and CREAPD Live.',
+        ]}
+        readyText={`${research.length} research · ${approvedTopics}/${topics.length} topics approved · ${confirmedGuests} guests confirmed · ${approvedAssets}/${assets.length} assets approved`}
+        nextPath="/talk/research"
+        nextLabel="Start Guided Review"
+        nextDescription="You can jump around if you need to, but following the guide keeps the production decisions in the right order."
+        note="Rebuild only when you want CREAPD to regenerate the production. Reviewing or approving existing material does not require a rebuild."
+      />
+
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <div className="glass-panel p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Runtime</p>
@@ -168,28 +238,29 @@ export default function TalkDashboard() {
           <p className="text-sm font-medium">{guests.length} listed</p>
         </div>
         <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Readiness</p>
+          <p className="text-xs text-muted-foreground mb-1">Generated</p>
           <p className="text-lg font-heading font-bold text-emerald-400">{readinessPercent}%</p>
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="!flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={handleRefresh}><RefreshCw className="w-4 h-4 mr-1" /> Refresh Production</Button>
+        <Button size="sm" variant="outline" onClick={handleRefresh}><RefreshCw className="w-4 h-4 mr-1" /> Rebuild Production</Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/research"><Search className="w-4 h-4 mr-1" /> Research</Link></Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/topics"><Lightbulb className="w-4 h-4 mr-1" /> Topics</Link></Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/guests"><Users className="w-4 h-4 mr-1" /> Guests</Link></Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/rundown"><ClipboardList className="w-4 h-4 mr-1" /> Show Rundown</Link></Button>
         <Button size="sm" variant="outline" asChild><Link to="/talk/assets"><Sparkles className="w-4 h-4 mr-1" /> AI Assets</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/export"><Download className="w-4 h-4 mr-1" /> Export</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/talk/export"><Download className="w-4 h-4 mr-1" /> Finish & Launch</Link></Button>
+        {config.status === 'ready' && segments.length > 0 && (
+          <Button size="sm" asChild><Link to={livePath}><Radio className="w-4 h-4 mr-1" /> CREAPD Live</Link></Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Topics Widget */}
         <div className="glass-panel p-5">
           <div className="!flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold !flex items-center gap-2"><Lightbulb className="w-4 h-4 text-primary" /> Discussion Topics</h3>
-            <Link to="/talk/topics" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/talk/topics" className="text-xs text-primary hover:underline">Review</Link>
           </div>
           {topics.length > 0 ? (
             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -206,15 +277,14 @@ export default function TalkDashboard() {
               ))}
             </div>
           ) : (
-            <EmptyState message="No topics generated yet." actionLabel="Generate" onAction={handleRefresh} />
+            <EmptyState message="No topics generated yet." actionLabel="Rebuild" onAction={handleRefresh} />
           )}
         </div>
 
-        {/* Research Widget */}
         <div className="glass-panel p-5">
           <div className="!flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold !flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Research Updates</h3>
-            <Link to="/talk/research" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/talk/research" className="text-xs text-primary hover:underline">Review</Link>
           </div>
           {research.length > 0 ? (
             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -229,15 +299,14 @@ export default function TalkDashboard() {
               ))}
             </div>
           ) : (
-            <EmptyState message="No research has been generated yet." onAction={handleRefresh} actionLabel="Refresh" />
+            <EmptyState message="No research has been generated yet." onAction={handleRefresh} actionLabel="Rebuild" />
           )}
         </div>
 
-        {/* Show Rundown Preview */}
         <div className="glass-panel p-5">
           <div className="!flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold !flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Show Rundown Preview</h3>
-            <Link to="/talk/rundown" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/talk/rundown" className="text-xs text-primary hover:underline">Review</Link>
           </div>
           {segments.length > 0 ? (
             <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -251,46 +320,45 @@ export default function TalkDashboard() {
                 </div>
               ))}
               <Button size="sm" variant="ghost" asChild className="w-full mt-2">
-                <Link to="/talk/rundown">Open Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link>
+                <Link to="/talk/rundown">Review Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link>
               </Button>
             </div>
           ) : (
-            <EmptyState message="No show rundown has been generated yet." onAction={handleRefresh} actionLabel="Generate" />
+            <EmptyState message="No show rundown has been generated yet." onAction={handleRefresh} actionLabel="Rebuild" />
           )}
         </div>
 
-        {/* AI Assets Widget */}
         <div className="glass-panel p-5">
           <div className="!flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold !flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> AI Generated Assets</h3>
-            <Link to="/talk/assets" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/talk/assets" className="text-xs text-primary hover:underline">Review</Link>
           </div>
           {assets.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
               {assets.slice(0, 8).map(asset => (
                 <div key={asset.id} className="text-xs py-1.5 px-2 rounded bg-white/5 !flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <CheckCircle2 className={`w-3 h-3 ${asset.status === 'approved' ? 'text-emerald-400' : 'text-muted-foreground'}`} />
                   <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
                 </div>
               ))}
               <Button size="sm" variant="ghost" asChild className="col-span-2 mt-1">
-                <Link to="/talk/assets">View All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link>
+                <Link to="/talk/assets">Review All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link>
               </Button>
             </div>
           ) : (
-            <EmptyState message="No AI assets have been generated yet." onAction={handleRefresh} actionLabel="Generate" />
+            <EmptyState message="No AI assets have been generated yet." onAction={handleRefresh} actionLabel="Rebuild" />
           )}
         </div>
       </div>
 
-      {/* Production Checklist */}
       <div className="glass-panel p-5">
-        <h3 className="font-heading font-semibold mb-4">Production Checklist</h3>
+        <h3 className="font-heading font-semibold mb-1">Generation Checklist</h3>
+        <p className="text-xs text-muted-foreground mb-4">This confirms CREAPD generated the production pieces. The Producer Guide above tracks the human review decisions.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {checklist.map((item, i) => (
             <div key={i} className="!flex items-center gap-2 text-sm">
               {item.done ? (
-                <CheckCircle2 className="w-!4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
               ) : (
                 <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
               )}

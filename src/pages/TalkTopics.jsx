@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
+import { creapdApi } from '@/api/creapdClient';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Loader2, Mic2, Lightbulb, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 
 export default function TalkTopics() {
-  const { config, topics, loading, refresh } = useTalkProduction();
+  const { config, topics, loading, refresh, source } = useTalkProduction();
   const [expanded, setExpanded] = useState(null);
 
   if (loading) {
@@ -29,9 +30,19 @@ export default function TalkTopics() {
 
   const toggleApproved = async (topic) => {
     const newStatus = topic.status === 'approved' ? 'ready' : 'approved';
-    await base44.entities.TalkTopic.update(topic.id, { status: newStatus });
+    if (source === 'neon') {
+      await creapdApi.post('/talk/production', {
+        action: 'set_topic_status',
+        topic_id: topic.id,
+        status: newStatus,
+      });
+    } else {
+      await base44.entities.TalkTopic.update(topic.id, { status: newStatus });
+    }
     refresh();
   };
+
+  const approvedCount = topics.filter(topic => topic.status === 'approved').length;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -40,8 +51,23 @@ export default function TalkTopics() {
           <Lightbulb className="w-5 h-5 text-primary" />
           Discussion Topics
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Topics with summaries, talking points, and placement suggestions</p>
+        <p className="text-sm text-muted-foreground mt-1">Topics with summaries, talking points, verification, and counter-perspectives</p>
       </div>
+
+      <TalkProducerGuide
+        currentStep="topics"
+        title="Choose the topics that actually make the show"
+        instructions={[
+          'Open More on any topic to inspect talking points, verification notes, counter-perspectives, and debate questions.',
+          'Approve the topics you want CREAPD to treat as part of the final show. Leave anything you do not want unapproved.',
+          'When your topic lineup feels right, move on to Guests. For panel or interview formats, this is where you set the people CREAPD should plan around.',
+        ]}
+        readyText={`${approvedCount} of ${topics.length} topic${topics.length === 1 ? '' : 's'} approved`}
+        nextPath="/talk/guests"
+        nextLabel="Set Up Guests"
+        nextDescription="Guests can be confirmed, added manually, or skipped when your format does not need them."
+        note="You do not have to approve every generated topic. Approval means: use this in my production."
+      />
 
       {topics.length === 0 ? (
         <div className="glass-panel p-8 text-center">
@@ -54,10 +80,20 @@ export default function TalkTopics() {
             const isExpanded = expanded === topic.id;
             const summary = topic.generated_summary || '';
             const isLong = summary.length > 150;
+            const counterPerspectives = Array.isArray(topic.counter_perspectives) ? topic.counter_perspectives : [];
+            const debateQuestions = Array.isArray(topic.debate_questions) ? topic.debate_questions : [];
             return (
               <div key={topic.id} className="glass-panel p-4">
                 <div className="!flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-medium">{topic.topic_name}</h3>
+                  <div>
+                    <h3 className="font-medium">{topic.topic_name}</h3>
+                    {topic.verification_status && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Verification: <span className="capitalize">{topic.verification_status}</span>
+                        {Number(topic.confidence_score) > 0 ? ` · ${Math.round(Number(topic.confidence_score))}% confidence` : ''}
+                      </p>
+                    )}
+                  </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
                     topic.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' :
                     'bg-primary/15 text-primary'
@@ -70,12 +106,38 @@ export default function TalkTopics() {
                     {isExpanded || !isLong ? summary : summary.substring(0, 150) + '...'}
                   </p>
                 )}
-                {isExpanded && topic.talking_points && (
-                  <div className="mt-3 p-3 rounded-lg bg-secondary/30">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
-                    <p className="text-sm whitespace-pre-line">{topic.talking_points}</p>
+                {isExpanded && (
+                  <div className="mt-3 space-y-3">
+                    {topic.talking_points && (
+                      <div className="p-3 rounded-lg bg-secondary/30">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Talking Points</p>
+                        <p className="text-sm whitespace-pre-line">{topic.talking_points}</p>
+                      </div>
+                    )}
+                    {topic.verification_notes && (
+                      <div className="p-3 rounded-lg bg-secondary/30">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Verification Notes</p>
+                        <p className="text-sm whitespace-pre-line">{topic.verification_notes}</p>
+                      </div>
+                    )}
+                    {counterPerspectives.length > 0 && (
+                      <div className="p-3 rounded-lg bg-secondary/30">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Counter-Perspectives</p>
+                        <ul className="space-y-1 text-sm list-disc pl-4">
+                          {counterPerspectives.map((item, index) => <li key={index}>{item}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {debateQuestions.length > 0 && (
+                      <div className="p-3 rounded-lg bg-secondary/30">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Debate Questions</p>
+                        <ul className="space-y-1 text-sm list-disc pl-4">
+                          {debateQuestions.map((item, index) => <li key={index}>{item}</li>)}
+                        </ul>
+                      </div>
+                    )}
                     {topic.sources && (
-                      <p className="text-xs text-muted-foreground mt-2"><span className="font-semibold">Sources:</span> {topic.sources}</p>
+                      <p className="text-xs text-muted-foreground"><span className="font-semibold">Sources:</span> {topic.sources}</p>
                     )}
                   </div>
                 )}
@@ -84,7 +146,7 @@ export default function TalkTopics() {
                     <span className="text-xs text-muted-foreground">{topic.suggested_placement}</span>
                   )}
                   <div className="!flex items-center gap-1 ml-auto">
-                    {isLong && (
+                    {(isLong || topic.talking_points || topic.verification_notes || counterPerspectives.length > 0 || debateQuestions.length > 0) && (
                       <button
                         onClick={() => setExpanded(isExpanded ? null : topic.id)}
                         className="text-xs text-primary hover:underline !flex items-center gap-0.5"
