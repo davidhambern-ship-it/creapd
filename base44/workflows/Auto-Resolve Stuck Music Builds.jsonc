@@ -1,0 +1,44 @@
+{
+  "name": "Auto-Resolve Stuck Music Builds",
+  "description": "Detects music production builds stuck in building/planning/refreshing status for 10+ minutes and auto-resolves them: marks ready if content exists, re-invokes build if partially complete, or marks failed if unrecoverable.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 5,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-07-11T22:42:28.684000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_resolve_stuck_music_builds",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "autoResolveStuckBuilds",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "autoResolveStuckBuilds"
+  }
+}

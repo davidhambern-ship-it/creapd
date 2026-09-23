@@ -1,0 +1,46 @@
+{
+  "name": "Queued Import Auto-Executor",
+  "description": "Every 15 minutes: picks up Queued import jobs and executes them through the handler-selected import pipeline. Calls runSMCImport with mode=auto_execute. Also recovers jobs stuck in Running state for >5 min.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/15 * * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "queued_import_auto_executor",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "runSMCImport",
+            "args": {
+              "mode": "auto_execute"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "runSMCImport"
+  }
+}

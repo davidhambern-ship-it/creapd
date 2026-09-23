@@ -1,0 +1,37 @@
+{
+  "name": "Auto Transcribe Video Articles",
+  "description": "When an article is classified as video content, automatically transcribe and summarize it",
+  "trigger": {
+    "condition": "${ ((.trigger.changed_fields | index(\"content_type\") != null) and (.trigger.data.content_type == \"video\")) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "Article"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_transcribe_video_articles",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processVideoArticle",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "processVideoArticle"
+  }
+}
