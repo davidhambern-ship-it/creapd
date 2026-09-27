@@ -30,7 +30,8 @@ export default function TalkLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.talk.vars}>
+    <div className="talk-studio-shell relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.talk.vars}>
+      <div className="talk-studio-backdrop" aria-hidden="true" />
       <EnvironmentLayer profileKey="talk" />
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
       <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
@@ -50,7 +51,7 @@ export default function TalkLayout() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+        <main className="talk-studio-main relative flex-1 overflow-y-auto pb-16 lg:pb-0">
           <MobilePageShell>
             <Outlet />
           </MobilePageShell>
