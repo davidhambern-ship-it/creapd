@@ -24,8 +24,8 @@ function buildFailureMessage(config) {
 
 function StudioPanel({ className = '', icon: Icon, title, path, children, actionLabel = 'Open' }) {
   return (
-    <section className={`overflow-hidden rounded-2xl border border-white/10 bg-black/65 backdrop-blur-xl shadow-2xl ${className}`}>
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-r from-orange-500/10 via-purple-500/10 to-transparent px-3 py-2.5">
+    <section className={`overflow-hidden rounded-xl border border-white/10 bg-black/38 backdrop-blur-sm shadow-xl transition hover:bg-black/48 ${className}`}>
+      <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/15 px-2.5 py-2">
         <div className="flex items-center gap-2 min-w-0">
           {Icon && <Icon className="w-4 h-4 text-orange-300 shrink-0" />}
           <h3 className="font-heading font-semibold text-sm text-white truncate">{title}</h3>
@@ -37,7 +37,7 @@ function StudioPanel({ className = '', icon: Icon, title, path, children, action
           </Link>
         )}
       </div>
-      <div className="px-3 py-2.5">{children}</div>
+      <div className="px-2.5 py-2">{children}</div>
     </section>
   );
 }
@@ -163,8 +163,8 @@ export default function TalkDashboard() {
   const readinessPercent = Math.round((checklist.filter(Boolean).length / checklist.length) * 100);
 
   return (
-    <div className="relative min-h-[820px] p-4 max-xl:grid max-xl:min-h-0 max-xl:grid-cols-2 max-xl:gap-4 max-md:grid-cols-1">
-      <div className="xl:absolute xl:z-20 xl:top-4 xl:left-1/2 xl:w-[44%] xl:-translate-x-1/2 max-xl:col-span-2 max-md:col-span-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/70 px-3 py-2.5 backdrop-blur-xl shadow-2xl">
+    <div className="relative h-[calc(100vh-150px)] min-h-[560px] max-h-[760px] overflow-hidden p-3 max-xl:grid max-xl:h-auto max-xl:max-h-none max-xl:min-h-0 max-xl:grid-cols-2 max-xl:gap-3 max-md:grid-cols-1">
+      <div className="xl:absolute xl:z-20 xl:top-2 xl:left-1/2 xl:w-[34%] xl:-translate-x-1/2 max-xl:col-span-2 max-md:col-span-1 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/45 px-3 py-2 backdrop-blur-md shadow-xl">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Mic2 className="w-4 h-4 text-orange-300" />
@@ -192,33 +192,33 @@ export default function TalkDashboard() {
       </div>
 
       {buildFailure && (
-        <div className="xl:absolute xl:z-30 xl:top-[86px] xl:left-1/2 xl:w-[56%] xl:-translate-x-1/2 max-xl:col-span-2 max-md:col-span-1 flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-950/80 px-3 py-2.5 text-xs text-red-200 backdrop-blur-xl">
+        <div className="xl:absolute xl:z-30 xl:top-[58px] xl:left-1/2 xl:w-[34%] xl:-translate-x-1/2 max-xl:col-span-2 max-md:col-span-1 flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-950/55 px-2.5 py-2 text-[10px] text-red-100 backdrop-blur-md">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{buildFailure}</span>
+          <span>{buildFailure.includes('Free tier users do not have access to this model') ? 'AI build unavailable on the current free model tier. Dashboard access is unaffected.' : buildFailure}</span>
         </div>
       )}
 
-      <div className="xl:absolute xl:top-[8%] xl:left-[1.5%] xl:w-[29%] max-xl:col-span-2 max-md:col-span-1">
+      <div className="xl:absolute xl:top-[5%] xl:left-[1.1%] xl:w-[23%] max-xl:col-span-2 max-md:col-span-1">
         <TalkProducerGuide
           variant="screen"
           currentStep="research"
-          title="CREAPD built the production. Now review it in order."
+          title="Review the show."
           instructions={[
-            'Start with Research so you know what CREAPD found and verified.',
-            'Choose the Discussion Topics you actually want, then confirm your guests.',
-            'Review the Rundown and AI Assets before Export and CREAPD Live.',
+            'Research first.',
+            'Approve topics and confirm guests.',
+            'Check Rundown and AI Assets, then Export.',
           ]}
           readyText={`${research.length} research · ${approvedTopics}/${topics.length} topics · ${confirmedGuests} guests · ${approvedAssets}/${assets.length} assets`}
           nextPath="/talk/research"
-          nextLabel="Start Guided Review"
+          nextLabel="Open Research"
         />
       </div>
 
-      <StudioPanel className="xl:absolute xl:top-[30%] xl:left-[24.5%] xl:w-[22%]" icon={Lightbulb} title="Discussion Topics" path="/talk/topics" actionLabel="Review">
+      <StudioPanel className="xl:absolute xl:top-[30%] xl:left-[24%] xl:w-[20%]" icon={Lightbulb} title="Discussion Topics" path="/talk/topics" actionLabel="Review">
         {topics.length > 0 ? (
           <div className="space-y-1.5">
             {topics.slice(0, 4).map(topic => (
-              <div key={topic.id} className="flex min-h-6 items-center gap-2 text-[10px] text-white/75">
+              <div key={topic.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
                 <span className="truncate">{topic.topic_name}</span>
                 <span className={topic.status === 'approved' ? 'text-emerald-300' : 'text-white/35'}>{topic.status}</span>
               </div>
@@ -229,22 +229,7 @@ export default function TalkDashboard() {
         )}
       </StudioPanel>
 
-      <StudioPanel className="xl:absolute xl:top-[14%] xl:right-[2%] xl:w-[24%]" icon={TrendingUp} title="Research Feed" path="/talk/research" actionLabel="Open">
-        {research.length > 0 ? (
-          <div className="space-y-1.5">
-            {research.slice(0, 4).map(item => (
-              <div key={item.id} className="flex min-h-6 items-center gap-2 text-[10px] text-white/75">
-                <span className="truncate">{item.title}</span>
-                <span className="text-white/30">{item.relevance || ''}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-white/45">No research generated yet.</p>
-        )}
-      </StudioPanel>
-
-      <StudioPanel className="xl:absolute xl:top-[52%] xl:left-[17%] xl:w-[21%]" icon={Users} title="Guest Chair" path="/talk/guests" actionLabel="Manage">
+      <StudioPanel className="xl:absolute xl:top-[56%] xl:left-[19%] xl:w-[18%]" icon={Users} title="Guest Chair" path="/talk/guests" actionLabel="Manage">
         {guests.length > 0 ? (
           <div className="space-y-1.5">
             {guests.slice(0, 3).map(guest => (
@@ -260,8 +245,8 @@ export default function TalkDashboard() {
         )}
       </StudioPanel>
 
-      <section className="xl:absolute xl:top-[43%] xl:left-[39%] xl:w-[28%] max-xl:col-span-2 max-md:col-span-1 grid grid-cols-3 max-md:grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/55 p-2.5 backdrop-blur-xl shadow-2xl">
-        <div className="min-h-14 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+      <section className="xl:absolute xl:top-[53%] xl:left-[38.5%] xl:w-[28%] max-xl:col-span-2 max-md:col-span-1 grid grid-cols-3 max-md:grid-cols-2 gap-1.5 rounded-xl border border-white/10 bg-black/32 p-2 backdrop-blur-sm shadow-lg">
+        <div className="min-h-12 rounded-lg border border-white/10 bg-black/15 p-1.5">
           <span className="block text-[9px] text-white/40">Total Runtime</span>
           <strong className="mt-1 block text-[11px] text-white/90">{formatMinutes(config.total_show_runtime)}</strong>
         </div>
@@ -287,7 +272,7 @@ export default function TalkDashboard() {
         </div>
       </section>
 
-      <StudioPanel className="xl:absolute xl:bottom-[5%] xl:left-[1.5%] xl:w-[29%]" icon={ClipboardList} title="Show Rundown" path="/talk/rundown" actionLabel="Review">
+      <StudioPanel className="xl:absolute xl:bottom-[3%] xl:left-[1.5%] xl:w-[22%]" icon={ClipboardList} title="Show Rundown" path="/talk/rundown" actionLabel="Review">
         {segments.length > 0 ? (
           <div className="space-y-1">
             {segments.slice(0, 5).map(item => (
@@ -303,7 +288,7 @@ export default function TalkDashboard() {
         )}
       </StudioPanel>
 
-      <StudioPanel className="xl:absolute xl:bottom-[5%] xl:right-[1.5%] xl:w-[29%]" icon={Sparkles} title="AI Assets" path="/talk/assets" actionLabel="Review">
+      <StudioPanel className="xl:absolute xl:bottom-[3%] xl:right-[1.5%] xl:w-[22%]" icon={Sparkles} title="AI Assets" path="/talk/assets" actionLabel="Review">
         {assets.length > 0 ? (
           <div className="grid grid-cols-2 gap-1.5">
             {assets.slice(0, 6).map(asset => (
@@ -318,7 +303,7 @@ export default function TalkDashboard() {
         )}
       </StudioPanel>
 
-      <section className="xl:absolute xl:bottom-[4.5%] xl:left-[39%] xl:w-[22%] max-xl:col-span-2 max-md:col-span-1 flex min-h-16 items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-orange-500/10 via-purple-500/10 to-pink-500/10 px-3 py-2.5 backdrop-blur-xl shadow-2xl">
+      <section className="xl:absolute xl:bottom-[2.5%] xl:left-1/2 xl:w-[18%] xl:-translate-x-1/2 max-xl:col-span-2 max-md:col-span-1 flex min-h-14 items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2 backdrop-blur-sm shadow-lg">
         <Download className="w-5 h-5 text-orange-300" />
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">Final Desk</p>
