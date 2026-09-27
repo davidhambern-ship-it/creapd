@@ -468,6 +468,15 @@ function Refresh-CreapdSceneSources([bool]$Force = $false) {
     $list = Invoke-ObsRequest 'GetSceneItemList' @{ sceneName = $script:CurrentScene }
     $items = @()
     foreach ($item in @($list.sceneItems)) {
+      $transform = $null
+      try {
+        $transformResult = Invoke-ObsRequest 'GetSceneItemTransform' @{
+          sceneName = $script:CurrentScene
+          sceneItemId = [int]$item.sceneItemId
+        }
+        $transform = $transformResult.sceneItemTransform
+      } catch {}
+
       $items += @{
         name = [string]$item.sourceName
         id = [int]$item.sceneItemId
@@ -475,6 +484,24 @@ function Refresh-CreapdSceneSources([bool]$Force = $false) {
         enabled = [bool]$item.sceneItemEnabled
         kind = [string]$item.inputKind
         source_type = [string]$item.sourceType
+        transform = $(if ($transform) {
+          @{
+            position_x = [double]$transform.positionX
+            position_y = [double]$transform.positionY
+            scale_x = [double]$transform.scaleX
+            scale_y = [double]$transform.scaleY
+            rotation = [double]$transform.rotation
+            width = [double]$transform.width
+            height = [double]$transform.height
+            source_width = [double]$transform.sourceWidth
+            source_height = [double]$transform.sourceHeight
+            crop_left = [int]$transform.cropLeft
+            crop_top = [int]$transform.cropTop
+            crop_right = [int]$transform.cropRight
+            crop_bottom = [int]$transform.cropBottom
+            alignment = [int]$transform.alignment
+          }
+        } else { $null })
       }
     }
     $script:SceneSources = $items
@@ -749,7 +776,7 @@ function Run-CreapdCommand($Command) {
 
 Write-Host "CREAPD: $($script:CreapdUrl)" -ForegroundColor DarkGray
 Write-Host "OBS:    $($script:ObsUrl)" -ForegroundColor DarkGray
-Write-Host "Bridge: 2026.09.27-director-tools" -ForegroundColor DarkGray
+Write-Host "Bridge: 2026.09.27-direct-layout" -ForegroundColor DarkGray
 Write-Host "Press Ctrl+C to stop the bridge." -ForegroundColor DarkGray
 Write-Host ""
 
@@ -774,6 +801,9 @@ while ($true) {
         scene_create_control = $true
         source_control = $true
         source_transform_control = $true
+        direct_layout_editor = $true
+        canvas_width = $script:VideoWidth
+        canvas_height = $script:VideoHeight
         scene_source_scene = $script:CurrentScene
         scene_sources = $script:SceneSources
         source_types = @('image','media','text','browser','camera','audio_input','display_capture','window_capture')
@@ -793,7 +823,7 @@ while ($true) {
         overlay_input_name = $script:OverlayInputName
         protocol = 'obs-websocket-v5'
         bridge = 'powershell'
-        bridge_version = '2026.09.27-director-tools'
+        bridge_version = '2026.09.27-direct-layout'
       }
       last_error = $null
     }
