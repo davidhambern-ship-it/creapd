@@ -23,6 +23,27 @@ function fileStem(filename) {
   return String(filename || '').replace(/\.[^.]+$/, '').trim();
 }
 
+function mediaContentType(file, sourceType) {
+  if (file?.type) return file.type;
+  const extension = String(file?.name || '').toLowerCase().split('.').pop();
+  const map = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    svg: 'image/svg+xml',
+    avif: 'image/avif',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+    m4v: 'video/x-m4v',
+    mpeg: 'video/mpeg',
+    mpg: 'video/mpeg',
+  };
+  return map[extension] || (sourceType === 'image' ? 'image/png' : 'video/mp4');
+}
+
 export default function TalkLiveObsBuilder({
   bridge, connected, currentScene, scenes, enqueue, loadState, busy, setBusy, setError, setNotice,
 }) {
@@ -96,10 +117,11 @@ export default function TalkLiveObsBuilder({
   };
 
   const uploadDirectorMedia = async file => {
+    const contentType = mediaContentType(file, sourceType);
     const authorization = await creapdApi.post('/production/obs-upload', {
       action: 'authorize',
       filename: file.name,
-      content_type: file.type,
+      content_type: contentType,
       byte_size: file.size,
     });
 
@@ -111,7 +133,7 @@ export default function TalkLiveObsBuilder({
       access: 'public',
       handleUploadUrl: '/api/creapd/production/obs-upload',
       clientPayload: JSON.stringify({ ticket: authorization.upload_ticket }),
-      contentType: file.type,
+      contentType,
       multipart: file.size > 8 * 1024 * 1024,
     });
 
@@ -200,8 +222,9 @@ export default function TalkLiveObsBuilder({
     event.target.value = '';
     if (!file) return;
 
-    const imageSelected = sourceType === 'image' && file.type.startsWith('image/');
-    const videoSelected = sourceType === 'media' && file.type.startsWith('video/');
+    const detectedType = mediaContentType(file, sourceType);
+    const imageSelected = sourceType === 'image' && detectedType.startsWith('image/');
+    const videoSelected = sourceType === 'media' && detectedType.startsWith('video/');
     if (!imageSelected && !videoSelected) {
       setError(sourceType === 'image' ? 'Choose an image file.' : 'Choose a video file.');
       return;
