@@ -96,7 +96,8 @@ export default function TalkLiveObsBuilder({
   if (!supportsSourceControl) return (
     <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.07] p-3 text-xs">
       <p className="font-semibold text-amber-200">Bridge update required.</p>
-      <p className="text-muted-foreground mt-1">The Director panel is ready, but the bridge currently running on this computer predates scene/source editing. Download the latest bridge from CREAPD Live and restart it once.</p>
+      <p className="text-muted-foreground mt-1">The Director panel is ready, but the bridge currently running on this computer predates scene/source editing. Download the latest bridge and restart it once.</p>
+      <a href="/creapd-obs-bridge.ps1" download className="mt-3 inline-flex h-8 items-center rounded-md border border-amber-400/25 bg-amber-500/10 px-3 text-[11px] font-semibold text-amber-100 hover:bg-amber-500/15">Download Updated Bridge</a>
     </div>
   );
 
