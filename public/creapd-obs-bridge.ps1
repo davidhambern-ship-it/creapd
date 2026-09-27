@@ -38,6 +38,7 @@ $script:ObsWebSocketVersion = $null
 $script:CurrentScene = $null
 $script:SceneNames = @()
 $script:SceneSources = @()
+$script:DirectEditMode = $false
 $script:LastSceneRefresh = [DateTime]::MinValue
 $script:LastSourceRefresh = [DateTime]::MinValue
 $script:RecordingActive = $false
@@ -536,6 +537,11 @@ function Invoke-CreapdDirectorCommand($Command) {
   $p = $Command.payload
 
   switch ($type) {
+    'set_direct_edit_mode' {
+      $script:DirectEditMode = [bool]$p.enabled
+      return @{ handled = $true; result = @{ direct_edit_mode = $script:DirectEditMode } }
+    }
+
     'create_scene' {
       $name = [string]$p.scene_name
       if ([string]::IsNullOrWhiteSpace($name)) { throw 'Scene name is required.' }
@@ -644,6 +650,7 @@ function Invoke-CreapdDirectorCommand($Command) {
       if ($null -ne $p.crop_top) { $t.cropTop = [int]$p.crop_top }
       if ($null -ne $p.crop_bottom) { $t.cropBottom = [int]$p.crop_bottom }
       Invoke-ObsRequest 'SetSceneItemTransform' @{ sceneName = $scene; sceneItemId = [int]$item.sceneItemId; sceneItemTransform = $t } | Out-Null
+      Refresh-CreapdSceneSources $true
       return @{ handled = $true; result = @{ source_name = [string]$p.source_name; transform = $t } }
     }
 
@@ -776,7 +783,7 @@ function Run-CreapdCommand($Command) {
 
 Write-Host "CREAPD: $($script:CreapdUrl)" -ForegroundColor DarkGray
 Write-Host "OBS:    $($script:ObsUrl)" -ForegroundColor DarkGray
-Write-Host "Bridge: 2026.09.27-direct-layout" -ForegroundColor DarkGray
+Write-Host "Bridge: 2026.09.27-direct-drag" -ForegroundColor DarkGray
 Write-Host "Press Ctrl+C to stop the bridge." -ForegroundColor DarkGray
 Write-Host ""
 
@@ -823,7 +830,7 @@ while ($true) {
         overlay_input_name = $script:OverlayInputName
         protocol = 'obs-websocket-v5'
         bridge = 'powershell'
-        bridge_version = '2026.09.27-direct-layout'
+        bridge_version = '2026.09.27-direct-drag'
       }
       last_error = $null
     }
@@ -834,7 +841,7 @@ while ($true) {
 
     if ($poll.next_poll_ms) {
       try {
-        $script:NextPollMs = [Math]::Max(3000, [Math]::Min(15000, [int]$poll.next_poll_ms))
+        $script:NextPollMs = [Math]::Max(500, [Math]::Min(15000, [int]$poll.next_poll_ms))
       } catch {
         $script:NextPollMs = 5000
       }
