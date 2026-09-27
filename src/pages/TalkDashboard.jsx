@@ -559,7 +559,6 @@ export default function TalkDashboard() {
             </div>
           </section>
         </div>
-        </section>
       </div>
 
       <Dialog open={!!activePanel} onOpenChange={(open) => !open && setActivePanel(null)}>
