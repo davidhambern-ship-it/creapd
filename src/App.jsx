@@ -267,16 +267,26 @@ const AuthenticatedApp = () => {
           <Route path="/sports/export" element={<SportsExport />} />
         </Route>
 
-        {/* Cosmo Production */}
+        {/* Beauty Production — legacy Cosmo internals retained during backend migration */}
         <Route element={<CosmoLayout />}>
-          <Route path="/cosmo/configure" element={<CosmoConfigure />} />
-          <Route path="/cosmo/dashboard" element={<CosmoDashboard />} />
-          <Route path="/cosmo/research" element={<CosmoResearch />} />
-          <Route path="/cosmo/topics" element={<CosmoTopics />} />
-          <Route path="/cosmo/guests" element={<CosmoGuests />} />
-          <Route path="/cosmo/rundown" element={<CosmoRundown />} />
-          <Route path="/cosmo/assets" element={<CosmoAssets />} />
-          <Route path="/cosmo/export" element={<CosmoExport />} />
+          <Route path="/beauty/configure" element={<CosmoConfigure />} />
+          <Route path="/beauty/dashboard" element={<CosmoDashboard />} />
+          <Route path="/beauty/research" element={<CosmoResearch />} />
+          <Route path="/beauty/topics" element={<CosmoTopics />} />
+          <Route path="/beauty/guests" element={<CosmoGuests />} />
+          <Route path="/beauty/rundown" element={<CosmoRundown />} />
+          <Route path="/beauty/assets" element={<CosmoAssets />} />
+          <Route path="/beauty/export" element={<CosmoExport />} />
+
+          {/* Legacy Cosmo URLs redirect to the renamed Beauty Production Profile. */}
+          <Route path="/cosmo/configure" element={<Navigate to="/beauty/configure" replace />} />
+          <Route path="/cosmo/dashboard" element={<Navigate to="/beauty/dashboard" replace />} />
+          <Route path="/cosmo/research" element={<Navigate to="/beauty/research" replace />} />
+          <Route path="/cosmo/topics" element={<Navigate to="/beauty/topics" replace />} />
+          <Route path="/cosmo/guests" element={<Navigate to="/beauty/guests" replace />} />
+          <Route path="/cosmo/rundown" element={<Navigate to="/beauty/rundown" replace />} />
+          <Route path="/cosmo/assets" element={<Navigate to="/beauty/assets" replace />} />
+          <Route path="/cosmo/export" element={<Navigate to="/beauty/export" replace />} />
         </Route>
 
         {/* Research Production Profile */}
