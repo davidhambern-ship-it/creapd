@@ -98,7 +98,7 @@ export default function TalkDashboard() {
   }
 
   if (!config) {
-    return <TalkConfigure embedded />;
+    return <TalkConfigure embedded onBuilt={refresh} />;
   }
 
   if (config.status === 'building' || refreshing) {
