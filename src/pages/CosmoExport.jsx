@@ -59,7 +59,7 @@ export default function CosmoExport() {
     <div className="p-6 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Download className="w-5 h-5 text-primary" /> Export</h1>
-        <p className="text-sm text-muted-foreground mt-1">Export your complete health & beauty production package</p>
+        <p className="text-sm text-muted-foreground mt-1">Export your complete cosmetology and beauty production package</p>
       </div>
 
       <div className="glass-panel p-5">
