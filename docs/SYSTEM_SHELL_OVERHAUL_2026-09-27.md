@@ -151,6 +151,7 @@ The next design work should focus on:
 
 - News
 - Talk
+- Cooking
 - Cosmo
 - Sports
 - Spiritual
@@ -166,7 +167,7 @@ Examples of decisions to make per profile:
 - Which destinations are primary vs. secondary?
 - Which global CREAPD tools should be accessed through a utility menu rather than local navigation?
 
-Cooking is intentionally not assigned to this theme-pass group yet and should be reviewed separately before changing its shell.
+Cooking is part of this theme-pass group and should be audited alongside the other standard Production Profiles.
 
 ## Target CREAPD navigation architecture
 
@@ -354,11 +355,10 @@ Initial order:
 
 1. Talk
 2. News
-3. Cosmo
-4. Sports
-5. Spiritual
-
-Cooking is reviewed separately before being assigned to this pass.
+3. Cooking
+4. Cosmo
+5. Sports
+6. Spiritual
 
 Music and Research are excluded from this phase except for small targeted usability fixes.
 
