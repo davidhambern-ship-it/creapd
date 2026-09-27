@@ -14,6 +14,16 @@ import {
   runObsBridgeUserAction,
 } from '../../../server/obsBridge.js';
 import { assembleResearchPresentation } from '../../../server/researchPresentationAssembly.js';
+import {
+  listImageAssets,
+  createImageAsset,
+  updateImageAsset,
+  deleteImageAsset,
+  listRegistryAssets,
+  createRegistryAsset,
+  updateRegistryAsset,
+  deleteRegistryAsset,
+} from '../../../server/assetLibrary.js';
 import { runPresentationStudioWorkers } from '../../../server/presentationStudioWorkers.js';
 import {
   rewritePresentationStudioText,
@@ -147,7 +157,7 @@ function verifyObsMediaTicket(ticket) {
   }
 
   if (
-    payload?.purpose !== 'creapd_obs_media' ||
+    !['creapd_obs_media', 'creapd_asset_media'].includes(payload?.purpose) ||
     !payload?.ownerUserId ||
     !payload?.pathname ||
     !payload?.contentType ||
@@ -161,7 +171,7 @@ function verifyObsMediaTicket(ticket) {
   return payload;
 }
 
-function authorizeObsMediaUpload(response, ownerUserId, body) {
+function authorizeObsMediaUpload(response, ownerUserId, body, options = {}) {
   const filename = safeObsUploadText(body.filename, 240);
   const contentType = safeObsUploadText(body.content_type, 120).toLowerCase();
   const byteSize = Number(body.byte_size || 0);
@@ -181,16 +191,18 @@ function authorizeObsMediaUpload(response, ownerUserId, body) {
 
   const extension = obsMediaExtension(filename, contentType);
   const safeOwner = String(ownerUserId).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const purpose = options.purpose || 'creapd_obs_media';
+  const folder = options.folder || 'obs';
   const pathname = [
     'creapd',
-    'obs',
+    folder,
     safeOwner,
     `${Date.now()}-${randomUUID()}.${extension}`,
   ].join('/');
 
   const expiresAt = Date.now() + OBS_MEDIA_TICKET_TTL_MS;
   const ticket = signObsMediaTicket({
-    purpose: 'creapd_obs_media',
+    purpose,
     ownerUserId: String(ownerUserId),
     pathname,
     contentType,
@@ -202,7 +214,7 @@ function authorizeObsMediaUpload(response, ownerUserId, body) {
   return response.status(200).json({
     ok: true,
     service: 'creapd-production-core',
-    action: 'director_media_upload_authorize',
+    action: options.action || 'director_media_upload_authorize',
     pathname,
     upload_ticket: ticket,
     content_type: contentType,
@@ -295,6 +307,76 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   try {
     if (action === 'director_media_upload_authorize') {
       return authorizeObsMediaUpload(response, ownerUserId, body);
+    }
+
+    if (action === 'asset_media_upload_authorize') {
+      return authorizeObsMediaUpload(response, ownerUserId, body, {
+        purpose: 'creapd_asset_media',
+        folder: 'assets',
+        action: 'asset_media_upload_authorize',
+      });
+    }
+
+    if (action === 'image_asset_list') {
+      return success(response, action, {
+        assets: await listImageAssets({ sql, ownerUserId, limit: body.limit }),
+      });
+    }
+
+    if (action === 'image_asset_create') {
+      return success(response, action, {
+        asset: await createImageAsset({ sql, ownerUserId, asset: body.asset || body }),
+      });
+    }
+
+    if (action === 'image_asset_update') {
+      return success(response, action, {
+        asset: await updateImageAsset({
+          sql,
+          ownerUserId,
+          assetId: body.asset_id,
+          patch: body.patch || {},
+        }),
+      });
+    }
+
+    if (action === 'image_asset_delete') {
+      return success(response, action, await deleteImageAsset({
+        sql,
+        ownerUserId,
+        assetId: body.asset_id,
+      }));
+    }
+
+    if (action === 'asset_registry_list') {
+      return success(response, action, {
+        assets: await listRegistryAssets({ sql, ownerUserId, limit: body.limit }),
+      });
+    }
+
+    if (action === 'asset_registry_create') {
+      return success(response, action, {
+        asset: await createRegistryAsset({ sql, ownerUserId, asset: body.asset || body }),
+      });
+    }
+
+    if (action === 'asset_registry_update') {
+      return success(response, action, {
+        asset: await updateRegistryAsset({
+          sql,
+          ownerUserId,
+          assetId: body.asset_id,
+          patch: body.patch || {},
+        }),
+      });
+    }
+
+    if (action === 'asset_registry_delete') {
+      return success(response, action, await deleteRegistryAsset({
+        sql,
+        ownerUserId,
+        assetId: body.asset_id,
+      }));
     }
 
     if (action.startsWith('obs_')) {
