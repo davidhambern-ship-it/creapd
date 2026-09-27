@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import MobileHome from '@/components/mobile/MobileHome';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
-import ProfileCard from '@/components/home/ProfileCard';
+import InteractiveProfileBackdrop from '@/components/home/InteractiveProfileBackdrop';
 import ProductionDetailsModal from '@/components/home/ProductionDetailsModal';
 import ShowcaseSection from '@/components/home/ShowcaseSection';
 import QuickLaunch from '@/components/home/QuickLaunch';
@@ -80,32 +80,15 @@ export default function CreapdHome() {
             </div>
           </div>
 
-          {/* Mobile: horizontal swipe, Desktop: grid */}
-          <div className="flex gap-3 overflow-x-auto pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 lg:gap-4">
-            {ACTIVE_PROFILES.map((profile) => (
-              <div key={profile.key} className="w-72 lg:w-auto flex-shrink-0">
-                <ProfileCard
-                  profile={profile}
-                  onGetStarted={handleGetStarted}
-                  onShowDetails={setDetailsProfile}
-                  index={ACTIVE_PROFILES.indexOf(profile)}
-                />
-              </div>
-            ))}
-          </div>
+          <InteractiveProfileBackdrop
+            profiles={ACTIVE_PROFILES}
+            onEnter={handleGetStarted}
+          />
 
-          {/* Coming soon profiles */}
           {COMING_SOON_PROFILES.length > 0 && (
-            <>
-              <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/50 mt-6 mb-3">Coming Soon</p>
-              <div className="flex gap-3 overflow-x-auto pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 lg:gap-4">
-                {COMING_SOON_PROFILES.map((profile) => (
-                  <div key={profile.key} className="w-72 lg:w-auto flex-shrink-0">
-                    <ProfileCard profile={profile} onGetStarted={() => {}} onShowDetails={() => {}} index={0} />
-                  </div>
-                ))}
-              </div>
-            </>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              Additional Production Profiles are in development.
+            </p>
           )}
         </section>
 
