@@ -3045,3 +3045,312 @@
     width: 100%;
   }
 }
+
+
+/* TALK DASHBOARD STAGE */
+.talk-dashboard-stage {
+  position: relative;
+  width: 100%;
+  min-height: max(860px, calc(100vh - 120px));
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.talk-dashboard-status {
+  position: absolute;
+  z-index: 20;
+  top: 1.1rem;
+  left: 50%;
+  width: min(540px, 43%);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem .8rem;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  background: rgba(8,5,10,.70);
+  backdrop-filter: blur(15px) saturate(115%);
+  -webkit-backdrop-filter: blur(15px) saturate(115%);
+  box-shadow: 0 16px 34px rgba(0,0,0,.26);
+}
+
+.talk-dashboard-icon-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: white;
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.035);
+}
+
+.talk-dashboard-live-button {
+  color: white;
+  border: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(100deg, #ff6a00, #a855f7 62%, #ec4899);
+}
+
+.talk-dashboard-error {
+  position: absolute;
+  z-index: 24;
+  top: 5.6rem;
+  left: 50%;
+  width: min(620px, 55%);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .6rem .8rem;
+  border-radius: 10px;
+  color: #fecaca;
+  background: rgba(69,10,10,.78);
+  border: 1px solid rgba(248,113,113,.20);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 11px;
+}
+
+.talk-slot {
+  position: absolute;
+  z-index: 10;
+}
+
+.talk-slot-guide {
+  top: 7.5%;
+  left: 1.5%;
+  width: 29%;
+}
+
+.talk-slot-topics {
+  top: 30%;
+  left: 24.5%;
+  width: 22%;
+}
+
+.talk-slot-research {
+  top: 14%;
+  right: 2%;
+  width: 24%;
+}
+
+.talk-slot-guests {
+  top: 52%;
+  left: 17%;
+  width: 21%;
+}
+
+.talk-slot-stats {
+  top: 43%;
+  left: 39%;
+  width: 28%;
+}
+
+.talk-slot-rundown {
+  bottom: 5%;
+  left: 1.5%;
+  width: 29%;
+}
+
+.talk-slot-export {
+  bottom: 4.5%;
+  left: 39%;
+  width: 22%;
+}
+
+.talk-slot-assets {
+  bottom: 5%;
+  right: 1.5%;
+  width: 29%;
+}
+
+.talk-dashboard-panel,
+.talk-producer-screen,
+.talk-dashboard-center-console,
+.talk-dashboard-export {
+  border: 1px solid rgba(255,255,255,.11);
+  background:
+    linear-gradient(180deg, rgba(15,9,17,.78), rgba(8,5,10,.72));
+  backdrop-filter: blur(15px) saturate(118%);
+  -webkit-backdrop-filter: blur(15px) saturate(118%);
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.30),
+    inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.talk-dashboard-panel {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.talk-dashboard-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .65rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  background: linear-gradient(90deg, rgba(255,106,0,.07), rgba(168,85,247,.05), transparent);
+}
+
+.talk-dashboard-panel-body {
+  padding: .7rem .75rem;
+}
+
+.talk-dashboard-open {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: rgba(255,255,255,.55);
+  transition: color .18s ease;
+}
+
+.talk-dashboard-open:hover {
+  color: #fdba74;
+}
+
+.talk-dashboard-list-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 25px;
+  font-size: 10px;
+  color: rgba(255,255,255,.74);
+}
+
+.talk-dashboard-list-row > :first-child:not(.w-10) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.talk-producer-screen {
+  border-radius: 16px;
+  padding: .8rem .9rem;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255,106,0,.10), transparent 30%),
+    rgba(7,5,10,.78);
+  box-shadow:
+    0 18px 42px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(255,106,0,.04);
+}
+
+.talk-producer-screen::before {
+  content: '';
+  display: block;
+  height: 3px;
+  margin: -.8rem -.9rem .75rem;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(90deg, #ff6a00, #a855f7, #ec4899);
+  opacity: .72;
+}
+
+.talk-dashboard-center-console {
+  padding: .65rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .45rem;
+  border-radius: 16px;
+  background: rgba(7,5,9,.56);
+}
+
+.talk-dashboard-stat {
+  min-height: 56px;
+  padding: .55rem .55rem;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+}
+
+.talk-dashboard-stat span {
+  display: block;
+  font-size: 9px;
+  line-height: 1.1;
+  color: rgba(255,255,255,.38);
+}
+
+.talk-dashboard-stat strong {
+  display: block;
+  margin-top: .25rem;
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(255,255,255,.90);
+  word-break: break-word;
+}
+
+.talk-dashboard-asset-chip {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  min-width: 0;
+  padding: .3rem .35rem;
+  border-radius: 7px;
+  background: rgba(255,255,255,.035);
+  font-size: 9px;
+  color: rgba(255,255,255,.70);
+}
+
+.talk-dashboard-export {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .65rem .75rem;
+  border-radius: 16px;
+  background:
+    linear-gradient(100deg, rgba(255,106,0,.11), rgba(168,85,247,.09), rgba(236,72,153,.08)),
+    rgba(7,5,10,.76);
+}
+
+@media (max-width: 1199px) {
+  .talk-dashboard-stage {
+    min-height: 0;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .9rem;
+    overflow: visible;
+  }
+
+  .talk-dashboard-status,
+  .talk-dashboard-error,
+  .talk-slot {
+    position: static;
+    width: auto;
+    transform: none;
+  }
+
+  .talk-dashboard-status,
+  .talk-dashboard-error {
+    grid-column: 1 / -1;
+  }
+
+  .talk-slot-guide,
+  .talk-slot-stats,
+  .talk-slot-export {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .talk-dashboard-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .talk-dashboard-status,
+  .talk-dashboard-error,
+  .talk-slot-guide,
+  .talk-slot-stats,
+  .talk-slot-export {
+    grid-column: 1;
+  }
+
+  .talk-dashboard-status {
+    align-items: flex-start;
+  }
+
+  .talk-dashboard-center-console {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
