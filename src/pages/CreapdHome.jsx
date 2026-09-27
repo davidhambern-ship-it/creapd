@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import MobileHome from '@/components/mobile/MobileHome';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
-import InteractiveProfileBackdrop from '@/components/home/InteractiveProfileBackdrop';
+import InteractiveProfileCards from '@/components/home/InteractiveProfileCards';
 import ProductionDetailsModal from '@/components/home/ProductionDetailsModal';
 import ShowcaseSection from '@/components/home/ShowcaseSection';
 import QuickLaunch from '@/components/home/QuickLaunch';
@@ -80,7 +80,7 @@ export default function CreapdHome() {
             </div>
           </div>
 
-          <InteractiveProfileBackdrop
+          <InteractiveProfileCards
             profiles={ACTIVE_PROFILES}
             onEnter={handleGetStarted}
           />
