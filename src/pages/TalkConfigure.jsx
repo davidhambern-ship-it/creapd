@@ -405,9 +405,13 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
             className={`talk-cue-card ${cardExiting ? 'talk-cue-card-exit' : 'talk-cue-card-enter'}`}
           >
             <div className="talk-cue-card-topline">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-300/80">
-                CREAPD asks
-              </span>
+              <div className="flex items-center gap-3">
+                <CreapdLogo height="h-7" />
+                <span className="h-5 w-px bg-white/15" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-300/80">
+                  CREAPD asks
+                </span>
+              </div>
               <span className="text-[10px] text-white/35">{String(step + 1).padStart(2, '0')}</span>
             </div>
 
