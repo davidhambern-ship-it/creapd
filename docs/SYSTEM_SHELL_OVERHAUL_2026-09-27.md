@@ -169,6 +169,100 @@ Examples of decisions to make per profile:
 
 Cooking is part of this theme-pass group and should be audited alongside the other standard Production Profiles.
 
+## Immersive theme anchors
+
+The six profiles in the active redesign pass should each feel like a distinct place, not the same app with different accent colors.
+
+### News — CREAPD News Desk
+
+Primary visual metaphor: a modern television news anchor desk.
+
+Environment direction:
+- anchor desk / producer desk foreground
+- CREAPD-specific broadcast backdrop and newsroom graphics package
+- monitor wall, ticker, assignment board, story folders, source/research stations as environmental elements
+- polished broadcast lighting and controlled newsroom motion
+
+Goal: entering News should immediately feel like stepping behind a professional news desk.
+
+### Talk — Podcast Studio
+
+Primary visual metaphor: an intimate podcast / talk-show studio.
+
+Environment direction:
+- microphones, boom arms, headphones, acoustic panels
+- host/guest seating zones
+- producer controls and show-rundown surfaces
+- warm practical lighting, LEDs, on-air indicators
+- LIVE controls should feel like operating the studio rather than opening a generic admin page
+
+Goal: Talk should feel conversational, live, and audio-first.
+
+### Cooking — Studio Kitchen
+
+Primary visual metaphor: a television-ready kitchen set.
+
+Environment direction:
+- central prep island / counter as the main workspace
+- stove, oven, ingredient shelves, cookware, recipe board
+- overhead or under-cabinet practical lighting
+- timers, ingredient cards, shot cues and recipe steps integrated into the set
+
+Goal: Cooking should feel like walking onto a cooking-show set.
+
+### Sports — Sports Casting Booth
+
+Primary visual metaphor: a broadcast booth overlooking a field/arena.
+
+Environment direction:
+- commentator desk
+- scoreboards, stats monitors, game clocks, team/game cards
+- stadium/arena view or broadcast-window backdrop
+- replay / analysis screens
+- energetic but professional sports-broadcast lighting
+
+Goal: Sports should feel like pregame/postgame coverage from a real booth.
+
+### Cosmo — Nail Salon / Spa
+
+Primary visual metaphor: a stylish beauty studio that blends nail salon and spa cues.
+
+Environment direction:
+- manicure station / beauty counter
+- product walls, polish displays, mirrors, soft seating
+- spa lighting, soft-glow accents, clean materials
+- treatment/service cards and beauty references integrated into the environment
+
+Goal: Cosmo should feel polished, relaxing, stylish, and beauty-industry specific rather than generic lifestyle media.
+
+### Spiritual — Ancient Archive / Old Bookstore
+
+Primary visual metaphor: an old-world archive, rare-book room, or ancient bookstore.
+
+Environment direction:
+- tall wooden bookshelves
+- aged books, manuscripts, scrolls and study tables
+- warm lamps/candles or lantern-like practical lighting
+- stone/wood architectural cues
+- maps, language tools, comparison tables and research notes integrated like archival research materials
+
+Goal: Spiritual should feel contemplative, scholarly, historical, and immersive without being tied visually to a single faith tradition.
+
+### Theme implementation rule
+
+The environment comes first. Navigation is then designed to belong inside that environment.
+
+A Production Profile may use:
+- a sidebar,
+- a top rail,
+- room/station navigation,
+- contextual controls,
+- or a mixed pattern,
+
+depending on what best fits the profile's immersive concept.
+
+Do not design navigation first and then decorate it with a theme.
+
 ## Target CREAPD navigation architecture
 
 ### Global Header
