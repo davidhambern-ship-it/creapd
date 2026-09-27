@@ -5,6 +5,7 @@ import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
+import TalkConfigure from '@/pages/TalkConfigure';
 import { Button } from '@/components/ui/button';
 import { formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import {
@@ -97,20 +98,7 @@ export default function TalkDashboard() {
   }
 
   if (!config) {
-    return (
-      <div className="flex items-center justify-center h-screen p-6">
-        <div className="max-w-md text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
-            <Mic2 className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-xl font-heading font-bold mb-3">No Talk Production Found</h2>
-          <p className="text-muted-foreground mb-6">Start with Show Setup. CREAPD will ask the production questions, build the research and production package, then guide you through reviewing it.</p>
-          <Button type="button" size="lg" onClick={() => navigate('/talk/configure')}>
-            Start Show Setup
-          </Button>
-        </div>
-      </div>
-    );
+    return <TalkConfigure embedded />;
   }
 
   if (config.status === 'building' || refreshing) {
