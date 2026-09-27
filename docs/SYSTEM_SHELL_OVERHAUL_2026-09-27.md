@@ -117,6 +117,57 @@ Use department names as optional group headings/progress context, while link lab
 - Live
 - Export
 
+## Revised design principle
+
+CREAPD should have **consistent system logic without forcing every Production Profile into the same visual shell**.
+
+Music and Research are intentionally immersive/theme-driven Production Profiles and are **not** candidates for the universal header/sidebar treatment. Their current high-level layout concepts remain intact for now.
+
+The cleanup goal is therefore:
+
+- standardize what is global vs. Production-Profile-specific,
+- standardize route ownership and system-tool placement,
+- remove accidental News ownership of global tools,
+- preserve or create a distinct visual identity for each Production Profile,
+- decide per profile whether it needs a sidebar, top nav, cockpit, room-based navigation, or another pattern.
+
+## Theme-first Production Profile direction
+
+### Leave largely intact for now
+
+#### Music
+- Preserve its immersive music-studio / playback-oriented shell.
+- Do not add a generic CREAPD header/footer/sidebar simply for consistency.
+- Only make targeted usability fixes later.
+
+#### Research
+- Preserve the intentional RPP / research-environment experience.
+- Do not flatten it into the generic Production Studio shell.
+- Only make targeted usability fixes later.
+
+### Needs a deliberate theme pass
+
+The next design work should focus on:
+
+- News
+- Talk
+- Cosmo
+- Sports
+- Spiritual
+
+Each should get its own recognizable visual language before deciding the final navigation pattern.
+
+Examples of decisions to make per profile:
+
+- Does it need a persistent sidebar?
+- Does it work better with a top navigation strip?
+- Should some areas be room/stage based instead of list based?
+- What visual metaphor best matches the profile?
+- Which destinations are primary vs. secondary?
+- Which global CREAPD tools should be accessed through a utility menu rather than local navigation?
+
+Cooking is intentionally not assigned to this theme-pass group yet and should be reviewed separately before changing its shell.
+
 ## Target CREAPD navigation architecture
 
 ### Global Header
@@ -132,13 +183,15 @@ Persistent across all normal authenticated pages:
 
 No News-only state is displayed when the active studio is not News.
 
-### Production Studio Sidebar
+### Production Profile navigation
 
-Only contains work that belongs to the active Production Studio.
+There is **no rule that every Production Profile must have a sidebar**.
 
-Recommended maximum: 8 primary destinations before contextual/detail pages.
+Whatever navigation pattern a profile uses must contain only work that belongs to that profile and must fit the profile's theme.
 
-The shared workflow vocabulary is:
+When a profile does use a sidebar, recommended maximum is about 8 primary destinations before contextual/detail pages.
+
+A useful shared workflow vocabulary is:
 
 1. Dashboard
 2. Setup
@@ -269,49 +322,45 @@ Recommended route family:
 
 Old `/news/*` URLs should redirect during migration so bookmarks are not broken.
 
-## Canonical shell implementation
+## Shared system implementation
 
-Create:
+Do **not** create one mandatory visual shell for every Production Profile.
 
-- `src/components/layout/ProductionStudioLayout.jsx`
-- `src/components/layout/GlobalHeader.jsx`
-- `src/components/layout/StudioSidebar.jsx`
+Instead, create shared primitives that any profile may opt into:
+
 - `src/components/layout/GlobalUtilityMenu.jsx`
+- `src/components/layout/ProfileSwitcher.jsx`
 - `src/lib/studioNavigation.js`
 - `src/lib/systemNavigation.js`
 
-The layout receives a studio key and resolves:
+Optional reusable pieces may include a themed sidebar or header primitive, but each Production Profile decides whether to use them.
 
-- theme
-- studio navigation
-- footer/live behavior
-- mobile navigation
-- studio-specific environment
-
-Do not duplicate shell JSX per Production Studio.
+Shared code should standardize behavior and destinations, not erase profile identity.
 
 ## Refactor sequence
 
-### Phase A — Shell foundation
+### Phase A — System map first
 
-1. Build canonical navigation registries.
-2. Build one GlobalHeader.
-3. Build one StudioSidebar.
-4. Build one ProductionStudioLayout.
-5. Do not change page business logic yet.
+1. Separate global CREAPD tools from Production Profile tools.
+2. Build canonical system-navigation registries.
+3. Preserve Music and Research shells.
+4. Do not change page business logic yet.
 
-### Phase B — Move one studio at a time
+### Phase B — Theme and navigation review
 
-Order:
+Design the profile shell first, then implement navigation around that design.
 
-1. Talk — recently tested and easiest baseline.
-2. Cooking
-3. Sports
-4. Cosmo
+Initial order:
+
+1. Talk
+2. News
+3. Cosmo
+4. Sports
 5. Spiritual
-6. Music
-7. Research
-8. News last, because News currently contains global/system routes that need extraction.
+
+Cooking is reviewed separately before being assigned to this pass.
+
+Music and Research are excluded from this phase except for small targeted usability fixes.
 
 ### Phase C — Extract system tools from News
 
@@ -345,14 +394,15 @@ After every studio uses the canonical shell:
 
 ## Non-negotiable UX rules
 
-1. The top navigation must not change structure between Production Studios.
-2. The same global tool must always be found in the same place.
-3. Production Studio sidebars contain Production Studio work only.
-4. Global/system tools are never owned by News or any other Production Studio.
-5. Every sidebar label must make sense to a first-time user without knowing CREAPD internal architecture.
-6. A user should be able to identify where they are, what studio is active, and what the next logical action is within seconds.
-7. Desktop and mobile use the same information architecture, adapted only for screen size.
+1. Production Profiles may look and navigate differently when that difference is intentional.
+2. The same global CREAPD tool must always have one clear system-level home.
+3. Any sidebar that exists contains Production Profile work only.
+4. Global/system tools are never owned by News or any other Production Profile.
+5. Every navigation label must make sense to a first-time user without knowing CREAPD internal architecture.
+6. A user should be able to identify where they are, which Production Profile is active, and what the next logical action is within seconds.
+7. Desktop and mobile preserve the same information architecture even when the presentation pattern changes.
 8. Live execution pages may use a specialized cockpit, but entering and exiting Live must remain obvious and predictable.
+9. Theme consistency inside a Production Profile matters more than forcing visual consistency across all profiles.
 
 ## Relationship to backend migration
 
