@@ -1,3 +1,5 @@
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { handleUpload } from '@vercel/blob/client';
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
@@ -36,6 +38,232 @@ export const config = {
   maxDuration: 300,
 };
 
+
+const OBS_MEDIA_TICKET_TTL_MS = 15 * 60 * 1000;
+const OBS_IMAGE_MAX_BYTES = 40 * 1024 * 1024;
+const OBS_VIDEO_MAX_BYTES = 1024 * 1024 * 1024;
+const OBS_IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+  'image/avif',
+]);
+const OBS_VIDEO_TYPES = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/x-m4v',
+  'video/mpeg',
+]);
+
+function safeObsUploadText(value, max = 300) {
+  return String(value || '').trim().slice(0, max);
+}
+
+function obsMediaTicketSecret() {
+  const secret = String(
+    process.env.CREAPD_UPLOAD_SIGNING_SECRET ||
+    process.env.BLOB_READ_WRITE_TOKEN ||
+    '',
+  ).trim();
+
+  if (!secret) {
+    const error = new Error('OBS media upload signing is not configured');
+    error.code = 'OBS_UPLOAD_SIGNING_NOT_CONFIGURED';
+    throw error;
+  }
+
+  return secret;
+}
+
+function obsAllowedMediaType(contentType) {
+  if (OBS_IMAGE_TYPES.has(contentType)) {
+    return { kind: 'image', maxBytes: OBS_IMAGE_MAX_BYTES };
+  }
+  if (OBS_VIDEO_TYPES.has(contentType)) {
+    return { kind: 'video', maxBytes: OBS_VIDEO_MAX_BYTES };
+  }
+  return null;
+}
+
+function obsMediaExtension(filename, contentType) {
+  const match = String(filename || '').toLowerCase().match(/\.([a-z0-9]{2,6})$/);
+  if (match) return match[1];
+
+  const map = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/svg+xml': 'svg',
+    'image/avif': 'avif',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
+    'video/x-m4v': 'm4v',
+    'video/mpeg': 'mpeg',
+  };
+
+  return map[contentType] || 'bin';
+}
+
+function signObsMediaTicket(payload) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = createHmac('sha256', obsMediaTicketSecret())
+    .update(encoded)
+    .digest('base64url');
+  return `${encoded}.${signature}`;
+}
+
+function verifyObsMediaTicket(ticket) {
+  const [encoded, suppliedSignature] = String(ticket || '').split('.');
+  if (!encoded || !suppliedSignature) {
+    const error = new Error('Invalid OBS upload ticket');
+    error.code = 'OBS_UPLOAD_TICKET_INVALID';
+    throw error;
+  }
+
+  const expectedSignature = createHmac('sha256', obsMediaTicketSecret())
+    .update(encoded)
+    .digest('base64url');
+
+  const supplied = Buffer.from(suppliedSignature);
+  const expected = Buffer.from(expectedSignature);
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+    const error = new Error('Invalid OBS upload ticket');
+    error.code = 'OBS_UPLOAD_TICKET_INVALID';
+    throw error;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+  } catch {
+    const error = new Error('Invalid OBS upload ticket payload');
+    error.code = 'OBS_UPLOAD_TICKET_INVALID';
+    throw error;
+  }
+
+  if (
+    payload?.purpose !== 'creapd_obs_media' ||
+    !payload?.ownerUserId ||
+    !payload?.pathname ||
+    !payload?.contentType ||
+    Number(payload?.expiresAt || 0) < Date.now()
+  ) {
+    const error = new Error('Expired or invalid OBS upload ticket');
+    error.code = 'OBS_UPLOAD_TICKET_EXPIRED';
+    throw error;
+  }
+
+  return payload;
+}
+
+function authorizeObsMediaUpload(response, ownerUserId, body) {
+  const filename = safeObsUploadText(body.filename, 240);
+  const contentType = safeObsUploadText(body.content_type, 120).toLowerCase();
+  const byteSize = Number(body.byte_size || 0);
+  const allowed = obsAllowedMediaType(contentType);
+
+  if (!filename || !allowed) {
+    return response.status(400).json({ ok: false, error: 'unsupported_obs_media_type' });
+  }
+
+  if (!Number.isFinite(byteSize) || byteSize <= 0 || byteSize > allowed.maxBytes) {
+    return response.status(400).json({
+      ok: false,
+      error: 'obs_media_size_invalid',
+      max_bytes: allowed.maxBytes,
+    });
+  }
+
+  const extension = obsMediaExtension(filename, contentType);
+  const safeOwner = String(ownerUserId).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pathname = [
+    'creapd',
+    'obs',
+    safeOwner,
+    `${Date.now()}-${randomUUID()}.${extension}`,
+  ].join('/');
+
+  const expiresAt = Date.now() + OBS_MEDIA_TICKET_TTL_MS;
+  const ticket = signObsMediaTicket({
+    purpose: 'creapd_obs_media',
+    ownerUserId: String(ownerUserId),
+    pathname,
+    contentType,
+    maxBytes: Math.round(byteSize),
+    kind: allowed.kind,
+    expiresAt,
+  });
+
+  return response.status(200).json({
+    ok: true,
+    service: 'creapd-production-core',
+    action: 'director_media_upload_authorize',
+    pathname,
+    upload_ticket: ticket,
+    content_type: contentType,
+    media_kind: allowed.kind,
+    max_bytes: allowed.maxBytes,
+    valid_until: new Date(expiresAt).toISOString(),
+  });
+}
+
+async function handleObsMediaClientUpload(request, response, body) {
+  const result = await handleUpload({
+    body,
+    request,
+    onBeforeGenerateToken: async (pathname, clientPayload) => {
+      let payload = null;
+      try {
+        payload = clientPayload ? JSON.parse(clientPayload) : null;
+      } catch {
+        payload = null;
+      }
+
+      const ticket = verifyObsMediaTicket(payload?.ticket);
+      if (String(pathname) !== String(ticket.pathname)) {
+        const error = new Error('OBS upload pathname does not match its ticket');
+        error.code = 'OBS_UPLOAD_PATH_MISMATCH';
+        throw error;
+      }
+
+      const allowed = obsAllowedMediaType(ticket.contentType);
+      if (!allowed) {
+        const error = new Error('OBS upload content type is no longer allowed');
+        error.code = 'OBS_UPLOAD_TYPE_INVALID';
+        throw error;
+      }
+
+      return {
+        allowedContentTypes: [ticket.contentType],
+        maximumSizeInBytes: Math.min(
+          allowed.maxBytes,
+          Math.max(1, Number(ticket.maxBytes || allowed.maxBytes)),
+        ),
+        addRandomSuffix: false,
+        tokenPayload: JSON.stringify({
+          ownerUserId: ticket.ownerUserId,
+          pathname: ticket.pathname,
+          contentType: ticket.contentType,
+          kind: ticket.kind,
+        }),
+      };
+    },
+    onUploadCompleted: async ({ blob }) => {
+      console.info('[CREAPD OBS MEDIA UPLOAD COMPLETE]', {
+        pathname: blob?.pathname || null,
+        url: blob?.url || null,
+      });
+    },
+  });
+
+  return response.status(200).json(result);
+}
+
 function safeError(error) {
   return {
     code: error?.code || null,
@@ -65,6 +293,10 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   }
 
   try {
+    if (action === 'director_media_upload_authorize') {
+      return authorizeObsMediaUpload(response, ownerUserId, body);
+    }
+
     if (action.startsWith('obs_')) {
       const result = await runObsBridgeUserAction({
         sql,
@@ -361,6 +593,10 @@ export default async function handler(request, response) {
       if (isObsBridgeAgentAction(action)) {
         const result = await runObsBridgeAgentAction({ sql, action, body });
         return success(response, action, result);
+      }
+
+      if (String(body.type || '').startsWith('blob.')) {
+        return await handleObsMediaClientUpload(request, response, body);
       }
     }
 
