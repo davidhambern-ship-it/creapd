@@ -30,7 +30,7 @@ export default function TalkProducerGuide({
 
   if (variant === 'screen') {
     return (
-      <div className="rounded-2xl border border-white/10 bg-black/70 p-3.5 backdrop-blur-xl shadow-2xl">
+      <div className="rounded-xl border border-white/10 bg-black/35 p-2.5 backdrop-blur-sm shadow-lg">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-orange-300">
             <Compass className="w-4 h-4" />
@@ -39,12 +39,12 @@ export default function TalkProducerGuide({
           <span className="text-[10px] text-white/35">Step {currentIndex + 1}/{STEPS.length}</span>
         </div>
 
-        <h2 className="mt-2 text-base font-heading font-semibold text-white">{title}</h2>
+        <h2 className="mt-1.5 text-sm font-heading font-semibold text-white">{title}</h2>
 
         {instructions.length > 0 && (
-          <div className="mt-3 space-y-1.5">
+          <div className="mt-2 space-y-1">
             {instructions.slice(0, 3).map((instruction, index) => (
-              <div key={index} className="flex gap-2 text-xs leading-5 text-white/65">
+              <div key={index} className="flex gap-2 text-[10px] leading-4 text-white/60">
                 <span className="text-orange-300/80">{index + 1}.</span>
                 <span>{instruction}</span>
               </div>
@@ -52,10 +52,10 @@ export default function TalkProducerGuide({
           </div>
         )}
 
-        {readyText && <p className="mt-3 text-[11px] font-medium text-white/75">{readyText}</p>}
+        {readyText && <p className="mt-2 text-[10px] font-medium text-white/70">{readyText}</p>}
 
         {nextPath && nextLabel && (
-          <Button asChild size="sm" disabled={nextDisabled} className={`mt-3 w-full ${nextDisabled ? 'pointer-events-none opacity-50' : ''}`}>
+          <Button asChild size="sm" disabled={nextDisabled} className={`mt-2 h-8 w-full text-xs ${nextDisabled ? 'pointer-events-none opacity-50' : ''}`}>
             <Link to={nextPath} aria-disabled={nextDisabled}>
               {nextLabel}
               <ArrowRight className="w-3.5 h-3.5 ml-2" />
