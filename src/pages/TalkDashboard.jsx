@@ -426,103 +426,139 @@ export default function TalkDashboard() {
           />
         </div>
 
-        <StudioPanel className="absolute top-[34%] right-[15%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
-          {topics.length > 0 ? (
-            <div className="space-y-1.5">
-              {topics.slice(0, 4).map((topic) => (
-                <div key={topic.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
-                  <span className="truncate">{topic.topic_name}</span>
-                  <span className={topic.status === 'approved' ? 'text-emerald-300' : 'text-white/35'}>{topic.status}</span>
+        <div className="absolute left-[1.5%] right-[1.5%] bottom-[3%] grid grid-cols-6 gap-2 items-stretch">
+          <StudioPanel
+            className="h-[102px]"
+            icon={ClipboardList}
+            title="Show Rundown"
+            actionLabel="Open"
+            onOpen={() => setActivePanel('rundown')}
+          >
+            {segments.length > 0 ? (
+              <div className="space-y-1">
+                {segments.slice(0, 2).map((item) => (
+                  <div key={item.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
+                    <span className="w-9 shrink-0 text-white/35">{item.start_time || ''}</span>
+                    <span className="truncate">{item.title}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] leading-4 text-white/45">No rundown generated yet.</p>
+            )}
+          </StudioPanel>
+
+          <StudioPanel
+            className="h-[102px]"
+            icon={Users}
+            title="Guest Chair"
+            actionLabel="Open"
+            onOpen={() => setActivePanel('guests')}
+          >
+            {guests.length > 0 ? (
+              <div className="space-y-1">
+                {guests.slice(0, 2).map((guest) => (
+                  <div key={guest.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
+                    <span className="truncate">{guest.guest_name}</span>
+                    <span className={guest.status === 'confirmed' ? 'ml-auto text-emerald-300' : 'ml-auto text-white/35'}>
+                      {guest.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] leading-4 text-white/45">No guests added yet.</p>
+            )}
+          </StudioPanel>
+
+          <section className="h-[102px] rounded-xl border border-white/10 bg-black/32 p-2 backdrop-blur-sm shadow-lg">
+            <div className="grid h-full grid-cols-3 grid-rows-2 gap-1">
+              {[
+                ['Total', formatMinutes(config.total_show_runtime)],
+                ['Talk', formatMinutes(config.talk_segment_runtime)],
+                ['Format', config.show_format],
+                ['Tone', config.show_tone],
+                ['Guests', guests.length],
+                ['Ready', readinessPercent + '%'],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0 rounded-md border border-white/10 bg-black/15 px-1.5 py-1">
+                  <span className="block truncate text-[8px] text-white/35">{label}</span>
+                  <strong className={label === 'Ready'
+                    ? 'mt-0.5 block truncate text-[10px] text-emerald-300'
+                    : 'mt-0.5 block truncate text-[10px] text-white/85'}>
+                    {value}
+                  </strong>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-xs text-white/45">No topics generated yet.</p>
-          )}
-        </StudioPanel>
+          </section>
 
-        <StudioPanel className="absolute top-[34%] left-[22%] w-[18%]" icon={Users} title="Guest Chair" actionLabel="Open" onOpen={() => setActivePanel('guests')}>
-          {guests.length > 0 ? (
-            <div className="space-y-1.5">
-              {guests.slice(0, 3).map((guest) => (
-                <div key={guest.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
-                  <span className="truncate">{guest.guest_name}</span>
-                  <span className={guest.status === 'confirmed' ? 'text-emerald-300' : 'text-white/35'}>{guest.status}</span>
-                </div>
-              ))}
-              <p className="pt-1 text-[10px] text-white/35">{confirmedGuests} confirmed · {guests.length} total</p>
+          <StudioPanel
+            className="h-[102px]"
+            icon={Lightbulb}
+            title="Discussion Topics"
+            actionLabel="Open"
+            onOpen={() => setActivePanel('topics')}
+          >
+            {topics.length > 0 ? (
+              <div className="space-y-1">
+                {topics.slice(0, 2).map((topic) => (
+                  <div key={topic.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
+                    <span className="truncate">{topic.topic_name}</span>
+                    <span className={topic.status === 'approved' ? 'ml-auto text-emerald-300' : 'ml-auto text-white/35'}>
+                      {topic.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] leading-4 text-white/45">No topics generated yet.</p>
+            )}
+          </StudioPanel>
+
+          <StudioPanel
+            className="h-[102px]"
+            icon={Sparkles}
+            title="AI Assets"
+            actionLabel="Open"
+            onOpen={() => setActivePanel('assets')}
+          >
+            {assets.length > 0 ? (
+              <div className="grid grid-cols-2 gap-1">
+                {assets.slice(0, 4).map((asset) => (
+                  <div key={asset.id} className="flex min-w-0 items-center gap-1 rounded-md bg-white/[0.04] px-1.5 py-1 text-[8px] text-white/70">
+                    <CheckCircle2 className={asset.status === 'approved' ? 'h-2.5 w-2.5 shrink-0 text-emerald-300' : 'h-2.5 w-2.5 shrink-0 text-white/30'} />
+                    <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] leading-4 text-white/45">No AI assets generated yet.</p>
+            )}
+          </StudioPanel>
+
+          <section
+            className="h-[102px] cursor-pointer rounded-xl border border-white/10 bg-black/40 px-3 py-2 backdrop-blur-sm shadow-lg transition hover:bg-black/50 hover:border-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/70"
+            role="button"
+            tabIndex={0}
+            onClick={() => setActivePanel('export')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setActivePanel('export');
+              }
+            }}
+          >
+            <div className="flex h-full items-center gap-2">
+              <Download className="h-5 w-5 shrink-0 text-orange-300" />
+              <div className="min-w-0">
+                <p className="text-[9px] uppercase tracking-[0.14em] text-white/35">Final Desk</p>
+                <h3 className="text-sm font-semibold leading-5 text-white">Finish & Launch</h3>
+              </div>
+              <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-white/45" />
             </div>
-          ) : (
-            <p className="text-xs text-white/45">No guests added yet.</p>
-          )}
-        </StudioPanel>
-
-        <section className="absolute top-[58%] left-[38.5%] w-[28%] grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-black/32 p-2 backdrop-blur-sm shadow-lg">
-          {[
-            ['Total Runtime', formatMinutes(config.total_show_runtime)],
-            ['Talk Runtime', formatMinutes(config.talk_segment_runtime)],
-            ['Format', config.show_format],
-            ['Tone', config.show_tone],
-            ['Guests', guests.length],
-            ['Generated', readinessPercent + '%'],
-          ].map(([label, value]) => (
-            <div key={label} className="min-h-12 rounded-lg border border-white/10 bg-black/15 p-1.5">
-              <span className="block text-[9px] text-white/40">{label}</span>
-              <strong className={label === 'Generated' ? 'mt-1 block text-[11px] text-emerald-300' : 'mt-1 block text-[11px] text-white/90'}>
-                {value}
-              </strong>
-            </div>
-          ))}
-        </section>
-
-        <StudioPanel className="absolute bottom-[3%] left-[1.5%] w-[22%]" icon={ClipboardList} title="Show Rundown" actionLabel="Open" onOpen={() => setActivePanel('rundown')}>
-          {segments.length > 0 ? (
-            <div className="space-y-1">
-              {segments.slice(0, 4).map((item) => (
-                <div key={item.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
-                  <span className="w-10 shrink-0 text-white/35">{item.start_time || ''}</span>
-                  <span className="truncate">{item.title}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-white/45">No rundown generated yet.</p>
-          )}
-        </StudioPanel>
-
-        <StudioPanel className="absolute bottom-[3%] right-[1.5%] w-[22%]" icon={Sparkles} title="AI Assets" actionLabel="Open" onOpen={() => setActivePanel('assets')}>
-          {assets.length > 0 ? (
-            <div className="grid grid-cols-2 gap-1.5">
-              {assets.slice(0, 6).map((asset) => (
-                <div key={asset.id} className="flex min-w-0 items-center gap-1 rounded-lg bg-white/[0.04] p-1.5 text-[9px] text-white/70">
-                  <CheckCircle2 className={asset.status === 'approved' ? 'w-3 h-3 text-emerald-300' : 'w-3 h-3 text-white/30'} />
-                  <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-white/45">No AI assets generated yet.</p>
-          )}
-        </StudioPanel>
-
-        <section
-          className="absolute bottom-[2.5%] left-1/2 w-[18%] -translate-x-1/2 flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2 backdrop-blur-sm shadow-lg transition hover:bg-black/50"
-          role="button"
-          tabIndex={0}
-          onClick={() => setActivePanel('export')}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              setActivePanel('export');
-            }
-          }}
-        >
-          <Download className="w-5 h-5 text-orange-300" />
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">Final Desk</p>
-            <h3 className="text-sm font-semibold text-white">Finish & Launch</h3>
-          </div>
-          <ArrowRight className="ml-auto h-4 w-4 text-white/45" />
+          </section>
+        </div>
         </section>
       </div>
 
