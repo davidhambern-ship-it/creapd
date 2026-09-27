@@ -78,7 +78,7 @@ const VARIANTS = {
     action: { icon: Zap, label: 'Open Rundown', path: '/sports/rundown' },
   },
   cosmo: {
-    label: 'Cosmo Production',
+    label: 'Beauty Production',
     stats: [
       { key: 'automation', icon: Activity, label: 'Automation' },
       { key: 'topics', icon: Sparkles, label: 'Topics' },
@@ -86,7 +86,7 @@ const VARIANTS = {
       { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
       { key: 'assets', icon: CheckCircle, label: 'Assets' },
     ],
-    action: { icon: Zap, label: 'Open Rundown', path: '/cosmo/rundown' },
+    action: { icon: Zap, label: 'Open Rundown', path: '/beauty/rundown' },
   },
   research: {
     label: 'Research Production',
