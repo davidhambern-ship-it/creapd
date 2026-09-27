@@ -40,7 +40,7 @@ export const PRODUCTION_MODES = [
   { key: 'talk', label: 'Talk', icon: Mic2, path: '/talk/dashboard' },
   { key: 'cooking', label: 'Cooking', icon: ChefHat, path: '/cooking/dashboard' },
   { key: 'sports', label: 'Sports', icon: Trophy, path: '/sports/dashboard' },
-  { key: 'cosmo', label: 'Cosmo', icon: Brush, path: '/cosmo/dashboard' },
+  { key: 'cosmo', label: 'Beauty', icon: Brush, path: '/beauty/dashboard' },
   { key: 'radio', label: 'Radio', icon: Radio, path: '/music/configure' },
   { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
   { key: 'research', label: 'Research', icon: FlaskConical, path: '/research' },
@@ -56,7 +56,7 @@ export function getActiveProductionMode(pathname) {
   if (pathname.startsWith('/talk')) return 'talk';
   if (pathname.startsWith('/cooking')) return 'cooking';
   if (pathname.startsWith('/sports')) return 'sports';
-  if (pathname.startsWith('/cosmo')) return 'cosmo';
+  if (pathname.startsWith('/beauty') || pathname.startsWith('/cosmo')) return 'cosmo';
   if (pathname.startsWith('/research')) return 'research';
   if (pathname.startsWith('/news')) return 'news';
   return 'news';
