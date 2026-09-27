@@ -625,8 +625,9 @@ function Invoke-CreapdDirectorCommand($Command) {
       if ([string]::IsNullOrWhiteSpace($scene)) { $scene = $script:CurrentScene }
       $item = Get-CreapdSceneItem $scene ([string]$p.source_name)
       $list = Invoke-ObsRequest 'GetSceneItemList' @{ sceneName = $scene }
+      $entry = @($list.sceneItems) | Where-Object { [int]$_.sceneItemId -eq [int]$item.sceneItemId } | Select-Object -First 1
       $maxIndex = [Math]::Max(0, @($list.sceneItems).Count - 1)
-      $nextIndex = [Math]::Min($maxIndex, [int]$item.sceneItemId * 0 + ([int](@($list.sceneItems) | Where-Object { [int]$_.sceneItemId -eq [int]$item.sceneItemId } | Select-Object -First 1).sceneItemIndex) + 1)
+      $nextIndex = [Math]::Min($maxIndex, [int]$entry.sceneItemIndex + 1)
       Invoke-ObsRequest 'SetSceneItemIndex' @{ sceneName = $scene; sceneItemId = [int]$item.sceneItemId; sceneItemIndex = $nextIndex } | Out-Null
       Refresh-CreapdSceneSources $true
       return @{ handled = $true; result = @{ source_name = [string]$p.source_name; index = $nextIndex } }
