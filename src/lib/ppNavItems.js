@@ -8,7 +8,7 @@ export const PP_NAV_ITEMS = [
   { icon: Mic2, label: 'Talk', path: '/talk/dashboard' },
   { icon: ChefHat, label: 'Cooking', path: '/cooking/dashboard' },
   { icon: Trophy, label: 'Sports', path: '/sports/dashboard' },
-  { icon: Brush, label: 'Cosmo', path: '/cosmo/dashboard' },
+  { icon: Brush, label: 'Beauty', path: '/beauty/dashboard' },
   { icon: Church, label: 'Spiritual', path: '/spiritual/dashboard' },
   { icon: FlaskConical, label: 'Research', path: '/research' },
 ];
