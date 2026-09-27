@@ -48,7 +48,7 @@ function safeParse(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
-export default function TalkConfigure({ embedded = false }) {
+export default function TalkConfigure({ embedded = false, onBuilt }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editConfigId = searchParams.get('config_id');
@@ -164,7 +164,11 @@ export default function TalkConfigure({ embedded = false }) {
         await base44.functions.invoke('buildTalkProduction', { configuration_id: savedConfig.id });
       }
 
-      navigate('/talk/dashboard');
+      if (embedded && onBuilt) {
+        await onBuilt();
+      } else {
+        navigate('/talk/dashboard');
+      }
     } catch (err) {
       setBuildError(
         err?.data?.diagnostic?.message ||
