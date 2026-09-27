@@ -17,24 +17,47 @@ export default function ProducerLayout() {
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
 
   return (
-    <div className="relative h-screen flex flex-col overflow-hidden env-root" style={PRODUCTION_PROFILE_THEMES.news.vars}>
+    <div
+      className="news-studio-shell relative h-screen flex flex-col overflow-hidden env-root"
+      style={PRODUCTION_PROFILE_THEMES.news.vars}
+    >
       <EnvironmentLayer profileKey="news" />
+
+      <div className="news-studio-lightbar news-studio-lightbar-left" aria-hidden="true" />
+      <div className="news-studio-lightbar news-studio-lightbar-right" aria-hidden="true" />
+
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
-      <ProducerHeader
-        onGenerateBrief={() => {}}
-        onOpenNav={() => setNavDrawerOpen(true)}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <ProducerSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
-          <MobilePageShell>
-            <Outlet />
-          </MobilePageShell>
-        </main>
+        <ProducerHeader
+          variant="news"
+          onGenerateBrief={() => {}}
+          onOpenNav={() => setNavDrawerOpen(true)}
+        />
+
+        <div className="flex flex-1 overflow-hidden">
+          <ProducerSidebar
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
+
+          <main className="news-studio-main relative flex-1 overflow-y-auto pb-16 lg:pb-0">
+            <div className="news-studio-content relative z-20">
+              <MobilePageShell>
+                <Outlet />
+              </MobilePageShell>
+            </div>
+
+            <div className="news-desk-ghost hidden xl:block" aria-hidden="true">
+              <img src="/assets/news/NewsPP_broadcast_desk.png" alt="" />
+            </div>
+          </main>
+        </div>
+
+        <div className="news-studio-footer-wrap">
+          <ProductionFooter variant="news" />
+        </div>
+        <PPNavBar />
       </div>
-      <ProductionFooter variant="news" />
-      <PPNavBar />
-      </div>
+
       <MobileBottomNav items={PP_NAV_ITEMS} />
       <MobileNavDrawer
         open={navDrawerOpen}
