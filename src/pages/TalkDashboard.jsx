@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
@@ -22,8 +22,27 @@ function buildFailureMessage(config) {
   return metadata.message || 'The last Talk production build did not complete. You can retry it safely.';
 }
 
+function StudioPanel({ className = '', icon: Icon, title, path, children, actionLabel = 'Open' }) {
+  return (
+    <section className={`talk-dashboard-panel ${className}`}>
+      <div className="talk-dashboard-panel-head">
+        <div className="flex items-center gap-2 min-w-0">
+          {Icon && <Icon className="w-4 h-4 text-orange-300 shrink-0" />}
+          <h3 className="font-heading font-semibold text-sm text-white truncate">{title}</h3>
+        </div>
+        {path && (
+          <Link to={path} className="talk-dashboard-open">
+            {actionLabel}
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        )}
+      </div>
+      <div className="talk-dashboard-panel-body">{children}</div>
+    </section>
+  );
+}
+
 export default function TalkDashboard() {
-  const navigate = useNavigate();
   const ownedPreview = shouldUseNeonAuth();
   const { config, topics, research, guests, segments, assets, loading, refresh } = useTalkProduction();
   const [refreshing, setRefreshing] = useState(false);
@@ -104,17 +123,17 @@ export default function TalkDashboard() {
   if (config.status === 'building' || refreshing) {
     return (
       <div className="flex items-center justify-center h-screen p-6">
-        <div className="max-w-md text-center">
+        <div className="talk-build-card max-w-md text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">Building Your Talk Production</h2>
-          <p className="text-muted-foreground mb-8">CREAPD is running checkpointed research, verification, and production assembly. Larger shows can take a couple of minutes.</p>
+          <p className="text-white/55 mb-8">CREAPD is researching, verifying, and assembling the production.</p>
           <div className="space-y-3 text-left">
             {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating production assets'].map((label, i) => (
-              <div key={i} className="!flex items-center gap-3 text-sm">
+              <div key={i} className="flex items-center gap-3 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">{label}...</span>
+                <span className="text-white/55">{label}...</span>
               </div>
             ))}
           </div>
@@ -130,243 +149,185 @@ export default function TalkDashboard() {
   const livePath = `/talk/live?config_id=${encodeURIComponent(config.id)}`;
 
   const checklist = [
-    { label: 'Configuration Saved', done: !!config.production_name },
-    { label: 'Research Generated', done: research.length > 0 },
-    { label: 'Topics Generated', done: topics.length > 0 },
-    { label: 'Talking Points Generated', done: assets.some(a => a.asset_type === 'talking_points') },
-    { label: 'Discussion Questions Generated', done: assets.some(a => a.asset_type === 'discussion_questions') },
-    { label: 'Host Intros Generated', done: assets.some(a => a.asset_type === 'host_intro') },
-    { label: 'Show Rundown Generated', done: segments.length > 0 },
-    { label: 'Social Captions Generated', done: assets.some(a => a.asset_type === 'social_caption') },
-    { label: 'Thumbnail Prompt Generated', done: assets.some(a => a.asset_type === 'thumbnail_prompt') },
-    { label: 'Production Notes Generated', done: assets.some(a => a.asset_type === 'production_notes') },
+    !!config.production_name,
+    research.length > 0,
+    topics.length > 0,
+    assets.some(a => a.asset_type === 'talking_points'),
+    assets.some(a => a.asset_type === 'discussion_questions'),
+    assets.some(a => a.asset_type === 'host_intro'),
+    segments.length > 0,
+    assets.some(a => a.asset_type === 'social_caption'),
+    assets.some(a => a.asset_type === 'thumbnail_prompt'),
+    assets.some(a => a.asset_type === 'production_notes'),
   ];
-
-  const checklistDone = checklist.filter(c => c.done).length;
-  const readinessPercent = Math.round((checklistDone / checklist.length) * 100);
+  const readinessPercent = Math.round((checklist.filter(Boolean).length / checklist.length) * 100);
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
-      <div className="!flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="!flex items-center gap-2 mb-1">
-            <Mic2 className="w-5 h-5 text-primary" />
-            <h1 className="text-2xl font-heading font-bold">{config.production_name}</h1>
+    <div className="talk-dashboard-stage">
+      <div className="talk-dashboard-status">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Mic2 className="w-4 h-4 text-orange-300" />
+            <h1 className="font-heading font-bold text-base text-white truncate">{config.production_name}</h1>
           </div>
-          <div className="!flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="!flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {config.show_date}</span>
-            <span className="!flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {config.show_start_time}</span>
-            <span className="!flex items-center gap-1"><Radio className="w-3.5 h-3.5" /> {config.station_name || 'No station'}</span>
-            <span className="!flex items-center gap-1"><Mic2 className="w-3.5 h-3.5" /> {config.show_format}</span>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-white/45">
+            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{config.show_date}</span>
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{config.show_start_time}</span>
+            <span className="flex items-center gap-1"><Mic2 className="w-3 h-3" />{config.show_format}</span>
           </div>
         </div>
-        <div className="!flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           {config.status === 'ready' && segments.length > 0 && (
-            <Button size="sm" asChild>
-              <Link to={livePath}><Radio className="w-4 h-4 mr-1" /> Enter Studio</Link>
+            <Button size="sm" asChild className="talk-dashboard-live-button">
+              <Link to={livePath}><Radio className="w-3.5 h-3.5 mr-1" /> Enter Studio</Link>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4 mr-1" />
-            Rebuild
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="talk-dashboard-icon-button">
+            <RefreshCw className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/talk/configure?config_id=${config.id}`}>
-              <Settings className="w-4 h-4 mr-1" />
-              Edit Setup
-            </Link>
+          <Button variant="outline" size="sm" asChild className="talk-dashboard-icon-button">
+            <Link to={`/talk/configure?config_id=${config.id}`}><Settings className="w-3.5 h-3.5" /></Link>
           </Button>
         </div>
       </div>
 
       {buildFailure && (
-        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm !flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-medium">Last build needs attention</p>
-            <p className="mt-1">{buildFailure}</p>
-          </div>
+        <div className="talk-dashboard-error">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{buildFailure}</span>
         </div>
       )}
 
-      <TalkProducerGuide
-        currentStep="research"
-        title="CREAPD built the production. Now review it in order."
-        instructions={[
-          'Start with Research so you know what CREAPD found and verified.',
-          'Choose the Discussion Topics you actually want, then set up any real guests or panelists.',
-          'Review the Rundown and AI Assets before the final Export checkpoint and CREAPD Live.',
-        ]}
-        readyText={`${research.length} research · ${approvedTopics}/${topics.length} topics approved · ${confirmedGuests} guests confirmed · ${approvedAssets}/${assets.length} assets approved`}
-        nextPath="/talk/research"
-        nextLabel="Start Guided Review"
-        nextDescription="You can jump around if you need to, but following the guide keeps the production decisions in the right order."
-        note="Rebuild only when you want CREAPD to regenerate the production. Reviewing or approving existing material does not require a rebuild."
-      />
-
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Runtime</p>
-          <p className="text-lg font-heading font-bold">{formatMinutes(config.total_show_runtime)}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Talk Runtime</p>
-          <p className="text-lg font-heading font-bold text-primary">{formatMinutes(config.talk_segment_runtime)}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Format</p>
-          <p className="text-sm font-medium">{config.show_format}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Tone</p>
-          <p className="text-sm font-medium">{config.show_tone}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Guests</p>
-          <p className="text-sm font-medium">{guests.length} listed</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Generated</p>
-          <p className="text-lg font-heading font-bold text-emerald-400">{readinessPercent}%</p>
-        </div>
+      <div className="talk-slot talk-slot-guide">
+        <TalkProducerGuide
+          variant="screen"
+          currentStep="research"
+          title="CREAPD built the production. Now review it in order."
+          instructions={[
+            'Start with Research so you know what CREAPD found and verified.',
+            'Choose the Discussion Topics you actually want, then confirm your guests.',
+            'Review the Rundown and AI Assets before Export and CREAPD Live.',
+          ]}
+          readyText={`${research.length} research · ${approvedTopics}/${topics.length} topics · ${confirmedGuests} guests · ${approvedAssets}/${assets.length} assets`}
+          nextPath="/talk/research"
+          nextLabel="Start Guided Review"
+        />
       </div>
 
-      <div className="!flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={handleRefresh}><RefreshCw className="w-4 h-4 mr-1" /> Rebuild Production</Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/research"><Search className="w-4 h-4 mr-1" /> Research</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/topics"><Lightbulb className="w-4 h-4 mr-1" /> Topics</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/guests"><Users className="w-4 h-4 mr-1" /> Guests</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/rundown"><ClipboardList className="w-4 h-4 mr-1" /> Show Rundown</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/assets"><Sparkles className="w-4 h-4 mr-1" /> AI Assets</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/export"><Download className="w-4 h-4 mr-1" /> Finish & Launch</Link></Button>
-        {config.status === 'ready' && segments.length > 0 && (
-          <Button size="sm" asChild><Link to={livePath}><Radio className="w-4 h-4 mr-1" /> CREAPD Live</Link></Button>
+      <StudioPanel className="talk-slot talk-slot-topics" icon={Lightbulb} title="Discussion Topics" path="/talk/topics" actionLabel="Review">
+        {topics.length > 0 ? (
+          <div className="space-y-1.5">
+            {topics.slice(0, 4).map(topic => (
+              <div key={topic.id} className="talk-dashboard-list-row">
+                <span className="truncate">{topic.topic_name}</span>
+                <span className={topic.status === 'approved' ? 'text-emerald-300' : 'text-white/35'}>{topic.status}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-white/45">No topics generated yet.</p>
         )}
-      </div>
+      </StudioPanel>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><Lightbulb className="w-4 h-4 text-primary" /> Discussion Topics</h3>
-            <Link to="/talk/topics" className="text-xs text-primary hover:underline">Review</Link>
+      <StudioPanel className="talk-slot talk-slot-research" icon={TrendingUp} title="Research Feed" path="/talk/research" actionLabel="Open">
+        {research.length > 0 ? (
+          <div className="space-y-1.5">
+            {research.slice(0, 4).map(item => (
+              <div key={item.id} className="talk-dashboard-list-row">
+                <span className="truncate">{item.title}</span>
+                <span className="text-white/30">{item.relevance || ''}</span>
+              </div>
+            ))}
           </div>
-          {topics.length > 0 ? (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {topics.slice(0, 6).map(topic => (
-                <div key={topic.id} className="!flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-white/5">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{topic.topic_name}</p>
-                    {topic.suggested_placement && <p className="text-xs text-muted-foreground truncate">{topic.suggested_placement}</p>}
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${topic.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
-                    {topic.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No topics generated yet." actionLabel="Rebuild" onAction={handleRefresh} />
-          )}
-        </div>
+        ) : (
+          <p className="text-xs text-white/45">No research generated yet.</p>
+        )}
+      </StudioPanel>
 
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Research Updates</h3>
-            <Link to="/talk/research" className="text-xs text-primary hover:underline">Review</Link>
+      <StudioPanel className="talk-slot talk-slot-guests" icon={Users} title="Guest Chair" path="/talk/guests" actionLabel="Manage">
+        {guests.length > 0 ? (
+          <div className="space-y-1.5">
+            {guests.slice(0, 3).map(guest => (
+              <div key={guest.id} className="talk-dashboard-list-row">
+                <span className="truncate">{guest.guest_name}</span>
+                <span className={guest.status === 'confirmed' ? 'text-emerald-300' : 'text-white/35'}>{guest.status}</span>
+              </div>
+            ))}
+            <p className="text-[10px] text-white/35 pt-1">{confirmedGuests} confirmed · {guests.length} total</p>
           </div>
-          {research.length > 0 ? (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {research.slice(0, 6).map(item => (
-                <div key={item.id} className="text-sm py-1.5 px-2 rounded hover:bg-white/5">
-                  <p className="font-medium truncate">{item.title}</p>
-                  <div className="!flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{item.source}</span>
-                    <span className={`px-1.5 py-0.5 rounded ${item.relevance === 'high' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted'}`}>{item.relevance}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No research has been generated yet." onAction={handleRefresh} actionLabel="Rebuild" />
-          )}
-        </div>
+        ) : (
+          <p className="text-xs text-white/45">No guests added yet.</p>
+        )}
+      </StudioPanel>
 
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Show Rundown Preview</h3>
-            <Link to="/talk/rundown" className="text-xs text-primary hover:underline">Review</Link>
+      <section className="talk-slot talk-slot-stats talk-dashboard-center-console">
+        <div className="talk-dashboard-stat">
+          <span>Total Runtime</span>
+          <strong>{formatMinutes(config.total_show_runtime)}</strong>
+        </div>
+        <div className="talk-dashboard-stat">
+          <span>Talk Runtime</span>
+          <strong>{formatMinutes(config.talk_segment_runtime)}</strong>
+        </div>
+        <div className="talk-dashboard-stat">
+          <span>Format</span>
+          <strong>{config.show_format}</strong>
+        </div>
+        <div className="talk-dashboard-stat">
+          <span>Tone</span>
+          <strong>{config.show_tone}</strong>
+        </div>
+        <div className="talk-dashboard-stat">
+          <span>Guests</span>
+          <strong>{guests.length}</strong>
+        </div>
+        <div className="talk-dashboard-stat">
+          <span>Generated</span>
+          <strong className="text-emerald-300">{readinessPercent}%</strong>
+        </div>
+      </section>
+
+      <StudioPanel className="talk-slot talk-slot-rundown" icon={ClipboardList} title="Show Rundown" path="/talk/rundown" actionLabel="Review">
+        {segments.length > 0 ? (
+          <div className="space-y-1">
+            {segments.slice(0, 5).map(item => (
+              <div key={item.id} className="talk-dashboard-list-row">
+                <span className="text-white/35 w-10 shrink-0">{item.start_time || ''}</span>
+                <span className="truncate">{item.title}</span>
+                <span className="text-white/30">{SEGMENT_TYPE_LABELS[item.segment_type] || ''}</span>
+              </div>
+            ))}
           </div>
-          {segments.length > 0 ? (
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {segments.slice(0, 8).map((item) => (
-                <div key={item.id} className="!flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-white/5">
-                  <span className="text-xs text-muted-foreground w-12">{item.start_time || ''}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${SEGMENT_TYPE_LABELS[item.segment_type] ? 'bg-primary/15 text-primary' : 'bg-muted'}`}>
-                    {SEGMENT_TYPE_LABELS[item.segment_type] || item.segment_type}
-                  </span>
-                  <span className="truncate">{item.title}</span>
-                </div>
-              ))}
-              <Button size="sm" variant="ghost" asChild className="w-full mt-2">
-                <Link to="/talk/rundown">Review Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link>
-              </Button>
-            </div>
-          ) : (
-            <EmptyState message="No show rundown has been generated yet." onAction={handleRefresh} actionLabel="Rebuild" />
-          )}
-        </div>
+        ) : (
+          <p className="text-xs text-white/45">No rundown generated yet.</p>
+        )}
+      </StudioPanel>
 
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> AI Generated Assets</h3>
-            <Link to="/talk/assets" className="text-xs text-primary hover:underline">Review</Link>
+      <StudioPanel className="talk-slot talk-slot-assets" icon={Sparkles} title="AI Assets" path="/talk/assets" actionLabel="Review">
+        {assets.length > 0 ? (
+          <div className="grid grid-cols-2 gap-1.5">
+            {assets.slice(0, 6).map(asset => (
+              <div key={asset.id} className="talk-dashboard-asset-chip">
+                <CheckCircle2 className={`w-3 h-3 ${asset.status === 'approved' ? 'text-emerald-300' : 'text-white/30'}`} />
+                <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
+              </div>
+            ))}
           </div>
-          {assets.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {assets.slice(0, 8).map(asset => (
-                <div key={asset.id} className="text-xs py-1.5 px-2 rounded bg-white/5 !flex items-center gap-1.5">
-                  <CheckCircle2 className={`w-3 h-3 ${asset.status === 'approved' ? 'text-emerald-400' : 'text-muted-foreground'}`} />
-                  <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
-                </div>
-              ))}
-              <Button size="sm" variant="ghost" asChild className="col-span-2 mt-1">
-                <Link to="/talk/assets">Review All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link>
-              </Button>
-            </div>
-          ) : (
-            <EmptyState message="No AI assets have been generated yet." onAction={handleRefresh} actionLabel="Rebuild" />
-          )}
-        </div>
-      </div>
+        ) : (
+          <p className="text-xs text-white/45">No AI assets generated yet.</p>
+        )}
+      </StudioPanel>
 
-      <div className="glass-panel p-5">
-        <h3 className="font-heading font-semibold mb-1">Generation Checklist</h3>
-        <p className="text-xs text-muted-foreground mb-4">This confirms CREAPD generated the production pieces. The Producer Guide above tracks the human review decisions.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {checklist.map((item, i) => (
-            <div key={i} className="!flex items-center gap-2 text-sm">
-              {item.done ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : (
-                <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-              )}
-              <span className={item.done ? '' : 'text-muted-foreground'}>{item.label}</span>
-            </div>
-          ))}
+      <section className="talk-slot talk-slot-export talk-dashboard-export">
+        <Download className="w-5 h-5 text-orange-300" />
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">Final Desk</p>
+          <h3 className="text-sm font-semibold text-white">Finish & Launch</h3>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ message, actionLabel, onAction }) {
-  return (
-    <div className="text-center py-6">
-      <AlertCircle className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-      <p className="text-sm text-muted-foreground mb-3">{message}</p>
-      {actionLabel && onAction && (
-        <Button size="sm" variant="outline" onClick={onAction}>{actionLabel}</Button>
-      )}
+        <Button size="sm" asChild className="ml-auto talk-dashboard-live-button">
+          <Link to="/talk/export">Export <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link>
+        </Button>
+      </section>
     </div>
   );
 }
