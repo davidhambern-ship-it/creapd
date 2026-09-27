@@ -21,6 +21,7 @@ const USER_COMMANDS = new Set([
   'set_source_transform',
   'move_source_up',
   'move_source_down',
+  'set_direct_edit_mode',
 ]);
 
 const OVERLAY_POSITIONS = new Set([
@@ -372,6 +373,7 @@ function heartbeatNeedsWrite(bridge, normalized) {
   if (normalized.websocketVersion && normalized.websocketVersion !== cleanNullable(bridge.obs_websocket_version)) return true;
   if (normalized.lastError !== cleanNullable(bridge.last_error)) return true;
   if (normalized.scenes.length > 0 && !jsonEqual(normalized.scenes, bridge.scenes || [])) return true;
+  if (Object.keys(normalized.capabilities).length > 0 && !jsonEqual(normalized.capabilities, bridge.capabilities || {})) return true;
 
   return false;
 }
@@ -462,10 +464,12 @@ async function pollBridge(sql, body) {
   const bridge = await requireAgentBridge(sql, body.bridge_token);
   const heartbeatWritten = await updateBridgeHeartbeat(sql, bridge, body);
 
+  const directEditMode = Boolean(body?.capabilities?.direct_edit_mode);
+  const commandPollMs = directEditMode ? 650 : AGENT_COMMAND_POLL_MS;
   const runtime = agentRuntime.get(bridge.id) || { lastCommandPollAt: 0 };
   const now = Date.now();
   let commands = [];
-  if (now - Number(runtime.lastCommandPollAt || 0) >= AGENT_COMMAND_POLL_MS) {
+  if (now - Number(runtime.lastCommandPollAt || 0) >= commandPollMs) {
     commands = await claimPendingCommands(sql, bridge.id);
     runtime.lastCommandPollAt = now;
     agentRuntime.set(bridge.id, runtime);
@@ -473,7 +477,7 @@ async function pollBridge(sql, body) {
 
   return {
     heartbeat_written: heartbeatWritten,
-    next_poll_ms: AGENT_COMMAND_POLL_MS,
+    next_poll_ms: directEditMode ? 650 : AGENT_COMMAND_POLL_MS,
     commands: (commands || []).map(command => ({
       id: command.id,
       command_type: command.command_type,
