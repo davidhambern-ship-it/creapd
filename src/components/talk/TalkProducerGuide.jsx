@@ -25,6 +25,7 @@ export default function TalkProducerGuide({
   nextDisabled = false,
   note,
   variant = 'default',
+  onNext,
 }) {
   const currentIndex = Math.max(0, STEPS.findIndex(step => step.key === currentStep));
 
@@ -54,14 +55,25 @@ export default function TalkProducerGuide({
 
         {readyText && <p className="mt-2 text-[10px] font-medium text-white/70">{readyText}</p>}
 
-        {nextPath && nextLabel && (
+        {nextLabel && onNext ? (
+          <Button
+            type="button"
+            size="sm"
+            disabled={nextDisabled}
+            onClick={onNext}
+            className={`mt-2 h-8 w-full text-xs ${nextDisabled ? 'pointer-events-none opacity-50' : ''}`}
+          >
+            {nextLabel}
+            <ArrowRight className="w-3.5 h-3.5 ml-2" />
+          </Button>
+        ) : nextPath && nextLabel ? (
           <Button asChild size="sm" disabled={nextDisabled} className={`mt-2 h-8 w-full text-xs ${nextDisabled ? 'pointer-events-none opacity-50' : ''}`}>
             <Link to={nextPath} aria-disabled={nextDisabled}>
               {nextLabel}
               <ArrowRight className="w-3.5 h-3.5 ml-2" />
             </Link>
           </Button>
-        )}
+        ) : null}
       </div>
     );
   }

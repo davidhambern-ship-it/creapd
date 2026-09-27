@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { TALK_NAV_ITEMS } from '@/lib/talkConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Lightbulb, Users,
@@ -23,7 +23,9 @@ const ICON_MAP = {
 };
 
 export default function TalkLayout() {
+  const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isDashboard = location.pathname === '/talk/dashboard';
 
   return (
     <div className="talk-studio-shell relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.talk.vars}>
@@ -33,7 +35,7 @@ export default function TalkLayout() {
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
         <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
 
-        <main className="talk-studio-main relative flex-1 overflow-y-auto pb-16 lg:pb-0">
+        <main className={isDashboard ? "talk-studio-main relative flex-1 min-h-0 overflow-hidden pb-16 lg:pb-0" : "talk-studio-main relative flex-1 min-h-0 overflow-y-auto pb-16 lg:pb-0"}>
           <MobilePageShell>
             <Outlet />
           </MobilePageShell>
