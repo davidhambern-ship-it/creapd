@@ -10,7 +10,7 @@ import ModeToggle from '@/components/creap/ModeToggle';
 import { useCREAPMode } from '@/context/CREAPModeContext';
 import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
 
-export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
+export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = 'default' }) {
   const [time, setTime] = useState(new Date());
   const [briefingStatus, setBriefingStatus] = useState(null);
   const location = useLocation();
@@ -64,9 +64,9 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
   const minsUntil = Math.max(0, Math.floor(((nextRun - time) % 3600000) / 60000));
 
   return (
-    <header className="relative z-50">
+    <header className={`relative z-50 ${variant === 'news' ? 'news-broadcast-header' : ''}`}>
       {/* Main Header Bar */}
-      <div className="h-14 lg:h-16 glass-panel-navy border-b border-white/[0.06] flex items-center px-3 lg:px-6">
+      <div className={`h-14 lg:h-16 border-b border-white/[0.06] flex items-center px-3 lg:px-6 ${variant === 'news' ? 'news-broadcast-header-bar' : 'glass-panel-navy'}`}>
         {/* Purple bottom glow */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-berna-purple/40 to-transparent" />
 
@@ -84,8 +84,14 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav }) {
             <MenuIcon className="w-4 h-4 text-berna-purple" />
             <span className="text-xs font-medium">Sidebar</span>
           </button>
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center gap-2">
             <CreapdLogo height="h-8 lg:h-10" />
+            {variant === 'news' && (
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="h-6 w-px bg-white/20" />
+                <span className="text-xs lg:text-sm tracking-[0.28em] text-white font-semibold">NEWS</span>
+              </div>
+            )}
           </Link>
         </div>
 
