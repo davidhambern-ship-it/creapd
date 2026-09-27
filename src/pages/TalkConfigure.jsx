@@ -419,7 +419,7 @@ export default function TalkConfigure({ embedded = false }) {
                 variant="outline"
                 onClick={() => changeCard(step - 1)}
                 disabled={step === 0 || cardExiting}
-                className="border-black/15 bg-black/[0.03] text-black hover:bg-black/[0.07]"
+                className="border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 Previous Card
