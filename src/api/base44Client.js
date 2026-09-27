@@ -32,6 +32,35 @@ function reportLegacyFallback(kind, name) {
   );
 }
 
+function isOwnedAssetSchemaMissing(error) {
+  return error?.status === 503 && (
+    error?.data?.diagnostic?.code === '42P01'
+    || /relation .* does not exist/i.test(String(error?.data?.diagnostic?.message || ''))
+  );
+}
+
+function sortLegacyRows(rows, sort = '-created_date') {
+  const value = String(sort || '').trim();
+  if (!value) return rows;
+  const descending = value.startsWith('-');
+  const field = descending ? value.slice(1) : value;
+  return [...rows].sort((left, right) => {
+    const a = left?.[field] ?? '';
+    const b = right?.[field] ?? '';
+    const result = String(a).localeCompare(String(b));
+    return descending ? -result : result;
+  });
+}
+
+function filterLegacyRows(rows, criteria = {}) {
+  return rows.filter(row => Object.entries(criteria || {}).every(([key, expected]) => {
+    if (expected && typeof expected === 'object' && Array.isArray(expected.$in)) {
+      return expected.$in.includes(row?.[key]);
+    }
+    return row?.[key] === expected;
+  }));
+}
+
 function bindIfFunction(value, target) {
   return typeof value === 'function' ? value.bind(target) : value;
 }
@@ -67,6 +96,188 @@ function extractEditorRewriteText(prompt) {
   if (start < 0 || end <= start) return null;
   return prompt.slice(start + prefix.length, end);
 }
+
+const imageAssetAdapter = new Proxy(sdkBase44.entities.ImageAsset, {
+  get(target, property) {
+    if (property === 'list') {
+      return async (sort = '-created_date', limit = 100) => {
+        if (!shouldUseNeonAuth()) return target.list(sort, limit);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'image_asset_list',
+            limit,
+          });
+          return sortLegacyRows(result?.assets || [], sort);
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'ImageAsset.list (schema pending)');
+          return target.list(sort, limit);
+        }
+      };
+    }
+
+    if (property === 'filter') {
+      return async (criteria = {}, sort = '-created_date', limit = 100) => {
+        if (!shouldUseNeonAuth()) return target.filter(criteria, sort, limit);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'image_asset_list',
+            limit: Math.max(Number(limit || 100), 100),
+          });
+          return sortLegacyRows(filterLegacyRows(result?.assets || [], criteria), sort).slice(0, limit || 100);
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'ImageAsset.filter (schema pending)');
+          return target.filter(criteria, sort, limit);
+        }
+      };
+    }
+
+    if (property === 'create') {
+      return async payload => {
+        if (!shouldUseNeonAuth()) return target.create(payload);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'image_asset_create',
+            asset: payload,
+          });
+          return result?.asset;
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'ImageAsset.create (schema pending)');
+          return target.create(payload);
+        }
+      };
+    }
+
+    if (property === 'update') {
+      return async (assetId, payload = {}) => {
+        if (!shouldUseNeonAuth()) return target.update(assetId, payload);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'image_asset_update',
+            asset_id: assetId,
+            patch: payload,
+          });
+          return result?.asset;
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'ImageAsset.update (schema pending)');
+          return target.update(assetId, payload);
+        }
+      };
+    }
+
+    if (property === 'delete') {
+      return async assetId => {
+        if (!shouldUseNeonAuth()) return target.delete(assetId);
+        try {
+          return await creapdApi.post('/production/core', {
+            action: 'image_asset_delete',
+            asset_id: assetId,
+          });
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'ImageAsset.delete (schema pending)');
+          return target.delete(assetId);
+        }
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+const assetRegistryAdapter = new Proxy(sdkBase44.entities.AssetRegistry, {
+  get(target, property) {
+    if (property === 'list') {
+      return async (sort = '-created_date', limit = 100) => {
+        if (!shouldUseNeonAuth()) return target.list(sort, limit);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'asset_registry_list',
+            limit,
+          });
+          return sortLegacyRows(result?.assets || [], sort);
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'AssetRegistry.list (schema pending)');
+          return target.list(sort, limit);
+        }
+      };
+    }
+
+    if (property === 'filter') {
+      return async (criteria = {}, sort = '-created_date', limit = 100) => {
+        if (!shouldUseNeonAuth()) return target.filter(criteria, sort, limit);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'asset_registry_list',
+            limit: Math.max(Number(limit || 100), 100),
+          });
+          return sortLegacyRows(filterLegacyRows(result?.assets || [], criteria), sort).slice(0, limit || 100);
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'AssetRegistry.filter (schema pending)');
+          return target.filter(criteria, sort, limit);
+        }
+      };
+    }
+
+    if (property === 'create') {
+      return async payload => {
+        if (!shouldUseNeonAuth()) return target.create(payload);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'asset_registry_create',
+            asset: payload,
+          });
+          return result?.asset;
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'AssetRegistry.create (schema pending)');
+          return target.create(payload);
+        }
+      };
+    }
+
+    if (property === 'update') {
+      return async (assetId, payload = {}) => {
+        if (!shouldUseNeonAuth()) return target.update(assetId, payload);
+        try {
+          const result = await creapdApi.post('/production/core', {
+            action: 'asset_registry_update',
+            asset_id: assetId,
+            patch: payload,
+          });
+          return result?.asset;
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'AssetRegistry.update (schema pending)');
+          return target.update(assetId, payload);
+        }
+      };
+    }
+
+    if (property === 'delete') {
+      return async assetId => {
+        if (!shouldUseNeonAuth()) return target.delete(assetId);
+        try {
+          return await creapdApi.post('/production/core', {
+            action: 'asset_registry_delete',
+            asset_id: assetId,
+          });
+        } catch (error) {
+          if (!isOwnedAssetSchemaMissing(error)) throw error;
+          reportLegacyFallback('entity', 'AssetRegistry.delete (schema pending)');
+          return target.delete(assetId);
+        }
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
 
 const researchTopicAdapter = new Proxy(sdkBase44.entities.ResearchTopic, {
   get(target, property) {
@@ -302,6 +513,8 @@ const slideElementAdapter = new Proxy(sdkBase44.entities.SlideElement, {
 
 const entitiesAdapter = new Proxy(sdkBase44.entities, {
   get(target, property) {
+    if (property === 'ImageAsset') return imageAssetAdapter;
+    if (property === 'AssetRegistry') return assetRegistryAdapter;
     if (property === 'ResearchTopic') return researchTopicAdapter;
     if (property === 'ResearchPoint') return researchPointAdapter;
     if (property === 'ProductionPackage') return productionPackageAdapter;
