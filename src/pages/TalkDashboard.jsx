@@ -426,7 +426,7 @@ export default function TalkDashboard() {
           />
         </div>
 
-        <StudioPanel className="absolute top-[56%] right-[18%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
+        <StudioPanel className="absolute top-[44%] right-[18%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
           {topics.length > 0 ? (
             <div className="space-y-1.5">
               {topics.slice(0, 4).map((topic) => (
@@ -441,7 +441,7 @@ export default function TalkDashboard() {
           )}
         </StudioPanel>
 
-        <StudioPanel className="absolute top-[56%] left-[19%] w-[18%]" icon={Users} title="Guest Chair" actionLabel="Open" onOpen={() => setActivePanel('guests')}>
+        <StudioPanel className="absolute top-[44%] left-[19%] w-[18%]" icon={Users} title="Guest Chair" actionLabel="Open" onOpen={() => setActivePanel('guests')}>
           {guests.length > 0 ? (
             <div className="space-y-1.5">
               {guests.slice(0, 3).map((guest) => (
@@ -457,7 +457,7 @@ export default function TalkDashboard() {
           )}
         </StudioPanel>
 
-        <section className="absolute top-[53%] left-[38.5%] w-[28%] grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-black/32 p-2 backdrop-blur-sm shadow-lg">
+        <section className="absolute top-[58%] left-[38.5%] w-[28%] grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-black/32 p-2 backdrop-blur-sm shadow-lg">
           {[
             ['Total Runtime', formatMinutes(config.total_show_runtime)],
             ['Talk Runtime', formatMinutes(config.talk_segment_runtime)],
