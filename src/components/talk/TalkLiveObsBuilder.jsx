@@ -118,8 +118,8 @@ export default function TalkLiveObsBuilder({
 
   const uploadDirectorMedia = async file => {
     const contentType = mediaContentType(file, sourceType);
-    const authorization = await creapdApi.post('/production/obs-upload', {
-      action: 'authorize',
+    const authorization = await creapdApi.post('/production/core', {
+      action: 'director_media_upload_authorize',
       filename: file.name,
       content_type: contentType,
       byte_size: file.size,
@@ -131,7 +131,7 @@ export default function TalkLiveObsBuilder({
 
     const uploaded = await upload(authorization.pathname, file, {
       access: 'public',
-      handleUploadUrl: '/api/creapd/production/obs-upload',
+      handleUploadUrl: '/api/creapd/production/core',
       clientPayload: JSON.stringify({ ticket: authorization.upload_ticket }),
       contentType,
       multipart: file.size > 8 * 1024 * 1024,
