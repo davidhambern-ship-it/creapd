@@ -410,7 +410,7 @@ export default function TalkDashboard() {
           </div>
         )}
 
-        <div className="absolute top-[5%] left-[1.1%] w-[23%]">
+        <div className="absolute top-[5%] left-[1.1%] w-[20%]">
           <TalkProducerGuide
             variant="screen"
             currentStep="research"
@@ -426,7 +426,7 @@ export default function TalkDashboard() {
           />
         </div>
 
-        <StudioPanel className="absolute top-[34%] right-[17%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
+        <StudioPanel className="absolute top-[34%] right-[15%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
           {topics.length > 0 ? (
             <div className="space-y-1.5">
               {topics.slice(0, 4).map((topic) => (
@@ -441,7 +441,7 @@ export default function TalkDashboard() {
           )}
         </StudioPanel>
 
-        <StudioPanel className="absolute top-[34%] left-[20%] w-[18%]" icon={Users} title="Guest Chair" actionLabel="Open" onOpen={() => setActivePanel('guests')}>
+        <StudioPanel className="absolute top-[34%] left-[22%] w-[18%]" icon={Users} title="Guest Chair" actionLabel="Open" onOpen={() => setActivePanel('guests')}>
           {guests.length > 0 ? (
             <div className="space-y-1.5">
               {guests.slice(0, 3).map((guest) => (
