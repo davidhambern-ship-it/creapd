@@ -426,7 +426,7 @@ export default function TalkDashboard() {
           />
         </div>
 
-        <StudioPanel className="absolute top-[30%] left-[24%] w-[20%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
+        <StudioPanel className="absolute top-[56%] right-[18%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
           {topics.length > 0 ? (
             <div className="space-y-1.5">
               {topics.slice(0, 4).map((topic) => (
