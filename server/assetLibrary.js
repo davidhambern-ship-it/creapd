@@ -73,7 +73,7 @@ function numberValue(patch, key) {
 }
 
 function jsonValue(patch, key) {
-  if (!hasOwn(patch, key)) return null;
+  if (!hasOwn(patch, key)) return '{}';
   const value = patch[key];
   if (value === null || value === undefined) return '{}';
   return JSON.stringify(value);
