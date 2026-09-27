@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { creapdApi } from '@/api/creapdClient';
+import TalkLiveObsBuilder from './TalkLiveObsBuilder';
 
 const POSITIONS = [
   { key: 'top_left', label: 'Top Left' },
@@ -503,12 +504,15 @@ function TalkLiveDirectorControlLive() {
               </div>
             </div>
 
-            <div className="px-4 flex gap-2 border-t border-white/10 pt-2 pb-2">
-              <button type="button" onClick={() => setTab('graphics')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${tab === 'graphics' ? 'border-violet-400/40 bg-violet-500/12 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'}`}>
+            <div className="px-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-2 pb-2">
+              <button type="button" onClick={() => setTab('graphics')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${tab === 'graphics' ? 'border-violet-400/40 bg-violet-500/12 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'}`}>
                 <Layers3 className="w-3.5 h-3.5 inline mr-1.5" /> Graphics
               </button>
-              <button type="button" onClick={() => setTab('scenes')} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold ${tab === 'scenes' ? 'border-cyan-400/40 bg-cyan-500/12 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'}`}>
-                <Clapperboard className="w-3.5 h-3.5 inline mr-1.5" /> Scenes & Automation
+              <button type="button" onClick={() => setTab('scenes')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${tab === 'scenes' ? 'border-cyan-400/40 bg-cyan-500/12 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'}`}>
+                <Clapperboard className="w-3.5 h-3.5 inline mr-1.5" /> Scenes
+              </button>
+              <button type="button" onClick={() => setTab('sources')} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${tab === 'sources' ? 'border-emerald-400/40 bg-emerald-500/12 text-white' : 'border-white/10 bg-white/[0.03] text-muted-foreground'}`}>
+                <Layers3 className="w-3.5 h-3.5 inline mr-1.5" /> OBS Builder
               </button>
             </div>
           </div>
@@ -686,6 +690,21 @@ function TalkLiveDirectorControlLive() {
                   <Button onClick={saveMappings} disabled={!dirtyCount || Boolean(busy)}>{busy === 'save' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Save Scene Map</Button>
                 </div>
               </>
+            )}
+
+            {tab === 'sources' && (
+              <TalkLiveObsBuilder
+                bridge={bridge}
+                connected={connected}
+                currentScene={currentScene}
+                scenes={scenes}
+                enqueue={enqueue}
+                loadState={loadState}
+                busy={busy}
+                setBusy={setBusy}
+                setError={setError}
+                setNotice={setNotice}
+              />
             )}
 
             {notice && <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100">{notice}</div>}
