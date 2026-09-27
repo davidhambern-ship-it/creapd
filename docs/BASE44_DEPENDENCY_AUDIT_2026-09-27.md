@@ -160,6 +160,19 @@ Remaining adjacent legacy surface:
    - Confirm zero Base44 fallbacks.
    - Remove `@base44/sdk`, `@base44/vite-plugin`, Base44 auth fallback, and unmatched Base44 API proxy.
 
+## Work started from this audit
+
+The first shared dependency is now staged in code:
+
+- Added `server/migrations/006_asset_library.sql` for owned `image_assets` and `asset_registry` tables.
+- Added `server/assetLibrary.js` for owned ImageAsset / AssetRegistry CRUD.
+- Added asset actions to the existing `/api/creapd/production/core` endpoint so we do not consume another Vercel Function slot.
+- Extended the existing Vercel Blob upload handshake for shared asset uploads.
+- Added Preview adapters for `ImageAsset` and `AssetRegistry`. Until migration 006 is applied, these adapters safely fall back to Base44 only when Postgres reports that the new tables do not exist.
+- Updated `ImageUploadModal` so Preview uploads file bytes to Vercel Blob instead of Base44 storage.
+
+**Remaining activation step:** apply migration 006 to the CREAPD Neon database. After that, the Image/Video Library and KAAE Asset Library automatically begin using the owned tables on Preview.
+
 ## Runtime audit instrumentation
 
 As of this audit, `src/api/base44Client.js` emits a deduplicated console warning whenever the Neon-owned Preview touches an un-migrated Base44 entity, backend function, or integration. This gives us a live dependency detector while testing the Preview without changing behavior.
