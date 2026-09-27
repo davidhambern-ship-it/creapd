@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { TALK_NAV_ITEMS } from '@/lib/talkConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Lightbulb, Users,
   ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle, Mic2,
   Compass
 } from 'lucide-react';
-import AdminSidebarSection from './AdminSidebarSection';
-import SidebarNavSections from './SidebarNavSections';
 import ProducerHeader from './ProducerHeader';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
@@ -16,7 +14,6 @@ import PPNavBar from './PPNavBar';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
-
 import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
@@ -26,43 +23,27 @@ const ICON_MAP = {
 };
 
 export default function TalkLayout() {
-  const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <div className="talk-studio-shell relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.talk.vars}>
       <div className="talk-studio-backdrop" aria-hidden="true" />
       <EnvironmentLayer profileKey="talk" />
-      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
-      <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex w-60 flex-col env-glass-sidebar">
-          <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-            <SidebarNavSections items={TALK_NAV_ITEMS} iconMap={ICON_MAP} />
-            <AdminSidebarSection variant="talk" onNavigate={() => {}} />
-          </nav>
-          <div className="p-3 border-t border-sidebar-border">
-            <Link to="/home" className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-accent transition-colors">
-              <LayoutGrid className="w-4 h-4" />
-              CREAPD Home
-            </Link>
-          </div>
-        </aside>
+      <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
+        <ProducerHeader onGenerateBrief={() => {}} onOpenNav={() => setMobileNavOpen(true)} />
 
         <main className="talk-studio-main relative flex-1 overflow-y-auto pb-16 lg:pb-0">
           <MobilePageShell>
             <Outlet />
           </MobilePageShell>
         </main>
+
+        <ProductionFooter variant="talk" />
+        <PPNavBar />
       </div>
 
-      <ProductionFooter variant="talk" />
-      <PPNavBar />
-      </div>
       <MobileBottomNav items={PP_NAV_ITEMS} />
-
       <MobileNavDrawer
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
