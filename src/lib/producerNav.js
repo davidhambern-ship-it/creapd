@@ -3,67 +3,34 @@ import {
   Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
   Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
   ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film, FlaskConical
+  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film, FlaskConical, CheckCircle
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
   {
-    label: null,
+    label: 'News Desk',
     items: [
-      { icon: FileText, label: "Discovery — Today's Brief", path: '/news/brief' },
       { icon: LayoutDashboard, label: 'Dashboard', path: '/news/dashboard' },
+      { icon: FileText, label: "Today's Brief", path: '/news/brief' },
+      { icon: CalendarDays, label: 'Weekly Planner', path: '/news/planner' },
     ]
   },
   {
-    label: 'Discovery',
+    label: 'Assignment Desk',
     items: [
-      { icon: Layers, label: 'Discovery — Story Queue', path: '/news/queue' },
-      { icon: Palette, label: 'Discovery — Brand Profiles', path: '/news/brands' },
-      { icon: Tv, label: 'Discovery — Show Profiles', path: '/news/shows' },
-    ]
-  },
-  {
-    label: 'Knowledge',
-    items: [
-      { icon: Search, label: 'Knowledge — Research Desk', path: '/news/research' },
-      { icon: Radio, label: 'Knowledge — Sources', path: '/news/sources' },
-      { icon: FileInput, label: 'Knowledge — Import URL', path: '/news/import' },
-      { icon: Bookmark, label: 'Knowledge — Story Library', path: '/news/library' },
-      { icon: ImageIcon, label: 'Knowledge — Media Library', path: '/news/images' },
-    ]
-  },
-  {
-    label: 'Blueprint',
-    items: [
-      { icon: ClipboardList, label: 'Blueprint — Story Manager', path: '/news/workspace' },
-      { icon: LayoutTemplate, label: 'Blueprint — Templates', path: '/news/templates' },
-      { icon: ImageIcon, label: 'Blueprint — Graphics Templates', path: '/news/graphics-templates' },
-      { icon: MessageSquareCode, label: 'Blueprint — Prompt Templates', path: '/news/prompt-templates' },
+      { icon: Layers, label: 'Story Queue', path: '/news/queue' },
+      { icon: CheckCircle, label: 'Story Review', path: '/news/review' },
+      { icon: Search, label: 'Research Desk', path: '/news/research' },
+      { icon: Bookmark, label: 'Story Library', path: '/news/library' },
     ]
   },
   {
     label: 'Production',
     items: [
-      { icon: Package, label: 'Production — Packages', path: '/news/production' },
-    ]
-  },
-  {
-    label: 'Assembly',
-    items: [
-      { icon: Film, label: 'Assembly — Presentations', path: '/news/presentations' },
-      { icon: Download, label: 'Assembly — Export Center', path: '/news/export' },
-    ]
-  },
-  {
-    label: 'System',
-    items: [
-      { icon: Archive, label: 'System — Archive', path: '/news/archive' },
-      { icon: ShieldCheck, label: 'System — Security & Privacy', path: '/news/security' },
-      { icon: Activity, label: 'System — Automation', path: '/news/automation' },
-      { icon: Building2, label: 'System — Organizations', path: '/news/organizations' },
-      { icon: Bell, label: 'System — Activity Center', path: '/news/activity' },
-      { icon: UserCircle, label: 'System — My Profile', path: '/news/profile' },
-      { icon: Settings, label: 'System — Settings', path: '/news/settings' },
+      { icon: ClipboardList, label: 'Story Workspace', path: '/news/workspace' },
+      { icon: Package, label: 'Production Packages', path: '/news/production' },
+      { icon: Film, label: 'Presentations', path: '/presentations' },
+      { icon: Download, label: 'Export Center', path: '/news/export' },
     ]
   },
 ];
