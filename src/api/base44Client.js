@@ -20,6 +20,17 @@ const sdkBase44 = createClient({
 // this browser tab.
 const ownedPresentationIds = new Set();
 let activeOwnedPresentationId = null;
+const reportedLegacyFallbacks = new Set();
+
+function reportLegacyFallback(kind, name) {
+  if (!shouldUseNeonAuth()) return;
+  const key = `${kind}:${String(name || 'unknown')}`;
+  if (reportedLegacyFallbacks.has(key)) return;
+  reportedLegacyFallbacks.add(key);
+  console.warn(
+    `[CREAPD MIGRATION] Base44 fallback used on owned Preview: ${kind} ${String(name || 'unknown')}`,
+  );
+}
 
 function bindIfFunction(value, target) {
   return typeof value === 'function' ? value.bind(target) : value;
@@ -297,6 +308,7 @@ const entitiesAdapter = new Proxy(sdkBase44.entities, {
     if (property === 'StoriesPresentation') return storiesPresentationAdapter;
     if (property === 'StorySlide') return storySlideAdapter;
     if (property === 'SlideElement') return slideElementAdapter;
+    reportLegacyFallback('entity', property);
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
@@ -440,6 +452,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result };
         }
 
+        reportLegacyFallback('function', functionName);
         return target.invoke(functionName, payload);
       };
     }
@@ -480,6 +493,7 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
           return { content: result?.content || rewriteText };
         }
 
+        reportLegacyFallback('integration', 'Core.InvokeLLM');
         return target.InvokeLLM(payload);
       };
     }
@@ -491,6 +505,7 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
 const integrationsAdapter = new Proxy(sdkBase44.integrations, {
   get(target, property) {
     if (property === 'Core') return coreIntegrationsAdapter;
+    reportLegacyFallback('integration', property);
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
