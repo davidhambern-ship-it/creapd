@@ -30,7 +30,7 @@ export default function TalkProducerGuide({
 
   if (variant === 'screen') {
     return (
-      <div className="talk-producer-screen">
+      <div className="rounded-2xl border border-white/10 bg-black/70 p-3.5 backdrop-blur-xl shadow-2xl">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-orange-300">
             <Compass className="w-4 h-4" />
