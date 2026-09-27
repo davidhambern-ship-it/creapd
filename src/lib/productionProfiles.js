@@ -175,27 +175,27 @@ export const PRODUCTION_STUDIOS = [
   },
   {
     key: 'cosmo',
-    label: 'Cosmo Studio',
-    shortLabel: 'Cosmo',
-    description: 'Health & beauty shows, skincare tutorials, wellness programs, product reviews, and cosmetic education content.',
+    label: 'Beauty Studio',
+    shortLabel: 'Beauty',
+    description: 'Cosmetology shows, hair, nails, skincare, makeup, esthetics, barbering, salon education, and beauty product reviews.',
     icon: Brush,
     available: true,
-    path: '/cosmo/dashboard',
+    path: '/beauty/dashboard',
     gradient: 'from-pink-500/20 to-fuchsia-500/10',
     accent: 'text-pink-400',
     accentBg: 'bg-pink-500/10',
     accentBorder: 'border-pink-500/20',
     spotlightFeature: 'Beauty Studio',
-    spotlightDescription: 'Build health and beauty programs with research, tutorials, expert interviews, scripts, voiceovers, visuals, and complete Production Packages.',
+    spotlightDescription: 'Build cosmetology and beauty programs with tutorials, expert interviews, salon education, scripts, voiceovers, visuals, and complete Production Packages.',
     workflow: [
-      'Select health and beauty topics and define the show format',
+      'Select cosmetology and beauty topics and define the show format',
       'Generate research, topic summaries, and talking points',
       'Generate scripts, voiceovers, tutorials, and media assets',
       'Approve the Production Package and send a copy to the Presentation Studio',
       'Direct, edit, rehearse, present, or export inside the Presentation Editor'
     ],
-    outputs: 'Topic summaries, talking points, scripts, voiceovers, tutorial assets, show rundowns, approved Production Packages',
-    examples: ['Skincare Tutorial', 'Product Review', 'Wellness Q&A']
+    outputs: 'Cosmetology research, tutorials, talking points, scripts, voiceovers, beauty assets, show rundowns, approved Production Packages',
+    examples: ['Hair Tutorial', 'Nail Technique', 'Skincare Demo', 'Beauty Product Review']
   },
 ];
 
