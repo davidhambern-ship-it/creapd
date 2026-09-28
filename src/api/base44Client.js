@@ -65,6 +65,182 @@ function bindIfFunction(value, target) {
   return typeof value === 'function' ? value.bind(target) : value;
 }
 
+
+const MUSIC_ENTITY_KEYS = Object.freeze({
+  PlaylistItem: 'playlist',
+  MusicTopic: 'topics',
+  MusicResearchItem: 'research',
+  ShowRundownItem: 'rundown',
+  MusicAsset: 'assets',
+  Top10Item: 'top10',
+});
+
+function musicStudioPath(configurationId = null) {
+  const params = new URLSearchParams({ studio: 'music' });
+  if (configurationId) params.set('configuration_id', String(configurationId));
+  return `/production/core?${params.toString()}`;
+}
+
+async function readOwnedMusic(configurationId = null) {
+  return creapdApi.getFresh(musicStudioPath(configurationId));
+}
+
+function makeMusicEntityAdapter(entityName, target) {
+  return new Proxy(target, {
+    get(entityTarget, property) {
+      if (!shouldUseNeonAuth()) {
+        return bindIfFunction(Reflect.get(entityTarget, property), entityTarget);
+      }
+
+      if (property === 'list') {
+        return async (sort = '-created_date', limit = 100) => {
+          if (entityName === 'MusicProductionConfiguration') {
+            const result = await creapdApi.post('/production/core', {
+              action: 'music_list_configurations',
+              limit,
+            });
+            return sortLegacyRows(result?.configurations || [], sort).slice(0, limit || 100);
+          }
+
+          const snapshot = await readOwnedMusic();
+          const key = MUSIC_ENTITY_KEYS[entityName];
+          return sortLegacyRows(snapshot?.[key] || [], sort).slice(0, limit || 100);
+        };
+      }
+
+      if (property === 'get') {
+        return async id => {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_entity_get',
+            entity: entityName,
+            id,
+          });
+          return result?.item || null;
+        };
+      }
+
+      if (property === 'filter') {
+        return async (criteria = {}, sort = null, limit = 100) => {
+          if (entityName === 'MusicProductionConfiguration') {
+            const result = await creapdApi.post('/production/core', {
+              action: 'music_list_configurations',
+              limit: Math.max(Number(limit || 100), 100),
+            });
+            const rows = filterLegacyRows(result?.configurations || [], criteria);
+            return sortLegacyRows(rows, sort || '-created_date').slice(0, limit || 100);
+          }
+
+          const snapshot = await readOwnedMusic(criteria?.configuration_id || null);
+          const key = MUSIC_ENTITY_KEYS[entityName];
+          const rows = filterLegacyRows(snapshot?.[key] || [], criteria);
+          return sort ? sortLegacyRows(rows, sort).slice(0, limit || 100) : rows.slice(0, limit || 100);
+        };
+      }
+
+      if (property === 'create') {
+        return async payload => {
+          if (entityName === 'MusicProductionConfiguration') {
+            const result = await creapdApi.post('/production/core', {
+              action: 'music_save_configuration',
+              configuration: payload,
+            });
+            return result?.configuration;
+          }
+
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_entity_create',
+            entity: entityName,
+            item: payload,
+          });
+          return result?.item;
+        };
+      }
+
+      if (property === 'update') {
+        return async (id, patch = {}) => {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_entity_update',
+            entity: entityName,
+            id,
+            patch,
+          });
+          return result?.item;
+        };
+      }
+
+      if (property === 'bulkUpdate') {
+        return async items => {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_entity_bulk_update',
+            entity: entityName,
+            items: Array.isArray(items) ? items : [],
+          });
+          return result?.items || [];
+        };
+      }
+
+      if (property === 'delete') {
+        return async id => {
+          return creapdApi.post('/production/core', {
+            action: 'music_entity_delete',
+            entity: entityName,
+            id,
+          });
+        };
+      }
+
+      if (property === 'subscribe' && entityName === 'MusicProductionConfiguration') {
+        return callback => {
+          let stopped = false;
+          let signature = null;
+
+          const poll = async () => {
+            if (stopped) return;
+            try {
+              const snapshot = await readOwnedMusic();
+              const configuration = snapshot?.configuration;
+              if (!configuration) return;
+              const nextSignature = [
+                configuration.id,
+                configuration.status,
+                configuration.updated_date,
+                configuration.build_log,
+              ].join('|');
+
+              if (nextSignature !== signature) {
+                signature = nextSignature;
+                callback?.({ type: 'update', data: configuration });
+              }
+            } catch (error) {
+              console.warn('[CREAPD MUSIC] status poll failed', error?.message || error);
+            }
+          };
+
+          poll();
+          const interval = setInterval(poll, 1800);
+          return () => {
+            stopped = true;
+            clearInterval(interval);
+          };
+        };
+      }
+
+      return bindIfFunction(Reflect.get(entityTarget, property), entityTarget);
+    },
+  });
+}
+
+const musicEntityAdapters = Object.freeze({
+  MusicProductionConfiguration: makeMusicEntityAdapter('MusicProductionConfiguration', sdkBase44.entities.MusicProductionConfiguration),
+  PlaylistItem: makeMusicEntityAdapter('PlaylistItem', sdkBase44.entities.PlaylistItem),
+  MusicTopic: makeMusicEntityAdapter('MusicTopic', sdkBase44.entities.MusicTopic),
+  MusicResearchItem: makeMusicEntityAdapter('MusicResearchItem', sdkBase44.entities.MusicResearchItem),
+  ShowRundownItem: makeMusicEntityAdapter('ShowRundownItem', sdkBase44.entities.ShowRundownItem),
+  MusicAsset: makeMusicEntityAdapter('MusicAsset', sdkBase44.entities.MusicAsset),
+  Top10Item: makeMusicEntityAdapter('Top10Item', sdkBase44.entities.Top10Item),
+});
+
+
 function looksLikePresentationId(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
 }
@@ -521,6 +697,7 @@ const entitiesAdapter = new Proxy(sdkBase44.entities, {
     if (property === 'StoriesPresentation') return storiesPresentationAdapter;
     if (property === 'StorySlide') return storySlideAdapter;
     if (property === 'SlideElement') return slideElementAdapter;
+    if (musicEntityAdapters[property]) return musicEntityAdapters[property];
     reportLegacyFallback('entity', property);
     return bindIfFunction(Reflect.get(target, property), target);
   },
@@ -665,6 +842,56 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result };
         }
 
+
+        if (shouldUseNeonAuth() && functionName === 'buildMusicProduction') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_build',
+            configuration_id: payload?.configuration_id,
+          });
+          return { data: result?.result || result };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'regenerateMusicSection') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_regenerate_section',
+            configuration_id: payload?.configuration_id,
+            section: payload?.section,
+          });
+          return { data: result?.result || result };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'generateMusicTop10') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_generate_top10',
+            configuration_id: payload?.configuration_id,
+          });
+          return { data: { success: true, top10_count: result?.top10?.length || 0 } };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'fetchYoutubeMetadata') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_fetch_youtube_metadata',
+            url: payload?.url,
+          });
+          return { data: result };
+        }
+
+        if (
+          shouldUseNeonAuth() &&
+          functionName === 'runDepartmentPipeline' &&
+          String(payload?.production_profile || '').toLowerCase() === 'music'
+        ) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_department_pipeline',
+            configuration_id: payload?.configuration_id,
+            department_action: payload?.action,
+            target_department: payload?.target_department,
+            department_status: payload?.department_status,
+          });
+          return { data: { pipeline: result?.pipeline || null } };
+        }
+
+
         reportLegacyFallback('function', functionName);
         return target.invoke(functionName, payload);
       };
@@ -679,6 +906,25 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
     if (property === 'InvokeLLM') {
       return async payload => {
         const prompt = String(payload?.prompt || '');
+
+        const isMusicPrompt =
+          shouldUseNeonAuth() &&
+          /\bmusic\b/i.test(prompt) &&
+          /(show|production|segment|playlist|artist|song|radio|rundown)/i.test(prompt) &&
+          payload?.response_json_schema;
+
+        if (isMusicPrompt) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_generate_structured',
+            prompt,
+            schema: payload.response_json_schema,
+            schema_name: 'creapd_music_inline_v1',
+            max_output_tokens: 3000,
+          });
+          return result?.result || {};
+        }
+
+
         const isResearchApprovalPrompt =
           shouldUseNeonAuth() &&
           prompt.includes('broadcast news producer and fact-checker') &&
@@ -723,6 +969,28 @@ const integrationsAdapter = new Proxy(sdkBase44.integrations, {
   },
 });
 
+
+const authAdapter = new Proxy(sdkBase44.auth, {
+  get(target, property) {
+    if (property === 'updateMe') {
+      return async payload => {
+        if (
+          shouldUseNeonAuth() &&
+          Object.keys(payload || {}).every(key =>
+            ['default_production_type', 'default_production_config_id'].includes(key)
+          )
+        ) {
+          return { ...(payload || {}), source: 'neon_compat' };
+        }
+        return target.updateMe(payload);
+      };
+    }
+
+    return bindIfFunction(Reflect.get(target, property), target);
+  },
+});
+
+
 // Keep the existing Base44 surface intact for services that have not migrated
 // yet. On the owned Preview, explicitly bridged operations are redirected to
 // CREAPD's Neon/Vercel backend. There is still only one Presentation Editor;
@@ -730,6 +998,7 @@ const integrationsAdapter = new Proxy(sdkBase44.integrations, {
 // projects without creating a second editor implementation.
 export const base44 = new Proxy(sdkBase44, {
   get(target, property) {
+    if (property === 'auth') return authAdapter;
     if (property === 'entities') return entitiesAdapter;
     if (property === 'functions') return functionsAdapter;
     if (property === 'integrations') return integrationsAdapter;
