@@ -4,6 +4,7 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
+import { readMusicStudio, runMusicStudioAction } from '../../../server/musicStudio.js';
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
@@ -427,6 +428,17 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
       return success(response, action, result);
     }
 
+    if (action.startsWith('music_')) {
+      const result = await runMusicStudioAction({
+        sql,
+        ownerUserId,
+        ownerEmail,
+        action,
+        body,
+      });
+      return success(response, action, result);
+    }
+
     switch (action) {
       case 'approve_package_and_handoff': {
         const result = await handoffPackageToPresentationStudio({
@@ -695,6 +707,11 @@ export default async function handler(request, response) {
         ? await readTalkLiveState(sql, ownerUserId, request.query?.configuration_id)
         : await readTalkStudio(sql, ownerUserId, request.query?.configuration_id);
       return success(response, view === 'live_state' ? 'talk_live_state' : 'talk_read', talkData);
+    }
+
+    if (String(request.query?.studio || '').toLowerCase() === 'music') {
+      const musicData = await readMusicStudio(sql, ownerUserId, request.query?.configuration_id);
+      return success(response, 'music_read', musicData);
     }
 
     const data = await readProductionCore(sql, ownerUserId, {
