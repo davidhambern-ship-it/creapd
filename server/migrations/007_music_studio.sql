@@ -1,10 +1,33 @@
 BEGIN;
 
+CREATE SCHEMA IF NOT EXISTS creapd;
+
+CREATE TABLE IF NOT EXISTS creapd.schema_migrations (
+  version text PRIMARY KEY,
+  description text NOT NULL,
+  applied_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS creapd.users (
+  id text PRIMARY KEY,
+  email text,
+  display_name text,
+  source_system text NOT NULL DEFAULT 'creapd',
+  source_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique
+  ON creapd.users (lower(email))
+  WHERE email IS NOT NULL;
+
+
 CREATE TABLE IF NOT EXISTS creapd.music_production_configurations (
   id text PRIMARY KEY,
   owner_user_id text NOT NULL REFERENCES creapd.users(id) ON DELETE RESTRICT,
-  show_id text REFERENCES creapd.shows(id) ON DELETE SET NULL,
-  episode_id text REFERENCES creapd.episodes(id) ON DELETE SET NULL,
+  show_id text,
+  episode_id text,
   production_name text NOT NULL,
   host_name text,
   co_host_name text,
