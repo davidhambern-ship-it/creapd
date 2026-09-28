@@ -80,10 +80,9 @@ const MUSIC_ENTITY_KEYS = Object.freeze({
 });
 
 function musicStudioPath(configurationId = null) {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ studio: 'music' });
   if (configurationId) params.set('configuration_id', String(configurationId));
-  const query = params.toString();
-  return query ? `/music/core?${query}` : '/music/core';
+  return `/production/core?${params.toString()}`;
 }
 
 async function readOwnedMusic(configurationId = null) {
@@ -91,9 +90,9 @@ async function readOwnedMusic(configurationId = null) {
 }
 
 async function readOwnedMusicStatus(configurationId = null) {
-  const params = new URLSearchParams({ view: 'status' });
+  const params = new URLSearchParams({ studio: 'music', view: 'status' });
   if (configurationId) params.set('configuration_id', String(configurationId));
-  return creapdApi.getFresh(`/music/core?${params.toString()}`);
+  return creapdApi.getFresh(`/production/core?${params.toString()}`);
 }
 
 function makeMusicEntityAdapter(entityName, target) {
@@ -106,7 +105,7 @@ function makeMusicEntityAdapter(entityName, target) {
       if (property === 'list') {
         return async (sort = '-created_date', limit = 100) => {
           if (entityName === 'MusicProductionConfiguration') {
-            const result = await creapdApi.post('/music/core', {
+            const result = await creapdApi.post('/production/core', {
               action: 'music_list_configurations',
               limit,
             });
@@ -121,7 +120,7 @@ function makeMusicEntityAdapter(entityName, target) {
 
       if (property === 'get') {
         return async id => {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_entity_get',
             entity: entityName,
             id,
@@ -133,7 +132,7 @@ function makeMusicEntityAdapter(entityName, target) {
       if (property === 'filter') {
         return async (criteria = {}, sort = null, limit = 100) => {
           if (entityName === 'MusicProductionConfiguration') {
-            const result = await creapdApi.post('/music/core', {
+            const result = await creapdApi.post('/production/core', {
               action: 'music_list_configurations',
               limit: Math.max(Number(limit || 100), 100),
             });
@@ -151,14 +150,14 @@ function makeMusicEntityAdapter(entityName, target) {
       if (property === 'create') {
         return async payload => {
           if (entityName === 'MusicProductionConfiguration') {
-            const result = await creapdApi.post('/music/core', {
+            const result = await creapdApi.post('/production/core', {
               action: 'music_save_configuration',
               configuration: payload,
             });
             return result?.configuration;
           }
 
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_entity_create',
             entity: entityName,
             item: payload,
@@ -169,7 +168,7 @@ function makeMusicEntityAdapter(entityName, target) {
 
       if (property === 'update') {
         return async (id, patch = {}) => {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_entity_update',
             entity: entityName,
             id,
@@ -181,7 +180,7 @@ function makeMusicEntityAdapter(entityName, target) {
 
       if (property === 'bulkUpdate') {
         return async items => {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_entity_bulk_update',
             entity: entityName,
             items: Array.isArray(items) ? items : [],
@@ -192,7 +191,7 @@ function makeMusicEntityAdapter(entityName, target) {
 
       if (property === 'delete') {
         return async id => {
-          return creapdApi.post('/music/core', {
+          return creapdApi.post('/production/core', {
             action: 'music_entity_delete',
             entity: entityName,
             id,
@@ -855,7 +854,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
 
 
         if (shouldUseNeonAuth() && functionName === 'buildMusicProduction') {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_build',
             configuration_id: payload?.configuration_id,
           });
@@ -863,7 +862,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
         if (shouldUseNeonAuth() && functionName === 'regenerateMusicSection') {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_regenerate_section',
             configuration_id: payload?.configuration_id,
             section: payload?.section,
@@ -872,7 +871,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
         if (shouldUseNeonAuth() && functionName === 'generateMusicTop10') {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_generate_top10',
             configuration_id: payload?.configuration_id,
           });
@@ -880,7 +879,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
         if (shouldUseNeonAuth() && functionName === 'fetchYoutubeMetadata') {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_fetch_youtube_metadata',
             url: payload?.url,
           });
@@ -892,7 +891,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           functionName === 'runDepartmentPipeline' &&
           String(payload?.production_profile || '').toLowerCase() === 'music'
         ) {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_department_pipeline',
             configuration_id: payload?.configuration_id,
             department_action: payload?.action,
@@ -925,7 +924,7 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
           payload?.response_json_schema;
 
         if (isMusicPrompt) {
-          const result = await creapdApi.post('/music/core', {
+          const result = await creapdApi.post('/production/core', {
             action: 'music_generate_structured',
             prompt,
             schema: payload.response_json_schema,
