@@ -132,6 +132,7 @@ export default function MusicConfigure() {
   const [buildError, setBuildError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
+  const [saveError, setSaveError] = useState('');
   const [rouletteOpen, setRouletteOpen] = useState(false);
   const [customField, setCustomField] = useState(null);
   const [customInput, setCustomInput] = useState('');
@@ -344,6 +345,7 @@ export default function MusicConfigure() {
     if (saving) return;
     setSaving(true);
     setSaveStatus(null);
+    setSaveError('');
     try {
       // Strip built-in read-only fields that break update calls
       const { id: _id, created_date: _cd, updated_date: _ud, created_by_id: _cb, ...payload } = config;
@@ -360,9 +362,16 @@ export default function MusicConfigure() {
         handleModuleComplete(openRoom);
       }
     } catch (err) {
-      console.error('Save failed:', err?.message || err);
+      const message =
+        err?.data?.diagnostic?.message ||
+        err?.data?.diagnostic?.code ||
+        err?.data?.error ||
+        err?.message ||
+        'Failed to save configuration.';
+      console.error('Save failed:', message, err?.data || err);
+      setSaveError(String(message));
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus(null), 4000);
+      setTimeout(() => setSaveStatus(null), 6000);
     } finally {
       setSaving(false);
     }
@@ -430,6 +439,7 @@ export default function MusicConfigure() {
           onSave={handleSaveConfig}
           saving={saving}
           saveStatus={saveStatus}
+          saveError={saveError}
         >
           <div className="max-w-3xl mx-auto px-4 pb-6 space-y-4">
 
