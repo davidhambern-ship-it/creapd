@@ -1,4 +1,5 @@
 import { getMusicSql, hasMusicDatabaseConfig } from '../../../server/musicDb.js';
+import { ensureMusicSchema } from '../../../server/musicSchema.js';
 import { requireNeonUser } from '../../../server/neonAuth.js';
 import { requireBase44User } from '../../../server/base44Auth.js';
 import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../../server/musicStudio.js';
@@ -97,6 +98,7 @@ export default async function handler(request, response) {
 
   try {
     const sql = getMusicSql();
+    await ensureMusicSchema(sql);
     const identity = await resolveIdentity(request);
     const user = await ensureMusicUser(sql, identity);
     const ownerUserId = String(user.id);
