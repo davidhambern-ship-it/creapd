@@ -58,6 +58,7 @@ export default function OrbitalConfigCanvas({
   onSave,
   saving = false,
   saveStatus = null,
+  saveError = '',
 }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
