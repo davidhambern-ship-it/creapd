@@ -451,3 +451,6 @@ After Neon is available:
 5. verify YouTube embeds and build-stage status;
 6. only then mark Music generation PASSED.
 
+
+
+Prisma Music Preview database was provisioned and `MUSIC_DATABASE_URL` was configured in Vercel Preview on 2026-09-28. This commit intentionally triggers a fresh Preview deployment so the new environment variable is loaded.
