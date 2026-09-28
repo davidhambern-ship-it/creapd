@@ -4,7 +4,7 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
-import { readMusicStudio, runMusicStudioAction } from '../../../server/musicStudio.js';
+import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../../server/musicStudio.js';
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
@@ -710,8 +710,11 @@ export default async function handler(request, response) {
     }
 
     if (String(request.query?.studio || '').toLowerCase() === 'music') {
-      const musicData = await readMusicStudio(sql, ownerUserId, request.query?.configuration_id);
-      return success(response, 'music_read', musicData);
+      const view = String(request.query?.view || '').trim().toLowerCase();
+      const musicData = view === 'status'
+        ? await readMusicStatus(sql, ownerUserId, request.query?.configuration_id)
+        : await readMusicStudio(sql, ownerUserId, request.query?.configuration_id);
+      return success(response, view === 'status' ? 'music_status' : 'music_read', musicData);
     }
 
     const data = await readProductionCore(sql, ownerUserId, {
