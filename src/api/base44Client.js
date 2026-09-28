@@ -92,7 +92,7 @@ async function readOwnedMusic(configurationId = null) {
 async function readOwnedMusicStatus(configurationId = null) {
   const params = new URLSearchParams({ studio: 'music', view: 'status' });
   if (configurationId) params.set('configuration_id', String(configurationId));
-  return creapdApi.getFresh(\`/production/core?\${params.toString()}\`);
+  return creapdApi.getFresh(`/production/core?${params.toString()}`);
 }
 
 function makeMusicEntityAdapter(entityName, target) {
