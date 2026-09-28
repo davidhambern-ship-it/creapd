@@ -148,20 +148,20 @@ export async function readMusicStatus(sql, ownerUserId, requestedConfigurationId
   let configuration = null;
 
   if (requestedId) {
-    [configuration] = await sql\`
+    [configuration] = await sql`
       SELECT id, production_name, show_date, status, is_default, build_log, build_metadata, created_at, updated_at
       FROM creapd.music_production_configurations
-      WHERE id=\${requestedId} AND owner_user_id=\${ownerId}
+      WHERE id=${requestedId} AND owner_user_id=${ownerId}
       LIMIT 1
-    \`;
+    `;
   } else {
-    [configuration] = await sql\`
+    [configuration] = await sql`
       SELECT id, production_name, show_date, status, is_default, build_log, build_metadata, created_at, updated_at
       FROM creapd.music_production_configurations
-      WHERE owner_user_id=\${ownerId}
+      WHERE owner_user_id=${ownerId}
       ORDER BY is_default DESC, updated_at DESC
       LIMIT 1
-    \`;
+    `;
   }
 
   return {
