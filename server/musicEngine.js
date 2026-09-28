@@ -595,13 +595,20 @@ ${lockedText || 'None'}
 
 Return real song_title + artist pairs only. Prefer ${year - 2}-${year} releases unless older eras were requested. Do not return YouTube URLs; CREAPD will search YouTube itself. Include a one-sentence rank_reason.`;
   const result = await structured(prompt, TOP10_SCHEMA, 'creapd_music_top10_v1', 4500);
-  const candidates = array(result?.data?.items, []);
+  const candidates = array(result?.data?.items, []).slice(0, Math.max(remaining * 3, 18));
   const usedIds = new Set([...locked.map(i => i.youtube_video_id), ...playlist.map(i => i.youtube_video_id)].filter(Boolean));
   const rows = [...locked];
-  for (const candidate of candidates) {
+
+  // Resolve YouTube candidates concurrently so a 10-item countdown does not
+  // turn into a long chain of network waits inside one serverless invocation.
+  const resolved = await Promise.all(candidates.map(async candidate => ({
+    candidate,
+    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds),
+  })));
+
+  for (const { candidate, metadata } of resolved) {
     if (rows.length >= 10) break;
-    const metadata = await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds);
-    if (!metadata) continue;
+    if (!metadata || usedIds.has(metadata.video_id)) continue;
     usedIds.add(metadata.video_id);
     const [row] = await sql`
       INSERT INTO creapd.music_top10_items (
