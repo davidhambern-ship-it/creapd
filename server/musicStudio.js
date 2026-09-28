@@ -17,6 +17,24 @@ function nullable(value) {
   return result || null;
 }
 
+function normalizeDateOnly(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+  const direct = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (direct) return direct[1];
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.valueOf())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  return raw;
+}
+
 function number(value, fallback = 0) {
   const result = Number(value);
   return Number.isFinite(result) ? result : fallback;
@@ -57,6 +75,7 @@ function withConfigAliases(row) {
   if (!row) return row;
   return withDates({
     ...row,
+    show_date: normalizeDateOnly(row.show_date),
     genres: JSON.stringify(row.genres || []),
     moods: JSON.stringify(row.moods || []),
     music_topics: JSON.stringify(row.music_topics || []),
@@ -192,7 +211,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
 
   const merged = { ...(existing || {}), ...input };
   const productionName = clean(merged.production_name);
-  const showDate = clean(merged.show_date);
+  const showDate = normalizeDateOnly(merged.show_date);
   if (!productionName) throw fail('Production name is required', 'production_name_required');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(showDate)) throw fail('A valid show date is required', 'valid_show_date_required');
 
