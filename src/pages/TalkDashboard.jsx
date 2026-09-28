@@ -74,6 +74,23 @@ export default function TalkDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [activePanel, setActivePanel] = useState(null);
+  const [aiHealth, setAiHealth] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/creapd/ai/health', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (active) setAiHealth(payload || { ok: false });
+      })
+      .catch(() => {
+        if (active) setAiHealth({ ok: false });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (config?.status !== 'building' || !config?.id) return undefined;
@@ -377,6 +394,13 @@ export default function TalkDashboard() {
             <div className="flex items-center gap-2">
               <Mic2 className="w-4 h-4 text-orange-300" />
               <h1 className="font-heading font-bold text-base text-white truncate">{config.production_name}</h1>
+              {aiHealth?.provider && (
+                <span className={aiHealth.provider === 'gemini'
+                  ? 'rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300'
+                  : 'rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-300'}>
+                  {aiHealth.provider === 'gemini' ? 'Gemini Ready' : 'Vercel AI'}
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-white/45">
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{config.show_date}</span>
@@ -400,13 +424,26 @@ export default function TalkDashboard() {
         </div>
 
         {buildFailure && (
-          <div className="absolute z-30 top-[58px] left-1/2 w-[34%] -translate-x-1/2 flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-950/55 px-2.5 py-2 text-[10px] text-red-100 backdrop-blur-md">
+          <div className="absolute z-30 top-[58px] left-1/2 w-[38%] -translate-x-1/2 flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-950/55 px-2.5 py-2 text-[10px] text-red-100 backdrop-blur-md">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>
+            <span className="min-w-0 flex-1">
               {buildFailure.includes('Free tier users do not have access to this model')
-                ? 'AI build unavailable on the current free model tier. Dashboard access is unaffected.'
+                ? (aiHealth?.provider === 'gemini'
+                    ? 'Previous Vercel AI build failed. Gemini is now configured and ready to retry.'
+                    : 'Vercel AI free-tier build failed. Gemini is not active yet.')
                 : buildFailure}
             </span>
+            {buildFailure.includes('Free tier users do not have access to this model') && aiHealth?.provider === 'gemini' && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="h-7 shrink-0 bg-emerald-500 px-2.5 text-[10px] font-semibold text-black hover:bg-emerald-400"
+              >
+                Retry with Gemini
+              </Button>
+            )}
           </div>
         )}
 
