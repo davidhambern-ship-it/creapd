@@ -6,6 +6,8 @@ const DEFAULT_VERCEL_MODEL = process.env.CREAPD_AI_MODEL || 'openai/gpt-5.4-mini
 const DEFAULT_GEMINI_MODEL = process.env.CREAPD_GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const AI_PROVIDER = String(process.env.CREAPD_AI_PROVIDER || 'auto').trim().toLowerCase();
 const ALLOW_VERCEL_FALLBACK = String(process.env.CREAPD_AI_ALLOW_VERCEL_FALLBACK || '').toLowerCase() === 'true';
+const GEMINI_SEARCH_GROUNDING_ENABLED =
+  String(process.env.CREAPD_GEMINI_SEARCH_GROUNDING || '').toLowerCase() === 'true';
 
 const RESEARCH_COMPACT_INSTRUCTION = `
 
@@ -185,12 +187,13 @@ async function generateGeminiStructuredResponse({
   let groundedText = '';
   let sources = [];
   let searchUsed = false;
+  const useGrounding = Boolean(webSearch && GEMINI_SEARCH_GROUNDING_ENABLED);
 
-  // Gemini 2.5 Flash-Lite supports free Google Search grounding and structured
-  // output separately. We deliberately split grounded research and JSON shaping
-  // into two calls so CREAPD can stay on the free tier without depending on
-  // Gemini 3 structured-output-with-tools pricing/access.
-  if (webSearch) {
+  // Gemini 3.x text generation can run on the free tier, but Google Search
+  // grounding is not available on the free tier. Keep grounding opt-in only.
+  // Default free-first mode uses one structured generation call and explicitly
+  // avoids pretending that model knowledge is live web research.
+  if (useGrounding) {
     const researchBody = {
       contents: [
         {
@@ -244,7 +247,7 @@ async function generateGeminiStructuredResponse({
     ? sources.map((source, index) => `${index + 1}. ${source.title || 'Source'} — ${source.url}`).join('\n')
     : 'No source URL metadata was returned. Do not invent URLs.';
 
-  const structuredPrompt = webSearch
+  const structuredPrompt = useGrounding
     ? [
         effectivePrompt,
         '',
@@ -259,7 +262,19 @@ async function generateGeminiStructuredResponse({
         'Use the grounded research above as the factual basis.',
         'Do not invent sources or URLs that are not present in the grounded material/source list.',
       ].join('\n')
-    : effectivePrompt;
+    : webSearch
+      ? [
+          effectivePrompt,
+          '',
+          'CREAPD FREE MODE OVERRIDE:',
+          '- Live Google Search grounding is disabled because it is not available on the Gemini free tier.',
+          '- Do not claim that you performed live web verification.',
+          '- Use your existing knowledge conservatively.',
+          '- If a source URL cannot be confidently supplied from known information, return an empty string rather than inventing one.',
+          '- Mark uncertain/current claims as mixed, unverified, or warning as appropriate.',
+          '- Still return the complete requested structured object.',
+        ].join('\n')
+      : effectivePrompt;
 
   const structuredBody = {
     contents: [
@@ -308,7 +323,7 @@ async function generateGeminiStructuredResponse({
     authSource: 'gemini_api_key',
     provider: 'gemini',
     elapsedMs: Date.now() - startedAt,
-    outputTypes: webSearch
+    outputTypes: useGrounding
       ? ['google_search', 'structured_output']
       : ['structured_output'],
     webSearchUsed: searchUsed,
