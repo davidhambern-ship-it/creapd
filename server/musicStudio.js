@@ -483,10 +483,80 @@ async function entityCreate(sql, ownerUserId, entity, input) {
   throw fail(`Create not supported for ${entity}`, 'MUSIC_ENTITY_CREATE_UNSUPPORTED');
 }
 
+async function resolveMusicConfigurationForUpdate(sql, ownerUserId, ownerEmail, id, patch = {}) {
+  const ownerId = String(ownerUserId);
+  const requestedId = clean(id);
+
+  if (requestedId) {
+    const [exact] = await sql`
+      SELECT c.*
+      FROM creapd.music_production_configurations c
+      WHERE c.id=${requestedId} AND c.owner_user_id=${ownerId}
+      LIMIT 1
+    `;
+    if (exact) return exact;
+
+    if (ownerEmail) {
+      const [bridged] = await sql`
+        SELECT c.*
+        FROM creapd.music_production_configurations c
+        LEFT JOIN creapd.users u ON u.id=c.owner_user_id
+        WHERE c.id=${requestedId}
+          AND (
+            lower(COALESCE(c.created_by_email, ''))=lower(${ownerEmail})
+            OR lower(COALESCE(u.email, ''))=lower(${ownerEmail})
+          )
+        LIMIT 1
+      `;
+      if (bridged) {
+        // The same authenticated person can arrive through a different auth ID
+        // during migration. Adopt the Music record into the current canonical
+        // user so every later build/read uses one owner consistently.
+        await sql`UPDATE creapd.music_playlist_items SET owner_user_id=${ownerId} WHERE configuration_id=${bridged.id}`;
+        await sql`UPDATE creapd.music_topics SET owner_user_id=${ownerId} WHERE configuration_id=${bridged.id}`;
+        await sql`UPDATE creapd.music_research_items SET owner_user_id=${ownerId} WHERE configuration_id=${bridged.id}`;
+        await sql`UPDATE creapd.music_rundown_items SET owner_user_id=${ownerId} WHERE configuration_id=${bridged.id}`;
+        await sql`UPDATE creapd.music_assets SET owner_user_id=${ownerId} WHERE configuration_id=${bridged.id}`;
+        await sql`UPDATE creapd.music_top10_items SET owner_user_id=${ownerId} WHERE configuration_id=${bridged.id}`;
+        const [adopted] = await sql`
+          UPDATE creapd.music_production_configurations
+          SET owner_user_id=${ownerId}, updated_at=now()
+          WHERE id=${bridged.id}
+          RETURNING *
+        `;
+        return adopted;
+      }
+    }
+  }
+
+  const productionName = clean(patch.production_name);
+  const showDate = normalizeDateOnly(patch.show_date);
+  if (productionName && /^\d{4}-\d{2}-\d{2}$/.test(showDate)) {
+    const [matching] = await sql`
+      SELECT *
+      FROM creapd.music_production_configurations
+      WHERE owner_user_id=${ownerId}
+        AND production_name=${productionName}
+        AND show_date=${showDate}
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `;
+    if (matching) return matching;
+  }
+
+  return null;
+}
+
 async function entityUpdate(sql, ownerUserId, entity, id, patch, ownerEmail) {
   if (entity === 'MusicProductionConfiguration') {
-    const existing = await entityGet(sql, ownerUserId, entity, id);
-    return saveMusicConfiguration({ sql, ownerUserId, ownerEmail, input: { ...existing, ...patch, id } });
+    const existing = await resolveMusicConfigurationForUpdate(sql, ownerUserId, ownerEmail, id, patch);
+    if (!existing) throw fail('Music configuration not found', 'MUSIC_CONFIGURATION_NOT_FOUND', 404);
+    return saveMusicConfiguration({
+      sql,
+      ownerUserId,
+      ownerEmail,
+      input: { ...existing, ...patch, id: existing.id },
+    });
   }
   if (entity === 'PlaylistItem') return updatePlaylistItem(sql, ownerUserId, id, patch);
   if (entity === 'MusicTopic') return updateTopic(sql, ownerUserId, id, patch);
