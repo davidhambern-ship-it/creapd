@@ -3,7 +3,7 @@ import { getVercelOidcToken } from '@vercel/oidc';
 const GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_VERCEL_MODEL = process.env.CREAPD_AI_MODEL || 'openai/gpt-5.4-mini';
-const DEFAULT_GEMINI_MODEL = process.env.CREAPD_GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const DEFAULT_GEMINI_MODEL = process.env.CREAPD_GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const AI_PROVIDER = String(process.env.CREAPD_AI_PROVIDER || 'auto').trim().toLowerCase();
 const ALLOW_VERCEL_FALLBACK = String(process.env.CREAPD_AI_ALLOW_VERCEL_FALLBACK || '').toLowerCase() === 'true';
 
