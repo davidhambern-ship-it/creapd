@@ -5,6 +5,7 @@ import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
+import TalkDiscussionTopicsPopup from '@/components/talk/TalkDiscussionTopicsPopup';
 import TalkConfigure from '@/pages/TalkConfigure';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,7 +71,7 @@ function ModalEmpty({ children }) {
 
 export default function TalkDashboard() {
   const ownedPreview = shouldUseNeonAuth();
-  const { config, topics, research, guests, segments, assets, loading, refresh } = useTalkProduction();
+  const { config, topics, research, guests, segments, assets, loading, refresh, source } = useTalkProduction();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [activePanel, setActivePanel] = useState(null);
@@ -248,26 +249,13 @@ export default function TalkDashboard() {
     }
 
     if (activePanel === 'topics') {
-      if (!topics.length) return <ModalEmpty>No discussion topics have been generated yet.</ModalEmpty>;
       return (
-        <div className="space-y-3">
-          {topics.map((topic) => (
-            <article key={topic.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="font-semibold text-white">{topic.topic_name}</h3>
-                <span className={topic.status === 'approved' ? 'text-xs text-emerald-300' : 'text-xs text-white/40'}>
-                  {topic.status}
-                </span>
-              </div>
-              {topic.suggested_placement && <p className="mt-1 text-xs text-orange-300/70">{topic.suggested_placement}</p>}
-              {(topic.summary || topic.description || topic.talking_points) && (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/70">
-                  {topic.summary || topic.description || topic.talking_points}
-                </p>
-              )}
-            </article>
-          ))}
-        </div>
+        <TalkDiscussionTopicsPopup
+          topics={topics}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
       );
     }
 
@@ -564,8 +552,11 @@ export default function TalkDashboard() {
       </div>
 
       <Dialog open={!!activePanel} onOpenChange={(open) => !open && setActivePanel(null)}>
-        <DialogContent className="max-h-[86vh] max-w-4xl overflow-hidden border-white/10 bg-[#0d0911]/95 p-0 text-white backdrop-blur-2xl">
-          <DialogHeader className="border-b border-white/10 px-5 py-4 pr-12">
+        <DialogContent
+          className={`max-h-[92vh] overflow-hidden border-fuchsia-300/15 bg-[#08040c]/96 p-0 text-white shadow-[0_35px_120px_rgba(0,0,0,.72)] backdrop-blur-2xl ${activePanel === 'topics' ? 'max-w-6xl' : 'max-w-4xl'}`}
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(168,85,247,.14),transparent_28%),radial-gradient(circle_at_88%_10%,rgba(249,115,22,.1),transparent_24%)]" />
+          <DialogHeader className="relative border-b border-white/10 bg-black/20 px-5 py-4 pr-12">
             <DialogTitle className="flex items-center gap-2 text-xl">
               {activePanel === 'research' && <Search className="h-5 w-5 text-orange-300" />}
               {activePanel === 'topics' && <Lightbulb className="h-5 w-5 text-orange-300" />}
@@ -580,12 +571,14 @@ export default function TalkDashboard() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[64vh] overflow-y-auto px-5 py-4">
+          <div className={activePanel === 'topics'
+            ? 'relative px-3 py-3'
+            : 'relative max-h-[64vh] overflow-y-auto px-5 py-4'}>
             {renderModalBody()}
           </div>
 
-          {activePanel && activePanel !== 'export' && fullWorkspacePaths[activePanel] && (
-            <div className="flex items-center justify-end border-t border-white/10 px-5 py-3">
+          {activePanel && !['export', 'topics'].includes(activePanel) && fullWorkspacePaths[activePanel] && (
+            <div className="relative flex items-center justify-end border-t border-white/10 bg-black/15 px-5 py-3">
               <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-white hover:bg-white/10">
                 <Link to={fullWorkspacePaths[activePanel]}>
                   Open Full Workspace
