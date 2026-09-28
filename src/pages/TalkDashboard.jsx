@@ -6,6 +6,13 @@ import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import TalkDiscussionTopicsPopup from '@/components/talk/TalkDiscussionTopicsPopup';
+import {
+  TalkResearchPopup,
+  TalkGuestChairPopup,
+  TalkRundownPopup,
+  TalkAssetsPopup,
+  TalkFinishLaunchPopup,
+} from '@/components/talk/TalkDashboardPopups';
 import TalkConfigure from '@/pages/TalkConfigure';
 import { Button } from '@/components/ui/button';
 import {
@@ -233,24 +240,11 @@ export default function TalkDashboard() {
 
   const renderModalBody = () => {
     if (activePanel === 'research') {
-      if (!research.length) return <ModalEmpty>No research has been generated yet.</ModalEmpty>;
       return (
-        <div className="space-y-3">
-          {research.map((item) => (
-            <article key={item.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="font-semibold text-white">{item.title}</h3>
-                {item.relevance && <span className="shrink-0 text-xs text-orange-300">{item.relevance}</span>}
-              </div>
-              {item.source && <p className="mt-1 text-xs text-white/40">{item.source}</p>}
-              {(item.summary || item.content || item.description) && (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/70">
-                  {item.summary || item.content || item.description}
-                </p>
-              )}
-            </article>
-          ))}
-        </div>
+        <TalkResearchPopup
+          research={research}
+          onClose={() => setActivePanel(null)}
+        />
       );
     }
 
@@ -266,114 +260,50 @@ export default function TalkDashboard() {
     }
 
     if (activePanel === 'guests') {
-      if (!guests.length) return <ModalEmpty>No guests have been added yet.</ModalEmpty>;
       return (
-        <div className="grid gap-3 md:grid-cols-2">
-          {guests.map((guest) => (
-            <article key={guest.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold text-white">{guest.guest_name}</h3>
-                  {guest.title_role && <p className="text-xs text-white/45">{guest.title_role}</p>}
-                </div>
-                <span className={guest.status === 'confirmed' ? 'text-xs text-emerald-300' : 'text-xs text-white/40'}>
-                  {guest.status}
-                </span>
-              </div>
-              {guest.bio && <p className="mt-3 text-sm leading-6 text-white/65">{guest.bio}</p>}
-              {guest.talking_points && (
-                <div className="mt-3 rounded-lg bg-black/20 p-3 text-sm whitespace-pre-wrap text-white/65">
-                  {guest.talking_points}
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
+        <TalkGuestChairPopup
+          guests={guests}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
       );
     }
 
     if (activePanel === 'rundown') {
-      if (!segments.length) return <ModalEmpty>No rundown has been generated yet.</ModalEmpty>;
       return (
-        <div className="space-y-2">
-          {segments.map((segment) => (
-            <article key={segment.id} className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <span className="w-14 shrink-0 text-xs text-orange-300">{segment.start_time || ''}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-white">{segment.title}</h3>
-                  <span className="text-[10px] uppercase tracking-wide text-white/35">
-                    {SEGMENT_TYPE_LABELS[segment.segment_type] || segment.segment_type}
-                  </span>
-                </div>
-                {(segment.notes || segment.description || segment.script) && (
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white/65">
-                    {segment.notes || segment.description || segment.script}
-                  </p>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
+        <TalkRundownPopup
+          segments={segments}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
       );
     }
 
     if (activePanel === 'assets') {
-      if (!assets.length) return <ModalEmpty>No AI assets have been generated yet.</ModalEmpty>;
       return (
-        <div className="grid gap-3 md:grid-cols-2">
-          {assets.map((asset) => (
-            <article key={asset.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="font-semibold text-white">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</h3>
-                <span className={asset.status === 'approved' ? 'text-xs text-emerald-300' : 'text-xs text-white/40'}>
-                  {asset.status}
-                </span>
-              </div>
-              {(asset.content || asset.text || asset.prompt || asset.notes) && (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/65">
-                  {asset.content || asset.text || asset.prompt || asset.notes}
-                </p>
-              )}
-            </article>
-          ))}
-        </div>
+        <TalkAssetsPopup
+          assets={assets}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
       );
     }
 
     if (activePanel === 'export') {
       return (
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs text-white/40">Topics Approved</p>
-              <p className="mt-1 text-2xl font-bold text-white">{approvedTopics}/{topics.length}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs text-white/40">Guests Confirmed</p>
-              <p className="mt-1 text-2xl font-bold text-white">{confirmedGuests}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-xs text-white/40">Assets Approved</p>
-              <p className="mt-1 text-2xl font-bold text-white">{approvedAssets}/{assets.length}</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-sm leading-6 text-white/65">
-              Finish the production package, export the show materials, or enter CREAPD Live when the rundown is ready.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link to="/talk/export">Open Export Center</Link>
-            </Button>
-            {config.status === 'ready' && segments.length > 0 && (
-              <Button asChild variant="outline">
-                <Link to={livePath}><Radio className="mr-2 h-4 w-4" /> Enter Studio</Link>
-              </Button>
-            )}
-          </div>
-        </div>
+        <TalkFinishLaunchPopup
+          config={config}
+          topics={topics}
+          research={research}
+          guests={guests}
+          segments={segments}
+          assets={assets}
+          livePath={livePath}
+          onClose={() => setActivePanel(null)}
+        />
       );
     }
 
@@ -564,7 +494,7 @@ export default function TalkDashboard() {
 
       <Dialog open={!!activePanel} onOpenChange={(open) => !open && setActivePanel(null)}>
         <DialogContent
-          className={`max-h-[92vh] overflow-hidden border-fuchsia-300/15 bg-[#08040c]/96 p-0 text-white shadow-[0_35px_120px_rgba(0,0,0,.72)] backdrop-blur-2xl ${activePanel === 'topics' ? 'max-w-6xl' : 'max-w-4xl'}`}
+          className="max-h-[92vh] max-w-6xl overflow-hidden border-fuchsia-300/15 bg-[#08040c]/96 p-0 text-white shadow-[0_35px_120px_rgba(0,0,0,.72)] backdrop-blur-2xl"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(168,85,247,.14),transparent_28%),radial-gradient(circle_at_88%_10%,rgba(249,115,22,.1),transparent_24%)]" />
           <DialogHeader className="relative border-b border-white/10 bg-black/20 px-5 py-4 pr-12">
@@ -582,22 +512,9 @@ export default function TalkDashboard() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className={activePanel === 'topics'
-            ? 'relative px-3 py-3'
-            : 'relative max-h-[64vh] overflow-y-auto px-5 py-4'}>
+          <div className="relative px-3 py-3">
             {renderModalBody()}
           </div>
-
-          {activePanel && !['export', 'topics'].includes(activePanel) && fullWorkspacePaths[activePanel] && (
-            <div className="relative flex items-center justify-end border-t border-white/10 bg-black/15 px-5 py-3">
-              <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-white hover:bg-white/10">
-                <Link to={fullWorkspacePaths[activePanel]}>
-                  Open Full Workspace
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </>
