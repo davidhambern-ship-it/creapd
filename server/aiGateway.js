@@ -28,9 +28,11 @@ Return the complete JSON object, but keep it compact enough to finish well befor
 Do not add prose before or after the JSON. Completeness of valid JSON is more important than extra detail.`;
 
 function configuredProvider() {
+  // Free-first behavior: if a Gemini key exists, use it even if an older
+  // CREAPD_AI_PROVIDER=vercel setting is still hanging around in Preview.
+  if (process.env.GEMINI_API_KEY) return 'gemini';
   if (AI_PROVIDER === 'gemini') return 'gemini';
   if (AI_PROVIDER === 'vercel') return 'vercel';
-  if (process.env.GEMINI_API_KEY) return 'gemini';
   return 'vercel';
 }
 
