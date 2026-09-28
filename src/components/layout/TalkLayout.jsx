@@ -4,7 +4,7 @@ import { TALK_NAV_ITEMS } from '@/lib/talkConstants';
 import {
   LayoutDashboard, SlidersHorizontal, Search, Lightbulb, Users,
   ClipboardList, Sparkles, Download, Settings, X, Menu, LayoutGrid, Circle, Mic2,
-  Compass, Home
+  Compass, Home, ChevronDown, ChevronUp
 } from 'lucide-react';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
@@ -28,50 +28,72 @@ const TALK_NAV_TONES = [
 ];
 
 function TalkProfileDock({ pathname, onOpenNav }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <nav
       aria-label="Production Profiles"
-      className="absolute right-2 top-2 z-40 flex max-w-[calc(100vw-1rem)] items-center gap-1 overflow-x-auto rounded-xl border border-fuchsia-300/15 bg-[#0a0610]/74 p-1.5 shadow-[0_18px_55px_rgba(0,0,0,.42)] backdrop-blur-xl lg:right-3 lg:top-3"
+      className="absolute right-3 top-3 z-40 flex flex-col items-end gap-1.5"
     >
-      <button
-        type="button"
-        onClick={onOpenNav}
-        className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 text-[9px] font-semibold text-white/70 transition hover:border-fuchsia-300/25 hover:bg-fuchsia-300/10 hover:text-white lg:hidden"
-        title="Talk menu"
-      >
-        <Menu className="h-3.5 w-3.5" />
-        Menu
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onOpenNav}
+          className="flex h-8 items-center gap-1 rounded-lg border border-white/10 bg-black/30 px-2.5 text-[10px] font-semibold text-white/70 shadow-lg backdrop-blur-md transition hover:border-fuchsia-300/25 hover:bg-fuchsia-300/10 hover:text-white lg:hidden"
+          title="Talk menu"
+        >
+          <Menu className="h-3.5 w-3.5" />
+          Menu
+        </button>
 
-      <Link
-        to="/"
-        className="flex h-7 shrink-0 items-center gap-1 rounded-lg border border-orange-300/25 bg-gradient-to-r from-orange-400/14 to-fuchsia-400/10 px-2 text-[9px] font-semibold text-orange-100 shadow-[0_0_16px_rgba(249,115,22,.08)] transition hover:from-orange-400/24 hover:to-fuchsia-400/18"
-        title="CREAPD Home"
-      >
-        <Home className="h-3.5 w-3.5" />
-        Home
-      </Link>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-fuchsia-300/30 bg-gradient-to-r from-violet-500/30 via-fuchsia-500/25 to-orange-400/20 px-3 text-[10px] font-semibold text-white shadow-[0_0_20px_rgba(217,70,239,.16)] backdrop-blur-md transition hover:brightness-110"
+          title="Production Profiles"
+        >
+          <Mic2 className="h-3.5 w-3.5" />
+          Profiles
+          {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
+      </div>
 
-      {PP_NAV_ITEMS.map((item, index) => {
-        const Icon = item.icon;
-        const profileRoot = '/' + item.path.split('/').filter(Boolean)[0];
-        const isActive = pathname.startsWith(profileRoot);
-        const tone = TALK_NAV_TONES[index % TALK_NAV_TONES.length];
-
-        return (
+      {open && (
+        <div className="flex w-36 flex-col items-stretch gap-1.5">
           <Link
-            key={item.path}
-            to={item.path}
-            className={`flex h-7 shrink-0 items-center gap-1 rounded-lg border px-2 text-[9px] font-semibold transition ${isActive
-              ? 'border-fuchsia-200/45 bg-gradient-to-r from-violet-500/35 via-fuchsia-500/30 to-orange-400/25 text-white shadow-[0_0_20px_rgba(217,70,239,.18)]'
-              : tone}`}
-            title={item.label}
+            to="/"
+            onClick={() => setOpen(false)}
+            className="flex h-8 items-center gap-2 rounded-lg border border-orange-300/30 bg-gradient-to-r from-orange-400/18 to-fuchsia-400/12 px-2.5 text-[10px] font-semibold text-orange-100 shadow-[0_0_16px_rgba(249,115,22,.08)] backdrop-blur-md transition hover:from-orange-400/28 hover:to-fuchsia-400/20"
+            title="CREAPD Home"
           >
-            <Icon className="h-3.5 w-3.5" />
-            <span>{item.label}</span>
+            <Home className="h-3.5 w-3.5" />
+            Home
           </Link>
-        );
-      })}
+
+          {PP_NAV_ITEMS.map((item, index) => {
+            const Icon = item.icon;
+            const profileRoot = '/' + item.path.split('/').filter(Boolean)[0];
+            const isActive = pathname.startsWith(profileRoot);
+            const tone = TALK_NAV_TONES[index % TALK_NAV_TONES.length];
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setOpen(false)}
+                className={`flex h-8 items-center gap-2 rounded-lg border px-2.5 text-[10px] font-semibold shadow-lg backdrop-blur-md transition ${isActive
+                  ? 'border-fuchsia-200/45 bg-gradient-to-r from-violet-500/40 via-fuchsia-500/35 to-orange-400/30 text-white shadow-[0_0_20px_rgba(217,70,239,.18)]'
+                  : tone}`}
+                title={item.label}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </nav>
   );
 }
