@@ -299,10 +299,6 @@ export default function MusicConfigure() {
       } else {
         savedConfig = await base44.entities.MusicProductionConfiguration.create(configToUse);
       }
-      await base44.auth.updateMe({
-        default_production_type: 'music',
-        default_production_config_id: savedConfig.id
-      });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
       setBuilding(true);
@@ -334,10 +330,6 @@ export default function MusicConfigure() {
       } else {
         savedConfig = await base44.entities.MusicProductionConfiguration.create(config);
       }
-      await base44.auth.updateMe({
-        default_production_type: 'music',
-        default_production_config_id: savedConfig.id
-      });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
       base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
