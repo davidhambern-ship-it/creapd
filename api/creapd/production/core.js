@@ -1,7 +1,11 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { handleUpload } from '@vercel/blob/client';
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
-import { requireCreapdUser } from '../../../server/creapdUser.js';
+import { getMusicSql, hasMusicDatabaseConfig } from '../../../server/musicDb.js';
+import { ensureMusicSchema } from '../../../server/musicSchema.js';
+import { requireCreapdUser, getRequestedAuthProvider } from '../../../server/creapdUser.js';
+import { requireNeonUser } from '../../../server/neonAuth.js';
+import { requireBase44User } from '../../../server/base44Auth.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
 import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../../server/musicStudio.js';
@@ -293,6 +297,144 @@ function success(response, action, payload = {}) {
     source: 'neon',
     data_authority: 'neon',
     ...payload,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+async function resolveMusicIdentity(request) {
+  const provider = getRequestedAuthProvider(request);
+
+  if (provider === 'neon') {
+    const user = await requireNeonUser(request);
+    return {
+      provider,
+      id: String(user.id),
+      email: user.email || null,
+      display_name: null,
+    };
+  }
+
+  if (provider === 'base44') {
+    const user = await requireBase44User(request);
+    return {
+      provider,
+      id: String(user.id),
+      email: user.email || null,
+      display_name: user.full_name || user.display_name || user.name || null,
+    };
+  }
+
+  const error = new Error('Unsupported authentication provider');
+  error.status = 400;
+  error.code = 'UNSUPPORTED_AUTH_PROVIDER';
+  throw error;
+}
+
+async function ensureMusicUser(sql, identity) {
+  const [existingById] = await sql`
+    SELECT id, email, display_name
+    FROM creapd.users
+    WHERE id=${identity.id}
+    LIMIT 1
+  `;
+
+  if (existingById) {
+    const [updated] = await sql`
+      UPDATE creapd.users
+      SET
+        email=COALESCE(${identity.email}, email),
+        display_name=COALESCE(${identity.display_name}, display_name),
+        source_system=${identity.provider},
+        source_payload=${JSON.stringify({
+          provider: identity.provider,
+          external_id: identity.id,
+        })}::jsonb,
+        updated_at=now()
+      WHERE id=${identity.id}
+      RETURNING *
+    `;
+    return updated;
+  }
+
+  if (identity.email) {
+    const [existingByEmail] = await sql`
+      SELECT id, email, display_name
+      FROM creapd.users
+      WHERE lower(email)=lower(${identity.email})
+      LIMIT 1
+    `;
+    if (existingByEmail) return existingByEmail;
+  }
+
+  const [created] = await sql`
+    INSERT INTO creapd.users (
+      id, email, display_name, source_system, source_payload
+    ) VALUES (
+      ${identity.id},
+      ${identity.email},
+      ${identity.display_name},
+      ${identity.provider},
+      ${JSON.stringify({
+        provider: identity.provider,
+        external_id: identity.id,
+      })}::jsonb
+    )
+    RETURNING *
+  `;
+
+  return created;
+}
+
+async function handleMusicRequest(request, response, action = '') {
+  if (!hasMusicDatabaseConfig()) {
+    return response.status(503).json({
+      ok: false,
+      service: 'creapd-production-core',
+      error: 'music_database_not_configured',
+    });
+  }
+
+  const sql = getMusicSql();
+  await ensureMusicSchema(sql);
+
+  const identity = await resolveMusicIdentity(request);
+  const user = await ensureMusicUser(sql, identity);
+  const ownerUserId = String(user.id);
+  const ownerEmail = user.email || identity.email || null;
+
+  if (request.method === 'GET') {
+    const view = String(request.query?.view || '').trim().toLowerCase();
+    const data = view === 'status'
+      ? await readMusicStatus(sql, ownerUserId, request.query?.configuration_id)
+      : await readMusicStudio(sql, ownerUserId, request.query?.configuration_id);
+
+    return response.status(200).json({
+      ok: true,
+      service: 'creapd-production-core',
+      action: view === 'status' ? 'music_status' : 'music_read',
+      source: process.env.MUSIC_DATABASE_URL ? 'music_database' : 'default_database',
+      data_authority: 'owned',
+      ...data,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const body = request.body && typeof request.body === 'object' ? request.body : {};
+  const result = await runMusicStudioAction({
+    sql,
+    ownerUserId,
+    ownerEmail,
+    action,
+    body,
+  });
+
+  return response.status(200).json({
+    ok: true,
+    service: 'creapd-production-core',
+    action,
+    source: process.env.MUSIC_DATABASE_URL ? 'music_database' : 'default_database',
+    data_authority: 'owned',
+    ...result,
     timestamp: new Date().toISOString(),
   });
 }
@@ -668,6 +810,41 @@ export default async function handler(request, response) {
   if (!['GET', 'POST'].includes(request.method)) {
     response.setHeader('Allow', 'GET, POST');
     return response.status(405).json({ ok: false, error: 'method_not_allowed' });
+  }
+
+  // Music is intentionally routed before the default CREAPD database check.
+  // This lets Music run entirely on Prisma Postgres while Talk and the rest of
+  // CREAPD remain on the existing database during the migration.
+  const earlyBody = request.method === 'POST' && request.body && typeof request.body === 'object'
+    ? request.body
+    : {};
+  const earlyAction = String(earlyBody.action || '').trim();
+  const isMusicRequest =
+    (request.method === 'GET' && String(request.query?.studio || '').toLowerCase() === 'music') ||
+    (request.method === 'POST' && earlyAction.startsWith('music_'));
+
+  if (isMusicRequest) {
+    try {
+      return await handleMusicRequest(request, response, earlyAction);
+    } catch (error) {
+      if ([400, 401, 403, 404, 409].includes(error?.status)) {
+        return response.status(error.status).json({
+          ok: false,
+          service: 'creapd-production-core',
+          error: error.code || 'music_request_failed',
+          diagnostic: safeError(error),
+        });
+      }
+
+      console.error('[CREAPD MUSIC CORE]', error);
+      return response.status(503).json({
+        ok: false,
+        service: 'creapd-production-core',
+        error: 'music_request_failed',
+        diagnostic: safeError(error),
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   if (!hasDatabaseConfig()) {
