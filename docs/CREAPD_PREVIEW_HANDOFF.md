@@ -392,3 +392,62 @@ After each meaningful work block record: date, branch, latest functional commit,
 ### Quick resume prompt
 
 > Open `docs/CREAPD_PREVIEW_HANDOFF.md` from `backend/vercel-foundation` in `davidhambern-ship-it/creapd`, inspect the current branch head and Vercel status, and resume from **Current Exact Next Action**. Do not modify `main`.
+
+
+## 14. Music Studio Owned Backend Checkpoint — 2026-09-28
+
+This checkpoint supersedes the older Talk-focused "Current Exact Next Action" above for the active work session.
+
+Music visual/design work is LOCKED. The current task is backend generation only.
+
+### BUILT + DEPLOYED
+
+Latest functional commit: `9cfce097bfc74a907535dc8132b8fae1d4da214b`
+
+Vercel status: **SUCCESS / Deployment has completed**.
+
+Owned Music work now on `backend/vercel-foundation`:
+- `server/migrations/007_music_studio.sql`
+  - owned Music configuration, playlist, topics, research, rundown, assets, and Top 10 persistence
+- `server/musicEngine.js`
+  - direct Gemini free-first playlist/topic/assets/rundown generation
+  - current music-news intake through Google News RSS, summarized only from supplied RSS material
+  - public YouTube search + oEmbed validation for playlist and Top 10
+  - deterministic rundown assembly and build-stage persistence
+  - locked Top 10 items survive rebuilds
+- `server/musicStudio.js`
+  - owned Music read/save/CRUD/build actions
+  - compatibility department-pipeline view from Music build log
+- `api/creapd/production/core.js`
+  - Music GET/POST actions consolidated into the existing Production Core function
+- `src/api/base44Client.js`
+  - on owned Preview, Music entities/functions now route to CREAPD/Neon instead of Base44
+  - Music build status subscription is replaced with owned polling
+  - legacy Base44 behavior remains available outside the owned Preview path
+
+Server/module syntax checks passed for the new Music engine, Music persistence layer, Production Core, and compatibility client.
+
+### DATABASE STATUS — BLOCKED
+
+Migration 007 is **not applied**.
+
+Neon project `bold-term-42963962` is currently hard-blocked by its project data-transfer quota:
+- usage: `6216941526` bytes
+- limit: `5500000000` bytes
+- free plan
+- consumption period ends: `2026-10-01T00:00:00Z`
+
+Neon rejected both normal database inspection and a prepared migration attempt with quota-exceeded errors. Do not call Music TESTED/PASSED until migration 007 is applied and the Preview build is exercised.
+
+### Current Exact Next Action
+
+Resolve the existing Neon data-transfer block first. Preferred path is to keep the current CREAPD database and apply migration 007 as soon as the quota is available again, rather than splitting Music into a separate database and complicating auth/shared production state.
+
+After Neon is available:
+1. prepare migration 007 on a temporary branch;
+2. validate the new Music tables;
+3. explicitly approve/apply the prepared migration to the Preview database;
+4. run a real Music production from Discovery Room through Playlist, Research, Topics, Assets, Top 10, and Rundown;
+5. verify YouTube embeds and build-stage status;
+6. only then mark Music generation PASSED.
+
