@@ -29,9 +29,32 @@ import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
 import RealtimeBuildProgress from '@/components/music/RealtimeBuildProgress';
 import RuntimeSoundBoard from '@/components/music/RuntimeSoundBoard';
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function safeParse(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+
+  if (Array.isArray(fallback)) {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return fallback;
+
+    let current = value;
+    for (let pass = 0; pass < 2; pass += 1) {
+      try {
+        const parsed = JSON.parse(current);
+        if (Array.isArray(parsed)) return parsed;
+        if (typeof parsed === 'string') {
+          current = parsed;
+          continue;
+        }
+        return fallback;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  if (typeof value !== 'string') return value;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function NeonChip({ label, active, onClick, color = 'pink' }) {
