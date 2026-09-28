@@ -89,6 +89,12 @@ async function readOwnedMusic(configurationId = null) {
   return creapdApi.getFresh(musicStudioPath(configurationId));
 }
 
+async function readOwnedMusicStatus(configurationId = null) {
+  const params = new URLSearchParams({ studio: 'music', view: 'status' });
+  if (configurationId) params.set('configuration_id', String(configurationId));
+  return creapdApi.getFresh(\`/production/core?\${params.toString()}\`);
+}
+
 function makeMusicEntityAdapter(entityName, target) {
   return new Proxy(target, {
     get(entityTarget, property) {
@@ -201,7 +207,7 @@ function makeMusicEntityAdapter(entityName, target) {
           const poll = async () => {
             if (stopped) return;
             try {
-              const snapshot = await readOwnedMusic();
+              const snapshot = await readOwnedMusicStatus();
               const configuration = snapshot?.configuration;
               if (!configuration) return;
               const nextSignature = [
