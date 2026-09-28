@@ -47,7 +47,11 @@ function sortLegacyRows(rows, sort = '-created_date') {
   return [...rows].sort((left, right) => {
     const a = left?.[field] ?? '';
     const b = right?.[field] ?? '';
-    const result = String(a).localeCompare(String(b));
+    const aNumber = typeof a === 'number' ? a : Number.NaN;
+    const bNumber = typeof b === 'number' ? b : Number.NaN;
+    const result = Number.isFinite(aNumber) && Number.isFinite(bNumber)
+      ? aNumber - bNumber
+      : String(a).localeCompare(String(b));
     return descending ? -result : result;
   });
 }
