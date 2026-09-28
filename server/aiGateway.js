@@ -96,6 +96,38 @@ function incompleteReason(payload) {
   ).slice(0, 120);
 }
 
+function sanitizeGeminiResponseSchema(schema) {
+  if (Array.isArray(schema)) {
+    return schema.map(sanitizeGeminiResponseSchema);
+  }
+
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  const unsupported = new Set([
+    'additionalProperties',
+    '$schema',
+    '$id',
+    '$defs',
+    'definitions',
+    'patternProperties',
+    'unevaluatedProperties',
+    'dependentSchemas',
+    'propertyNames',
+    'contains',
+    'const',
+  ]);
+
+  const cleaned = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (unsupported.has(key)) continue;
+    cleaned[key] = sanitizeGeminiResponseSchema(value);
+  }
+
+  return cleaned;
+}
+
 function geminiText(payload) {
   const parts = payload?.candidates?.[0]?.content?.parts;
   if (!Array.isArray(parts)) return '';
@@ -287,7 +319,7 @@ async function generateGeminiStructuredResponse({
       temperature: 0.15,
       maxOutputTokens: Number(maxOutputTokens || 1800),
       responseMimeType: 'application/json',
-      responseSchema: schema,
+      responseSchema: sanitizeGeminiResponseSchema(schema),
     },
   };
 
