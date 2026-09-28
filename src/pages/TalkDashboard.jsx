@@ -76,6 +76,12 @@ export default function TalkDashboard() {
   const [refreshError, setRefreshError] = useState('');
   const [activePanel, setActivePanel] = useState(null);
   const [aiHealth, setAiHealth] = useState(null);
+  const [studioClock, setStudioClock] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setStudioClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -389,6 +395,11 @@ export default function TalkDashboard() {
                   {aiHealth.provider === 'gemini' ? 'Gemini Ready' : 'Vercel AI'}
                 </span>
               )}
+              <span className="hidden xl:inline-flex items-center gap-1 rounded-full border border-fuchsia-300/15 bg-fuchsia-300/[0.06] px-2 py-0.5 text-[9px] font-medium text-fuchsia-100/75">
+                {studioClock.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                <span className="text-white/20">•</span>
+                {studioClock.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-white/45">
               <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{config.show_date}</span>
