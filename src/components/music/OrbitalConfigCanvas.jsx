@@ -58,7 +58,6 @@ export default function OrbitalConfigCanvas({
   onSave,
   saving = false,
   saveStatus = null,
-  saveError = '',
 }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 10, y: 0 });
@@ -317,11 +316,6 @@ export default function OrbitalConfigCanvas({
                   </button>
                   <SaveButton onSave={onSave} saving={saving} saveStatus={saveStatus} accent="#00FFFF" />
                 </div>
-                {saveStatus === 'error' && saveError && (
-                  <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
-                    {saveError}
-                  </div>
-                )}
                 <RuntimeSoundBoard config={config} updateConfig={updateConfig} />
               </div>
             ) : config && updateConfig ? (
