@@ -801,7 +801,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       top10 = await generateMusicTop10({ sql, ownerUserId, configurationId: config.id, preserveLocked: Boolean(section) });
       await appendStage(sql, ownerUserId, config.id, buildLog, 'top10', top10.length ? 'complete' : 'failed', { count: top10.length });
     } else if (!section) {
-      top10 = await generateMusicTop10({ sql, ownerUserId, configurationId: config.id, preserveLocked: false });
+      top10 = await generateMusicTop10({ sql, ownerUserId, configurationId: config.id, preserveLocked: true });
       await appendStage(sql, ownerUserId, config.id, buildLog, 'top10', top10.length ? 'complete' : 'failed', { count: top10.length });
     }
 
