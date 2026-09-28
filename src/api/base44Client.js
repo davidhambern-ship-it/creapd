@@ -168,14 +168,6 @@ function makeMusicEntityAdapter(entityName, target) {
 
       if (property === 'update') {
         return async (id, patch = {}) => {
-          if (entityName === 'MusicProductionConfiguration') {
-            const result = await creapdApi.post('/production/core', {
-              action: 'music_save_configuration',
-              configuration: { ...patch, id },
-            });
-            return result?.configuration;
-          }
-
           const result = await creapdApi.post('/production/core', {
             action: 'music_entity_update',
             entity: entityName,
