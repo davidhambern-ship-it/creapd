@@ -76,15 +76,15 @@ function withConfigAliases(row) {
   return withDates({
     ...row,
     show_date: normalizeDateOnly(row.show_date),
-    genres: JSON.stringify(row.genres || []),
-    moods: JSON.stringify(row.moods || []),
-    music_topics: JSON.stringify(row.music_topics || []),
-    research_sources: JSON.stringify(row.research_sources || []),
-    pacing_rules: JSON.stringify(row.pacing_rules || {}),
-    ai_automation: JSON.stringify(row.ai_automation || []),
-    vo_requirements: JSON.stringify(row.vo_requirements || {}),
-    production_plan: JSON.stringify(row.production_plan || {}),
-    build_log: JSON.stringify(row.build_log || []),
+    genres: JSON.stringify(parseArray(row.genres, [])),
+    moods: JSON.stringify(parseArray(row.moods, [])),
+    music_topics: JSON.stringify(parseArray(row.music_topics, [])),
+    research_sources: JSON.stringify(parseArray(row.research_sources, [])),
+    pacing_rules: JSON.stringify(parseObject(row.pacing_rules, {})),
+    ai_automation: JSON.stringify(parseArray(row.ai_automation, [])),
+    vo_requirements: JSON.stringify(parseObject(row.vo_requirements, {})),
+    production_plan: JSON.stringify(parseObject(row.production_plan, {})),
+    build_log: JSON.stringify(parseArray(row.build_log, [])),
   });
 }
 
