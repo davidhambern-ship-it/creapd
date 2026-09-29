@@ -11,7 +11,6 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 
 export default function MusicPlaylist() {
   const { config, playlist, loading, refresh } = useMusicProduction();
@@ -340,7 +339,6 @@ export default function MusicPlaylist() {
             </div>
           </div>
         )}
-      <PPNavBar />
       </div>
 
       {/* Add Track Modal */}
