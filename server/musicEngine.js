@@ -1322,6 +1322,9 @@ SCRIPT RULES:
 - Talk breaks: natural host commentary tied to the show's premise/editorial focus.
 - Sponsor breaks: generic placeholder ad-read unless show data names a sponsor; fill the required runtime with a realistic break structure.
 - Station IDs may be brief but must still fit their listed word range.
+- EVERY station_id MUST say the exact configured host name "${config.host_name || 'Host'}". If a station name is configured, it must also say the exact station name "${config.station_name || 'the station'}".
+- NEVER write "your host", "with your host", "our host", or "the host" as a substitute for the configured host name.
+- If the rundown contains multiple Station IDs, vary the opening, sentence structure, and closing so they do not sound like copies of one another.
 - Intro/outro: establish and close the specific show premise, not generic filler.
 - Song segments: script_content MUST be empty. The full song audio supplies the runtime; use song_intro/song_outro Production assets for host copy around songs.
 - Never change a song title or artist from the playlist.
