@@ -1456,6 +1456,358 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
   }
 }
 
+
+async function retimeMusicRundown(sql, ownerUserId, configurationId, showStartTime = '06:00') {
+  const ownerId = String(ownerUserId);
+  const rows = await sql\`
+    SELECT * FROM creapd.music_rundown_items
+    WHERE configuration_id=\${configurationId} AND owner_user_id=\${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  \`;
+
+  let cursor = parseTimeToSeconds(showStartTime || '06:00');
+  for (const row of rows) {
+    const duration = Math.max(0, num(row.duration_seconds, 0));
+    const start = formatSecondsToTime(cursor);
+    cursor += duration;
+    const end = formatSecondsToTime(cursor);
+    await sql\`
+      UPDATE creapd.music_rundown_items
+      SET start_time=\${start}, end_time=\${end}, updated_at=now()
+      WHERE id=\${row.id} AND owner_user_id=\${ownerId}
+    \`;
+  }
+}
+
+async function regenerateRejectedTracks({ sql, ownerUserId, config, playlist, research }) {
+  const ownerId = String(ownerUserId);
+  const rejected = playlist.filter(item => text(item.status).toLowerCase() === 'rejected');
+  if (!rejected.length) return { replaced: 0, unresolved: [] };
+
+  const active = playlist.filter(item => text(item.status).toLowerCase() !== 'rejected');
+  const exclusions = [...active, ...rejected]
+    .map(item => \`\${item.song_title} — \${item.artist}\`)
+    .filter(Boolean);
+
+  const candidateCount = Math.min(24, Math.max(8, rejected.length * 5));
+  const year = new Date().getUTCFullYear();
+  const prompt = \`You are replacing REJECTED playlist tracks for a CREAPD radio show. Return \${candidateCount} REAL commercially released replacement candidates.
+
+SHOW: \${config.production_name}
+Description / premise: \${config.show_description || 'Not supplied'}
+Genres: \${array(config.genres, []).join(', ') || 'Top 40'}
+Moods: \${array(config.moods, []).join(', ') || 'Feel Good'}
+Tone: \${config.show_tone || 'Professional'}
+Preferred eras: \${config.preferred_eras || 'Current'}
+Energy flow: \${config.playlist_energy_flow || 'Build Energy Gradually'}
+Clean only: \${config.clean_only === true}
+Explicit allowed: \${config.explicit_allowed === true}
+
+THESE TRACKS WERE REJECTED:
+\${rejected.map((item, i) => \`\${i + 1}. \${item.song_title} — \${item.artist}\`).join('\\n')}
+
+DO NOT RETURN ANY EXISTING OR REJECTED TRACK:
+\${exclusions.join('\\n') || 'None'}
+
+Return real song_title + artist pairs only. Do not invent titles, artists, collaborations, or remixes. Prefer releases from \${year - 2}-\${year} unless the configured eras/throwback rules call for older music. Each replacement must fit the show and playlist tone. Include a realistic length_seconds, genre, mood, era_year, and a short reason_selected.\`;
+
+  const result = await structured(prompt, PLAYLIST_SCHEMA, 'creapd_music_rejected_playlist_v1', 5000);
+  const candidates = array(result?.data?.playlist, []).slice(0, candidateCount);
+  const usedIds = new Set(active.map(item => item.youtube_video_id).filter(Boolean));
+  const usedTitles = new Set(
+    [...active, ...rejected].map(item => \`\${text(item.song_title).toLowerCase()}::\${text(item.artist).toLowerCase()}\`)
+  );
+
+  const resolved = await Promise.all(candidates.map(async song => {
+    const key = \`\${text(song.song_title).toLowerCase()}::\${text(song.artist).toLowerCase()}\`;
+    if (usedTitles.has(key)) return { song, metadata: null };
+    return {
+      song,
+      metadata: await searchYoutubeVideo(
+        text(song.song_title),
+        text(song.artist),
+        usedIds,
+        num(song.length_seconds, 180),
+      ),
+    };
+  }));
+
+  const replacements = [];
+  for (const entry of resolved) {
+    const duration = num(entry.metadata?.duration_seconds, 0);
+    const key = \`\${text(entry.song?.song_title).toLowerCase()}::\${text(entry.song?.artist).toLowerCase()}\`;
+    if (!entry.metadata || duration < 75 || usedIds.has(entry.metadata.video_id) || usedTitles.has(key)) continue;
+    usedIds.add(entry.metadata.video_id);
+    usedTitles.add(key);
+    replacements.push({ ...entry, duration });
+    if (replacements.length >= rejected.length) break;
+  }
+
+  const changed = [];
+  const unresolved = [];
+  for (let index = 0; index < rejected.length; index += 1) {
+    const old = rejected[index];
+    const replacement = replacements[index];
+    if (!replacement) {
+      unresolved.push({ id: old.id, song_title: old.song_title, artist: old.artist });
+      continue;
+    }
+
+    const { song, metadata, duration } = replacement;
+    const oldTitle = old.song_title;
+    const sourcePayload = {
+      youtube_title: metadata.title,
+      youtube_duration_seconds: duration,
+      youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
+      requested_title: text(song.song_title),
+      requested_artist: text(song.artist),
+      regenerated_from_rejected_track: {
+        song_title: old.song_title,
+        artist: old.artist,
+      },
+      regenerated_at: new Date().toISOString(),
+    };
+
+    const [updated] = await sql\`
+      UPDATE creapd.music_playlist_items
+      SET
+        song_title=\${text(song.song_title, metadata.title || old.song_title)},
+        artist=\${text(song.artist, metadata.channel_name || old.artist)},
+        length_seconds=\${duration},
+        genre=\${text(song.genre) || old.genre || null},
+        mood=\${text(song.mood) || old.mood || null},
+        era_year=\${text(song.era_year) || old.era_year || null},
+        reason_selected=\${text(song.reason_selected) || 'Replacement for rejected track'},
+        status='suggested',
+        note=\${'Regenerated replacement for rejected track: ' + old.song_title + ' — ' + old.artist},
+        source='youtube_radio_verified',
+        youtube_video_id=\${metadata.video_id},
+        thumbnail_url=\${metadata.thumbnail_url},
+        channel_name=\${metadata.channel_name},
+        source_payload=\${safeJson(sourcePayload)}::jsonb,
+        updated_at=now()
+      WHERE id=\${old.id} AND owner_user_id=\${ownerId}
+      RETURNING *
+    \`;
+
+    if (!updated) continue;
+    changed.push(updated);
+
+    await sql\`
+      UPDATE creapd.music_rundown_items
+      SET
+        title=\${updated.song_title},
+        associated_song_title=\${updated.song_title},
+        duration_seconds=\${duration},
+        status=CASE WHEN status='rejected' THEN 'ready' ELSE status END,
+        updated_at=now()
+      WHERE configuration_id=\${config.id}
+        AND owner_user_id=\${ownerId}
+        AND associated_song_id=\${old.id}
+    \`;
+
+    await sql\`
+      DELETE FROM creapd.music_assets
+      WHERE configuration_id=\${config.id}
+        AND owner_user_id=\${ownerId}
+        AND lower(COALESCE(associated_song_title, ''))=lower(\${oldTitle})
+        AND asset_type IN ('song_intro','song_outro','artist_fact')
+    \`;
+  }
+
+  if (changed.length) {
+    const researchText = research.slice(0, 8)
+      .map((item, i) => \`\${i + 1}. \${item.title} — \${item.source || 'source'}: \${item.summary}\`)
+      .join('\\n');
+
+    const trackText = changed
+      .map((item, i) => \`\${i + 1}. \${item.song_title} — \${item.artist}\`)
+      .join('\\n');
+
+    const assetPrompt = \`You are writing replacement on-air song assets for a CREAPD radio show.
+
+SHOW: \${config.production_name}
+Description / premise: \${config.show_description || 'Not supplied'}
+Host: \${config.host_name || 'Host'}
+Station: \${config.station_name || 'the station'}
+Tone: \${config.show_tone || 'Professional'}
+
+REPLACEMENT TRACKS:
+\${trackText}
+
+VERIFIED RESEARCH:
+\${researchText || 'None supplied. Keep factual artist/current-event claims evergreen.'}
+
+For EACH replacement track, generate exactly:
+1) one song_intro
+2) one song_outro
+
+Every asset MUST put the exact playlist song title in associated_song_title. The intro should naturally set up the track. The outro should recap/transition out of that exact track. Do not invent chart positions, awards, quotes, release facts, or biography details not supported above.\`;
+
+    const assetResult = await structured(assetPrompt, ASSETS_SCHEMA, 'creapd_music_rejected_track_assets_v1', 4500);
+    const newAssets = array(assetResult?.data?.assets, []);
+
+    for (const item of changed) {
+      const titleKey = text(item.song_title).toLowerCase();
+      for (const assetType of ['song_intro', 'song_outro']) {
+        const generated = newAssets.find(asset =>
+          text(asset.asset_type).toLowerCase() === assetType &&
+          text(asset.associated_song_title).toLowerCase() === titleKey
+        );
+        if (!generated?.content) continue;
+
+        await sql\`
+          INSERT INTO creapd.music_assets (
+            id, configuration_id, owner_user_id, asset_type, title, content,
+            associated_song_title, associated_topic, status
+          ) VALUES (
+            \${randomUUID()}, \${config.id}, \${ownerId}, \${assetType},
+            \${text(generated.title, assetType.replaceAll('_', ' '))},
+            \${text(generated.content)}, \${item.song_title}, null, 'ready'
+          )
+        \`;
+      }
+    }
+  }
+
+  if (changed.length) {
+    await retimeMusicRundown(sql, ownerUserId, config.id, config.show_start_time || '06:00');
+  }
+
+  return { replaced: changed.length, unresolved };
+}
+
+async function regenerateRejectedSegments({ sql, ownerUserId, config, rundown, topics, research }) {
+  const ownerId = String(ownerUserId);
+  const rejected = rundown.filter(item =>
+    text(item.status).toLowerCase() === 'rejected' &&
+    text(item.segment_type).toLowerCase() !== 'song'
+  );
+  if (!rejected.length) return { replaced: 0, unresolved: [] };
+
+  const topicText = topics.map(t =>
+    \`\${t.topic_name}: \${t.generated_summary}\\nTalking points: \${t.talking_points || ''}\\nSources: \${t.sources || 'evergreen/no external source'}\`
+  ).join('\\n\\n');
+  const researchText = research.slice(0, 12)
+    .map((r, i) => \`\${i + 1}. \${r.title} — \${r.source || 'source'}: \${r.summary}\`)
+    .join('\\n');
+
+  const targets = rejected.map(item => {
+    const words = spokenWordRange(item.duration_seconds, item.segment_type);
+    return {
+      order: Number(item.order_index || 0) + 1,
+      item,
+      words,
+      source: rundownScriptSource(item, config),
+    };
+  });
+
+  const prompt = \`You are replacing REJECTED spoken segments for a CREAPD radio show. Generate fresh replacement copy ONLY for the listed segments.
+
+SHOW
+Name: \${config.production_name}
+Description / premise: \${config.show_description || 'Not supplied'}
+Editorial focus: \${array(config.music_topics, []).join(', ') || 'Music and artist conversation'}
+Host: \${config.host_name || 'Host'}
+Co-host: \${config.co_host_name || 'None'}
+Station: \${config.station_name || 'the station'}
+Tone: \${config.show_tone || 'Professional'}
+
+TOPIC MATERIAL:
+\${topicText || 'No topic material'}
+
+VERIFIED RESEARCH:
+\${researchText || 'No current research supplied'}
+
+REJECTED SEGMENTS TO REPLACE:
+\${targets.map(target =>
+  \`\${target.order}. [\${target.item.segment_type}] \${target.item.title || ''}\${target.item.associated_topic ? \` | topic=\${target.item.associated_topic}\` : ''} | SOURCE=\${target.source} | REQUIRED \${target.words.min}-\${target.words.max} words, aim \${target.words.target}\`
+).join('\\n')}
+
+Return one fresh repair for every listed order. Do not reuse the rejected wording. Stay inside each required word range. Current factual claims must be supported by VERIFIED RESEARCH; otherwise keep the copy evergreen.\`;
+
+  const result = await structured(prompt, SCRIPT_REPAIR_SCHEMA, 'creapd_music_rejected_segments_v1', 12000);
+  const repairs = array(result?.data?.repairs, []);
+  const changed = [];
+  const unresolved = [];
+
+  for (const target of targets) {
+    const repair = repairs.find(item => Math.round(num(item.order, 0)) === target.order);
+    const script = text(repair?.script_content);
+    if (!script) {
+      unresolved.push({ id: target.item.id, title: target.item.title, segment_type: target.item.segment_type });
+      continue;
+    }
+
+    const sourceNote = 'Script source: ' + target.source + ' | Regenerated after rejection';
+    const [updated] = await sql\`
+      UPDATE creapd.music_rundown_items
+      SET
+        script_content=\${script},
+        notes=\${sourceNote},
+        status='suggested',
+        updated_at=now()
+      WHERE id=\${target.item.id} AND owner_user_id=\${ownerId}
+      RETURNING *
+    \`;
+    if (updated) changed.push(updated);
+  }
+
+  return { replaced: changed.length, unresolved };
+}
+
+export async function regenerateRejectedMusicMaterials({ sql, ownerUserId, configurationId, kind = 'all' }) {
+  const config = await requireConfig(sql, ownerUserId, configurationId);
+  const ownerId = String(ownerUserId);
+  const normalizedKind = ['all', 'tracks', 'segments'].includes(text(kind).toLowerCase())
+    ? text(kind).toLowerCase()
+    : 'all';
+
+  const [playlist, rundown, topics, research] = await Promise.all([
+    sql\`SELECT * FROM creapd.music_playlist_items WHERE configuration_id=\${config.id} AND owner_user_id=\${ownerId} ORDER BY order_index ASC\`,
+    sql\`SELECT * FROM creapd.music_rundown_items WHERE configuration_id=\${config.id} AND owner_user_id=\${ownerId} ORDER BY order_index ASC\`,
+    sql\`SELECT * FROM creapd.music_topics WHERE configuration_id=\${config.id} AND owner_user_id=\${ownerId} ORDER BY display_order ASC\`,
+    sql\`SELECT * FROM creapd.music_research_items WHERE configuration_id=\${config.id} AND owner_user_id=\${ownerId} ORDER BY created_at ASC\`,
+  ]);
+
+  const result = {
+    tracks: { replaced: 0, unresolved: [] },
+    segments: { replaced: 0, unresolved: [] },
+  };
+
+  if (normalizedKind === 'all' || normalizedKind === 'tracks') {
+    result.tracks = await regenerateRejectedTracks({
+      sql,
+      ownerUserId,
+      config,
+      playlist,
+      research,
+    });
+  }
+
+  const freshRundown = (normalizedKind === 'all' && result.tracks.replaced)
+    ? await sql\`SELECT * FROM creapd.music_rundown_items WHERE configuration_id=\${config.id} AND owner_user_id=\${ownerId} ORDER BY order_index ASC\`
+    : rundown;
+
+  if (normalizedKind === 'all' || normalizedKind === 'segments') {
+    result.segments = await regenerateRejectedSegments({
+      sql,
+      ownerUserId,
+      config,
+      rundown: freshRundown,
+      topics,
+      research,
+    });
+  }
+
+  return {
+    success: true,
+    configuration_id: config.id,
+    kind: normalizedKind,
+    ...result,
+  };
+}
+
 export async function regenerateMusicSection(args) {
   const section = text(args?.section).toLowerCase();
   const valid = new Set(['playlist', 'research', 'topics', 'assets', 'top10', 'rundown']);
