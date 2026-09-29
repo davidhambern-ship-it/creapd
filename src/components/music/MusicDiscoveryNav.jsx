@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Archive,
@@ -90,7 +91,9 @@ export default function MusicDiscoveryNav({
   const navigate = useNavigate();
   const location = useLocation();
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsMenuPosition, setToolsMenuPosition] = useState(null);
   const toolsRef = useRef(null);
+  const toolsButtonRef = useRef(null);
 
   const studioApproved = config?.status === 'approved';
   const configId = config?.id || '';
@@ -103,11 +106,37 @@ export default function MusicDiscoveryNav({
 
   useEffect(() => {
     const handlePointer = event => {
-      if (!toolsRef.current?.contains(event.target)) setToolsOpen(false);
+      const insideTrigger = toolsRef.current?.contains(event.target);
+      const insideMenu = event.target?.closest?.('[data-radio-production-tools-menu="true"]');
+      if (!insideTrigger && !insideMenu) setToolsOpen(false);
     };
     document.addEventListener('mousedown', handlePointer);
     return () => document.removeEventListener('mousedown', handlePointer);
   }, []);
+
+  useEffect(() => {
+    if (!toolsOpen) {
+      setToolsMenuPosition(null);
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const rect = toolsButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setToolsMenuPosition({
+        top: rect.bottom + 8,
+        right: Math.max(12, window.innerWidth - rect.right),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [toolsOpen]);
 
   const goToSection = (id) => {
     if (location.pathname === '/music/dashboard') {
@@ -183,6 +212,7 @@ export default function MusicDiscoveryNav({
 
           <div className="relative flex-shrink-0" ref={toolsRef}>
             <button
+              ref={toolsButtonRef}
               type="button"
               onClick={() => setToolsOpen(open => !open)}
               className="h-9 inline-flex items-center gap-2 px-3 rounded-lg border text-xs font-semibold whitespace-nowrap transition-all"
@@ -197,11 +227,16 @@ export default function MusicDiscoveryNav({
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {toolsOpen && (
+            {toolsOpen && toolsMenuPosition && createPortal(
               <div
-                className="absolute right-0 top-[44px] z-[250] w-64 rounded-xl border border-white/10 bg-[#090b12]/95 backdrop-blur-xl p-2 shadow-2xl"
+                data-radio-production-tools-menu="true"
+                className="fixed z-[99999] w-64 rounded-xl border border-white/10 bg-[#090b12]/95 backdrop-blur-xl p-2 shadow-2xl"
+                style={{
+                  top: toolsMenuPosition.top,
+                  right: toolsMenuPosition.right,
+                }}
               >
-                <div className="px-2 py-1.5">
+<div className="px-2 py-1.5">
                   <p className="text-[9px] uppercase tracking-[0.18em] text-white/30">Production Tools</p>
                 </div>
 
@@ -243,7 +278,9 @@ export default function MusicDiscoveryNav({
                     </button>
                   );
                 })}
-              </div>
+
+              </div>,
+              document.body
             )}
           </div>
         </div>
