@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     const productionFormat = config.production_format || 'radio';
     const showDescription = (config.show_description || '').trim();
 
-    const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 });
+    const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 3, min_talk_break_frequency: 1 });
 
     // Enforce 90-minute maximum show runtime — music is ALWAYS 50% of total
     const MAX_SHOW_MINUTES = 90;
@@ -839,6 +839,7 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         const next = i < blueprint.length - 1 ? blueprint[i + 1] : null;
         const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${timingLabel})`];
         if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
+        if (bp.block_song_titles?.length) parts.push(`     Music block songs, in order: ${bp.block_song_titles.map(title => `"${title}"`).join(' -> ')}`);
         if (bp.associated_topic) parts.push(`     Topic: "${bp.associated_topic}"`);
         parts.push(`     Previous: ${previous ? `[${previous.segment_type}] "${previous.title}"` : 'SHOW START'}`);
         parts.push(`     Next: ${next ? `[${next.segment_type}] "${next.title}"` : 'SHOW END'}`);
@@ -883,8 +884,11 @@ CONTINUITY RULES — CRITICAL:
 - Do not repeatedly reset the show with phrases like "welcome to the show," "coming up today," or fresh introductions unless the format genuinely calls for a reset after a major break.
 - Avoid repeating the same facts, explanations, jokes, artist descriptions, or setup language in neighboring segments.
 - If a song just played, the next spoken segment may reference its mood, lyric/theme, artist, or energy when that creates a natural bridge into the next subject.
-- A song segment's script_content is the host's contextual lead-in to THAT exact song. It should grow out of the previous segment and hand directly into the track.
-- The segment after a song should continue from the experience of that song instead of sounding like an unrelated standalone paragraph.
+- A song_intro segment introduces ONLY the first/upcoming song in its music block. Do not preview or list every song in the block.
+- Song segments are music playback only. Their script_content MUST be an empty string because the host does not speak between songs inside a music block.
+- A song_outro segment happens only AFTER the full music block has played. Start by coming out of the LAST song naturally, then name the other songs that just played in that block using the exact titles supplied in "Music block songs, in order."
+- Do not insert commentary between songs inside a music block.
+- The segment after a song_outro should continue naturally into the next talking point or scheduled segment.
 - Sponsor breaks and station IDs should interrupt as little as possible; when the show returns, resume the thread naturally.
 - The outro should resolve or echo the show's main thread instead of sounding like a generic sign-off.
 
@@ -893,7 +897,9 @@ SCRIPT REQUIREMENTS:
 - Show Outro: Close the actual conversation/content arc developed during this episode and then sign off.
 - Talk Breaks: Conversational connective tissue. Use them to bridge songs/topics rather than filler banter.
 - Topic Segments: Expand the topic's talking points into a full spoken script that fills the allocated time (~150 words per minute) while connecting to adjacent segments.
-- Song Segments: Write a brief, contextual lead-in that mentions the exact artist and song title and clearly flows from the prior segment.
+- Song Intros: Introduce the exact first song of the upcoming three-song music block and hand directly into it.
+- Song Segments: Return an empty script_content string. These are uninterrupted music playback entries.
+- Song Outros: After the block finishes, come out of the final song first, then naturally recap the other songs that played in that block by exact title. Do not pretend each song had its own outro.
 - Sponsor Breaks: Write sponsor/ad-read copy that fills the allocated time (~150 words per minute). If no specific sponsor is configured, keep it generic and transition back into the show cleanly.
 - Station IDs: Write a brief station identification segment (e.g., "You're listening to ${config.station_name || 'the station'}"). Keep it under 15 seconds and avoid making it feel like a new show opening.
 - For EVERY non-song segment, script_content MUST fill the allocated target duration at a natural speaking pace of about 150 words per minute (2.5 words/second).
@@ -937,7 +943,12 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
         const shortScripts = [];
         for (let i = 0; i < blueprint.length; i++) {
           const bp = blueprint[i];
-          if (bp.segment_type === 'song') continue;
+          if (bp.segment_type === 'song') {
+            if ((generated[i]?.script_content || '').trim()) {
+              throw new Error(`Song playback item #${i + 1} "${bp.title}" must have empty script_content; music blocks cannot contain host commentary between songs.`);
+            }
+            continue;
+          }
 
           const targetSeconds = bp.target_duration || 60;
           const targetWords = Math.max(1, Math.round(targetSeconds * 2.5));
@@ -971,9 +982,11 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
 
         let durationSeconds;
         let matchedSong = null;
-        if (segmentType === 'song') {
+        if (bpItem.associated_song_title) {
           const songTitle = (bpItem.associated_song_title || '').toLowerCase().trim();
           matchedSong = playlistData.find(s => (s.song_title || '').toLowerCase().trim() === songTitle) || null;
+        }
+        if (segmentType === 'song') {
           durationSeconds = matchedSong?.length_seconds || bpItem.target_duration || 180;
         } else {
           // The rundown clock is defined by the production blueprint. Script generation is
@@ -1194,7 +1207,11 @@ function formatSecondsToTime(totalSeconds) {
 // topic segments, sponsor breaks, and station IDs interleaved between
 // song blocks. Time budgets are calculated from the configuration.
 function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInterstitials = [], timeBudget = {}) {
-  const maxSequential = pacingRules.max_sequential_songs || 4;
+  // CREAPD music programming is built in uninterrupted blocks of up to three songs:
+  // one host intro -> songs back-to-back -> one host outro/recap.
+  const songsPerBlock = 3;
+  const songIntroSecs = 15;
+  const songOutroSecs = 25;
 
   const introSecs = Math.round((timeBudget.introMin || config.intro_runtime || 1) * 60);
   const outroSecs = Math.round((timeBudget.outroMin || config.outro_runtime || 1) * 60);
@@ -1203,13 +1220,17 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
   const stationIdSecs = 15;
 
   const songBlocks = [];
-  for (let i = 0; i < playlist.length; i += maxSequential) {
-    songBlocks.push(playlist.slice(i, i + maxSequential));
+  for (let i = 0; i < playlist.length; i += songsPerBlock) {
+    songBlocks.push(playlist.slice(i, i + songsPerBlock));
   }
 
+  // Music-block host links count against the configured talk budget instead of
+  // silently extending the show's total runtime.
+  const musicLinkSecs = songBlocks.length * (songIntroSecs + songOutroSecs);
+  const remainingTalkSecs = Math.max(0, talkSecs - musicLinkSecs);
   const numIntervals = Math.max(songBlocks.length - 1, 1);
-  const talkPerInterval = Math.floor(talkSecs / numIntervals);
-  const sponsorPerInterval = Math.floor(sponsorSecs / Math.max(Math.floor(songBlocks.length / 2), 1));
+  const talkPerInterval = Math.max(60, Math.floor(remainingTalkSecs / numIntervals));
+  const sponsorPerInterval = Math.max(30, Math.floor(sponsorSecs / Math.max(Math.floor(songBlocks.length / 2), 1)));
 
   const blueprint = [];
   blueprint.push({ segment_type: 'intro', title: 'Show Intro', target_duration: introSecs });
@@ -1218,7 +1239,24 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
   let interstitialIdx = 0;
 
   for (let blockIdx = 0; blockIdx < songBlocks.length; blockIdx++) {
-    for (const song of songBlocks[blockIdx]) {
+    const block = songBlocks[blockIdx];
+    if (block.length === 0) continue;
+
+    const firstSong = block[0];
+    const lastSong = block[block.length - 1];
+    const blockSongTitles = block.map(song => song.song_title);
+
+    // Introduce only the song that starts the block. The remaining songs play
+    // without host interruption.
+    blueprint.push({
+      segment_type: 'song_intro',
+      title: `Song Intro — ${firstSong.song_title}`,
+      associated_song_title: firstSong.song_title,
+      block_song_titles: blockSongTitles,
+      target_duration: songIntroSecs
+    });
+
+    for (const song of block) {
       blueprint.push({
         segment_type: 'song',
         title: song.song_title,
@@ -1227,18 +1265,19 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
       });
     }
 
+    // One outro after the final song closes the block and identifies the other
+    // songs that played. There are no per-song outros inside the block.
+    blueprint.push({
+      segment_type: 'song_outro',
+      title: `Song Outro / Music Recap — ${lastSong.song_title}`,
+      associated_song_title: lastSong.song_title,
+      block_song_titles: blockSongTitles,
+      target_duration: songOutroSecs
+    });
+
     if (blockIdx < songBlocks.length - 1) {
-      // Cycle through topics and extra interstitials (artist bios, trivia, tour dates, concert news)
-      if (interstitialIdx < extraInterstitials.length) {
-        const inter = extraInterstitials[interstitialIdx];
-        blueprint.push({
-          segment_type: inter.segment_type,
-          title: inter.title,
-          target_duration: inter.target_duration || 60,
-          script_content: inter.content || ''
-        });
-        interstitialIdx++;
-      } else if (topicIdx < topics.length) {
+      // The first thing after each music block is the next talking point.
+      if (topicIdx < topics.length) {
         blueprint.push({
           segment_type: 'topic_segment',
           title: topics[topicIdx].topic_name,
@@ -1254,18 +1293,20 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
         });
       }
 
-      // Also place a topic if we used an interstitial and still have topics
-      if (interstitialIdx > 0 && topicIdx < topics.length && (blockIdx + 1) % 2 === 0) {
+      // Secondary produced elements can follow the talking point, but never
+      // displace it as the first segment after a music block.
+      if (interstitialIdx < extraInterstitials.length && (blockIdx + 1) % 2 === 0) {
+        const inter = extraInterstitials[interstitialIdx];
         blueprint.push({
-          segment_type: 'topic_segment',
-          title: topics[topicIdx].topic_name,
-          associated_topic: topics[topicIdx].topic_name,
-          target_duration: talkPerInterval
+          segment_type: inter.segment_type,
+          title: inter.title,
+          target_duration: inter.target_duration || 60,
+          script_content: inter.content || ''
         });
-        topicIdx++;
+        interstitialIdx++;
       }
 
-      if ((blockIdx + 1) % 2 === 0) {
+      if ((blockIdx + 1) % 2 === 0 && sponsorSecs > 0) {
         blueprint.push({
           segment_type: 'sponsor_break',
           title: 'Sponsor Break',
@@ -1281,7 +1322,8 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
     }
   }
 
-  // Place any remaining topics and interstitials before the outro
+  // Place remaining talking points before optional interstitial material so the
+  // show's actual subject matter stays ahead of generic music filler.
   while (topicIdx < topics.length) {
     blueprint.push({
       segment_type: 'topic_segment',
@@ -1304,14 +1346,18 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
 
   blueprint.push({ segment_type: 'outro', title: 'Show Outro', target_duration: outroSecs });
 
-  // Enforce 90-minute maximum rundown duration by trimming excess songs from the end
+  // Enforce the 90-minute maximum without leaving a dangling song intro/outro.
+  // If a music block pushes the show over, remove that complete block together.
   const maxTotalSecs = 90 * 60;
   let totalSecs = blueprint.reduce((sum, bp) => sum + (bp.target_duration || 0), 0);
-  while (totalSecs > maxTotalSecs && blueprint.length > 3) {
-    const lastSongIdx = blueprint.map(b => b.segment_type).lastIndexOf('song');
-    if (lastSongIdx === -1) break;
-    const removed = blueprint.splice(lastSongIdx, 1)[0];
-    totalSecs -= (removed.target_duration || 0);
+  while (totalSecs > maxTotalSecs) {
+    const lastIntroIdx = blueprint.map(b => b.segment_type).lastIndexOf('song_intro');
+    if (lastIntroIdx === -1) break;
+    const matchingOutroIdx = blueprint.findIndex((b, i) => i > lastIntroIdx && b.segment_type === 'song_outro');
+    if (matchingOutroIdx === -1) break;
+
+    const removed = blueprint.splice(lastIntroIdx, matchingOutroIdx - lastIntroIdx + 1);
+    totalSecs -= removed.reduce((sum, bp) => sum + (bp.target_duration || 0), 0);
   }
 
   return blueprint;
