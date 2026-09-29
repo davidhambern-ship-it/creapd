@@ -79,9 +79,9 @@ export const PRODUCTION_STUDIOS = [
   },
   {
     key: 'music',
-    label: 'Music Studio',
-    shortLabel: 'Music',
-    description: 'Radio shows, music shows, playlist-based livestreams, countdown shows, and artist spotlights.',
+    label: 'Radio Studio',
+    shortLabel: 'Radio',
+    description: 'Radio shows, playlist-driven broadcasts, live DJ programs, countdown shows, and artist spotlights.',
     icon: Music,
     available: true,
     path: '/music/configure',
@@ -89,7 +89,7 @@ export const PRODUCTION_STUDIOS = [
     accent: 'text-purple-400',
     accentBg: 'bg-purple-500/10',
     accentBorder: 'border-purple-500/20',
-    spotlightFeature: 'Music Show Builder',
+    spotlightFeature: 'Radio Show Builder',
     spotlightDescription: 'Build radio-ready rundowns, host scripts, playlists, commentary segments, media assets, and complete Production Packages.',
     workflow: [
       'Configure your Show and brand',
