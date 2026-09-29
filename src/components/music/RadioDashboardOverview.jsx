@@ -422,7 +422,7 @@ function RejectedPile({
   if (!total) return null;
 
   return (
-    <section className="cp-glass overflow-hidden" style={{ borderColor: 'rgba(248,113,113,0.22)' }}>
+    <section id="rejected-pile" className="cp-glass overflow-hidden scroll-mt-24" style={{ borderColor: 'rgba(248,113,113,0.22)' }}>
       <div className="p-4 border-b border-red-400/10 bg-red-500/[0.035] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
