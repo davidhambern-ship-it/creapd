@@ -1306,19 +1306,24 @@ function buildRundownBlueprint(playlist, topics, pacingRules, config, extraInter
         interstitialIdx++;
       }
 
-      if ((blockIdx + 1) % 2 === 0 && sponsorSecs > 0) {
+      // Keep the first block transition clean: music recap -> Talking Point 1 ->
+      // next Song Intro. Longer shows can place sponsor/ID elements after every
+      // second talking point without breaking the core music-block cadence.
+      if ((blockIdx + 1) % 2 === 0) {
+        if (sponsorSecs > 0) {
+          blueprint.push({
+            segment_type: 'sponsor_break',
+            title: 'Sponsor Break',
+            target_duration: sponsorPerInterval
+          });
+        }
+
         blueprint.push({
-          segment_type: 'sponsor_break',
-          title: 'Sponsor Break',
-          target_duration: sponsorPerInterval
+          segment_type: 'station_id',
+          title: 'Station ID',
+          target_duration: stationIdSecs
         });
       }
-
-      blueprint.push({
-        segment_type: 'station_id',
-        title: 'Station ID',
-        target_duration: stationIdSecs
-      });
     }
   }
 
