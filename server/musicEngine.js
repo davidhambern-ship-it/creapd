@@ -1012,7 +1012,16 @@ ${topicsText || 'None'}
 VERIFIED RSS RESEARCH SUMMARIES:
 ${researchText || 'None'}
 
-Create a useful mix of these asset types: song_intro, song_outro, artist_fact, host_banter, music_trivia, station_id, sponsor_read, social_caption, hashtag, video_prompt, production_notes. For artist facts or current-event material, only use facts supported by the playlist metadata or supplied RSS summaries; otherwise make the asset evergreen. Aim for 12-20 concise assets total.`;
+Create a useful mix of these asset types: song_intro, song_outro, artist_fact, host_banter, music_trivia, station_id, sponsor_read, social_caption, hashtag, video_prompt, production_notes.
+
+SOURCE RULES:
+- song_intro and song_outro MUST name an exact playlist song in associated_song_title. Build the copy from that exact song title + artist and only use factual artist/current-event claims when supported by the supplied verified research. Never invent chart positions, release facts, awards, quotes, or biography details.
+- host_banter comes from the show's description/premise, editorial focus, tone, and playlist context.
+- station_id comes only from the configured station/show/host identity.
+- sponsor_read is placeholder copy unless sponsor information is explicitly present in the show instructions.
+- topic/current-event copy must stay grounded in TOPICS and VERIFIED RSS RESEARCH SUMMARIES.
+
+Aim for 12-20 concise assets total.`;
   const result = await structured(prompt, ASSETS_SCHEMA, 'creapd_music_assets_v1', 7000);
   const rawAssets = array(result?.data?.assets, []).slice(0, 24);
   const rows = [];
@@ -1141,17 +1150,44 @@ function buildRundownBlueprint(playlist, topics, config) {
   return blueprint;
 }
 
-async function buildRundown({ sql, ownerUserId, config, playlist, topics }) {
+function rundownScriptSource(item, config) {
+  switch (item.segment_type) {
+    case 'intro':
+      return 'Discovery Room show identity: title, premise, host/co-host, station, tone, and editorial focus.';
+    case 'outro':
+      return 'Discovery Room show identity plus the completed show/rundown context.';
+    case 'topic_segment':
+      return 'Selected topic + generated topic material/research: ' + (item.associated_topic || item.title) + '.';
+    case 'talk_break':
+      return 'Discovery Room show premise/editorial focus + surrounding playlist context. No unsupported current facts.';
+    case 'sponsor_break':
+      return 'Commercial/sponsor runtime settings. Placeholder sponsor copy unless sponsor information was explicitly supplied.';
+    case 'station_id':
+      return 'Configured station/show identity: ' + (config.station_name || 'station name not supplied') + ', ' + config.production_name + ', ' + (config.host_name || 'host') + '.';
+    case 'song':
+      return 'Playlist audio track: ' + (item.associated_song_title || item.title) + '. The song itself has no rundown script; host intro/outro copy comes from song-specific Production assets.';
+    default:
+      return 'Show configuration + relevant approved production material.';
+  }
+}
+
+async function buildRundown({ sql, ownerUserId, config, playlist, topics, research = [], assets = [] }) {
   const blueprint = buildRundownBlueprint(playlist, topics, config);
   const blueprintText = blueprint.map((item, index) => {
     if (item.segment_type === 'song') {
       return `${index + 1}. [song] ${item.title} | song=${item.associated_song_title || item.title} | full track=${Math.round(item.target_duration)}s`;
     }
     const words = spokenWordRange(item.target_duration, item.segment_type);
-    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target})`;
+    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target}) | SCRIPT SOURCE=${rundownScriptSource(item, config)}`;
   }).join('\n');
 
-  const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\n${t.talking_points}`).join('\n\n');
+  const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\nTalking points: ${t.talking_points || ''}\nSources: ${t.sources || 'evergreen/no external source'}`).join('\n\n');
+  const researchText = research.slice(0, 12).map((r, i) => `${i + 1}. ${r.title} — ${r.source || 'source'}: ${r.summary}`).join('\n');
+  const assetText = assets
+    .filter(a => ['song_intro','song_outro','host_banter','station_id','sponsor_read','artist_fact','music_trivia'].includes(a.asset_type))
+    .slice(0, 40)
+    .map((a, i) => `${i + 1}. [${a.asset_type}] ${a.title || ''}${a.associated_song_title ? ` | song=${a.associated_song_title}` : ''}${a.associated_topic ? ` | topic=${a.associated_topic}` : ''}: ${a.content || ''}`)
+    .join('\n');
   const editorialFocus = array(config.music_topics, []).join(', ') || 'Music and artist conversation';
 
   const prompt = `You are the rundown/script writer for CREAPD Music Studio. The rundown structure below is LOCKED. Return exactly the same number of items in exactly the same order. Do not add, remove, merge, split, or reorder segments.
@@ -1173,6 +1209,21 @@ ${blueprintText}
 TOPIC MATERIAL:
 ${topicText || 'No generated topics'}
 
+VERIFIED RESEARCH MATERIAL:
+${researchText || 'No verified current research supplied.'}
+
+PRE-GENERATED PRODUCTION ASSETS:
+${assetText || 'No production assets supplied.'}
+
+SCRIPT SOURCE MAP:
+- intro: Discovery Room show identity and premise only.
+- topic_segment: matching TOPIC MATERIAL and its cited/verified research.
+- talk_break: show premise/editorial focus plus surrounding playlist context; do not invent current facts.
+- sponsor_break: sponsor/commercial settings; use placeholder copy unless sponsor information was explicitly supplied.
+- station_id: configured station name, show title, and host identity only.
+- outro: show identity plus a recap/close of the actual rundown.
+- song: AUDIO ONLY. script_content must be empty. Song intro/outro host copy lives in PRE-GENERATED PRODUCTION ASSETS.
+
 SCRIPT RULES:
 - For every spoken segment, obey its REQUIRED WORDS range. This is a runtime requirement, not a suggestion.
 - Do NOT shorten long segments for concision. A 10-minute segment needs roughly 1,400-1,500 spoken words.
@@ -1181,7 +1232,7 @@ SCRIPT RULES:
 - Sponsor breaks: generic placeholder ad-read unless show data names a sponsor; fill the required runtime with a realistic break structure.
 - Station IDs may be brief but must still fit their listed word range.
 - Intro/outro: establish and close the specific show premise, not generic filler.
-- Song segments: keep script_content to a short 1-3 sentence segue only; the full song itself supplies that segment's runtime.
+- Song segments: script_content MUST be empty. The full song audio supplies the runtime; use song_intro/song_outro Production assets for host copy around songs.
 - Never change a song title or artist from the playlist.
 Return rundown array matching the blueprint exactly.`;
 
@@ -1242,7 +1293,10 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
   for (let index = 0; index < blueprint.length; index += 1) {
     const bp = blueprint[index];
     const generated = scripts[index] || {};
-    const script = text(generated.script_content);
+    const script = bp.segment_type === 'song' ? '' : text(generated.script_content);
+    const scriptSource = rundownScriptSource(bp, config);
+    const generatedNote = text(generated.notes);
+    const sourceNote = 'Script source: ' + scriptSource + (generatedNote ? ' | ' + generatedNote : '');
     const duration = Math.max(10, num(bp.target_duration, 60));
     const start = formatSecondsToTime(cursor);
     cursor += duration;
@@ -1258,7 +1312,7 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
         associated_song_id, associated_song_title, associated_topic
       ) VALUES (
         ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${index}, ${bp.segment_type},
-        ${bp.title}, ${script || null}, ${start}, ${duration}, ${end}, ${text(generated.notes) || null},
+        ${bp.title}, ${script || null}, ${start}, ${duration}, ${end}, ${sourceNote},
         'ready', ${matchingSong?.id || null}, ${bp.associated_song_title || null}, ${bp.associated_topic || null}
       ) RETURNING *
     `;
@@ -1361,7 +1415,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       } else {
         if (!playlist.length) throw new Error('Cannot build rundown without a playlist');
         await sql`DELETE FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        rundown = await buildRundown({ sql, ownerUserId, config, playlist, topics });
+        rundown = await buildRundown({ sql, ownerUserId, config, playlist, topics, research, assets });
         await appendStage(sql, ownerUserId, config.id, buildLog, 'rundown', rundown.length ? 'complete' : 'failed', { count: rundown.length });
       }
     }
