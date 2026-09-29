@@ -886,6 +886,14 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result };
         }
 
+        if (shouldUseNeonAuth() && functionName === 'refreshMusicYoutubeMetadata') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_refresh_youtube_metadata',
+            configuration_id: payload?.configuration_id,
+          });
+          return { data: result?.result || result };
+        }
+
         if (
           shouldUseNeonAuth() &&
           functionName === 'runDepartmentPipeline' &&
