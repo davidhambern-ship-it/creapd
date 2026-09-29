@@ -835,9 +835,13 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         const targetSeconds = bp.target_duration || 60;
         const targetWords = bp.segment_type === 'song' ? null : Math.max(1, Math.round(targetSeconds * 2.5));
         const timingLabel = targetWords ? `${targetSeconds}s; script target: ~${targetWords} words` : `${targetSeconds}s`;
+        const previous = i > 0 ? blueprint[i - 1] : null;
+        const next = i < blueprint.length - 1 ? blueprint[i + 1] : null;
         const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${timingLabel})`];
         if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
         if (bp.associated_topic) parts.push(`     Topic: "${bp.associated_topic}"`);
+        parts.push(`     Previous: ${previous ? `[${previous.segment_type}] "${previous.title}"` : 'SHOW START'}`);
+        parts.push(`     Next: ${next ? `[${next.segment_type}] "${next.title}"` : 'SHOW END'}`);
         return parts.join('\n');
       }).join('\n');
 
@@ -872,14 +876,26 @@ ${blueprintText}
 TOPIC DETAILS (use talking points to write topic_segment scripts):
 ${topicSummary || 'No topics generated'}
 
+CONTINUITY RULES — CRITICAL:
+- Write the ENTIRE rundown as one continuous show, not as isolated scripts generated independently.
+- Every segment after the intro must sound like it naturally follows the segment immediately before it.
+- Use the Previous and Next cues in the blueprint to create clean handoffs. Where natural, briefly acknowledge what just happened and set up what comes next.
+- Do not repeatedly reset the show with phrases like "welcome to the show," "coming up today," or fresh introductions unless the format genuinely calls for a reset after a major break.
+- Avoid repeating the same facts, explanations, jokes, artist descriptions, or setup language in neighboring segments.
+- If a song just played, the next spoken segment may reference its mood, lyric/theme, artist, or energy when that creates a natural bridge into the next subject.
+- A song segment's script_content is the host's contextual lead-in to THAT exact song. It should grow out of the previous segment and hand directly into the track.
+- The segment after a song should continue from the experience of that song instead of sounding like an unrelated standalone paragraph.
+- Sponsor breaks and station IDs should interrupt as little as possible; when the show returns, resume the thread naturally.
+- The outro should resolve or echo the show's main thread instead of sounding like a generic sign-off.
+
 SCRIPT REQUIREMENTS:
-- Show Intro: A compelling show opening that welcomes listeners, introduces the host, and sets the tone. Match the show tone (${config.show_tone}).
-- Show Outro: A show closing that thanks listeners and signs off.
-- Talk Breaks: Conversational banter scripts that feel natural and engaging.
-- Topic Segments: Expand the topic's talking points into a full spoken script that fills the allocated time (~150 words per minute).
-- Song Intros: A brief, engaging intro for each song that mentions the artist and song title.
-- Sponsor Breaks: Write sponsor/ad-read copy that fills the allocated time (~150 words per minute). If no specific sponsor is configured, write generic ad-read copy.
-- Station IDs: Write a brief station identification segment (e.g., "You're listening to ${config.station_name || 'the station'}"). Keep it under 15 seconds.
+- Show Intro: A compelling opening that establishes this specific show's premise and the first thread of the episode. Match the show tone (${config.show_tone}).
+- Show Outro: Close the actual conversation/content arc developed during this episode and then sign off.
+- Talk Breaks: Conversational connective tissue. Use them to bridge songs/topics rather than filler banter.
+- Topic Segments: Expand the topic's talking points into a full spoken script that fills the allocated time (~150 words per minute) while connecting to adjacent segments.
+- Song Segments: Write a brief, contextual lead-in that mentions the exact artist and song title and clearly flows from the prior segment.
+- Sponsor Breaks: Write sponsor/ad-read copy that fills the allocated time (~150 words per minute). If no specific sponsor is configured, keep it generic and transition back into the show cleanly.
+- Station IDs: Write a brief station identification segment (e.g., "You're listening to ${config.station_name || 'the station'}"). Keep it under 15 seconds and avoid making it feel like a new show opening.
 - For EVERY non-song segment, script_content MUST fill the allocated target duration at a natural speaking pace of about 150 words per minute (2.5 words/second).
 - Treat each blueprint word target as a required production constraint, not a suggestion. Aim within roughly 90%-110% of the target word count.
 - Do not solve a long segment with a short summary. Fully develop the material so the host has enough spoken copy for the entire segment.
