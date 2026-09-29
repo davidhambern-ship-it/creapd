@@ -279,8 +279,8 @@ export default function MusicDashboard() {
           >
             <Music className="w-10 h-10" style={{ color: '#FF00FF' }} />
           </div>
-          <h2 className="text-2xl font-bold mb-3 text-white cp-glitch">No Music Production Found</h2>
-          <p className="text-gray-400 mb-6">Configure your music production to get started. Producer will build everything automatically.</p>
+          <h2 className="text-2xl font-bold mb-3 text-white cp-glitch">No Radio Production Found</h2>
+          <p className="text-gray-400 mb-6">Configure your radio production to get started. Producer will build everything automatically.</p>
           <Button asChild size="lg" className="cp-btn-gradient border-0 text-white hover:opacity-90">
             <Link to="/music/configure">Configure Production</Link>
           </Button>
@@ -331,6 +331,7 @@ export default function MusicDashboard() {
   const readinessPercent = Math.round((checklistDone / checklist.length) * 100);
 
   const QUICK_ACTIONS = [
+    { label: 'Radio Studio', icon: Radio, path: `/music/live?config_id=${config.id}`, accent: 'pink' },
     { label: 'Playlist', icon: ListMusic, path: '/music/playlist', accent: 'pink' },
     { label: 'Topics', icon: Mic, path: '/music/topics', accent: 'cyan' },
     { label: 'Rundown', icon: ClipboardList, path: '/music/rundown', accent: 'pink' },
