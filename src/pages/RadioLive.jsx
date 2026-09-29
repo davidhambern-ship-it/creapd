@@ -374,13 +374,40 @@ export default function RadioLive() {
   const configId = searchParams.get('config_id') || undefined;
   const { config, playlist, rundown, loading, error, metadataRepairing } = useMusicProduction(configId);
 
+  const rejectedTrackIds = useMemo(
+    () => new Set(
+      (playlist || [])
+        .filter(track => String(track?.status || '').toLowerCase() === 'rejected')
+        .map(track => track.id)
+    ),
+    [playlist],
+  );
+  const rejectedTrackTitles = useMemo(
+    () => new Set(
+      (playlist || [])
+        .filter(track => String(track?.status || '').toLowerCase() === 'rejected')
+        .map(track => String(track?.song_title || '').toLowerCase())
+    ),
+    [playlist],
+  );
+
   const sortedPlaylist = useMemo(
-    () => [...(playlist || [])].sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
+    () => [...(playlist || [])]
+      .filter(track => String(track?.status || '').toLowerCase() !== 'rejected')
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
     [playlist],
   );
   const sortedRundown = useMemo(
-    () => [...(rundown || [])].sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
-    [rundown],
+    () => [...(rundown || [])]
+      .filter(segment => {
+        if (String(segment?.status || '').toLowerCase() === 'rejected') return false;
+        if (segment?.segment_type !== 'song') return true;
+        if (segment?.associated_song_id && rejectedTrackIds.has(segment.associated_song_id)) return false;
+        const title = String(segment?.associated_song_title || segment?.title || '').toLowerCase();
+        return !rejectedTrackTitles.has(title);
+      })
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
+    [rundown, rejectedTrackIds, rejectedTrackTitles],
   );
 
   const [segmentIndex, setSegmentIndex] = useState(0);
