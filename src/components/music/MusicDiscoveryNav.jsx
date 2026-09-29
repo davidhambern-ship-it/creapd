@@ -119,9 +119,9 @@ export default function MusicDiscoveryNav({
   };
 
   return (
-    <div className="flex justify-center overflow-visible">
+    <div className="relative z-[200] flex justify-center overflow-visible" style={{ isolation: 'isolate' }}>
       <div
-        className="relative flex items-center gap-2 max-w-full overflow-visible px-3 py-2 rounded-xl"
+        className="relative z-[200] flex items-center gap-2 max-w-full overflow-visible px-3 py-2 rounded-xl"
         style={{
           background: 'hsl(220 20% 6% / 0.82)',
           backdropFilter: 'blur(18px)',
@@ -199,7 +199,7 @@ export default function MusicDiscoveryNav({
 
             {toolsOpen && (
               <div
-                className="absolute right-0 top-[44px] z-[90] w-64 rounded-xl border border-white/10 bg-[#090b12]/95 backdrop-blur-xl p-2 shadow-2xl"
+                className="absolute right-0 top-[44px] z-[250] w-64 rounded-xl border border-white/10 bg-[#090b12]/95 backdrop-blur-xl p-2 shadow-2xl"
               >
                 <div className="px-2 py-1.5">
                   <p className="text-[9px] uppercase tracking-[0.18em] text-white/30">Production Tools</p>
