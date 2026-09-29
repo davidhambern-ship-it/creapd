@@ -497,20 +497,27 @@ async function validateYoutubeVideo(videoId, hint = null) {
       thumbnail_url: text(payload?.thumbnail_url, `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`),
       channel_name: text(payload?.author_name, hint?.channel_name || ''),
       duration_seconds: durationSeconds,
-      source_type: 'lyric_video',
+      source_type: isLyricVideoTitle(text(payload?.title, hint?.title || '')) ? 'lyric_video' : 'youtube_video',
     };
   } catch {
     return null;
   }
 }
 
-async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0) {
+async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0, options = {}) {
   try {
-    const queries = [
-      `"${songTitle}" "${artist}" lyrics`,
-      `"${songTitle}" "${artist}" lyric video`,
-      `${artist} ${songTitle} lyrics`,
-    ];
+    const requireLyrics = options.requireLyrics !== false;
+    const queries = requireLyrics
+      ? [
+          `"${songTitle}" "${artist}" lyrics`,
+          `"${songTitle}" "${artist}" lyric video`,
+          `${artist} ${songTitle} lyrics`,
+        ]
+      : [
+          `"${songTitle}" "${artist}" official music video`,
+          `"${songTitle}" "${artist}" official video`,
+          `${artist} ${songTitle} music video`,
+        ];
 
     const candidateMap = new Map();
     for (const queryText of queries) {
@@ -528,11 +535,12 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expect
         if (usedIds.has(candidate.video_id) || candidateMap.has(candidate.video_id)) continue;
         candidateMap.set(candidate.video_id, candidate);
       }
-      if ([...candidateMap.values()].filter(candidate => isLyricVideoTitle(candidate.title)).length >= 6) break;
+      const usableCount = [...candidateMap.values()].filter(candidate => !requireLyrics || isLyricVideoTitle(candidate.title)).length;
+      if (usableCount >= 6) break;
     }
 
     const candidates = [...candidateMap.values()]
-      .filter(candidate => isLyricVideoTitle(candidate.title))
+      .filter(candidate => !requireLyrics || isLyricVideoTitle(candidate.title))
       .slice(0, 12);
 
     const metadata = (await Promise.all(
@@ -540,7 +548,7 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expect
     )).filter(Boolean);
 
     const ranked = metadata
-      .filter(meta => isLyricVideoTitle(meta.title))
+      .filter(meta => !requireLyrics || isLyricVideoTitle(meta.title))
       .map(meta => ({ meta, ...scoreYoutubeMatch(meta, songTitle, artist, expectedLength) }))
       .filter(({ meta, titleCoverage, artistCoverage }) => {
         const duration = num(meta.duration_seconds, 0);
@@ -836,7 +844,7 @@ Return exactly ${candidateCount} candidates so CREAPD has enough verified option
         ${text(song.song_title, metadata.title || 'Unknown')}, ${text(song.artist, metadata.channel_name || 'Unknown')},
         ${actualDuration}, ${text(song.genre) || null}, ${text(song.mood) || null},
         ${text(song.era_year) || null}, ${text(song.reason_selected) || null},
-        'suggested', 'youtube_verified',
+        'suggested', 'youtube_lyric_verified',
         ${metadata.video_id}, ${metadata.thumbnail_url}, ${metadata.channel_name},
         ${safeJson({
           youtube_title: metadata.title,
@@ -1033,7 +1041,7 @@ Return real song_title + artist pairs only. Prefer ${year - 2}-${year} releases 
   // turn into a long chain of network waits inside one serverless invocation.
   const resolved = await Promise.all(candidates.map(async candidate => ({
     candidate,
-    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds),
+    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds, 0, { requireLyrics: false }),
   })));
 
   for (const { candidate, metadata } of resolved) {
