@@ -106,7 +106,7 @@ export default function MusicExport() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
         {/* Terminal-style header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
