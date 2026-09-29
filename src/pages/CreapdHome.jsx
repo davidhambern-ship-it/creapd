@@ -14,7 +14,7 @@ import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import CursorGlow from '@/components/creap/CursorGlow';
 import FloatingObjects from '@/components/home/FloatingObjects';
 import CreapdGuideOverlay from '@/components/creap/CreapdGuideOverlay';
-import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
+import { PRODUCTION_PROFILES, ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function CreapdHome() {
@@ -25,12 +25,12 @@ export default function CreapdHome() {
   const isMobile = useIsMobile();
 
   const handleGetStarted = (profile) => {
-    if (profile.path) {
+    if (profile.available && profile.path) {
       window.location.href = profile.path;
     } else {
       toast({
-        title: `${profile.label} — Coming Soon`,
-        description: 'This Production Profile is being set up. Check back soon!',
+        title: `${profile.label} — Under Construction`,
+        description: 'This Production Profile is being rebuilt for the new CREAPD system.',
       });
     }
   };
@@ -81,13 +81,13 @@ export default function CreapdHome() {
           </div>
 
           <InteractiveProfileCards
-            profiles={ACTIVE_PROFILES}
+            profiles={PRODUCTION_PROFILES}
             onEnter={handleGetStarted}
           />
 
           {COMING_SOON_PROFILES.length > 0 && (
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Additional Production Profiles are in development.
+              Studios marked Under Construction are being rebuilt for the new CREAPD system.
             </p>
           )}
         </section>
