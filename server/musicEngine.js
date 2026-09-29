@@ -585,8 +585,10 @@ function stationIdIsValid(script, config, previousScript = '', avoidScripts = []
   if (wordCount < words.min || wordCount > words.max) return false;
 
   if (rules.quality.avoid_repeated_phrasing) {
-    if (previousScript && scriptSimilarity(copy, previousScript) >= 0.72) return false;
-    if (avoidScripts.some(existing => scriptSimilarity(copy, existing) >= 0.72)) return false;
+    const variation = text(rules.scripts.station_id?.variation, 'high').toLowerCase();
+    const similarityLimit = variation === 'low' ? 0.88 : variation === 'medium' ? 0.78 : 0.68;
+    if (previousScript && scriptSimilarity(copy, previousScript) >= similarityLimit) return false;
+    if (avoidScripts.some(existing => scriptSimilarity(copy, existing) >= similarityLimit)) return false;
   }
 
   return true;
@@ -627,7 +629,6 @@ Tone: ${config.show_tone || 'Professional'}
 
 HARD RULES
 - If a host name is supplied, you MUST say the exact host name "${config.host_name}" in the Station ID.
-- If a station name is supplied, you MUST say the exact station name "${config.station_name}".
 - NEVER substitute phrases such as "your host", "with your host", "our host", or "the host" for the configured host name.
 - Keep it to ${words.min}-${words.max} spoken words.
 - Make it sound like a real radio liner/ID, not an explanation.
@@ -1158,6 +1159,7 @@ async function buildAssets({ sql, ownerUserId, config, playlist, topics, researc
   const playlistText = playlist.slice(0, 15).map((s, i) => `${i + 1}. ${s.song_title} — ${s.artist}`).join('\n');
   const topicsText = topics.slice(0, 8).map((t, i) => `${i + 1}. ${t.topic_name}: ${t.generated_summary}`).join('\n');
   const researchText = research.slice(0, 8).map((r, i) => `${i + 1}. ${r.title}: ${r.summary}`).join('\n');
+  const producerOverrides = producerInstructionBlock(config, ['station_id', 'song_copy']);
   const prompt = `You are the production-assets writer for CREAPD Music Studio. Generate practical on-air material for this show.
 
 SHOW: ${config.production_name}
@@ -1166,7 +1168,7 @@ Editorial focus: ${array(config.music_topics, []).join(', ') || 'Music and artis
 Host: ${config.host_name || 'Host'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
 PLAYLIST:
 ${playlistText}
 
@@ -1182,7 +1184,8 @@ SOURCE RULES:
 - song_intro and song_outro MUST name an exact playlist song in associated_song_title. Build the copy from that exact song title + artist and only use factual artist/current-event claims when supported by the supplied verified research. Never invent chart positions, release facts, awards, quotes, or biography details.
 - host_banter comes from the show's description/premise, editorial focus, tone, and playlist context.
 - station_id comes only from the configured station/show/host identity.
-- Every station_id asset MUST say the exact configured host name "${config.host_name || 'Host'}" and, when supplied, the exact station name "${config.station_name || 'the station'}".
+- Every station_id asset MUST say the exact configured host name "${config.host_name || 'Host'}".
+${radioProductionTools(config).quality.require_station_name && config.station_name ? `- Every station_id asset must also say the exact station name "${config.station_name}".` : ''}
 - Never substitute "your host", "with your host", "our host", or "the host" for the configured host name.
 - sponsor_read is placeholder copy unless sponsor information is explicitly present in the show instructions.
 - topic/current-event copy must stay grounded in TOPICS and VERIFIED RSS RESEARCH SUMMARIES.
@@ -1355,7 +1358,7 @@ async function buildRundown({ sql, ownerUserId, config, playlist, topics, resear
     if (item.segment_type === 'song') {
       return `${index + 1}. [song] ${item.title} | song=${item.associated_song_title || item.title} | full track=${Math.round(item.target_duration)}s`;
     }
-    const words = spokenWordRange(item.target_duration, item.segment_type);
+    const words = spokenWordRange(item.target_duration, item.segment_type, config);
     return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target}) | SCRIPT SOURCE=${rundownScriptSource(item, config)}`;
   }).join('\n');
 
@@ -1367,6 +1370,7 @@ async function buildRundown({ sql, ownerUserId, config, playlist, topics, resear
     .map((a, i) => `${i + 1}. [${a.asset_type}] ${a.title || ''}${a.associated_song_title ? ` | song=${a.associated_song_title}` : ''}${a.associated_topic ? ` | topic=${a.associated_topic}` : ''}: ${a.content || ''}`)
     .join('\n');
   const editorialFocus = array(config.music_topics, []).join(', ') || 'Music and artist conversation';
+  const producerOverrides = producerInstructionBlock(config, ['intro', 'station_id', 'topic_segment', 'talk_break', 'outro']);
 
   const prompt = `You are the rundown/script writer for CREAPD Music Studio. The rundown structure below is LOCKED. Return exactly the same number of items in exactly the same order. Do not add, remove, merge, split, or reorder segments.
 
@@ -1378,7 +1382,7 @@ Host: ${config.host_name || 'Host'}
 Co-host: ${config.co_host_name || 'None'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
 The description/premise and editorial focus are PRIMARY instructions. The host script must sound like THIS show, not a generic music show.
 
 LOCKED BLUEPRINT:
@@ -1409,8 +1413,9 @@ SCRIPT RULES:
 - Talk breaks: natural host commentary tied to the show's premise/editorial focus.
 - Sponsor breaks: generic placeholder ad-read unless show data names a sponsor; fill the required runtime with a realistic break structure.
 - Station IDs may be brief but must still fit their listed word range.
-- EVERY station_id MUST say the exact configured host name "${config.host_name || 'Host'}". If a station name is configured, it must also say the exact station name "${config.station_name || 'the station'}".
+- EVERY station_id MUST say the exact configured host name "${config.host_name || 'Host'}".
 - NEVER write "your host", "with your host", "our host", or "the host" as a substitute for the configured host name.
+${radioProductionTools(config).quality.require_station_name && config.station_name ? `- EVERY station_id must also say the exact station name "${config.station_name}".` : ''}
 - If the rundown contains multiple Station IDs, vary the opening, sentence structure, and closing so they do not sound like copies of one another.
 - Intro/outro: establish and close the specific show premise, not generic filler.
 - Song segments: script_content MUST be empty. The full song audio supplies the runtime; use song_intro/song_outro Production assets for host copy around songs.
@@ -1425,7 +1430,7 @@ Return rundown array matching the blueprint exactly.`;
     const bp = blueprint[index];
     if (bp.segment_type === 'song') continue;
     const script = text(scripts[index]?.script_content);
-    const words = spokenWordRange(bp.target_duration, bp.segment_type);
+    const words = spokenWordRange(bp.target_duration, bp.segment_type, config);
     if (countWords(script) < Math.round(words.min * 0.9)) {
       underfilled.push({
         order: index + 1,
@@ -1449,7 +1454,7 @@ Name: ${config.production_name}
 Description / premise: ${config.show_description || 'Not supplied'}
 Editorial focus: ${editorialFocus}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
 TOPIC MATERIAL:
 ${topicText || 'No generated topics'}
 
@@ -1891,8 +1896,18 @@ async function regenerateRejectedSegments({ sql, ownerUserId, config, rundown, t
     .map((r, i) => `${i + 1}. ${r.title} — ${r.source || 'source'}: ${r.summary}`)
     .join('\n');
 
+  const rejectedRuleKeys = [...new Set(rejected.map(item => {
+    if (item.segment_type === 'intro') return 'intro';
+    if (item.segment_type === 'station_id') return 'station_id';
+    if (item.segment_type === 'topic_segment') return 'topic_segment';
+    if (item.segment_type === 'talk_break') return 'talk_break';
+    if (item.segment_type === 'outro') return 'outro';
+    return null;
+  }).filter(Boolean))];
+  const producerOverrides = producerInstructionBlock(config, rejectedRuleKeys);
+
   const targets = rejected.map(item => {
-    const words = spokenWordRange(item.duration_seconds, item.segment_type);
+    const words = spokenWordRange(item.duration_seconds, item.segment_type, config);
     return {
       order: Number(item.order_index || 0) + 1,
       item,
@@ -1925,7 +1940,7 @@ ${targets.map(target =>
 
 STATION ID REGENERATION RULES:
 - Every station_id MUST say the exact configured host name "${config.host_name || 'Host'}".
-- If configured, it MUST also say the exact station name "${config.station_name || 'the station'}".
+${radioProductionTools(config).quality.require_station_name && config.station_name ? `- It MUST also say the exact station name "${config.station_name}".` : ''}
 - NEVER use "your host", "with your host", "our host", or "the host" instead of the actual configured host name.
 - A regenerated Station ID must be materially different from its rejected copy: use a different opening, sentence structure, and closing.
 - Do not invent slogans, frequencies, call letters, cities, or station facts that were not configured.
