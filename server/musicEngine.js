@@ -1382,6 +1382,24 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
     }
   }
 
+  const acceptedStationIds = [];
+  for (let index = 0; index < blueprint.length; index += 1) {
+    const bp = blueprint[index];
+    if (bp.segment_type !== 'station_id') continue;
+
+    const current = text(scripts[index]?.script_content);
+    if (!stationIdIsValid(current, config, '', acceptedStationIds)) {
+      const replacement = await generateStationIdReplacement({
+        config,
+        previousScript: current,
+        avoidScripts: acceptedStationIds,
+      });
+      if (!scripts[index]) scripts[index] = {};
+      scripts[index].script_content = replacement;
+    }
+    acceptedStationIds.push(text(scripts[index]?.script_content));
+  }
+
   let cursor = parseTimeToSeconds(config.show_start_time || '06:00');
   const rows = [];
   for (let index = 0; index < blueprint.length; index += 1) {
