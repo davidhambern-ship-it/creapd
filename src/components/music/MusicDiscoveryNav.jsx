@@ -17,9 +17,11 @@ import {
   Trophy,
   Sparkles,
   Wrench,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 const TOOLS = [
+  { icon: SlidersHorizontal, label: 'Prompt Studio', path: '/music/production-tools', color: '#00FFFF' },
   { icon: ListChecks, label: 'Topics', path: '/music/topics', color: '#FF6B00' },
   { icon: Search, label: 'Knowledge', path: '/music/research', color: '#00FF88' },
   { icon: ListMusic, label: 'Playlist', path: '/music/playlist', color: '#8B5CF6' },
