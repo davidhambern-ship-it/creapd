@@ -193,6 +193,23 @@ export default function MusicDashboard() {
   // Realtime config updates are handled by the Break Room's subscription;
   // no polling needed here.
 
+  // Legacy Preview builds used "ready" as the terminal state. Move those
+  // productions into the editorial review lifecycle as soon as the Dashboard
+  // has the material needed to determine approval.
+  useEffect(() => {
+    if (!config?.id || config.status !== 'ready') return;
+    const spokenSegments = (rundown || []).filter(item => item.segment_type !== 'song');
+    const reviewable = [...(playlist || []), ...spokenSegments];
+    if (!reviewable.length) return;
+
+    const allApproved = reviewable.every(item => ['approved', 'locked'].includes(String(item.status || '').toLowerCase()));
+    const nextStatus = allApproved ? 'approved' : 'in_review';
+
+    base44.entities.MusicProductionConfiguration.update(config.id, { status: nextStatus })
+      .then(() => refresh())
+      .catch(error => console.error('Radio review-state migration failed:', error));
+  }, [config?.id, config?.status, playlist, rundown, refresh]);
+
   const handleRefresh = async () => {
     if (!config?.id) return;
     if (config.status === 'building' || refreshing) return;
