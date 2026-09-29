@@ -4,7 +4,7 @@ import {
 
 export const PP_NAV_ITEMS = [
   { icon: Newspaper, label: 'News', path: '/news/dashboard' },
-  { icon: Radio, label: 'Music', path: '/music/configure' },
+  { icon: Radio, label: 'Radio', path: '/music/configure' },
   { icon: Mic2, label: 'Talk', path: '/talk/dashboard' },
   { icon: ChefHat, label: 'Cooking', path: '/cooking/dashboard' },
   { icon: Trophy, label: 'Sports', path: '/sports/dashboard' },
