@@ -2,6 +2,30 @@ import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useBuildStatusRecovery } from '@/hooks/useBuildStatusRecovery';
 
+const metadataRepairStarted = new Set();
+
+function parseSourcePayload(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {}
+  }
+  return {};
+}
+
+function hasVerifiedLyricMetadata(track) {
+  const duration = Number(track?.length_seconds || 0);
+  const payload = parseSourcePayload(track?.source_payload);
+  const youtubeTitle = String(payload.youtube_title || '');
+  const lyricSource =
+    payload.youtube_source_type === 'lyric_video' ||
+    /\blyric(?:s)?\b/i.test(youtubeTitle);
+
+  return Boolean(track?.youtube_video_id) && duration >= 75 && lyricSource;
+}
+
 export function useMusicProduction(configId) {
   const [config, setConfig] = useState(null);
   const [playlist, setPlaylist] = useState([]);
@@ -11,6 +35,7 @@ export function useMusicProduction(configId) {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [metadataRepairing, setMetadataRepairing] = useState(false);
 
   const clearProduction = useCallback(() => {
     setConfig(null);
@@ -89,5 +114,32 @@ export function useMusicProduction(configId) {
     loadAll();
   }, [loadAll]);
 
-  return { config, playlist, topics, research, rundown, assets, loading, error, refresh: loadAll };
+  useEffect(() => {
+    const configurationId = config?.id;
+    if (!configurationId || !playlist.length) return;
+    if (metadataRepairStarted.has(configurationId)) return;
+    if (!playlist.some(track => !hasVerifiedLyricMetadata(track))) return;
+
+    metadataRepairStarted.add(configurationId);
+    setMetadataRepairing(true);
+
+    base44.functions.invoke('refreshMusicYoutubeMetadata', {
+      configuration_id: configurationId,
+    })
+      .then(async () => {
+        const [updatedPlaylist, updatedRundown] = await Promise.all([
+          base44.entities.PlaylistItem.filter({ configuration_id: configurationId }, 'order'),
+          base44.entities.ShowRundownItem.filter({ configuration_id: configurationId }, 'order'),
+        ]);
+        setPlaylist(updatedPlaylist || []);
+        setRundown(updatedRundown || []);
+      })
+      .catch(error => {
+        metadataRepairStarted.delete(configurationId);
+        console.error('Radio YouTube metadata repair failed:', error);
+      })
+      .finally(() => setMetadataRepairing(false));
+  }, [config?.id, playlist]);
+
+  return { config, playlist, topics, research, rundown, assets, loading, error, metadataRepairing, refresh: loadAll };
 }
