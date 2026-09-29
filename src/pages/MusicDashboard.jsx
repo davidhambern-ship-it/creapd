@@ -180,7 +180,7 @@ export default function MusicDashboard() {
   const {
     pipeline, loading: pipelineLoading, actionLoading: deptActionLoading,
     initPipeline, setDepartmentStatus, refresh: refreshPipeline,
-  } = useProductionDepartments('music', config?.id);
+  } = useProductionDepartments('music', config?.id, { defer: true });
 
   // Auto-init pipeline when config loads
   useEffect(() => {
