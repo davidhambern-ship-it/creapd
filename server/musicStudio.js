@@ -460,6 +460,76 @@ async function updateResearch(sql, ownerUserId, id, patch) {
   return withResearchAliases(row);
 }
 
+async function getMusicProductionBundle(sql, ownerUserId, configurationId) {
+  const ownerId = String(ownerUserId);
+  const requestedId = clean(configurationId);
+  let config = null;
+
+  if (requestedId) {
+    [config] = await sql`
+      SELECT * FROM creapd.music_production_configurations
+      WHERE id=${requestedId} AND owner_user_id=${ownerId}
+      LIMIT 1
+    `;
+  } else {
+    [config] = await sql`
+      SELECT * FROM creapd.music_production_configurations
+      WHERE owner_user_id=${ownerId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+  }
+
+  if (!config) {
+    return {
+      configuration: null,
+      playlist: [],
+      topics: [],
+      research: [],
+      rundown: [],
+      assets: [],
+    };
+  }
+
+  const configId = config.id;
+  const [playlist, topics, research, rundown, assets] = await Promise.all([
+    sql`
+      SELECT * FROM creapd.music_playlist_items
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY order_index ASC
+    `,
+    sql`
+      SELECT * FROM creapd.music_topics
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY display_order ASC, created_at ASC
+    `,
+    sql`
+      SELECT * FROM creapd.music_research_items
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY research_date DESC NULLS LAST, created_at DESC
+    `,
+    sql`
+      SELECT * FROM creapd.music_rundown_items
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY order_index ASC
+    `,
+    sql`
+      SELECT * FROM creapd.music_assets
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY created_at ASC
+    `,
+  ]);
+
+  return {
+    configuration: withConfigAliases(config),
+    playlist: playlist.map(withOrder),
+    topics: topics.map(withDates),
+    research: research.map(withResearchAliases),
+    rundown: rundown.map(withOrder),
+    assets: assets.map(withDates),
+  };
+}
+
 async function entityGet(sql, ownerUserId, entity, id) {
   const ownerId = String(ownerUserId);
   let row = null;
@@ -669,6 +739,8 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return { configuration: await saveMusicConfiguration({ sql, ownerUserId, ownerEmail, input: body.configuration || body }) };
     case 'music_list_configurations':
       return { configurations: await listMusicConfigurations(sql, ownerUserId, body.limit) };
+    case 'music_get_bundle':
+      return await getMusicProductionBundle(sql, ownerUserId, body.configuration_id);
     case 'music_build':
       return { result: await runMusicBuild({ sql, ownerUserId, configurationId: body.configuration_id }) };
     case 'music_regenerate_section':
