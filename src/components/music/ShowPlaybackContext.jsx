@@ -57,16 +57,10 @@ export function ShowPlaybackProvider({ children }) {
     return playlist.find(p => (p.song_title || '').toLowerCase().trim() === titleKey) || null;
   }, [showDataVersion]);
 
-  // The final rundown is the authoritative host script. Song intro/outro assets may
-  // still exist for legacy/export purposes, but they must never override the contextual
-  // script written as part of the continuous rundown.
-  const getSongIntroScript = useCallback((item) => {
-    return item.script_content || '';
-  }, [showDataVersion]);
-
-  const getSongOutroScript = useCallback(() => {
-    return '';
-  }, [showDataVersion]);
+  // Music blocks have explicit song_intro/song_outro rundown items. Individual
+  // song rows are playback-only so songs inside a block run back-to-back.
+  const getSongIntroScript = useCallback(() => '', []);
+  const getSongOutroScript = useCallback(() => '', []);
 
   const getScriptForItem = useCallback((item) => {
     const { topics = [] } = getData();
