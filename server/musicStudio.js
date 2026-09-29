@@ -629,7 +629,7 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
     case 'music_generate_top10':
       return { top10: await generateMusicTop10({ sql, ownerUserId, configurationId: body.configuration_id, preserveLocked: true }) };
     case 'music_fetch_youtube_metadata':
-      return await fetchYoutubeMetadata(body.url);
+      return await fetchYoutubeMetadata(body.url, { requireLyrics: body.require_lyrics === true });
     case 'music_refresh_youtube_metadata':
       return { result: await refreshMusicPlaylistYoutubeMetadata({
         sql,
