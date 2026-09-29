@@ -11,6 +11,7 @@ import {
   Headphones,
   ListMusic,
   Loader2,
+  LockKeyhole,
   Mic2,
   MonitorPlay,
   Pause,
@@ -373,6 +374,7 @@ export default function RadioLive() {
   const [searchParams] = useSearchParams();
   const configId = searchParams.get('config_id') || undefined;
   const { config, playlist, rundown, loading, error, metadataRepairing } = useMusicProduction(configId);
+  const studioApproved = config?.status === 'approved';
 
   const rejectedTrackIds = useMemo(
     () => new Set(
@@ -392,22 +394,26 @@ export default function RadioLive() {
   );
 
   const sortedPlaylist = useMemo(
-    () => [...(playlist || [])]
-      .filter(track => String(track?.status || '').toLowerCase() !== 'rejected')
-      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
-    [playlist],
+    () => studioApproved
+      ? [...(playlist || [])]
+          .filter(track => String(track?.status || '').toLowerCase() !== 'rejected')
+          .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+      : [],
+    [playlist, studioApproved],
   );
   const sortedRundown = useMemo(
-    () => [...(rundown || [])]
-      .filter(segment => {
-        if (String(segment?.status || '').toLowerCase() === 'rejected') return false;
-        if (segment?.segment_type !== 'song') return true;
-        if (segment?.associated_song_id && rejectedTrackIds.has(segment.associated_song_id)) return false;
-        const title = String(segment?.associated_song_title || segment?.title || '').toLowerCase();
-        return !rejectedTrackTitles.has(title);
-      })
-      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
-    [rundown, rejectedTrackIds, rejectedTrackTitles],
+    () => studioApproved
+      ? [...(rundown || [])]
+          .filter(segment => {
+            if (String(segment?.status || '').toLowerCase() === 'rejected') return false;
+            if (segment?.segment_type !== 'song') return true;
+            if (segment?.associated_song_id && rejectedTrackIds.has(segment.associated_song_id)) return false;
+            const title = String(segment?.associated_song_title || segment?.title || '').toLowerCase();
+            return !rejectedTrackTitles.has(title);
+          })
+          .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+      : [],
+    [rundown, rejectedTrackIds, rejectedTrackTitles, studioApproved],
   );
 
   const [segmentIndex, setSegmentIndex] = useState(0);
@@ -562,6 +568,24 @@ export default function RadioLive() {
           <h1 className="text-xl font-heading font-bold mb-2">Radio Studio could not open this production</h1>
           <p className="text-sm text-white/50 mb-5">{error?.message || 'No Radio production was found.'}</p>
           <Button asChild><Link to="/music/dashboard">Back to Radio Dashboard</Link></Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!studioApproved) {
+    return (
+      <div className="min-h-screen bg-[#07090d] grid place-items-center text-white p-6">
+        <div className="max-w-lg text-center rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+          <LockKeyhole className="w-12 h-12 text-fuchsia-300/70 mx-auto mb-4" />
+          <h1 className="text-xl font-heading font-bold mb-2">Radio Studio is locked</h1>
+          <p className="text-sm text-white/50 mb-2">
+            This show is still in review. No playlist, rundown, or scripts are loaded into the Studio until the entire production is approved.
+          </p>
+          <p className="text-xs text-white/30 mb-5">
+            Approve every track and spoken segment on the Radio Dashboard to unlock it.
+          </p>
+          <Button asChild><Link to="/music/dashboard">Back to Review Dashboard</Link></Button>
         </div>
       </div>
     );
