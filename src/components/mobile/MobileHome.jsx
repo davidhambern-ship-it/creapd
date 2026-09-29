@@ -3,17 +3,17 @@ import { Link } from 'react-router-dom';
 import {
   Sparkles, ArrowRight, Info, Play, Clock, User, Eye, Heart, Film,
   Clapperboard, Layers, Newspaper, Church, Lightbulb, Package,
-  Volume2, Presentation, Share2,
+  Volume2, Presentation, Share2, Mic2, Construction,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CreapdLogo from '@/components/brand/CreapdLogo';
-import { ACTIVE_PROFILES, getProfileByKey } from '@/lib/productionProfiles';
+import { PRODUCTION_PROFILES, ACTIVE_PROFILES, getProfileByKey } from '@/lib/productionProfiles';
 
 const QUICK_ACTIONS = [
   { icon: Clapperboard, label: 'Editor', path: '/editor', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
   { icon: Clock, label: 'Last Prod', path: '/news/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
   { icon: Newspaper, label: 'News', path: '/news/dashboard', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  { icon: Church, label: 'Message', path: '/spiritual/message', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+  { icon: Mic2, label: 'Talk', path: '/talk/dashboard', color: 'text-pink-400', bg: 'bg-pink-500/10' },
   { icon: Layers, label: 'Stories', path: '/news/workspace', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10' },
   { icon: Sparkles, label: 'Build', path: null, color: 'text-berna-purple', bg: 'bg-berna-purple/10', action: 'build' },
 ];
@@ -79,7 +79,7 @@ export default function MobileHome({ onGetStarted, onShowDetails, onBuildWithCRE
           <span className="text-[9px] text-muted-foreground">{ACTIVE_PROFILES.length} active</span>
         </div>
         <div className="m-carousel px-3">
-          {ACTIVE_PROFILES.map((profile, i) => {
+          {PRODUCTION_PROFILES.map((profile, i) => {
             const Icon = profile.icon;
             return (
               <div key={profile.key} className="w-60 m-dept-card m-animate-enter" style={{ animationDelay: `${i * 0.05}s` }}>
@@ -97,9 +97,13 @@ export default function MobileHome({ onGetStarted, onShowDetails, onBuildWithCRE
                   <div className="flex gap-2">
                     <button
                       onClick={() => onGetStarted(profile)}
-                      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-heading font-semibold bg-gradient-to-r ${profile.gradient} ${profile.accent} border ${profile.accentBorder} transition-all active:scale-95`}
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-heading font-semibold border transition-all active:scale-95 ${profile.available ? `bg-gradient-to-r ${profile.gradient} ${profile.accent} ${profile.accentBorder}` : 'bg-amber-400/[0.08] text-amber-200 border-amber-400/25'}`}
                     >
-                      Start <ArrowRight className="w-3 h-3" />
+                      {profile.available ? (
+                        <>Start <ArrowRight className="w-3 h-3" /></>
+                      ) : (
+                        <><Construction className="w-3 h-3" />Under Construction</>
+                      )}
                     </button>
                     <button
                       onClick={() => onShowDetails(profile)}
