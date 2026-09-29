@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
       aiAutomation = [...ALL_AI_AUTOMATIONS];
     }
     const productionFormat = config.production_format || 'radio';
+    const showDescription = (config.show_description || '').trim();
 
     const pacingRules = safeParse(config.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 });
 
@@ -172,6 +173,10 @@ SHOW DETAILS:
 - Show Date: ${config.show_date || 'TBD'}
 - Station: ${config.station_name || 'N/A'}
 - Production Format: ${productionFormat}
+- Show Purpose / Directions: ${showDescription || 'No additional show-specific directions provided'}
+
+SHOW IDENTITY RULE — CRITICAL:
+The Show Purpose / Directions above are authoritative. Select music that supports the actual premise, audience, and purpose of this show. Do not drift into a generic music-show playlist when specific directions are provided.
 
 MUSIC SETTINGS:
 - Genres: ${genres.join(', ') || 'Top 40'}
@@ -267,10 +272,11 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
           const createdItems = await base44.entities.PlaylistItem.filter({ configuration_id });
           const updates = [];
 
-          // Process all songs in parallel — each is a simple HTTP fetch
+          // Process all songs in parallel. Do not attach the first playable search result:
+          // verify that the candidate matches the requested song/artist and is a full-length track.
           const ytResults = await Promise.all(createdItems.map(async (item) => {
             try {
-              const query = encodeURIComponent(`${item.song_title} ${item.artist} official`);
+              const query = encodeURIComponent(`"${item.song_title}" "${item.artist}" official audio`);
               const searchUrl = `https://www.youtube.com/results?search_query=${query}`;
               const resp = await fetch(searchUrl, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -278,33 +284,63 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
               if (!resp.ok) return null;
               const html = await resp.text();
 
-              // Extract video IDs from YouTube search results HTML
               const videoIds = [];
               const regex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
               let match;
               while ((match = regex.exec(html)) !== null) {
                 if (!videoIds.includes(match[1])) videoIds.push(match[1]);
               }
-
               if (videoIds.length === 0) return null;
 
-              // Validate the first video ID via OEmbed
-              for (const vid of videoIds.slice(0, 3)) {
+              const expectedLength = Number(item.length_seconds) || 180;
+              const candidates = [];
+
+              for (const vid of videoIds.slice(0, 6)) {
                 try {
                   const oembedResp = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`);
                   if (!oembedResp.ok) continue;
                   const oembed = await oembedResp.json();
-                  return {
+
+                  if (!youtubeMetadataMatchesTrack(oembed.title, oembed.author_name, item.song_title, item.artist)) {
+                    continue;
+                  }
+
+                  let actualDuration = null;
+                  try {
+                    const watchResp = await fetch(`https://www.youtube.com/watch?v=${vid}`, {
+                      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                    });
+                    if (watchResp.ok) {
+                      const watchHtml = await watchResp.text();
+                      const durationMatch = watchHtml.match(/"lengthSeconds":"(\d+)"/);
+                      if (durationMatch) actualDuration = Number(durationMatch[1]);
+                    }
+                  } catch {}
+
+                  if (actualDuration) {
+                    const minDuration = Math.max(45, Math.floor(expectedLength * 0.70));
+                    const maxDuration = Math.max(expectedLength + 90, Math.ceil(expectedLength * 1.60));
+                    if (actualDuration < minDuration || actualDuration > maxDuration) continue;
+                  }
+
+                  candidates.push({
                     id: item.id,
                     youtube_video_id: vid,
                     thumbnail_url: oembed.thumbnail_url || `https://img.youtube.com/vi/${vid}/mqdefault.jpg`,
-                    channel_name: oembed.author_name || ''
-                  };
+                    channel_name: oembed.author_name || '',
+                    length_seconds: actualDuration || expectedLength,
+                    duration_delta: actualDuration ? Math.abs(actualDuration - expectedLength) : 9999,
+                  });
                 } catch {
                   continue;
                 }
               }
-              return null;
+
+              if (candidates.length === 0) return null;
+              candidates.sort((a, b) => a.duration_delta - b.duration_delta);
+              const best = candidates[0];
+              delete best.duration_delta;
+              return best;
             } catch {
               return null;
             }
@@ -317,7 +353,19 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
           if (updates.length > 0) {
             await base44.entities.PlaylistItem.bulkUpdate(updates);
           }
-          buildLog.push({ stage: 'youtube_lookup', success: true, resolved: updates.length, total: createdItems.length, timestamp: new Date().toISOString() });
+
+          // Refresh so later stages use persisted playlist IDs and measured track durations.
+          playlistData = (await base44.entities.PlaylistItem.filter({ configuration_id }))
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+          buildLog.push({
+            stage: 'youtube_lookup',
+            success: true,
+            resolved: updates.length,
+            unresolved: Math.max(0, createdItems.length - updates.length),
+            total: createdItems.length,
+            timestamp: new Date().toISOString()
+          });
         } catch (e) {
           console.error('YouTube lookup for playlist failed:', e.message);
           buildLog.push({ stage: 'youtube_lookup', success: false, error: e.message, timestamp: new Date().toISOString() });
@@ -344,7 +392,17 @@ Return a JSON object with key "playlist" containing an array of song objects.`;
       // Fetch music news via web search — stored ONLY as MusicResearchItem
       // NEVER writes to the Article entity (that belongs to the News PP)
       try {
-        const newsPrompt = `Search for current music news. Find real, recent articles about:
+        const newsPrompt = `Search for current music news that is relevant to this specific show.
+
+SHOW PURPOSE / DIRECTIONS:
+${showDescription || 'No additional show-specific directions provided'}
+
+SELECTED MUSIC TOPICS:
+${musicTopics.join(', ') || 'General music news'}
+
+The show purpose above is authoritative. Prioritize stories that directly support what this show is supposed to be about. Do not fill the research with generic music news that does not fit the stated premise.
+
+Find real, recent articles about:
 - New album/single releases
 - Artist news and announcements
 - Chart movements (Billboard, streaming platforms)
@@ -433,6 +491,11 @@ Find up to 20 recent articles.`;
       ).join('\n\n---\n\n');
 
       const topicPrompt = `You are a professional music show producer for a ${productionFormat} show. Based on these REAL news articles, generate talking points for each selected music topic.
+
+SHOW PURPOSE / DIRECTIONS:
+${showDescription || 'No additional show-specific directions provided'}
+
+The show purpose above is authoritative. Every topic angle and talking point must support the actual premise of the show rather than turning into generic music commentary.
 
 SELECTED TOPICS:
 ${musicTopics.join(', ') || 'General music news'}
@@ -545,6 +608,9 @@ SHOW CONFIGURATION:
 - Outro Runtime: ${outroMin} minutes
 - Show Tone: ${config.show_tone || 'Professional'}
 - Show Start Time: ${config.show_start_time || '06:00'}
+- Show Purpose / Directions: ${showDescription || 'No additional show-specific directions provided'}
+
+The Show Purpose / Directions are authoritative. All generated assets must sound like they belong to THIS show, not a generic music program.
 
 PLAYLIST (songs in order):
 ${playlistSummary || 'No playlist generated'}
@@ -554,8 +620,8 @@ ${topicSummary || 'No topics generated'}
 
 ASSETS TO GENERATE:
 - host_banter: 2-3 segments of conversational banter (matching show tone, separated by ---)
-- song_intros: Array of {{song_title, intro_text}} for ALL songs in the playlist
-- song_outros: Array of {{song_title, outro_text}} for ALL songs in the playlist
+- song_intros: Array of {{song_title, intro_text}} for ALL songs in the playlist. Copy each song_title EXACTLY, character-for-character, from the playlist above and keep the same order.
+- song_outros: Array of {{song_title, outro_text}} for ALL songs in the playlist. Copy each song_title EXACTLY, character-for-character, from the playlist above and keep the same order.
 - artist_bios: Array of {{artist, bio_text}} — a brief 3-4 sentence biography for each UNIQUE artist in the playlist. Cover their background, notable achievements, and musical style.
 - music_trivia: Array of {{question, answer}} — 8-10 music trivia questions related to the playlist artists, songs, and genres. Include fun, engaging questions.
 - tour_dates: Array of {{artist, tour_name, dates, locations}} — upcoming or recent tour dates and concert announcements for artists in the playlist. Use real, current data.
@@ -650,13 +716,19 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
         assets.push({ configuration_id, asset_type: 'host_banter', title: 'Host Banter', content: llmAssets.host_banter, status: 'ready' });
       }
       if (llmAssets.song_intros) {
-        for (const intro of llmAssets.song_intros) {
-          assets.push({ configuration_id, asset_type: 'song_intro', title: `Intro: ${intro.song_title}`, content: intro.intro_text, associated_song_title: intro.song_title, status: 'ready' });
+        for (let i = 0; i < llmAssets.song_intros.length; i++) {
+          const intro = llmAssets.song_intros[i];
+          const canonicalSong = findCanonicalPlaylistSong(playlistData, intro.song_title) || playlistData[i];
+          if (!canonicalSong) continue;
+          assets.push({ configuration_id, asset_type: 'song_intro', title: `Intro: ${canonicalSong.song_title}`, content: intro.intro_text, associated_song_title: canonicalSong.song_title, status: 'ready' });
         }
       }
       if (llmAssets.song_outros) {
-        for (const outro of llmAssets.song_outros) {
-          assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${outro.song_title}`, content: outro.outro_text, associated_song_title: outro.song_title, status: 'ready' });
+        for (let i = 0; i < llmAssets.song_outros.length; i++) {
+          const outro = llmAssets.song_outros[i];
+          const canonicalSong = findCanonicalPlaylistSong(playlistData, outro.song_title) || playlistData[i];
+          if (!canonicalSong) continue;
+          assets.push({ configuration_id, asset_type: 'song_outro', title: `Outro: ${canonicalSong.song_title}`, content: outro.outro_text, associated_song_title: canonicalSong.song_title, status: 'ready' });
         }
       }
       if (llmAssets.artist_bios) {
@@ -760,7 +832,10 @@ Return a JSON object with exactly these keys: host_banter (string), song_intros 
 
       const blueprint = buildRundownBlueprint(playlistData, topicData, pacingRules, config, extraInterstitials, { talkMin, sponsorMin, introMin, outroMin });
       const blueprintText = blueprint.map((bp, i) => {
-        const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${bp.target_duration || 60}s)`];
+        const targetSeconds = bp.target_duration || 60;
+        const targetWords = bp.segment_type === 'song' ? null : Math.max(1, Math.round(targetSeconds * 2.5));
+        const timingLabel = targetWords ? `${targetSeconds}s; script target: ~${targetWords} words` : `${targetSeconds}s`;
+        const parts = [`  ${i + 1}. [${bp.segment_type}] "${bp.title}" (target: ${timingLabel})`];
         if (bp.associated_song_title) parts.push(`     Song: "${bp.associated_song_title}"`);
         if (bp.associated_topic) parts.push(`     Topic: "${bp.associated_topic}"`);
         return parts.join('\n');
@@ -783,6 +858,10 @@ SHOW CONFIGURATION:
 - Outro Runtime: ${outroMin} minutes
 - Show Tone: ${config.show_tone || 'Professional'}
 - Show Start Time: ${config.show_start_time || '06:00'}
+- Show Purpose / Directions: ${showDescription || 'No additional show-specific directions provided'}
+
+SHOW IDENTITY RULE — CRITICAL:
+The Show Purpose / Directions are authoritative. Every spoken segment must directly serve the show's stated premise, audience, and tone. Do not substitute generic music-radio chatter when specific directions exist.
 
 PLAYLIST (songs in order):
 ${playlistSummary || 'No playlist generated'}
@@ -801,7 +880,9 @@ SCRIPT REQUIREMENTS:
 - Song Intros: A brief, engaging intro for each song that mentions the artist and song title.
 - Sponsor Breaks: Write sponsor/ad-read copy that fills the allocated time (~150 words per minute). If no specific sponsor is configured, write generic ad-read copy.
 - Station IDs: Write a brief station identification segment (e.g., "You're listening to ${config.station_name || 'the station'}"). Keep it under 15 seconds.
-- For each non-song segment, script_content length should be proportional to the target duration shown in the blueprint (~150 words per minute).
+- For EVERY non-song segment, script_content MUST fill the allocated target duration at a natural speaking pace of about 150 words per minute (2.5 words/second).
+- Treat each blueprint word target as a required production constraint, not a suggestion. Aim within roughly 90%-110% of the target word count.
+- Do not solve a long segment with a short summary. Fully develop the material so the host has enough spoken copy for the entire segment.
 
 Return a JSON object with exactly one key: rundown (array matching the blueprint EXACTLY — same length, same order, same segment_type/title/associated_song_title/associated_topic, plus script_content and notes).`;
 
@@ -827,16 +908,41 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
       };
 
       const rundownHealResult = await withSelfHealing(base44, 'rundown_scripts', async (adjustedPrompt) => {
-        return await base44.integrations.Core.InvokeLLM({
+        const result = await base44.integrations.Core.InvokeLLM({
           prompt: adjustedPrompt,
           response_json_schema: rundownSchema
         });
+
+        const generated = result?.rundown || [];
+        if (generated.length !== blueprint.length) {
+          throw new Error(`Rundown returned ${generated.length} items but blueprint requires exactly ${blueprint.length}.`);
+        }
+
+        const shortScripts = [];
+        for (let i = 0; i < blueprint.length; i++) {
+          const bp = blueprint[i];
+          if (bp.segment_type === 'song') continue;
+
+          const targetSeconds = bp.target_duration || 60;
+          const targetWords = Math.max(1, Math.round(targetSeconds * 2.5));
+          const minWords = Math.max(1, Math.floor(targetWords * 0.9));
+          const actualWords = countWords(generated[i]?.script_content || bp.script_content || '');
+
+          if (actualWords < minWords) {
+            shortScripts.push(`#${i + 1} "${bp.title}" needs ~${targetWords} words for ${targetSeconds}s but only has ${actualWords}`);
+          }
+        }
+
+        if (shortScripts.length > 0) {
+          throw new Error(`Generated scripts are too short to fill their segments: ${shortScripts.join('; ')}`);
+        }
+
+        return result;
       }, rundownPrompt);
       buildLog.push({ stage: 'rundown_scripts', success: rundownHealResult.success, error: rundownHealResult.error, attempts: rundownHealResult.attempts });
       const llmRundown = rundownHealResult.success ? rundownHealResult.result : { rundown: [] };
 
       // Create rundown items — merge blueprint structure with LLM-generated scripts
-      const CHARS_PER_SEC = 15;
       const showStartSecs = parseTimeToSeconds(config.show_start_time || '00:00');
       let cursorSecs = showStartSecs;
 
@@ -848,16 +954,15 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
         const segmentType = bpItem.segment_type;
 
         let durationSeconds;
+        let matchedSong = null;
         if (segmentType === 'song') {
           const songTitle = (bpItem.associated_song_title || '').toLowerCase().trim();
-          const matchedSong = playlistData.find(s => (s.song_title || '').toLowerCase().trim() === songTitle);
-          const songLength = matchedSong?.length_seconds || 180;
-          const introLength = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : 0;
-          durationSeconds = songLength + introLength;
-        } else if (segmentType === 'sponsor_break' || segmentType === 'station_id') {
-          durationSeconds = bpItem.target_duration || (segmentType === 'station_id' ? 15 : 60);
+          matchedSong = playlistData.find(s => (s.song_title || '').toLowerCase().trim() === songTitle) || null;
+          durationSeconds = matchedSong?.length_seconds || bpItem.target_duration || 180;
         } else {
-          durationSeconds = scriptContent ? Math.ceil(scriptContent.length / CHARS_PER_SEC) : (bpItem.target_duration || 60);
+          // The rundown clock is defined by the production blueprint. Script generation is
+          // validated against this target instead of silently shrinking the segment to fit short copy.
+          durationSeconds = bpItem.target_duration || 60;
         }
 
         const startTime = formatSecondsToTime(cursorSecs);
@@ -871,6 +976,7 @@ Return a JSON object with exactly one key: rundown (array matching the blueprint
           title: bpItem.title || '',
           script_content: scriptContent,
           associated_topic: bpItem.associated_topic || null,
+          associated_song_id: matchedSong?.id || null,
           duration_seconds: durationSeconds,
           start_time: startTime,
           end_time: endTime,
@@ -1013,6 +1119,40 @@ Analyze what went wrong and provide a fix. Return JSON with:
   }
 
   return { success: false, error: lastError?.message || 'Unknown error', attempts: maxRetries + 1 };
+}
+
+function countWords(text) {
+  return String(text || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+function normalizeTrackText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[\[\(].*?[\]\)]/g, ' ')
+    .replace(/\b(official|music|video|audio|lyrics?|lyric|visualizer|remaster(?:ed)?|hd|4k|explicit|clean|version)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function youtubeMetadataMatchesTrack(candidateTitle, candidateChannel, expectedTitle, expectedArtist) {
+  const candidate = normalizeTrackText(candidateTitle);
+  const channel = normalizeTrackText(candidateChannel);
+  const title = normalizeTrackText(expectedTitle);
+  const artist = normalizeTrackText(String(expectedArtist || '').split(/\b(?:feat\.?|ft\.?|featuring)\b/i)[0]);
+
+  if (!title || !candidate.includes(title)) return false;
+  if (!artist) return true;
+  return candidate.includes(artist) || channel.includes(artist);
+}
+
+function findCanonicalPlaylistSong(playlist, title) {
+  const key = normalizeTrackText(title);
+  if (!key) return null;
+  return playlist.find(song => normalizeTrackText(song.song_title) === key) || null;
 }
 
 function safeParse(str, fallback) {
