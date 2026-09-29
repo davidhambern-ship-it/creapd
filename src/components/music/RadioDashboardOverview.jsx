@@ -1,7 +1,10 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Radio, Mic2, ListMusic, ClipboardList, CheckCircle2, Settings, Play, FileText } from 'lucide-react';
+import {
+  Calendar, Clock, Radio, Mic2, ListMusic, ClipboardList, CheckCircle2,
+  Settings, Play, FileText, Check, X, RotateCcw, RefreshCw, Loader2, ArchiveX
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, SEGMENT_TYPE_LABELS, SEGMENT_COLORS } from '@/lib/musicConstants';
 
@@ -16,6 +19,67 @@ function parseSourcePayload(value) {
   return {};
 }
 
+function reviewState(status) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'approved' || value === 'locked') return 'approved';
+  if (value === 'rejected') return 'rejected';
+  return 'pending';
+}
+
+function ReviewBadge({ status, compact = false }) {
+  const state = reviewState(status);
+  const styles = state === 'approved'
+    ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300'
+    : state === 'rejected'
+      ? 'border-red-400/30 bg-red-500/10 text-red-300'
+      : 'border-amber-400/25 bg-amber-500/[0.07] text-amber-200';
+  const label = state === 'approved' ? 'APPROVED' : state === 'rejected' ? 'REJECTED' : 'PENDING';
+
+  return (
+    <span className={`${compact ? 'text-[8px] px-1.5 py-0.5' : 'text-[9px] px-2 py-0.5'} rounded-full border font-bold tracking-wider ${styles}`}>
+      {label}
+    </span>
+  );
+}
+
+function ReviewButtons({ item, onReview, reviewingId, compact = false }) {
+  const busy = reviewingId === item?.id;
+  const state = reviewState(item?.status);
+
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <button
+        type="button"
+        disabled={busy || state === 'approved'}
+        onClick={() => onReview?.(item, 'approved')}
+        className={`${compact ? 'h-7 px-2' : 'h-8 px-2.5'} inline-flex items-center gap-1 rounded-lg border text-[9px] font-bold tracking-wider transition-colors disabled:opacity-40 ${
+          state === 'approved'
+            ? 'border-emerald-400/35 bg-emerald-500/10 text-emerald-300'
+            : 'border-white/10 bg-white/[0.03] text-white/55 hover:border-emerald-400/35 hover:text-emerald-300'
+        }`}
+        title="Approve"
+      >
+        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+        {!compact && 'APPROVE'}
+      </button>
+      <button
+        type="button"
+        disabled={busy || state === 'rejected'}
+        onClick={() => onReview?.(item, 'rejected')}
+        className={`${compact ? 'h-7 px-2' : 'h-8 px-2.5'} inline-flex items-center gap-1 rounded-lg border text-[9px] font-bold tracking-wider transition-colors disabled:opacity-40 ${
+          state === 'rejected'
+            ? 'border-red-400/35 bg-red-500/10 text-red-300'
+            : 'border-white/10 bg-white/[0.03] text-white/55 hover:border-red-400/35 hover:text-red-300'
+        }`}
+        title="Reject"
+      >
+        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+        {!compact && 'REJECT'}
+      </button>
+    </div>
+  );
+}
+
 function youtubeSourceLabel(track) {
   const payload = parseSourcePayload(track?.source_payload);
   const type = String(payload.youtube_source_type || '');
@@ -26,15 +90,19 @@ function youtubeSourceLabel(track) {
   return track?.youtube_video_id ? 'YOUTUBE' : 'UNRESOLVED';
 }
 
+function findSong(item, playlist) {
+  return playlist.find(track =>
+    (item?.associated_song_id && track.id === item.associated_song_id) ||
+    String(track.song_title || '').toLowerCase() === String(item?.associated_song_title || item?.title || '').toLowerCase()
+  ) || null;
+}
+
 function segmentSource(item, config, playlist, topics, assets) {
   const type = item?.segment_type;
   const topic = topics.find(t =>
     String(t.topic_name || '').toLowerCase() === String(item?.associated_topic || '').toLowerCase()
   );
-  const song = playlist.find(track =>
-    (item?.associated_song_id && track.id === item.associated_song_id) ||
-    String(track.song_title || '').toLowerCase() === String(item?.associated_song_title || item?.title || '').toLowerCase()
-  );
+  const song = findSong(item, playlist);
 
   if (type === 'song') {
     const titleKey = String(song?.song_title || item?.title || '').toLowerCase();
@@ -98,10 +166,20 @@ function segmentSource(item, config, playlist, topics, assets) {
   };
 }
 
-function SegmentRow({ item, index, config, playlist, topics, assets }) {
+function SegmentRow({
+  item,
+  index,
+  config,
+  playlist,
+  topics,
+  assets,
+  reviewingId,
+  onReviewSegment,
+}) {
   const color = SEGMENT_COLORS[item.segment_type] || '#8b8b8b';
   const source = segmentSource(item, config, playlist, topics, assets);
   const isSong = item.segment_type === 'song';
+  const song = isSong ? findSong(item, playlist) : null;
   const script = String(item.script_content || '').trim();
 
   return (
@@ -128,6 +206,7 @@ function SegmentRow({ item, index, config, playlist, topics, assets }) {
               {SEGMENT_TYPE_LABELS[item.segment_type] || item.segment_type}
             </span>
             <h4 className="text-sm font-semibold text-white truncate">{item.title || 'Untitled Segment'}</h4>
+            {isSong ? <ReviewBadge status={song?.status} /> : <ReviewBadge status={item.status} />}
             <span className="ml-auto text-[10px] font-mono text-white/35">
               {item.start_time || '--:--'}–{item.end_time || '--:--'} · {formatRuntime(item.duration_seconds)}
             </span>
@@ -164,9 +243,190 @@ function SegmentRow({ item, index, config, playlist, topics, assets }) {
               )}
             </div>
           )}
+
+          <div className="mt-3 flex items-center justify-between gap-2">
+            {isSong ? (
+              <p className="text-[9px] uppercase tracking-wider text-white/25">
+                Song approval is controlled from the Playlist
+              </p>
+            ) : (
+              <ReviewButtons item={item} onReview={onReviewSegment} reviewingId={reviewingId} />
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function TrackRow({ track, index, reviewingId, onReviewTrack }) {
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-black/35 px-3 py-3">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center bg-fuchsia-500/10 border border-fuchsia-400/20 text-xs font-bold text-fuchsia-300">
+          {index + 1}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-sm font-medium text-white truncate">{track.song_title}</p>
+            <ReviewBadge status={track.status} compact />
+          </div>
+          <p className="text-[11px] text-white/40 truncate">{track.artist}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-xs font-mono text-white/55">{formatRuntime(track.length_seconds)}</p>
+          <span className="text-[8px] tracking-wider text-cyan-300">{youtubeSourceLabel(track)}</span>
+        </div>
+      </div>
+      <div className="mt-2 flex justify-end">
+        <ReviewButtons
+          item={track}
+          onReview={onReviewTrack}
+          reviewingId={reviewingId}
+          compact
+        />
+      </div>
+    </div>
+  );
+}
+
+function RejectedPile({
+  rejectedTracks,
+  rejectedSegments,
+  reviewingId,
+  regeneratingRejected,
+  onReviewTrack,
+  onReviewSegment,
+  onRegenerateRejected,
+}) {
+  const total = rejectedTracks.length + rejectedSegments.length;
+  if (!total) return null;
+
+  return (
+    <section className="cp-glass overflow-hidden" style={{ borderColor: 'rgba(248,113,113,0.22)' }}>
+      <div className="p-4 border-b border-red-400/10 bg-red-500/[0.035] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <ArchiveX className="w-4 h-4 text-red-300" />
+            <h2 className="font-semibold text-white">Rejected Pile</h2>
+            <span className="text-[9px] px-2 py-0.5 rounded-full border border-red-400/25 bg-red-500/10 text-red-300 font-bold">
+              {total}
+            </span>
+          </div>
+          <p className="text-[11px] text-white/35 mt-1">
+            Rejected material is out of the active show until you restore it or regenerate it.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {rejectedTracks.length > 0 && rejectedSegments.length > 0 && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={regeneratingRejected}
+                onClick={() => onRegenerateRejected?.('tracks')}
+                className="border-fuchsia-400/25 text-fuchsia-200 hover:bg-fuchsia-500/10"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${regeneratingRejected ? 'animate-spin' : ''}`} />
+                Tracks Only
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={regeneratingRejected}
+                onClick={() => onRegenerateRejected?.('segments')}
+                className="border-cyan-400/25 text-cyan-200 hover:bg-cyan-500/10"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${regeneratingRejected ? 'animate-spin' : ''}`} />
+                Segments Only
+              </Button>
+            </>
+          )}
+          <Button
+            size="sm"
+            disabled={regeneratingRejected}
+            onClick={() => onRegenerateRejected?.('all')}
+            className="bg-red-500/15 border border-red-400/30 text-red-200 hover:bg-red-500/25"
+          >
+            {regeneratingRejected
+              ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            }
+            Regenerate Rejected
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid xl:grid-cols-2 gap-4 p-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <ListMusic className="w-3.5 h-3.5 text-fuchsia-300" />
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">Rejected Tracks ({rejectedTracks.length})</p>
+          </div>
+          <div className="space-y-2">
+            {rejectedTracks.length ? rejectedTracks.map(track => (
+              <div key={track.id} className="rounded-xl border border-red-400/15 bg-red-500/[0.035] p-3">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">{track.song_title}</p>
+                    <p className="text-[11px] text-white/40 truncate">{track.artist} · {formatRuntime(track.length_seconds)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={reviewingId === track.id}
+                    onClick={() => onReviewTrack?.(track, 'approved')}
+                    className="h-7 px-2 inline-flex items-center gap-1 rounded-lg border border-white/10 text-[9px] font-bold tracking-wider text-white/55 hover:border-emerald-400/35 hover:text-emerald-300 disabled:opacity-40"
+                  >
+                    {reviewingId === track.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                    RESTORE
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs text-white/25 py-4">No rejected tracks.</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <ClipboardList className="w-3.5 h-3.5 text-cyan-300" />
+            <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">Rejected Segments ({rejectedSegments.length})</p>
+          </div>
+          <div className="space-y-2">
+            {rejectedSegments.length ? rejectedSegments.map(segment => (
+              <div key={segment.id} className="rounded-xl border border-red-400/15 bg-red-500/[0.035] p-3">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase tracking-wider text-cyan-300">
+                        {SEGMENT_TYPE_LABELS[segment.segment_type] || segment.segment_type}
+                      </span>
+                      <p className="text-sm font-medium text-white truncate">{segment.title}</p>
+                    </div>
+                    {segment.script_content && (
+                      <p className="text-[11px] text-white/35 mt-1 line-clamp-2">{segment.script_content}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={reviewingId === segment.id}
+                    onClick={() => onReviewSegment?.(segment, 'approved')}
+                    className="h-7 px-2 inline-flex items-center gap-1 rounded-lg border border-white/10 text-[9px] font-bold tracking-wider text-white/55 hover:border-emerald-400/35 hover:text-emerald-300 disabled:opacity-40"
+                  >
+                    {reviewingId === segment.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                    RESTORE
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs text-white/25 py-4">No rejected segments.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -178,22 +438,75 @@ export default function RadioDashboardOverview({
   assets = [],
   pipeline,
   readinessPercent = 0,
+  reviewingId = null,
+  regeneratingRejected = false,
+  onReviewTrack,
+  onReviewSegment,
+  onRegenerateRejected,
 }) {
-  const rundownSeconds = useMemo(
-    () => rundown.reduce((sum, item) => sum + Number(item.duration_seconds || 0), 0),
-    [rundown]
-  );
-  const playlistSeconds = useMemo(
-    () => playlist.reduce((sum, item) => sum + Number(item.length_seconds || 0), 0),
+  const rejectedTracks = useMemo(
+    () => playlist.filter(track => reviewState(track.status) === 'rejected'),
     [playlist]
   );
+  const rejectedTrackIds = useMemo(
+    () => new Set(rejectedTracks.map(track => track.id)),
+    [rejectedTracks]
+  );
+  const rejectedTrackTitles = useMemo(
+    () => new Set(rejectedTracks.map(track => String(track.song_title || '').toLowerCase())),
+    [rejectedTracks]
+  );
+
+  const activePlaylist = useMemo(
+    () => playlist.filter(track => reviewState(track.status) !== 'rejected'),
+    [playlist]
+  );
+
+  const rejectedSegments = useMemo(
+    () => rundown.filter(item => item.segment_type !== 'song' && reviewState(item.status) === 'rejected'),
+    [rundown]
+  );
+
+  const activeRundown = useMemo(
+    () => rundown.filter(item => {
+      if (item.segment_type !== 'song') return reviewState(item.status) !== 'rejected';
+      if (item.associated_song_id && rejectedTrackIds.has(item.associated_song_id)) return false;
+      const title = String(item.associated_song_title || item.title || '').toLowerCase();
+      return !rejectedTrackTitles.has(title);
+    }),
+    [rundown, rejectedTrackIds, rejectedTrackTitles]
+  );
+
+  const rundownSeconds = useMemo(
+    () => activeRundown.reduce((sum, item) => sum + Number(item.duration_seconds || 0), 0),
+    [activeRundown]
+  );
+  const playlistSeconds = useMemo(
+    () => activePlaylist.reduce((sum, item) => sum + Number(item.length_seconds || 0), 0),
+    [activePlaylist]
+  );
+
+  const spokenReviewItems = useMemo(
+    () => rundown.filter(item => item.segment_type !== 'song'),
+    [rundown]
+  );
+  const reviewableCount = playlist.length + spokenReviewItems.length;
+  const approvedCount =
+    playlist.filter(item => reviewState(item.status) === 'approved').length +
+    spokenReviewItems.filter(item => reviewState(item.status) === 'approved').length;
+  const rejectedCount = rejectedTracks.length + rejectedSegments.length;
+  const pendingCount = Math.max(0, reviewableCount - approvedCount - rejectedCount);
 
   const progress = Number.isFinite(Number(pipeline?.pipeline_progress))
     ? Number(pipeline.pipeline_progress)
     : readinessPercent;
 
   const productionLabel = config?.status === 'ready'
-    ? 'READY FOR STUDIO'
+    ? rejectedCount > 0
+      ? 'REVIEW REQUIRED'
+      : reviewableCount > 0 && approvedCount === reviewableCount
+        ? 'APPROVED FOR STUDIO'
+        : 'READY FOR REVIEW'
     : String(pipeline?.current_department || config?.status || 'BUILDING').replaceAll('_', ' ').toUpperCase();
 
   return (
@@ -245,13 +558,13 @@ export default function RadioDashboardOverview({
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-black/30 p-3">
               <p className="text-[9px] uppercase tracking-[0.18em] text-white/35">Segments</p>
-              <p className="text-xl font-bold text-cyan-300 mt-1">{rundown.length}</p>
-              <p className="text-[10px] text-white/30 mt-1">Complete Run of Show</p>
+              <p className="text-xl font-bold text-cyan-300 mt-1">{activeRundown.length}</p>
+              <p className="text-[10px] text-white/30 mt-1">{rejectedSegments.length ? `${rejectedSegments.length} rejected` : 'Active Run of Show'}</p>
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-black/30 p-3">
               <p className="text-[9px] uppercase tracking-[0.18em] text-white/35">Playlist</p>
-              <p className="text-xl font-bold text-fuchsia-300 mt-1">{playlist.length} tracks</p>
-              <p className="text-[10px] text-white/30 mt-1">{formatRuntime(playlistSeconds)} of music</p>
+              <p className="text-xl font-bold text-fuchsia-300 mt-1">{activePlaylist.length} tracks</p>
+              <p className="text-[10px] text-white/30 mt-1">{formatRuntime(playlistSeconds)} · {rejectedTracks.length ? `${rejectedTracks.length} rejected` : 'all active'}</p>
             </div>
             <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] p-3">
               <p className="text-[9px] uppercase tracking-[0.18em] text-white/35">Production</p>
@@ -262,7 +575,9 @@ export default function RadioDashboardOverview({
               <div className="h-1.5 rounded-full bg-white/5 overflow-hidden mt-2">
                 <div className="h-full bg-gradient-to-r from-cyan-400 to-fuchsia-500" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
               </div>
-              <p className="text-[10px] text-white/30 mt-1">{progress}% production progress</p>
+              <p className="text-[10px] text-white/30 mt-1">
+                Build {progress}% · Review {approvedCount}/{reviewableCount} approved{pendingCount ? ` · ${pendingCount} pending` : ''}
+              </p>
             </div>
           </div>
         </div>
@@ -276,7 +591,7 @@ export default function RadioDashboardOverview({
                 <ClipboardList className="w-4 h-4 text-cyan-300" />
                 <h2 className="font-semibold text-white">Run of Show</h2>
               </div>
-              <p className="text-[11px] text-white/35 mt-1">Every segment, its timing, and exactly what the host copy is built from.</p>
+              <p className="text-[11px] text-white/35 mt-1">Approve or reject spoken segments. Song approval follows the Playlist review.</p>
             </div>
             <Link to="/music/rundown" className="text-[10px] uppercase tracking-wider text-cyan-300 hover:text-cyan-200">
               Open Rundown
@@ -284,7 +599,7 @@ export default function RadioDashboardOverview({
           </div>
 
           <div className="p-3 space-y-2 max-h-[760px] overflow-y-auto">
-            {rundown.length ? rundown.map((item, index) => (
+            {activeRundown.length ? activeRundown.map((item, index) => (
               <SegmentRow
                 key={item.id || index}
                 item={item}
@@ -293,9 +608,11 @@ export default function RadioDashboardOverview({
                 playlist={playlist}
                 topics={topics}
                 assets={assets}
+                reviewingId={reviewingId}
+                onReviewSegment={onReviewSegment}
               />
             )) : (
-              <div className="py-16 text-center text-sm text-white/35">No rundown has been generated yet.</div>
+              <div className="py-16 text-center text-sm text-white/35">No active rundown material.</div>
             )}
           </div>
         </section>
@@ -307,7 +624,7 @@ export default function RadioDashboardOverview({
                 <ListMusic className="w-4 h-4 text-fuchsia-300" />
                 <h2 className="font-semibold text-white">Playlist</h2>
               </div>
-              <p className="text-[11px] text-white/35 mt-1">{playlist.length} tracks · {formatRuntime(playlistSeconds)}</p>
+              <p className="text-[11px] text-white/35 mt-1">{activePlaylist.length} active tracks · {formatRuntime(playlistSeconds)}</p>
             </div>
             <Link to="/music/playlist" className="text-[10px] uppercase tracking-wider text-fuchsia-300 hover:text-fuchsia-200">
               Edit Playlist
@@ -315,28 +632,30 @@ export default function RadioDashboardOverview({
           </div>
 
           <div className="p-3 space-y-2 max-h-[760px] overflow-y-auto">
-            {playlist.length ? playlist.map((track, index) => (
-              <div key={track.id || index} className="rounded-xl border border-white/[0.07] bg-black/35 px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center bg-fuchsia-500/10 border border-fuchsia-400/20 text-xs font-bold text-fuchsia-300">
-                    {index + 1}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white truncate">{track.song_title}</p>
-                    <p className="text-[11px] text-white/40 truncate">{track.artist}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-mono text-white/55">{formatRuntime(track.length_seconds)}</p>
-                    <span className="text-[8px] tracking-wider text-cyan-300">{youtubeSourceLabel(track)}</span>
-                  </div>
-                </div>
-              </div>
+            {activePlaylist.length ? activePlaylist.map((track, index) => (
+              <TrackRow
+                key={track.id || index}
+                track={track}
+                index={index}
+                reviewingId={reviewingId}
+                onReviewTrack={onReviewTrack}
+              />
             )) : (
-              <div className="py-16 text-center text-sm text-white/35">No playlist has been generated yet.</div>
+              <div className="py-16 text-center text-sm text-white/35">No active playlist tracks.</div>
             )}
           </div>
         </section>
       </div>
+
+      <RejectedPile
+        rejectedTracks={rejectedTracks}
+        rejectedSegments={rejectedSegments}
+        reviewingId={reviewingId}
+        regeneratingRejected={regeneratingRejected}
+        onReviewTrack={onReviewTrack}
+        onReviewSegment={onReviewSegment}
+        onRegenerateRejected={onRegenerateRejected}
+      />
     </div>
   );
 }
