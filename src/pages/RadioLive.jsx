@@ -604,7 +604,7 @@ export default function RadioLive() {
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.18fr)_minmax(520px,.82fr)] gap-4 items-start">
           <section className="space-y-4 min-w-0">
-            <div className="relative rounded-2xl border border-white/10 bg-black overflow-hidden aspect-video min-h-[420px] xl:min-h-[520px]">
+            <div className="relative rounded-2xl border border-white/10 bg-black overflow-hidden aspect-video min-h-[320px] xl:min-h-[400px] max-h-[560px]">
               <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-md border border-white/10 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/60">
                 <MonitorPlay className="w-4 h-4" /> PROGRAM MONITOR
               </div>
