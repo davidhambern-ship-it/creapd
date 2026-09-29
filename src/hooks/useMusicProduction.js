@@ -15,16 +15,18 @@ function parseSourcePayload(value) {
   return {};
 }
 
-function hasVerifiedLyricMetadata(track) {
+function hasVerifiedRadioMetadata(track) {
   const duration = Number(track?.length_seconds || 0);
   const payload = parseSourcePayload(track?.source_payload);
   const youtubeTitle = String(payload.youtube_title || '');
-  const lyricSource =
+  const sourceType = String(payload.youtube_source_type || '');
+  const radioSafeSource =
+    track?.source === 'youtube_radio_verified' ||
     track?.source === 'youtube_lyric_verified' ||
-    payload.youtube_source_type === 'lyric_video' ||
-    /\blyric(?:s)?\b/i.test(youtubeTitle);
+    ['lyric_video', 'visualizer', 'audio_track'].includes(sourceType) ||
+    /\blyric(?:s)?\b|\bvisuali[sz]er\b|\bofficial audio\b|\baudio only\b/i.test(youtubeTitle);
 
-  return Boolean(track?.youtube_video_id) && duration >= 75 && lyricSource;
+  return Boolean(track?.youtube_video_id) && duration >= 75 && radioSafeSource;
 }
 
 export function useMusicProduction(configId) {
@@ -119,7 +121,7 @@ export function useMusicProduction(configId) {
     const configurationId = config?.id;
     if (!configurationId || !playlist.length) return;
     if (metadataRepairStarted.has(configurationId)) return;
-    if (!playlist.some(track => !hasVerifiedLyricMetadata(track))) return;
+    if (!playlist.some(track => !hasVerifiedRadioMetadata(track))) return;
 
     metadataRepairStarted.add(configurationId);
     setMetadataRepairing(true);
