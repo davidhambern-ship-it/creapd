@@ -49,39 +49,114 @@ export function useNativeSpeech({ onEnd, selectedVoiceURI } = {}) {
     return getDefaultVoice();
   }, [voices, getDefaultVoice]);
 
+  const speechRunRef = useRef(0);
+
+  const splitSpeechChunks = useCallback((value, maxChars = 240) => {
+    const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return [];
+
+    const sentences = normalized
+      .split(/(?<=[.!?])\s+/)
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    const chunks = [];
+    let current = '';
+
+    const pushCurrent = () => {
+      if (current.trim()) chunks.push(current.trim());
+      current = '';
+    };
+
+    for (const sentence of sentences.length ? sentences : [normalized]) {
+      if (sentence.length <= maxChars) {
+        if (!current) {
+          current = sentence;
+        } else if ((current.length + 1 + sentence.length) <= maxChars) {
+          current += ` ${sentence}`;
+        } else {
+          pushCurrent();
+          current = sentence;
+        }
+        continue;
+      }
+
+      pushCurrent();
+      const words = sentence.split(/\s+/);
+      let piece = '';
+      for (const word of words) {
+        if (!piece) {
+          piece = word;
+        } else if ((piece.length + 1 + word.length) <= maxChars) {
+          piece += ` ${word}`;
+        } else {
+          chunks.push(piece);
+          piece = word;
+        }
+      }
+      if (piece) current = piece;
+    }
+
+    pushCurrent();
+    return chunks;
+  }, []);
+
   const speak = useCallback((text, itemId) => {
     if (!window.speechSynthesis) return;
 
+    speechRunRef.current += 1;
+    const runId = speechRunRef.current;
     window.speechSynthesis.cancel();
 
-    if (!text) return;
+    const chunks = splitSpeechChunks(text);
+    if (!chunks.length) return;
 
-    const utter = new SpeechSynthesisUtterance(text);
     const voice = getSelectedVoice();
-    if (voice) {
-      utter.voice = voice;
-      utter.lang = voice.lang;
-    } else {
-      utter.lang = 'en-GB';
-    }
-    utter.rate = 0.95;
-    utter.pitch = 1;
-
-    utter.onend = () => {
-      setSpeakingId(null);
-      if (onEndRef.current) onEndRef.current(itemId);
-    };
-    utter.onerror = () => setSpeakingId(null);
-
-    utterRef.current = utter;
     setSpeakingId(itemId);
-    window.speechSynthesis.speak(utter);
-  }, [getSelectedVoice, onEndRef]);
+
+    const speakChunk = (index) => {
+      if (speechRunRef.current !== runId) return;
+
+      if (index >= chunks.length) {
+        utterRef.current = null;
+        setSpeakingId(null);
+        if (onEndRef.current) onEndRef.current(itemId);
+        return;
+      }
+
+      const utter = new SpeechSynthesisUtterance(chunks[index]);
+      if (voice) {
+        utter.voice = voice;
+        utter.lang = voice.lang;
+      } else {
+        utter.lang = 'en-GB';
+      }
+      utter.rate = 0.95;
+      utter.pitch = 1;
+
+      utter.onend = () => {
+        if (speechRunRef.current !== runId) return;
+        speakChunk(index + 1);
+      };
+      utter.onerror = (event) => {
+        if (speechRunRef.current !== runId) return;
+        if (event?.error === 'canceled' || event?.error === 'interrupted') return;
+        speakChunk(index + 1);
+      };
+
+      utterRef.current = utter;
+      window.speechSynthesis.speak(utter);
+    };
+
+    speakChunk(0);
+  }, [getSelectedVoice, splitSpeechChunks]);
 
   const stop = useCallback(() => {
+    speechRunRef.current += 1;
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+    utterRef.current = null;
     setSpeakingId(null);
   }, []);
 
