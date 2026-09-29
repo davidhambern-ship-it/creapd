@@ -4,7 +4,6 @@ import { MUSIC_NAV_ITEMS } from '@/lib/musicConstants';
 import {
   LayoutDashboard, Search, Sparkles, Compass, ListMusic
 } from 'lucide-react';
-import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
@@ -33,7 +32,6 @@ export default function MusicLayout() {
           </main>
         </div>
 
-        <ProductionFooter variant="music" />
         </div>
         <MiniShowBar />
 
