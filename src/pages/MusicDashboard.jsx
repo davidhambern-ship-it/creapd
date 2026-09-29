@@ -212,7 +212,7 @@ export default function MusicDashboard() {
   // Auto-init pipeline when config loads
   useEffect(() => {
     if (config?.id && !pipeline && !pipelineLoading) {
-      initPipeline(config.production_name || 'Music Production');
+      initPipeline(config.production_name || 'Radio Production');
     }
   }, [config?.id, pipeline, pipelineLoading, initPipeline]);
 
@@ -382,7 +382,7 @@ export default function MusicDashboard() {
                     className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full border"
                     style={{ background: 'rgba(255,0,255,0.15)', color: '#FF00FF', borderColor: 'rgba(255,0,255,0.3)' }}
                   >
-                    Music Production
+                    Radio Production
                   </span>
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold text-white cp-glitch leading-tight">{config.production_name}</h1>
