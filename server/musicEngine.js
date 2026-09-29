@@ -489,6 +489,97 @@ function countWords(value) {
   return String(value || '').trim().split(/\s+/).filter(Boolean).length;
 }
 
+function normalizedIdentity(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scriptSimilarity(a, b) {
+  const left = new Set(normalizedIdentity(a).split(' ').filter(Boolean));
+  const right = new Set(normalizedIdentity(b).split(' ').filter(Boolean));
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  for (const token of left) if (right.has(token)) overlap += 1;
+  return overlap / Math.max(left.size, right.size);
+}
+
+function stationIdIsValid(script, config, previousScript = '', avoidScripts = []) {
+  const copy = text(script);
+  if (!copy) return false;
+
+  const normalizedCopy = normalizedIdentity(copy);
+  const hostName = normalizedIdentity(config.host_name);
+  const stationName = normalizedIdentity(config.station_name);
+
+  if (hostName && !normalizedCopy.includes(hostName)) return false;
+  if (hostName && /\b(with\s+)?your\s+host\b/i.test(copy)) return false;
+  if (stationName && !normalizedCopy.includes(stationName)) return false;
+  if (previousScript && scriptSimilarity(copy, previousScript) >= 0.72) return false;
+  if (avoidScripts.some(existing => scriptSimilarity(copy, existing) >= 0.72)) return false;
+
+  return true;
+}
+
+function fallbackStationId(config, previousScript = '') {
+  const host = text(config.host_name);
+  const station = text(config.station_name);
+  const show = text(config.production_name, 'this show');
+  const identity = [
+    station ? `You're tuned to ${station}.` : '',
+    host ? `${host} is on the mic for ${show}.` : `You're listening to ${show}.`,
+  ].filter(Boolean).join(' ');
+
+  const variants = [
+    `${identity} Keep it right here—more music and more of the show are coming up next.`,
+    `${identity} Stay locked in; the next stretch of music is lined up and ready to go.`,
+    `${identity} Don't touch that dial. We're keeping the music moving and the show rolling.`,
+    `${identity} You're in the right place. More music is on deck, so keep it right here.`,
+  ];
+
+  const hash = [...String(previousScript || show)].reduce((sum, ch) => ((sum * 31) + ch.charCodeAt(0)) >>> 0, 7);
+  return variants[hash % variants.length];
+}
+
+async function generateStationIdReplacement({ config, previousScript = '', avoidScripts = [] }) {
+  const words = spokenWordRange(15, 'station_id');
+  const prompt = `Write ONE fresh radio Station ID.
+
+SHOW IDENTITY
+Show title: ${config.production_name}
+Station: ${config.station_name || 'Not supplied'}
+Host name: ${config.host_name || 'Not supplied'}
+Co-host: ${config.co_host_name || 'None'}
+Tone: ${config.show_tone || 'Professional'}
+
+HARD RULES
+- If a host name is supplied, you MUST say the exact host name "${config.host_name}" in the Station ID.
+- If a station name is supplied, you MUST say the exact station name "${config.station_name}".
+- NEVER substitute phrases such as "your host", "with your host", "our host", or "the host" for the configured host name.
+- Keep it to ${words.min}-${words.max} spoken words.
+- Make it sound like a real radio liner/ID, not an explanation.
+- Do not invent slogans, frequencies, cities, call letters, sponsors, awards, or facts that were not configured.
+- Make the wording materially different from the rejected/current version: change the opening, sentence structure, and closing.
+
+REJECTED/CURRENT VERSION TO AVOID:
+${previousScript || '(none)'}
+
+OTHER STATION IDS IN THIS SHOW TO AVOID COPYING:
+${avoidScripts.length ? avoidScripts.join('\n---\n') : '(none)'}
+
+Return one repair with order=1 and script_content containing only the new Station ID.`;
+
+  try {
+    const result = await structured(prompt, SCRIPT_REPAIR_SCHEMA, 'creapd_music_station_id_replacement_v2', 1200);
+    const candidate = text(array(result?.data?.repairs, [])[0]?.script_content);
+    if (stationIdIsValid(candidate, config, previousScript, avoidScripts)) return candidate;
+  } catch {}
+
+  return fallbackStationId(config, previousScript);
+}
+
 function spokenWordRange(seconds, segmentType) {
   if (segmentType === 'station_id') return { min: 24, target: 30, max: 38 };
   const safeSeconds = Math.max(10, num(seconds, 60));
