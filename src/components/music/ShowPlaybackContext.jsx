@@ -175,7 +175,13 @@ export function ShowPlaybackProvider({ children }) {
         height: '1',
         playerVars: { autoplay: 0, rel: 0, modestbranding: 1 },
         events: {
-          onReady: () => setIsYtReady(true),
+          onReady: (e) => {
+            setIsYtReady(true);
+            const pendingVideoId = activeVideoIdRef.current;
+            if (pendingVideoId) {
+              try { e.target.loadVideoById(pendingVideoId); } catch {}
+            }
+          },
           onStateChange: (e) => {
             if (e.data === 1) setIsYtPlaying(true);
             if (e.data === 2) setIsYtPlaying(false);
