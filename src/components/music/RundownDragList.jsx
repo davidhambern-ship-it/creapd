@@ -290,8 +290,8 @@ export default function RundownDragList({
                               title={songTrack.song_title || item.title}
                               channelName={songTrack.channel_name}
                               thumbnailUrl={songTrack.thumbnail_url}
-                              introScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.intro || script}
-                              outroScript={songScriptsByTitle[(songTrack.song_title || item.title || '').toLowerCase().trim()]?.outro}
+                              introScript={script}
+                              outroScript=""
                               color={color}
                               itemIndex={i}
                             />
