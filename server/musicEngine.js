@@ -417,17 +417,19 @@ function extractYoutubeSearchCandidates(html) {
   return results;
 }
 
-function isLyricVideoTitle(value) {
-  const title = String(value || '').toLowerCase();
-  if (!/\blyric(?:s)?\b/.test(title)) return false;
+function classifyRadioSafeYoutubeSource(metadata = {}) {
+  const title = String(metadata?.title || '').toLowerCase();
+  const channel = String(metadata?.channel_name || '').toLowerCase();
 
   const blocked = [
     /\bofficial music video\b/,
     /\bmusic video\b/,
-    /\bvisualizer\b/,
+    /\bofficial video\b/,
+    /\bofficial mv\b/,
     /\blive performance\b/,
     /\blive at\b/,
     /\blive from\b/,
+    /\blive session\b/,
     /\bconcert\b/,
     /\bkaraoke\b/,
     /\breaction\b/,
@@ -436,8 +438,27 @@ function isLyricVideoTitle(value) {
     /\bteaser\b/,
     /\bbehind the scenes\b/,
     /\bshorts?\b/,
+    /\bsnippet\b/,
+    /\bpreview\b/,
+    /\bclip\b/,
+    /\bdance performance\b/,
+    /\bperformance video\b/,
   ];
-  return !blocked.some(pattern => pattern.test(title));
+  if (blocked.some(pattern => pattern.test(title))) return null;
+
+  if (/\blyric(?:s)?\b/.test(title)) return 'lyric_video';
+  if (/\bvisuali[sz]er\b/.test(title)) return 'visualizer';
+  if (/\bofficial audio\b/.test(title) || /\baudio only\b/.test(title) || /\baudio\b/.test(title)) return 'audio_track';
+
+  // YouTube Music/Topic uploads often use only the exact song title with no
+  // "audio" label. Those are continuous full-track sources and are valid for radio.
+  if (/\btopic\b/.test(channel) || /- topic$/.test(channel)) return 'audio_track';
+
+  return null;
+}
+
+function isRadioSafeYoutubeSource(metadata) {
+  return Boolean(classifyRadioSafeYoutubeSource(metadata));
 }
 
 async function fetchYoutubeDuration(videoId) {
@@ -497,7 +518,10 @@ async function validateYoutubeVideo(videoId, hint = null) {
       thumbnail_url: text(payload?.thumbnail_url, `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`),
       channel_name: text(payload?.author_name, hint?.channel_name || ''),
       duration_seconds: durationSeconds,
-      source_type: isLyricVideoTitle(text(payload?.title, hint?.title || '')) ? 'lyric_video' : 'youtube_video',
+      source_type: classifyRadioSafeYoutubeSource({
+        title: text(payload?.title, hint?.title || ''),
+        channel_name: text(payload?.author_name, hint?.channel_name || ''),
+      }) || 'youtube_video',
     };
   } catch {
     return null;
@@ -506,12 +530,13 @@ async function validateYoutubeVideo(videoId, hint = null) {
 
 async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0, options = {}) {
   try {
-    const requireLyrics = options.requireLyrics !== false;
-    const queries = requireLyrics
+    const requireRadioSafe = options.requireRadioSafe !== false;
+    const queries = requireRadioSafe
       ? [
+          `"${songTitle}" "${artist}" official audio`,
+          `"${songTitle}" "${artist}" visualizer`,
           `"${songTitle}" "${artist}" lyrics`,
-          `"${songTitle}" "${artist}" lyric video`,
-          `${artist} ${songTitle} lyrics`,
+          `${artist} ${songTitle} audio`,
         ]
       : [
           `"${songTitle}" "${artist}" official music video`,
@@ -535,12 +560,12 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expect
         if (usedIds.has(candidate.video_id) || candidateMap.has(candidate.video_id)) continue;
         candidateMap.set(candidate.video_id, candidate);
       }
-      const usableCount = [...candidateMap.values()].filter(candidate => !requireLyrics || isLyricVideoTitle(candidate.title)).length;
+      const usableCount = [...candidateMap.values()].filter(candidate => !requireRadioSafe || isRadioSafeYoutubeSource(candidate)).length;
       if (usableCount >= 6) break;
     }
 
     const candidates = [...candidateMap.values()]
-      .filter(candidate => !requireLyrics || isLyricVideoTitle(candidate.title))
+      .filter(candidate => !requireRadioSafe || isRadioSafeYoutubeSource(candidate))
       .slice(0, 12);
 
     const metadata = (await Promise.all(
@@ -548,7 +573,7 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expect
     )).filter(Boolean);
 
     const ranked = metadata
-      .filter(meta => !requireLyrics || isLyricVideoTitle(meta.title))
+      .filter(meta => !requireRadioSafe || isRadioSafeYoutubeSource(meta))
       .map(meta => ({ meta, ...scoreYoutubeMatch(meta, songTitle, artist, expectedLength) }))
       .filter(({ meta, titleCoverage, artistCoverage }) => {
         const duration = num(meta.duration_seconds, 0);
@@ -578,17 +603,17 @@ export async function fetchYoutubeMetadata(url, options = {}) {
     throw error;
   }
 
-  if (options.requireLyrics === true) {
+  if (options.requireRadioSafe === true) {
     const duration = num(metadata.duration_seconds, 0);
-    if (!isLyricVideoTitle(metadata.title)) {
-      const error = new Error('Radio playlists only accept YouTube lyric videos.');
-      error.code = 'RADIO_LYRIC_VIDEO_REQUIRED';
+    if (!isRadioSafeYoutubeSource(metadata)) {
+      const error = new Error('Radio playlists accept lyric videos, visualizers, and continuous audio tracks only.');
+      error.code = 'RADIO_SAFE_YOUTUBE_SOURCE_REQUIRED';
       error.status = 400;
       throw error;
     }
     if (duration < 75 || duration > 900) {
-      const error = new Error('Could not verify a full-song duration for this lyric video.');
-      error.code = 'RADIO_LYRIC_DURATION_REQUIRED';
+      const error = new Error('Could not verify a full-song duration for this Radio track.');
+      error.code = 'RADIO_SAFE_DURATION_REQUIRED';
       error.status = 400;
       throw error;
     }
@@ -624,7 +649,7 @@ export async function refreshMusicPlaylistYoutubeMetadata({ sql, ownerUserId, co
       const currentDuration = num(current?.duration_seconds, 0);
       if (
         current &&
-        isLyricVideoTitle(current.title) &&
+        isRadioSafeYoutubeSource(current) &&
         currentDuration >= 75 &&
         currentDuration <= 900
       ) {
@@ -653,7 +678,7 @@ export async function refreshMusicPlaylistYoutubeMetadata({ sql, ownerUserId, co
     if (
       !metadata ||
       usedIds.has(metadata.video_id) ||
-      !isLyricVideoTitle(metadata.title) ||
+      !isRadioSafeYoutubeSource(metadata) ||
       duration < 75 ||
       duration > 900
     ) {
@@ -670,7 +695,7 @@ export async function refreshMusicPlaylistYoutubeMetadata({ sql, ownerUserId, co
       ...(song.source_payload && typeof song.source_payload === 'object' ? song.source_payload : {}),
       youtube_title: metadata.title,
       youtube_duration_seconds: duration,
-      youtube_source_type: 'lyric_video',
+      youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
       requested_title: song.song_title,
       requested_artist: song.artist,
       refreshed_at: new Date().toISOString(),
@@ -683,7 +708,7 @@ export async function refreshMusicPlaylistYoutubeMetadata({ sql, ownerUserId, co
         youtube_video_id=${metadata.video_id},
         thumbnail_url=${metadata.thumbnail_url},
         channel_name=${metadata.channel_name},
-        source='youtube_lyric_verified',
+        source='youtube_radio_verified',
         source_payload=${safeJson(sourcePayload)}::jsonb,
         updated_at=now()
       WHERE id=${song.id} AND owner_user_id=${ownerId}
@@ -861,12 +886,12 @@ Return exactly ${candidateCount} candidates so CREAPD has enough verified option
         ${text(song.song_title, metadata.title || 'Unknown')}, ${text(song.artist, metadata.channel_name || 'Unknown')},
         ${actualDuration}, ${text(song.genre) || null}, ${text(song.mood) || null},
         ${text(song.era_year) || null}, ${text(song.reason_selected) || null},
-        'suggested', 'youtube_lyric_verified',
+        'suggested', 'youtube_radio_verified',
         ${metadata.video_id}, ${metadata.thumbnail_url}, ${metadata.channel_name},
         ${safeJson({
           youtube_title: metadata.title,
           youtube_duration_seconds: metadata.duration_seconds,
-          youtube_source_type: 'lyric_video',
+          youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
           requested_title: text(song.song_title),
           requested_artist: text(song.artist),
         })}::jsonb
@@ -1058,7 +1083,7 @@ Return real song_title + artist pairs only. Prefer ${year - 2}-${year} releases 
   // turn into a long chain of network waits inside one serverless invocation.
   const resolved = await Promise.all(candidates.map(async candidate => ({
     candidate,
-    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds, 0, { requireLyrics: false }),
+    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds, 0, { requireRadioSafe: false }),
   })));
 
   for (const { candidate, metadata } of resolved) {
