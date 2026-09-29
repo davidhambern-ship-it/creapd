@@ -106,7 +106,9 @@ export const ASSET_TYPE_LABELS = {
 
 export const SEGMENT_TYPE_LABELS = {
   intro: 'Intro',
+  song_intro: 'Song Intro',
   song: 'Song',
+  song_outro: 'Song Outro / Recap',
   talk_break: 'Talk Break',
   topic_segment: 'Topic Segment',
   artist_bio: 'Artist Bio',
@@ -120,7 +122,9 @@ export const SEGMENT_TYPE_LABELS = {
 
 export const SEGMENT_COLORS = {
   intro: '#00FF88',
+  song_intro: '#FF66CC',
   song: '#FF00FF',
+  song_outro: '#CC66FF',
   talk_break: '#00FFFF',
   topic_segment: '#FF6B00',
   artist_bio: '#A855F7',
