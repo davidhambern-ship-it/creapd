@@ -572,6 +572,154 @@ export async function fetchYoutubeMetadata(url) {
   return metadata;
 }
 
+
+export async function refreshMusicPlaylistYoutubeMetadata({ sql, ownerUserId, configurationId }) {
+  const ownerId = String(ownerUserId);
+  const configId = text(configurationId);
+  if (!configId) throw new Error('configuration_id_required');
+
+  const [config] = await sql`
+    SELECT * FROM creapd.music_production_configurations
+    WHERE id=${configId} AND owner_user_id=${ownerId}
+    LIMIT 1
+  `;
+  if (!config) throw new Error('Music configuration not found');
+
+  const playlist = await sql`
+    SELECT * FROM creapd.music_playlist_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  const resolutions = await Promise.all(playlist.map(async song => {
+    let metadata = null;
+
+    if (song.youtube_video_id) {
+      const current = await validateYoutubeVideo(song.youtube_video_id);
+      const currentDuration = num(current?.duration_seconds, 0);
+      if (
+        current &&
+        isLyricVideoTitle(current.title) &&
+        currentDuration >= 75 &&
+        currentDuration <= 900
+      ) {
+        metadata = current;
+      }
+    }
+
+    if (!metadata) {
+      metadata = await searchYoutubeVideo(
+        text(song.song_title),
+        text(song.artist),
+        new Set(),
+        num(song.length_seconds, 0) > 75 ? num(song.length_seconds, 0) : 0,
+      );
+    }
+
+    return { song, metadata };
+  }));
+
+  const updated = [];
+  const unresolved = [];
+  const usedIds = new Set();
+
+  for (const { song, metadata } of resolutions) {
+    const duration = num(metadata?.duration_seconds, 0);
+    if (
+      !metadata ||
+      usedIds.has(metadata.video_id) ||
+      !isLyricVideoTitle(metadata.title) ||
+      duration < 75 ||
+      duration > 900
+    ) {
+      unresolved.push({
+        id: song.id,
+        song_title: song.song_title,
+        artist: song.artist,
+      });
+      continue;
+    }
+
+    usedIds.add(metadata.video_id);
+    const sourcePayload = {
+      ...(song.source_payload && typeof song.source_payload === 'object' ? song.source_payload : {}),
+      youtube_title: metadata.title,
+      youtube_duration_seconds: duration,
+      youtube_source_type: 'lyric_video',
+      requested_title: song.song_title,
+      requested_artist: song.artist,
+      refreshed_at: new Date().toISOString(),
+    };
+
+    const [row] = await sql`
+      UPDATE creapd.music_playlist_items
+      SET
+        length_seconds=${duration},
+        youtube_video_id=${metadata.video_id},
+        thumbnail_url=${metadata.thumbnail_url},
+        channel_name=${metadata.channel_name},
+        source='youtube_lyric_verified',
+        source_payload=${safeJson(sourcePayload)}::jsonb,
+        updated_at=now()
+      WHERE id=${song.id} AND owner_user_id=${ownerId}
+      RETURNING *
+    `;
+    if (row) updated.push(row);
+  }
+
+  const refreshedPlaylist = await sql`
+    SELECT * FROM creapd.music_playlist_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  const byId = new Map(refreshedPlaylist.map(song => [song.id, song]));
+  const byTitle = new Map(
+    refreshedPlaylist.map(song => [text(song.song_title).toLowerCase(), song])
+  );
+
+  const rundown = await sql`
+    SELECT * FROM creapd.music_rundown_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  let cursor = parseTimeToSeconds(config.show_start_time || '00:00');
+  for (const item of rundown) {
+    let duration = Math.max(0, num(item.duration_seconds, 0));
+
+    if (item.segment_type === 'song') {
+      const matched =
+        (item.associated_song_id ? byId.get(item.associated_song_id) : null) ||
+        byTitle.get(text(item.associated_song_title || item.title).toLowerCase());
+
+      if (matched?.length_seconds) {
+        duration = num(matched.length_seconds, duration);
+      }
+    }
+
+    const startTime = formatSecondsToTime(cursor);
+    cursor += duration;
+    const endTime = formatSecondsToTime(cursor);
+
+    await sql`
+      UPDATE creapd.music_rundown_items
+      SET
+        start_time=${startTime},
+        duration_seconds=${duration},
+        end_time=${endTime},
+        updated_at=now()
+      WHERE id=${item.id} AND owner_user_id=${ownerId}
+    `;
+  }
+
+  return {
+    updated_count: updated.length,
+    unresolved,
+    playlist: refreshedPlaylist,
+  };
+}
+
 async function fetchMusicNews(config) {
   const genres = array(config.genres, []);
   const topics = array(config.music_topics, []);
@@ -658,7 +806,8 @@ Return exactly ${candidateCount} candidates so CREAPD has enough verified option
   for (const { song, metadata } of resolved) {
     if (!metadata || usedIds.has(metadata.video_id)) continue;
     usedIds.add(metadata.video_id);
-    const actualDuration = Math.max(60, num(metadata.duration_seconds, num(song.length_seconds, 180)));
+    const actualDuration = num(metadata.duration_seconds, 0);
+    if (actualDuration < 75) continue;
     selected.push({ song, metadata, actualDuration });
     selectedRuntime += actualDuration;
 
@@ -692,6 +841,7 @@ Return exactly ${candidateCount} candidates so CREAPD has enough verified option
         ${safeJson({
           youtube_title: metadata.title,
           youtube_duration_seconds: metadata.duration_seconds,
+          youtube_source_type: 'lyric_video',
           requested_title: text(song.song_title),
           requested_artist: text(song.artist),
         })}::jsonb
