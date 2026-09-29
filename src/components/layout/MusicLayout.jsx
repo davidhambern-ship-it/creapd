@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import MobileNavDrawer from './MobileNavDrawer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
-import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 import { ShowPlaybackProvider } from '@/components/music/ShowPlaybackContext';
 import MiniShowBar from '@/components/music/MiniShowBar';
@@ -21,7 +20,6 @@ export default function MusicLayout() {
   return (
     <ShowPlaybackProvider>
       <div className="relative flex h-screen overflow-hidden flex-col env-root" style={PRODUCTION_PROFILE_THEMES.music.vars}>
-        <EnvironmentLayer profileKey="music" />
         <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
 
         <div className="flex flex-1 overflow-hidden">
