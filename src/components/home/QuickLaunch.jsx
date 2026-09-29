@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Newspaper, Church, Layers, Eye, ArrowRight, Clapperboard, Film } from 'lucide-react';
+import { Clock, Newspaper, Mic2, Layers, Eye, ArrowRight, Clapperboard, Film } from 'lucide-react';
 
 const QUICK_ACTIONS = [
   { icon: Clapperboard, label: 'Open Blank Editor', path: '/editor', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
