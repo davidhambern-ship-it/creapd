@@ -1833,8 +1833,15 @@ ${researchText || 'No current research supplied'}
 
 REJECTED SEGMENTS TO REPLACE:
 ${targets.map(target =>
-  `${target.order}. [${target.item.segment_type}] ${target.item.title || ''}${target.item.associated_topic ? ` | topic=${target.item.associated_topic}` : ''} | SOURCE=${target.source} | REQUIRED ${target.words.min}-${target.words.max} words, aim ${target.words.target}`
-).join('\n')}
+  `${target.order}. [${target.item.segment_type}] ${target.item.title || ''}${target.item.associated_topic ? ` | topic=${target.item.associated_topic}` : ''} | SOURCE=${target.source} | REQUIRED ${target.words.min}-${target.words.max} words, aim ${target.words.target}\nREJECTED COPY TO REPLACE: ${target.item.script_content || '(empty)'}`
+).join('\n\n')}
+
+STATION ID REGENERATION RULES:
+- Every station_id MUST say the exact configured host name "${config.host_name || 'Host'}".
+- If configured, it MUST also say the exact station name "${config.station_name || 'the station'}".
+- NEVER use "your host", "with your host", "our host", or "the host" instead of the actual configured host name.
+- A regenerated Station ID must be materially different from its rejected copy: use a different opening, sentence structure, and closing.
+- Do not invent slogans, frequencies, call letters, cities, or station facts that were not configured.
 
 Return one fresh repair for every listed order. Do not reuse the rejected wording. Stay inside each required word range. Current factual claims must be supported by VERIFIED RESEARCH; otherwise keep the copy evergreen.`;
 
