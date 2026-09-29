@@ -50,6 +50,7 @@ import ProductionTypes from '@/pages/ProductionTypes';
 import CreapdHome from '@/pages/CreapdHome';
 import MusicConfigure from '@/pages/MusicConfigure';
 import MusicDashboard from '@/pages/MusicDashboard';
+import RadioLive from '@/pages/RadioLive';
 import EmbedDemo from '@/pages/EmbedDemo';
 import MusicResearch from '@/pages/MusicResearch';
 import MusicPlaylist from '@/pages/MusicPlaylist';
@@ -217,6 +218,9 @@ const AuthenticatedApp = () => {
 
         {/* CREAPD Live — standalone show execution cockpit */}
         <Route path="/talk/live" element={<TalkLive />} />
+
+        {/* Radio Studio — full-screen live production workspace */}
+        <Route path="/music/live" element={<RadioLive />} />
 
         {/* Music Production */}
         <Route element={<MusicLayout />}>
