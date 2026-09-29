@@ -20,6 +20,7 @@ function hasVerifiedLyricMetadata(track) {
   const payload = parseSourcePayload(track?.source_payload);
   const youtubeTitle = String(payload.youtube_title || '');
   const lyricSource =
+    track?.source === 'youtube_lyric_verified' ||
     payload.youtube_source_type === 'lyric_video' ||
     /\blyric(?:s)?\b/i.test(youtubeTitle);
 
