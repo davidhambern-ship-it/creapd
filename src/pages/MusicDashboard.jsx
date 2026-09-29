@@ -19,6 +19,11 @@ import {
   Calendar, Radio, ArrowRight, Building2, Disc3, Headphones
 } from 'lucide-react';
 
+function safeParse(str, fallback) {
+  if (!str) return fallback;
+  try { return JSON.parse(str); } catch { return fallback; }
+}
+
 function MetricCard({ label, value, accent, icon: Icon, delay }) {
   const isPink = accent === 'pink';
   const isCyan = accent === 'cyan';
