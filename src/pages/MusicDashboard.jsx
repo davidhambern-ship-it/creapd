@@ -175,6 +175,8 @@ export default function MusicDashboard() {
   const { config, playlist, topics, research, rundown, assets, loading, refresh } = useMusicProduction();
   const [refreshing, setRefreshing] = useState(false);
   const [detailDept, setDetailDept] = useState(null);
+  const [reviewingId, setReviewingId] = useState(null);
+  const [regeneratingRejected, setRegeneratingRejected] = useState(false);
 
   const {
     pipeline, loading: pipelineLoading, actionLoading: deptActionLoading,
@@ -220,6 +222,48 @@ export default function MusicDashboard() {
       await refresh();
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleReviewTrack = async (track, status) => {
+    if (!track?.id || reviewingId) return;
+    setReviewingId(track.id);
+    try {
+      await base44.entities.PlaylistItem.update(track.id, { status });
+      await refresh();
+    } catch (err) {
+      console.error('Track review update failed:', err);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleReviewSegment = async (segment, status) => {
+    if (!segment?.id || reviewingId || segment.segment_type === 'song') return;
+    setReviewingId(segment.id);
+    try {
+      await base44.entities.ShowRundownItem.update(segment.id, { status });
+      await refresh();
+    } catch (err) {
+      console.error('Segment review update failed:', err);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleRegenerateRejected = async (kind = 'all') => {
+    if (!config?.id || regeneratingRejected) return;
+    setRegeneratingRejected(true);
+    try {
+      await base44.functions.invoke('regenerateRejectedMusic', {
+        configuration_id: config.id,
+        kind,
+      });
+      await refresh();
+    } catch (err) {
+      console.error('Rejected Radio material regeneration failed:', err);
+    } finally {
+      setRegeneratingRejected(false);
     }
   };
 
@@ -326,6 +370,11 @@ export default function MusicDashboard() {
           assets={assets}
           pipeline={pipeline}
           readinessPercent={readinessPercent}
+          reviewingId={reviewingId}
+          regeneratingRejected={regeneratingRejected}
+          onReviewTrack={handleReviewTrack}
+          onReviewSegment={handleReviewSegment}
+          onRegenerateRejected={handleRegenerateRejected}
         />
 
         {/* Show controls */}
