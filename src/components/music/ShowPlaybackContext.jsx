@@ -57,21 +57,16 @@ export function ShowPlaybackProvider({ children }) {
     return playlist.find(p => (p.song_title || '').toLowerCase().trim() === titleKey) || null;
   }, [showDataVersion]);
 
+  // The final rundown is the authoritative host script. Song intro/outro assets may
+  // still exist for legacy/export purposes, but they must never override the contextual
+  // script written as part of the continuous rundown.
   const getSongIntroScript = useCallback((item) => {
-    const { assets = [] } = getData();
-    const track = findSongTrack(item);
-    const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
-    const intro = assets.find(a => a.asset_type === 'song_intro' && (a.associated_song_title || '').toLowerCase().trim() === titleKey);
-    return intro?.content || item.script_content || '';
-  }, [findSongTrack, showDataVersion]);
+    return item.script_content || '';
+  }, [showDataVersion]);
 
-  const getSongOutroScript = useCallback((item) => {
-    const { assets = [] } = getData();
-    const track = findSongTrack(item);
-    const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
-    const outro = assets.find(a => a.asset_type === 'song_outro' && (a.associated_song_title || '').toLowerCase().trim() === titleKey);
-    return outro?.content || '';
-  }, [findSongTrack, showDataVersion]);
+  const getSongOutroScript = useCallback(() => {
+    return '';
+  }, [showDataVersion]);
 
   const getScriptForItem = useCallback((item) => {
     const { topics = [] } = getData();
