@@ -870,6 +870,15 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result?.result || result };
         }
 
+        if (shouldUseNeonAuth() && functionName === 'regenerateRejectedMusic') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_regenerate_rejected',
+            configuration_id: payload?.configuration_id,
+            kind: payload?.kind || 'all',
+          });
+          return { data: result?.result || result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'generateMusicTop10') {
           const result = await creapdApi.post('/production/core', {
             action: 'music_generate_top10',
