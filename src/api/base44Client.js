@@ -882,7 +882,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           const result = await creapdApi.post('/production/core', {
             action: 'music_fetch_youtube_metadata',
             url: payload?.url,
-            require_lyrics: payload?.require_lyrics === true,
+            require_radio_safe: payload?.require_radio_safe === true,
           });
           return { data: result };
         }
