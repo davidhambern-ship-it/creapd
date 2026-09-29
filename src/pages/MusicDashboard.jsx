@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useProductionDepartments } from '@/hooks/useProductionDepartments';
@@ -171,6 +171,7 @@ function ReadinessRing({ percent, done, total }) {
 }
 
 export default function MusicDashboard() {
+  const location = useLocation();
   const { config, playlist, topics, research, rundown, assets, loading, refresh } = useMusicProduction();
   const [detailDept, setDetailDept] = useState(null);
   const [reviewingId, setReviewingId] = useState(null);
@@ -207,6 +208,16 @@ export default function MusicDashboard() {
       .then(() => refresh())
       .catch(error => console.error('Radio review-state migration failed:', error));
   }, [config?.id, config?.status, playlist, rundown, refresh]);
+
+  // Radio dashboard hash target: workflow nav can jump here from any Radio page.
+  useEffect(() => {
+    if (!location.hash || loading) return undefined;
+    const targetId = location.hash.slice(1);
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [location.hash, loading, config?.id]);
 
   const handleReviewTrack = async (track, status) => {
     if (!track?.id || reviewingId) return;
@@ -385,7 +396,12 @@ export default function MusicDashboard() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav
+          config={config}
+          rejectedCount={rejectedCount}
+          reviewApproved={approvedTrackCount + approvedScriptCount}
+          reviewTotal={playlist.length + spokenSegments.length}
+        />
 
         <RadioDashboardOverview
           config={config}
