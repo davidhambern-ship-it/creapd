@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
+import { base44 } from '@/api/base44Client';
 import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
 import { Button } from '@/components/ui/button';
 import { SEGMENT_TYPE_LABELS, formatRuntime } from '@/lib/musicConstants';
@@ -42,6 +43,28 @@ function segmentLabel(segment) {
 
 function trackKey(track) {
   return track?.id || `${track?.song_title || ''}::${track?.artist || ''}`;
+}
+
+function parseSourcePayload(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {}
+  }
+  return {};
+}
+
+function hasVerifiedLyricMetadata(track) {
+  const duration = Number(track?.length_seconds || 0);
+  const payload = parseSourcePayload(track?.source_payload);
+  const youtubeTitle = String(payload.youtube_title || '');
+  const lyricSource =
+    payload.youtube_source_type === 'lyric_video' ||
+    /\blyric(?:s)?\b/i.test(youtubeTitle);
+
+  return Boolean(track?.youtube_video_id) && duration >= 75 && lyricSource;
 }
 
 function useDualYouTubeDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }) {
@@ -372,7 +395,9 @@ function useDjFx() {
 export default function RadioLive() {
   const [searchParams] = useSearchParams();
   const configId = searchParams.get('config_id') || undefined;
-  const { config, playlist, rundown, loading, error } = useMusicProduction(configId);
+  const { config, playlist, rundown, loading, error, refresh } = useMusicProduction(configId);
+  const [metadataRepairing, setMetadataRepairing] = useState(false);
+  const metadataRepairStartedRef = useRef(null);
 
   const sortedPlaylist = useMemo(
     () => [...(playlist || [])].sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
@@ -382,6 +407,27 @@ export default function RadioLive() {
     () => [...(rundown || [])].sort((a, b) => Number(a.order || 0) - Number(b.order || 0)),
     [rundown],
   );
+
+  useEffect(() => {
+    if (!config?.id || !sortedPlaylist.length) return;
+    if (metadataRepairStartedRef.current === config.id) return;
+
+    const needsRepair = sortedPlaylist.some(track => !hasVerifiedLyricMetadata(track));
+    if (!needsRepair) return;
+
+    metadataRepairStartedRef.current = config.id;
+    setMetadataRepairing(true);
+
+    base44.functions.invoke('refreshMusicYoutubeMetadata', {
+      configuration_id: config.id,
+    })
+      .then(() => refresh())
+      .catch(error => {
+        console.error('Radio YouTube metadata repair failed:', error);
+        metadataRepairStartedRef.current = null;
+      })
+      .finally(() => setMetadataRepairing(false));
+  }, [config?.id, sortedPlaylist, refresh]);
 
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [teleprompterSize, setTeleprompterSize] = useState(24);
