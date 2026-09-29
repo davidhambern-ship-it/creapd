@@ -125,7 +125,7 @@ export default function RundownSongPlayer({ videoId, title, channelName, thumbna
                 className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
               >
                 <FileText className="w-3.5 h-3.5" style={{ color }} />
-                <span style={{ color }}>Intro Script</span>
+                <span style={{ color }}>Host Script</span>
                 <span className="text-gray-600">·</span>
                 <span>{calcWordCount(intro)} words</span>
                 <span className="text-gray-600">·</span>
