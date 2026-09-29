@@ -549,6 +549,44 @@ async function resolveMusicConfigurationForUpdate(sql, ownerUserId, ownerEmail, 
   return null;
 }
 
+async function syncMusicReviewStatus(sql, ownerUserId, configurationId) {
+  const ownerId = String(ownerUserId);
+  const configId = clean(configurationId);
+  if (!configId) return 'in_review';
+
+  const [playlistCounts] = await sql`
+    SELECT
+      count(*)::int AS total,
+      count(*) FILTER (WHERE lower(status) IN ('approved','locked'))::int AS approved
+    FROM creapd.music_playlist_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+  `;
+
+  const [segmentCounts] = await sql`
+    SELECT
+      count(*)::int AS total,
+      count(*) FILTER (WHERE lower(status) IN ('approved','locked'))::int AS approved
+    FROM creapd.music_rundown_items
+    WHERE configuration_id=${configId}
+      AND owner_user_id=${ownerId}
+      AND lower(segment_type) <> 'song'
+  `;
+
+  const total = number(playlistCounts?.total, 0) + number(segmentCounts?.total, 0);
+  const approved = number(playlistCounts?.approved, 0) + number(segmentCounts?.approved, 0);
+  const nextStatus = total > 0 && approved === total ? 'approved' : 'in_review';
+
+  await sql`
+    UPDATE creapd.music_production_configurations
+    SET status=${nextStatus}, updated_at=now()
+    WHERE id=${configId}
+      AND owner_user_id=${ownerId}
+      AND status NOT IN ('building','refreshing','planning')
+  `;
+
+  return nextStatus;
+}
+
 async function entityUpdate(sql, ownerUserId, entity, id, patch, ownerEmail) {
   if (entity === 'MusicProductionConfiguration') {
     const existing = await resolveMusicConfigurationForUpdate(sql, ownerUserId, ownerEmail, id, patch);
@@ -560,10 +598,18 @@ async function entityUpdate(sql, ownerUserId, entity, id, patch, ownerEmail) {
       input: { ...existing, ...patch, id: existing.id },
     });
   }
-  if (entity === 'PlaylistItem') return updatePlaylistItem(sql, ownerUserId, id, patch);
+  if (entity === 'PlaylistItem') {
+    const row = await updatePlaylistItem(sql, ownerUserId, id, patch);
+    await syncMusicReviewStatus(sql, ownerUserId, row.configuration_id);
+    return row;
+  }
   if (entity === 'MusicTopic') return updateTopic(sql, ownerUserId, id, patch);
   if (entity === 'MusicResearchItem') return updateResearch(sql, ownerUserId, id, patch);
-  if (entity === 'ShowRundownItem') return updateRundownItem(sql, ownerUserId, id, patch);
+  if (entity === 'ShowRundownItem') {
+    const row = await updateRundownItem(sql, ownerUserId, id, patch);
+    await syncMusicReviewStatus(sql, ownerUserId, row.configuration_id);
+    return row;
+  }
   if (entity === 'MusicAsset') return updateAsset(sql, ownerUserId, id, patch);
   if (entity === 'Top10Item') return updateTop10Item(sql, ownerUserId, id, patch);
   throw fail(`Update not supported for ${entity}`, 'MUSIC_ENTITY_UPDATE_UNSUPPORTED');
@@ -609,7 +655,7 @@ function pipelineFromConfig(config) {
     blueprint_status: stageState(['playlist','topics']),
     production_status: stageState(['assets','top10']),
     assembly_status: stageState(['rundown']),
-    pipeline_status: config.status === 'ready' ? 'completed' : config.status === 'failed' ? 'failed' : 'in_progress',
+    pipeline_status: ['ready','in_review','approved'].includes(config.status) ? 'completed' : config.status === 'failed' ? 'failed' : 'in_progress',
   };
   const statuses = ['discovery','knowledge','blueprint','production','assembly'].map(k => pipeline[`${k}_status`]);
   pipeline.pipeline_progress = Math.round((statuses.filter(s => s === 'approved' || s === 'skipped').length / statuses.length) * 100);
