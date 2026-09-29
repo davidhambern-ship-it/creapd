@@ -14,7 +14,9 @@
       "type": "string",
       "enum": [
         "intro",
+        "song_intro",
         "song",
+        "song_outro",
         "talk_break",
         "topic_segment",
         "artist_bio",
