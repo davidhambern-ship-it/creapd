@@ -14,7 +14,7 @@ const QUICK_ACTIONS = [
   { label: 'Research', message: 'Set up a research production', icon: FlaskConical },
 ];
 
-const SETUP_CONTEXT = '[SHOW SETUP — The producer is building a new show profile. Help them configure it conversationally. Infer the production domain from their description, ask for show name and host if not provided, create the ShowProfile and a matching ProductionModule when you have enough info. Use sensible defaults for anything not specified.]\n';
+const SETUP_CONTEXT = '[SHOW SETUP — The producer is building a new show profile. LIVE RELEASE CONSTRAINT: only News, Music, Talk, and Research production profiles are currently available. Sports, Cooking, Beauty/Cosmo, and Spiritual are Under Construction; do not create or route users into those profiles. If requested, explain that the profile is temporarily under construction and invite them to use one of the four available profiles. For an available profile, help them configure it conversationally. Infer the production domain from their description, ask for show name and host if not provided, create the ShowProfile and a matching ProductionModule when you have enough info. Use sensible defaults for anything not specified.]\n';
 
 export default function ShowSetupChat({ open, onClose, onCreated }) {
   const [conversation, setConversation] = useState(null);
