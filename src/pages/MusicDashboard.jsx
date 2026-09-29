@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useProductionDepartments } from '@/hooks/useProductionDepartments';
@@ -10,19 +10,19 @@ import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
 import MusicShowArchive from '@/components/music/MusicShowArchive';
-import RegenerateDropdown from '@/components/music/RegenerateDropdown';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import RadioDashboardOverview from '@/components/music/RadioDashboardOverview';
 import {
-  Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
+  Music, Mic, Sparkles,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
-  Calendar, Radio, ArrowRight, Building2, Disc3, Headphones
+  Calendar, ArrowRight, Building2, Disc3, Headphones
 } from 'lucide-react';
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function safeParse(value, fallback) {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'object') return value;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function MetricCard({ label, value, accent, icon: Icon, delay }) {
@@ -171,9 +171,7 @@ function ReadinessRing({ percent, done, total }) {
 }
 
 export default function MusicDashboard() {
-  const navigate = useNavigate();
   const { config, playlist, topics, research, rundown, assets, loading, refresh } = useMusicProduction();
-  const [refreshing, setRefreshing] = useState(false);
   const [detailDept, setDetailDept] = useState(null);
   const [reviewingId, setReviewingId] = useState(null);
   const [regeneratingRejected, setRegeneratingRejected] = useState(false);
@@ -209,38 +207,6 @@ export default function MusicDashboard() {
       .then(() => refresh())
       .catch(error => console.error('Radio review-state migration failed:', error));
   }, [config?.id, config?.status, playlist, rundown, refresh]);
-
-  const handleRefresh = async () => {
-    if (!config?.id) return;
-    if (config.status === 'building' || refreshing) return;
-    setRefreshing(true);
-    try {
-      await base44.entities.MusicProductionConfiguration.update(config.id, { status: 'building' });
-      base44.functions.invoke('buildMusicProduction', { configuration_id: config.id })
-        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
-    } catch (err) {
-      console.error(err);
-      setRefreshing(false);
-    }
-  };
-
-  const handleRegenerateSection = async (section) => {
-    if (!config?.id) return;
-    setRefreshing(true);
-    try {
-      await base44.functions.invoke('regenerateMusicSection', {
-        configuration_id: config.id,
-        section
-      });
-      await refresh();
-    } catch (err) {
-      console.error('Section regeneration failed:', err.message);
-      // Still refresh to show current state
-      await refresh();
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   const handleReviewTrack = async (track, status) => {
     if (!track?.id || reviewingId) return;
@@ -322,13 +288,13 @@ export default function MusicDashboard() {
     );
   }
 
-  if (config.status === 'building' || refreshing) {
+  if (['planning', 'building', 'refreshing'].includes(config.status)) {
     return (
       <DiscoveryBreakRoom
         mode="production"
         buildError=""
         configId={config.id}
-        onComplete={() => { setRefreshing(false); refresh(); }}
+        onComplete={() => refresh()}
       />
     );
   }
@@ -336,41 +302,83 @@ export default function MusicDashboard() {
   const genres = safeParse(config.genres, []);
   const moods = safeParse(config.moods, []);
 
-  const playlistRuntime = playlist.reduce((sum, s) => sum + (s.length_seconds || 0), 0);
-  const requiredMusicSeconds = (config.required_music_runtime || 0) * 60;
-  const remainingSeconds = requiredMusicSeconds - playlistRuntime;
-  const overageSeconds = playlistRuntime - requiredMusicSeconds;
+  const playlistRuntime = playlist.reduce((sum, s) => sum + Number(s.length_seconds || 0), 0);
+  const spokenSegments = rundown.filter(item => item.segment_type !== 'song');
+  const approvedStatus = item => ['approved', 'locked'].includes(String(item?.status || '').toLowerCase());
+  const rejectedStatus = item => String(item?.status || '').toLowerCase() === 'rejected';
 
-  const playlistStatus = playlist.length === 0 ? 'Not Generated' :
-    remainingSeconds > 60 ? 'Runtime Short' :
-    overageSeconds > 60 ? 'Runtime Over' :
-    'Runtime Matched';
-  const playlistMatched = playlistStatus === 'Runtime Matched';
+  const verifiedTrackCount = playlist.filter(track => {
+    const payload = safeParse(track.source_payload, {});
+    const sourceType = String(payload?.youtube_source_type || '');
+    const sourceVerified =
+      track.source === 'youtube_radio_verified' ||
+      track.source === 'youtube_lyric_verified' ||
+      ['lyric_video', 'visualizer', 'audio_track'].includes(sourceType);
+    return Boolean(track.youtube_video_id) && Number(track.length_seconds || 0) >= 75 && sourceVerified;
+  }).length;
+
+  const approvedTrackCount = playlist.filter(approvedStatus).length;
+  const scriptedSegmentCount = spokenSegments.filter(item => String(item.script_content || '').trim()).length;
+  const approvedScriptCount = spokenSegments.filter(approvedStatus).length;
+  const rejectedCount =
+    playlist.filter(rejectedStatus).length +
+    spokenSegments.filter(rejectedStatus).length;
 
   const checklist = [
-    { label: 'Configuration Saved', done: !!config.production_name },
-    { label: 'Playlist Generated', done: playlist.length > 0 },
-    { label: 'Playlist Runtime Checked', done: playlist.length > 0 && Math.abs(remainingSeconds) < 120 },
-    { label: 'Music Topics Generated', done: topics.length > 0 },
-    { label: 'Song Intros Generated', done: assets.some(a => a.asset_type === 'song_intro') },
-    { label: 'Artist Facts Generated', done: assets.some(a => a.asset_type === 'artist_fact') },
-    { label: 'Show Rundown Generated', done: rundown.length > 0 },
-    { label: 'Social Captions Generated', done: assets.some(a => a.asset_type === 'social_caption') },
-    { label: 'Thumbnail Prompt Generated', done: assets.some(a => a.asset_type === 'thumbnail_prompt') },
-    { label: 'Production Notes Generated', done: assets.some(a => a.asset_type === 'production_notes') },
+    {
+      label: 'Configuration Saved',
+      done: Boolean(config.production_name),
+      detail: config.production_name || 'Missing show configuration',
+    },
+    {
+      label: 'Playlist Generated',
+      done: playlist.length > 0,
+      detail: `${playlist.length} track${playlist.length === 1 ? '' : 's'} · ${formatRuntime(playlistRuntime)}`,
+    },
+    {
+      label: 'Track Metadata Verified',
+      done: playlist.length > 0 && verifiedTrackCount === playlist.length,
+      detail: `${verifiedTrackCount}/${playlist.length} verified`,
+    },
+    {
+      label: 'Tracks Reviewed',
+      done: playlist.length > 0 && approvedTrackCount === playlist.length,
+      detail: `${approvedTrackCount}/${playlist.length} approved`,
+    },
+    {
+      label: 'Show Rundown Generated',
+      done: rundown.length > 0,
+      detail: `${rundown.length} segment${rundown.length === 1 ? '' : 's'}`,
+    },
+    {
+      label: 'Scripts Generated',
+      done: spokenSegments.length > 0 && scriptedSegmentCount === spokenSegments.length,
+      detail: `${scriptedSegmentCount}/${spokenSegments.length} scripted`,
+    },
+    {
+      label: 'Scripts Reviewed',
+      done: spokenSegments.length > 0 && approvedScriptCount === spokenSegments.length,
+      detail: `${approvedScriptCount}/${spokenSegments.length} approved`,
+    },
+    {
+      label: 'Rejected Pile Clear',
+      done: rejectedCount === 0,
+      detail: rejectedCount === 0 ? 'No rejected material waiting' : `${rejectedCount} rejected item${rejectedCount === 1 ? '' : 's'}`,
+    },
+    {
+      label: 'Show Approved',
+      done: config.status === 'approved',
+      detail: String(config.status || 'unknown').replaceAll('_', ' ').toUpperCase(),
+    },
+    {
+      label: 'Radio Studio Unlocked',
+      done: config.status === 'approved',
+      detail: config.status === 'approved' ? 'Ready to enter Studio' : 'Complete review to unlock',
+    },
   ];
 
-  const checklistDone = checklist.filter(c => c.done).length;
+  const checklistDone = checklist.filter(item => item.done).length;
   const readinessPercent = Math.round((checklistDone / checklist.length) * 100);
-
-  const QUICK_ACTIONS = [
-    { label: 'Radio Studio', icon: Radio, path: `/music/live?config_id=${config.id}`, accent: 'pink' },
-    { label: 'Playlist', icon: ListMusic, path: '/music/playlist', accent: 'pink' },
-    { label: 'Topics', icon: Mic, path: '/music/topics', accent: 'cyan' },
-    { label: 'Rundown', icon: ClipboardList, path: '/music/rundown', accent: 'pink' },
-    { label: 'AI Assets', icon: Sparkles, path: '/music/assets', accent: 'cyan' },
-    { label: 'Export', icon: Download, path: '/music/export', accent: 'pink' },
-  ];
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -393,27 +401,6 @@ export default function MusicDashboard() {
           onReviewSegment={handleReviewSegment}
           onRegenerateRejected={handleRegenerateRejected}
         />
-
-        {/* Show controls */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <RegenerateDropdown onRegenerate={handleRegenerateSection} disabled={refreshing} />
-          <Button size="sm" variant="outline" onClick={handleRefresh}
-            className="border-[#00FFFF]/40 hover:border-[#00FFFF]/70 hover:bg-[#00FFFF]/10 text-white">
-            <RefreshCw className="w-4 h-4 mr-1.5" style={{ color: '#00FFFF' }} /> Full Rebuild
-          </Button>
-          {QUICK_ACTIONS.map((qa, i) => {
-            const color = qa.accent === 'pink' ? '#FF00FF' : '#00FFFF';
-            return (
-              <Button key={i} size="sm" variant="outline" asChild
-                className="border-white/10 hover:bg-white/5 transition-all"
-              >
-                <Link to={qa.path}>
-                  <qa.icon className="w-4 h-4 mr-1.5" style={{ color }} /> {qa.label}
-                </Link>
-              </Button>
-            );
-          })}
-        </div>
 
         {/* Production status / departments */}
         <DepartmentWorkflowBar
@@ -516,7 +503,7 @@ export default function MusicDashboard() {
               {checklist.map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2.5 text-sm py-2 px-3 rounded-lg"
+                  className="flex items-center gap-2.5 text-sm py-2.5 px-3 rounded-lg min-w-0"
                   style={item.done
                     ? { background: 'rgba(0,255,255,0.05)' }
                     : { background: 'rgba(255,255,255,0.02)' }
@@ -526,7 +513,12 @@ export default function MusicDashboard() {
                     ? <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: '#00FFFF' }} />
                     : <div className="w-4 h-4 rounded-full border-2 border-gray-600 shrink-0" />
                   }
-                  <span className={item.done ? 'text-white' : 'text-gray-500'}>{item.label}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className={item.done ? 'text-white' : 'text-gray-500'}>{item.label}</span>
+                    <p className={`text-[10px] mt-0.5 truncate ${item.done ? 'text-cyan-200/45' : 'text-gray-600'}`}>
+                      {item.detail}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
