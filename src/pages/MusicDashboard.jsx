@@ -9,49 +9,15 @@ import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } 
 import DepartmentWorkflowBar from '@/components/production/DepartmentWorkflowBar';
 import DepartmentDetailPanel from '@/components/production/DepartmentDetailPanel';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 import MusicShowArchive from '@/components/music/MusicShowArchive';
 import RegenerateDropdown from '@/components/music/RegenerateDropdown';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
+import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
   Calendar, Radio, ArrowRight, Building2, Disc3, Headphones
 } from 'lucide-react';
-
-const CP_BG = 'https://media.base44.com/images/public/6a4126962e5804304cc84b12/97fafc255_generated_image.png';
-
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
-}
-
-function CyberpunkBackground() {
-  return (
-    <>
-      <div
-        className="absolute inset-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${CP_BG})` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80 pointer-events-none" />
-      <div className="absolute inset-0 cp-grid-floor pointer-events-none" />
-      {/* Floating equalizer bars */}
-      <div className="absolute bottom-8 right-8 flex items-end gap-1 h-16 pointer-events-none opacity-30">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="cp-eq-bar w-1.5 rounded-t"
-            style={{
-              animationDelay: `${i * 0.1}s`,
-              background: i % 2 === 0 ? '#FF00FF' : '#00FFFF',
-              boxShadow: `0 0 8px ${i % 2 === 0 ? '#FF00FF' : '#00FFFF'}`,
-            }}
-          />
-        ))}
-      </div>
-    </>
-  );
-}
 
 function MetricCard({ label, value, accent, icon: Icon, delay }) {
   const isPink = accent === 'pink';
@@ -254,7 +220,7 @@ export default function MusicDashboard() {
   if (loading) {
     return (
       <div className="relative flex items-center justify-center h-screen overflow-hidden bg-black">
-        <CyberpunkBackground />
+        <CyberpunkMusicBg variant="eq" />
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
@@ -268,7 +234,7 @@ export default function MusicDashboard() {
   if (!config) {
     return (
       <div className="relative flex items-center justify-center h-screen p-6 overflow-hidden bg-black">
-        <CyberpunkBackground />
+        <CyberpunkMusicBg variant="eq" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -341,7 +307,7 @@ export default function MusicDashboard() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
-      <CyberpunkBackground />
+      <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
         <MusicDiscoveryNav />
@@ -705,7 +671,6 @@ export default function MusicDashboard() {
             </div>
           </div>
         </motion.div>
-      <PPNavBar />
       </div>
 
       {/* Department Detail Panel */}
