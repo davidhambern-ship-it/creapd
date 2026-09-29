@@ -37,6 +37,7 @@ export function useMusicProduction(configId) {
   const [rundown, setRundown] = useState([]);
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [contentLoading, setContentLoading] = useState(true);
   const [error, setError] = useState(null);
   const [metadataRepairing, setMetadataRepairing] = useState(false);
 
@@ -51,6 +52,7 @@ export function useMusicProduction(configId) {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
+    setContentLoading(true);
     setError(null);
 
     try {
@@ -72,6 +74,9 @@ export function useMusicProduction(configId) {
         activeConfig = await base44.entities.MusicProductionConfiguration.get(activeId);
       }
       setConfig(activeConfig);
+      // Let the page shell render as soon as the show configuration is known.
+      // Playlist/topics/research/rundown/assets hydrate in parallel afterward.
+      setLoading(false);
 
       const results = await Promise.allSettled([
         base44.entities.PlaylistItem.filter({ configuration_id: activeId }, 'order'),
@@ -102,6 +107,7 @@ export function useMusicProduction(configId) {
       setError(err);
     } finally {
       setLoading(false);
+      setContentLoading(false);
     }
   }, [configId, clearProduction]);
 
@@ -119,30 +125,54 @@ export function useMusicProduction(configId) {
 
   useEffect(() => {
     const configurationId = config?.id;
-    if (!configurationId || !playlist.length) return;
-    if (metadataRepairStarted.has(configurationId)) return;
-    if (!playlist.some(track => !hasVerifiedRadioMetadata(track))) return;
+    if (!configurationId || contentLoading || !playlist.length) return undefined;
+    if (metadataRepairStarted.has(configurationId)) return undefined;
+    if (!playlist.some(track => !hasVerifiedRadioMetadata(track))) return undefined;
 
-    metadataRepairStarted.add(configurationId);
-    setMetadataRepairing(true);
+    let cancelled = false;
+    let idleId = null;
+    let timerId = null;
 
-    base44.functions.invoke('refreshMusicYoutubeMetadata', {
-      configuration_id: configurationId,
-    })
-      .then(async () => {
-        const [updatedPlaylist, updatedRundown] = await Promise.all([
-          base44.entities.PlaylistItem.filter({ configuration_id: configurationId }, 'order'),
-          base44.entities.ShowRundownItem.filter({ configuration_id: configurationId }, 'order'),
-        ]);
-        setPlaylist(updatedPlaylist || []);
-        setRundown(updatedRundown || []);
+    const runRepair = () => {
+      if (cancelled || metadataRepairStarted.has(configurationId)) return;
+      metadataRepairStarted.add(configurationId);
+      setMetadataRepairing(true);
+
+      base44.functions.invoke('refreshMusicYoutubeMetadata', {
+        configuration_id: configurationId,
       })
-      .catch(error => {
-        metadataRepairStarted.delete(configurationId);
-        console.error('Radio YouTube metadata repair failed:', error);
-      })
-      .finally(() => setMetadataRepairing(false));
-  }, [config?.id, playlist]);
+        .then(async () => {
+          if (cancelled) return;
+          const [updatedPlaylist, updatedRundown] = await Promise.all([
+            base44.entities.PlaylistItem.filter({ configuration_id: configurationId }, 'order'),
+            base44.entities.ShowRundownItem.filter({ configuration_id: configurationId }, 'order'),
+          ]);
+          if (!cancelled) {
+            setPlaylist(updatedPlaylist || []);
+            setRundown(updatedRundown || []);
+          }
+        })
+        .catch(error => {
+          metadataRepairStarted.delete(configurationId);
+          console.error('Radio YouTube metadata repair failed:', error);
+        })
+        .finally(() => {
+          if (!cancelled) setMetadataRepairing(false);
+        });
+    };
 
-  return { config, playlist, topics, research, rundown, assets, loading, error, metadataRepairing, refresh: loadAll };
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(runRepair, { timeout: 4000 });
+    } else {
+      timerId = window.setTimeout(runRepair, 2500);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && 'cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [config?.id, playlist, contentLoading]);
+
+  return { config, playlist, topics, research, rundown, assets, loading, contentLoading, error, metadataRepairing, refresh: loadAll };
 }
