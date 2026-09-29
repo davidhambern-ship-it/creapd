@@ -1827,6 +1827,7 @@ Return real song_title + artist pairs only. Do not invent titles, artists, colla
     const trackText = changed
       .map((item, i) => `${i + 1}. ${item.song_title} — ${item.artist}`)
       .join('\n');
+    const songCopyOverride = producerInstructionBlock(config, ['song_copy']);
 
     const assetPrompt = `You are writing replacement on-air song assets for a CREAPD radio show.
 
@@ -1835,7 +1836,7 @@ Description / premise: ${config.show_description || 'Not supplied'}
 Host: ${config.host_name || 'Host'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
-
+${songCopyOverride}
 REPLACEMENT TRACKS:
 ${trackText}
 
@@ -1926,7 +1927,7 @@ Host: ${config.host_name || 'Host'}
 Co-host: ${config.co_host_name || 'None'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
 TOPIC MATERIAL:
 ${topicText || 'No topic material'}
 
