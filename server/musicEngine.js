@@ -1109,6 +1109,8 @@ SOURCE RULES:
 - song_intro and song_outro MUST name an exact playlist song in associated_song_title. Build the copy from that exact song title + artist and only use factual artist/current-event claims when supported by the supplied verified research. Never invent chart positions, release facts, awards, quotes, or biography details.
 - host_banter comes from the show's description/premise, editorial focus, tone, and playlist context.
 - station_id comes only from the configured station/show/host identity.
+- Every station_id asset MUST say the exact configured host name "${config.host_name || 'Host'}" and, when supplied, the exact station name "${config.station_name || 'the station'}".
+- Never substitute "your host", "with your host", "our host", or "the host" for the configured host name.
 - sponsor_read is placeholder copy unless sponsor information is explicitly present in the show instructions.
 - topic/current-event copy must stay grounded in TOPICS and VERIFIED RSS RESEARCH SUMMARIES.
 
@@ -1116,16 +1118,28 @@ Aim for 12-20 concise assets total.`;
   const result = await structured(prompt, ASSETS_SCHEMA, 'creapd_music_assets_v1', 7000);
   const rawAssets = array(result?.data?.assets, []).slice(0, 24);
   const rows = [];
+  const usedStationAssetCopy = [];
   for (const asset of rawAssets) {
     const type = text(asset.asset_type, 'host_banter');
     if (!VALID_ASSET_TYPES.has(type)) continue;
+    let assetContent = text(asset.content);
+    if (type === 'station_id') {
+      if (!stationIdIsValid(assetContent, config, '', usedStationAssetCopy)) {
+        assetContent = await generateStationIdReplacement({
+          config,
+          previousScript: assetContent,
+          avoidScripts: usedStationAssetCopy,
+        });
+      }
+      usedStationAssetCopy.push(assetContent);
+    }
     const [row] = await sql`
       INSERT INTO creapd.music_assets (
         id, configuration_id, owner_user_id, asset_type, title, content,
         associated_song_title, associated_topic, status
       ) VALUES (
         ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${type},
-        ${text(asset.title, type.replaceAll('_', ' '))}, ${text(asset.content)},
+        ${text(asset.title, type.replaceAll('_', ' '))}, ${assetContent},
         ${text(asset.associated_song_title) || null}, ${text(asset.associated_topic) || null}, 'ready'
       ) RETURNING *
     `;
