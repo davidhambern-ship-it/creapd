@@ -562,7 +562,7 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expect
   return null;
 }
 
-export async function fetchYoutubeMetadata(url) {
+export async function fetchYoutubeMetadata(url, options = {}) {
   const videoId = extractVideoId(url);
   if (!videoId) {
     const error = new Error('Could not extract a valid YouTube video ID from the provided URL');
@@ -577,6 +577,23 @@ export async function fetchYoutubeMetadata(url) {
     error.status = 404;
     throw error;
   }
+
+  if (options.requireLyrics === true) {
+    const duration = num(metadata.duration_seconds, 0);
+    if (!isLyricVideoTitle(metadata.title)) {
+      const error = new Error('Radio playlists only accept YouTube lyric videos.');
+      error.code = 'RADIO_LYRIC_VIDEO_REQUIRED';
+      error.status = 400;
+      throw error;
+    }
+    if (duration < 75 || duration > 900) {
+      const error = new Error('Could not verify a full-song duration for this lyric video.');
+      error.code = 'RADIO_LYRIC_DURATION_REQUIRED';
+      error.status = 400;
+      throw error;
+    }
+  }
+
   return metadata;
 }
 
