@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Calendar, Clock, Radio, Mic2, ListMusic, ClipboardList, CheckCircle2,
-  Settings, Play, FileText, Check, X, RotateCcw, RefreshCw, Loader2, ArchiveX, LockKeyhole
+  Settings, Play, FileText, Check, X, RotateCcw, RefreshCw, Loader2, ArchiveX, LockKeyhole, Maximize2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, SEGMENT_TYPE_LABELS, SEGMENT_COLORS } from '@/lib/musicConstants';
@@ -77,6 +77,114 @@ function ReviewButtons({ item, onReview, reviewingId, compact = false }) {
         {!compact && 'REJECT'}
       </button>
     </div>
+  );
+}
+
+function ScriptReviewModal({
+  item,
+  source,
+  reviewingId,
+  onReview,
+  onClose,
+}) {
+  if (!item) return null;
+  const busy = reviewingId === item.id;
+  const state = reviewState(item.status);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 12 }}
+        className="w-full max-w-4xl max-h-[88vh] overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#080a10] shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4 p-4 md:p-5 border-b border-white/[0.07] bg-gradient-to-r from-cyan-500/[0.07] via-transparent to-fuchsia-500/[0.07]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.18em] text-cyan-300 font-bold">
+                Script Review
+              </span>
+              <ReviewBadge status={item.status} />
+            </div>
+            <h3 className="text-lg md:text-xl font-heading font-bold text-white">
+              {item.title || 'Untitled Segment'}
+            </h3>
+            <p className="text-[11px] text-white/35 mt-1">
+              {SEGMENT_TYPE_LABELS[item.segment_type] || item.segment_type} · {item.start_time || '--:--'}–{item.end_time || '--:--'} · {formatRuntime(item.duration_seconds)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg border border-white/10 bg-white/[0.03] text-white/50 hover:text-white hover:bg-white/[0.07] flex items-center justify-center shrink-0"
+            aria-label="Close script review"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto max-h-[calc(88vh-156px)]">
+          <div className="p-4 md:p-6">
+            <div className="rounded-xl border border-cyan-400/10 bg-cyan-400/[0.035] p-4 mb-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <FileText className="w-3.5 h-3.5 text-cyan-300" />
+                <span className="text-[9px] font-bold tracking-[0.18em] text-cyan-300">
+                  GENERATED FROM · {source?.label || 'RUNDOWN CONTEXT'}
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-white/50">
+                {source?.detail || 'Show configuration plus the relevant approved production material.'}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/[0.08] bg-black/35 p-4 md:p-5">
+              <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 mb-3">Full Script</p>
+              <div className="whitespace-pre-wrap text-sm md:text-[15px] leading-7 text-white/80">
+                {item.script_content || 'No script copy was generated for this segment.'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 md:px-6 border-t border-white/[0.07] bg-black/45 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-[10px] text-white/30">
+            Approving locks this script into the show. Rejecting moves it to the Rejected Pile for regeneration.
+          </p>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || state === 'rejected'}
+              onClick={() => onReview?.(item, 'rejected')}
+              className="border-red-400/25 text-red-200 hover:bg-red-500/10"
+            >
+              {busy ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <X className="w-4 h-4 mr-1.5" />}
+              Reject Script
+            </Button>
+            <Button
+              size="sm"
+              disabled={busy || state === 'approved'}
+              onClick={() => onReview?.(item, 'approved')}
+              className="border border-emerald-400/25 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+            >
+              {busy ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Check className="w-4 h-4 mr-1.5" />}
+              Approve Script
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -175,6 +283,7 @@ function SegmentRow({
   assets,
   reviewingId,
   onReviewSegment,
+  onOpenScript,
 }) {
   const color = SEGMENT_COLORS[item.segment_type] || '#8b8b8b';
   const source = segmentSource(item, config, playlist, topics, assets);
@@ -221,10 +330,19 @@ function SegmentRow({
           </div>
 
           {!isSong && script && (
-            <p className="mt-2 text-xs leading-relaxed text-white/55 line-clamp-2">
-              <span className="text-white/30 uppercase tracking-wider text-[9px] mr-2">Script</span>
-              {script}
-            </p>
+            <button
+              type="button"
+              onClick={() => onOpenScript?.(item)}
+              className="mt-2 w-full text-left rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 hover:border-cyan-400/20 hover:bg-cyan-400/[0.035] transition-colors group"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-white/30 uppercase tracking-wider text-[9px]">Script Preview</span>
+                <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider text-cyan-300/70 group-hover:text-cyan-300">
+                  <Maximize2 className="w-3 h-3" /> Read Full Script
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-white/55 line-clamp-2">{script}</p>
+            </button>
           )}
 
           {isSong && (source.intro || source.outro) && (
@@ -298,6 +416,7 @@ function RejectedPile({
   onReviewTrack,
   onReviewSegment,
   onRegenerateRejected,
+  onOpenScript,
 }) {
   const total = rejectedTracks.length + rejectedSegments.length;
   if (!total) return null;
@@ -406,7 +525,16 @@ function RejectedPile({
                       <p className="text-sm font-medium text-white truncate">{segment.title}</p>
                     </div>
                     {segment.script_content && (
-                      <p className="text-[11px] text-white/35 mt-1 line-clamp-2">{segment.script_content}</p>
+                      <button
+                        type="button"
+                        onClick={() => onOpenScript?.(segment)}
+                        className="mt-1 w-full text-left group"
+                      >
+                        <p className="text-[11px] text-white/35 line-clamp-2 group-hover:text-white/55">{segment.script_content}</p>
+                        <span className="inline-flex items-center gap-1 text-[8px] uppercase tracking-wider text-cyan-300/60 mt-1">
+                          <Maximize2 className="w-2.5 h-2.5" /> Read full script
+                        </span>
+                      </button>
                     )}
                   </div>
                   <button
@@ -444,6 +572,8 @@ export default function RadioDashboardOverview({
   onReviewSegment,
   onRegenerateRejected,
 }) {
+  const [scriptReviewId, setScriptReviewId] = useState(null);
+
   const rejectedTracks = useMemo(
     () => playlist.filter(track => reviewState(track.status) === 'rejected'),
     [playlist]
@@ -475,6 +605,15 @@ export default function RadioDashboardOverview({
       return !rejectedTrackTitles.has(title);
     }),
     [rundown, rejectedTrackIds, rejectedTrackTitles]
+  );
+
+  const scriptReviewItem = useMemo(
+    () => rundown.find(item => item.id === scriptReviewId) || null,
+    [rundown, scriptReviewId]
+  );
+  const scriptReviewSource = useMemo(
+    () => scriptReviewItem ? segmentSource(scriptReviewItem, config, playlist, topics, assets) : null,
+    [scriptReviewItem, config, playlist, topics, assets]
   );
 
   const rundownSeconds = useMemo(
@@ -620,6 +759,7 @@ export default function RadioDashboardOverview({
                 assets={assets}
                 reviewingId={reviewingId}
                 onReviewSegment={onReviewSegment}
+                onOpenScript={item => setScriptReviewId(item.id)}
               />
             )) : (
               <div className="py-16 text-center text-sm text-white/35">No active rundown material.</div>
@@ -665,7 +805,18 @@ export default function RadioDashboardOverview({
         onReviewTrack={onReviewTrack}
         onReviewSegment={onReviewSegment}
         onRegenerateRejected={onRegenerateRejected}
+        onOpenScript={item => setScriptReviewId(item.id)}
       />
+
+      {scriptReviewItem && (
+        <ScriptReviewModal
+          item={scriptReviewItem}
+          source={scriptReviewSource}
+          reviewingId={reviewingId}
+          onReview={onReviewSegment}
+          onClose={() => setScriptReviewId(null)}
+        />
+      )}
     </div>
   );
 }
