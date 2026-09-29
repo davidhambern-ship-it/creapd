@@ -20,7 +20,7 @@ export default function YouTubeAddModal({ open, onClose, onAdd, configurationId,
     try {
       const response = await base44.functions.invoke('fetchYoutubeMetadata', {
         url: url.trim(),
-        require_lyrics: targetType === 'playlist',
+        require_radio_safe: targetType === 'playlist',
       });
       setMetadata(response.data);
     } catch (err) {
@@ -119,7 +119,7 @@ export default function YouTubeAddModal({ open, onClose, onAdd, configurationId,
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1.5">
                   {targetType === 'playlist'
-                    ? 'Radio playlists accept lyric videos only. Paste the YouTube lyric-video URL here.'
+                    ? 'Radio playlists accept lyric videos, visualizers, and continuous audio tracks. Music videos/live footage are blocked.'
                     : 'Find a video on YouTube, copy the URL from the address bar, and paste it here.'}
                 </p>
               </div>
