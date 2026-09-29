@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Calendar, Clock, Radio, Mic2, ListMusic, ClipboardList, CheckCircle2,
-  Settings, Play, FileText, Check, X, RotateCcw, RefreshCw, Loader2, ArchiveX
+  Settings, Play, FileText, Check, X, RotateCcw, RefreshCw, Loader2, ArchiveX, LockKeyhole
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRuntime, SEGMENT_TYPE_LABELS, SEGMENT_COLORS } from '@/lib/musicConstants';
@@ -501,13 +501,12 @@ export default function RadioDashboardOverview({
     ? Number(pipeline.pipeline_progress)
     : readinessPercent;
 
-  const productionLabel = config?.status === 'ready'
-    ? rejectedCount > 0
-      ? 'REVIEW REQUIRED'
-      : reviewableCount > 0 && approvedCount === reviewableCount
-        ? 'APPROVED FOR STUDIO'
-        : 'READY FOR REVIEW'
-    : String(pipeline?.current_department || config?.status || 'BUILDING').replaceAll('_', ' ').toUpperCase();
+  const studioApproved = config?.status === 'approved';
+  const productionLabel = studioApproved
+    ? 'APPROVED FOR STUDIO'
+    : ['in_review', 'ready'].includes(config?.status)
+      ? 'IN REVIEW'
+      : String(pipeline?.current_department || config?.status || 'BUILDING').replaceAll('_', ' ').toUpperCase();
 
   return (
     <div className="space-y-5">
@@ -542,11 +541,22 @@ export default function RadioDashboardOverview({
                   <Settings className="w-4 h-4 mr-1.5 text-cyan-300" /> Edit Show
                 </Link>
               </Button>
-              <Button size="sm" asChild className="cp-btn-gradient border-0 text-white">
-                <Link to={`/music/live?config_id=${config?.id || ''}`}>
-                  <Play className="w-4 h-4 mr-1.5" /> Open Radio Studio
-                </Link>
-              </Button>
+              {studioApproved ? (
+                <Button size="sm" asChild className="cp-btn-gradient border-0 text-white">
+                  <Link to={`/music/live?config_id=${config?.id || ''}`}>
+                    <Play className="w-4 h-4 mr-1.5" /> Open Radio Studio
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled
+                  title="Approve every track and spoken segment to unlock Radio Studio"
+                  className="border border-white/10 bg-white/[0.04] text-white/35"
+                >
+                  <LockKeyhole className="w-4 h-4 mr-1.5" /> Studio Locked
+                </Button>
+              )}
             </div>
           </div>
 
