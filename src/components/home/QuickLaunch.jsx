@@ -7,7 +7,7 @@ const QUICK_ACTIONS = [
   { icon: Film, label: 'All Presentations', path: '/presentations', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
   { icon: Clock, label: 'Continue Last Production', path: '/news/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
   { icon: Newspaper, label: 'Start News Production', path: '/news/dashboard', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  { icon: Church, label: 'Open Message Builder', path: '/spiritual/message', color: 'text-amber-400', bg: 'bg-amber-500/10' },
+  { icon: Mic2, label: 'Open Talk Studio', path: '/talk/dashboard', color: 'text-pink-400', bg: 'bg-pink-500/10' },
   { icon: Eye, label: 'View Shared Productions', path: null, color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', action: 'scrollToShowcase' },
 ];
 
