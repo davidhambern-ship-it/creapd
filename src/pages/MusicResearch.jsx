@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 
 const RELEVANCE_STYLES = {
   high: { bg: 'rgba(0,255,136,0.1)', border: 'rgba(0,255,136,0.4)', glow: 'rgba(0,255,136,0.15)', text: '#00FF88' },
@@ -115,7 +114,6 @@ export default function MusicResearch() {
             </Button>
           </motion.div>
         )}
-        <PPNavBar />
       </div>
     </div>
   );
