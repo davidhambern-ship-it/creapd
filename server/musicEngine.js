@@ -337,17 +337,124 @@ function scoreYoutubeMatch(metadata, songTitle, artist, expectedLength = 0) {
   return { score, titleCoverage, artistCoverage };
 }
 
+function parseYoutubeDurationText(value) {
+  const raw = String(value || '').trim();
+  if (!/^\d{1,3}:\d{2}(?::\d{2})?$/.test(raw)) return 0;
+  const parts = raw.split(':').map(Number);
+  if (parts.some(part => !Number.isFinite(part))) return 0;
+  if (parts.length === 2) return (parts[0] * 60) + parts[1];
+  return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+}
+
+function extractBalancedJson(html, marker) {
+  const markerIndex = html.indexOf(marker);
+  if (markerIndex < 0) return null;
+  const start = html.indexOf('{', markerIndex + marker.length);
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < html.length; index += 1) {
+    const char = html[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === '{') depth += 1;
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(html.slice(start, index + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+function youtubeText(node) {
+  if (!node) return '';
+  if (typeof node.simpleText === 'string') return node.simpleText.trim();
+  if (Array.isArray(node.runs)) return node.runs.map(run => String(run?.text || '')).join('').trim();
+  return '';
+}
+
+function extractYoutubeSearchCandidates(html) {
+  const data =
+    extractBalancedJson(html, 'var ytInitialData =') ||
+    extractBalancedJson(html, 'ytInitialData =');
+  if (!data) return [];
+
+  const results = [];
+  const stack = [data];
+  while (stack.length && results.length < 40) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+
+    if (node.videoRenderer?.videoId) {
+      const renderer = node.videoRenderer;
+      results.push({
+        video_id: renderer.videoId,
+        title: youtubeText(renderer.title),
+        channel_name: youtubeText(renderer.ownerText) || youtubeText(renderer.longBylineText),
+        duration_seconds: parseYoutubeDurationText(youtubeText(renderer.lengthText)),
+      });
+    }
+
+    if (Array.isArray(node)) {
+      for (let index = node.length - 1; index >= 0; index -= 1) stack.push(node[index]);
+    } else {
+      for (const value of Object.values(node)) stack.push(value);
+    }
+  }
+
+  return results;
+}
+
+function isLyricVideoTitle(value) {
+  const title = String(value || '').toLowerCase();
+  if (!/\blyric(?:s)?\b/.test(title)) return false;
+
+  const blocked = [
+    /\bofficial music video\b/,
+    /\bmusic video\b/,
+    /\bvisualizer\b/,
+    /\blive performance\b/,
+    /\blive at\b/,
+    /\blive from\b/,
+    /\bconcert\b/,
+    /\bkaraoke\b/,
+    /\breaction\b/,
+    /\bcover version\b/,
+    /\btrailer\b/,
+    /\bteaser\b/,
+    /\bbehind the scenes\b/,
+    /\bshorts?\b/,
+  ];
+  return !blocked.some(pattern => pattern.test(title));
+}
+
 async function fetchYoutubeDuration(videoId) {
   try {
     const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
       signal: AbortSignal.timeout(10000),
     });
     if (!response.ok) return null;
     const html = await response.text();
     const match =
       html.match(/"lengthSeconds":"(\d+)"/) ||
-      html.match(/"approxDurationMs":"(\d+)"/);
+      html.match(/"approxDurationMs":"(\d+)"/) ||
+      html.match(/"lengthSeconds":(\d+)/);
     if (!match) return null;
     const raw = Number(match[1]);
     if (!Number.isFinite(raw) || raw <= 0) return null;
@@ -374,7 +481,7 @@ function spokenWordRange(seconds, segmentType) {
   };
 }
 
-async function validateYoutubeVideo(videoId) {
+async function validateYoutubeVideo(videoId, hint = null) {
   if (!videoId) return null;
   try {
     const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, {
@@ -382,13 +489,15 @@ async function validateYoutubeVideo(videoId) {
     });
     if (!response.ok) return null;
     const payload = await response.json();
-    const durationSeconds = await fetchYoutubeDuration(videoId);
+    const hintedDuration = num(hint?.duration_seconds, 0);
+    const durationSeconds = hintedDuration > 0 ? hintedDuration : await fetchYoutubeDuration(videoId);
     return {
       video_id: videoId,
-      title: text(payload?.title),
+      title: text(payload?.title, hint?.title || ''),
       thumbnail_url: text(payload?.thumbnail_url, `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`),
-      channel_name: text(payload?.author_name),
+      channel_name: text(payload?.author_name, hint?.channel_name || ''),
       duration_seconds: durationSeconds,
+      source_type: 'lyric_video',
     };
   } catch {
     return null;
@@ -397,26 +506,45 @@ async function validateYoutubeVideo(videoId) {
 
 async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0) {
   try {
-    const query = encodeURIComponent(`${songTitle} ${artist} official audio official music video`);
-    const response = await fetch(`https://www.youtube.com/results?search_query=${query}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!response.ok) return null;
-    const html = await response.text();
-    const ids = [];
-    const regex = /"videoId":"([A-Za-z0-9_-]{11})"/g;
-    let match;
-    while ((match = regex.exec(html)) !== null && ids.length < 10) {
-      if (!ids.includes(match[1]) && !usedIds.has(match[1])) ids.push(match[1]);
+    const queries = [
+      `"${songTitle}" "${artist}" lyrics`,
+      `"${songTitle}" "${artist}" lyric video`,
+      `${artist} ${songTitle} lyrics`,
+    ];
+
+    const candidateMap = new Map();
+    for (const queryText of queries) {
+      const query = encodeURIComponent(queryText);
+      const response = await fetch(`https://www.youtube.com/results?search_query=${query}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!response.ok) continue;
+      const html = await response.text();
+      for (const candidate of extractYoutubeSearchCandidates(html)) {
+        if (usedIds.has(candidate.video_id) || candidateMap.has(candidate.video_id)) continue;
+        candidateMap.set(candidate.video_id, candidate);
+      }
+      if ([...candidateMap.values()].filter(candidate => isLyricVideoTitle(candidate.title)).length >= 6) break;
     }
 
-    const metadata = (await Promise.all(ids.slice(0, 8).map(validateYoutubeVideo))).filter(Boolean);
+    const candidates = [...candidateMap.values()]
+      .filter(candidate => isLyricVideoTitle(candidate.title))
+      .slice(0, 12);
+
+    const metadata = (await Promise.all(
+      candidates.map(candidate => validateYoutubeVideo(candidate.video_id, candidate))
+    )).filter(Boolean);
+
     const ranked = metadata
+      .filter(meta => isLyricVideoTitle(meta.title))
       .map(meta => ({ meta, ...scoreYoutubeMatch(meta, songTitle, artist, expectedLength) }))
       .filter(({ meta, titleCoverage, artistCoverage }) => {
         const duration = num(meta.duration_seconds, 0);
-        const durationLooksLikeSong = !duration || (duration >= 75 && duration <= 900);
+        const durationLooksLikeSong = duration >= 75 && duration <= 900;
         return durationLooksLikeSong && titleCoverage >= 0.67 && artistCoverage >= 0.5;
       })
       .sort((a, b) => b.score - a.score);
