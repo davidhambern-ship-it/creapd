@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { X, Send, Mic, Loader2, Sparkles, Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush } from 'lucide-react';
+import { X, Send, Mic, Loader2, Sparkles, Newspaper, Mic2, Music, FlaskConical } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CreapdMessage from './CreapdMessage';
 
@@ -9,12 +9,9 @@ const AGENT_NAME = 'creapd';
 
 const QUICK_ACTIONS = [
   { label: 'News', message: 'I want to build a news show', icon: Newspaper },
-  { label: 'Spiritual', message: 'Set up a spiritual production', icon: Church },
   { label: 'Talk', message: 'I want to create a talk show', icon: Mic2 },
   { label: 'Music', message: 'Build a music show', icon: Music },
-  { label: 'Sports', message: 'Set up a sports show', icon: Trophy },
-  { label: 'Cooking', message: 'I want a cooking show', icon: ChefHat },
-  { label: 'Cosmo', message: 'Build a cosmo show', icon: Brush },
+  { label: 'Research', message: 'Set up a research production', icon: FlaskConical },
 ];
 
 const SETUP_CONTEXT = '[SHOW SETUP — The producer is building a new show profile. Help them configure it conversationally. Infer the production domain from their description, ask for show name and host if not provided, create the ShowProfile and a matching ProductionModule when you have enough info. Use sensible defaults for anything not specified.]\n';
