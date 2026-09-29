@@ -13,6 +13,7 @@ import MusicShowArchive from '@/components/music/MusicShowArchive';
 import RegenerateDropdown from '@/components/music/RegenerateDropdown';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
+import RadioDashboardOverview from '@/components/music/RadioDashboardOverview';
 import {
   Music, RefreshCw, ListMusic, Mic, ClipboardList, Sparkles, Download,
   Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
@@ -316,104 +317,18 @@ export default function MusicDashboard() {
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
         <MusicDiscoveryNav />
-        {/* Hero Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-2xl cp-glass"
-          style={{ borderColor: 'rgba(255,0,255,0.2)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-[#FF00FF]/15 via-transparent to-[#00FFFF]/10" />
-          <motion.div
-            className="absolute -top-20 -right-10 w-64 h-64 rounded-full blur-[80px]"
-            style={{ background: 'rgba(255,0,255,0.2)' }}
-            animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.7, 0.5] }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute -bottom-20 -left-10 w-64 h-64 rounded-full blur-[80px]"
-            style={{ background: 'rgba(0,255,255,0.15)' }}
-            animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.6, 0.4] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <div className="relative p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="flex items-start gap-4">
-              <motion.div
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{ background: 'rgba(255,0,255,0.15)', border: '1px solid rgba(255,0,255,0.4)', boxShadow: '0 0 16px rgba(255,0,255,0.2)' }}
-              >
-                <Disc3 className="w-7 h-7" style={{ color: '#FF00FF' }} />
-              </motion.div>
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span
-                    className="text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full border"
-                    style={{ background: 'rgba(255,0,255,0.15)', color: '#FF00FF', borderColor: 'rgba(255,0,255,0.3)' }}
-                  >
-                    Radio Production
-                  </span>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white cp-glitch leading-tight">{config.production_name}</h1>
-                <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-400">
-                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" style={{ color: '#00FFFF' }} /> {config.show_date}</span>
-                  <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" style={{ color: '#00FFFF' }} /> {config.show_start_time}</span>
-                  {config.station_name && <span className="flex items-center gap-1.5"><Radio className="w-3.5 h-3.5" style={{ color: '#00FFFF' }} /> {config.station_name}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button variant="outline" size="sm" onClick={handleRefresh}
-                className="border-[#FF00FF]/40 hover:border-[#FF00FF]/70 hover:bg-[#FF00FF]/10">
-                <RefreshCw className="w-4 h-4 mr-1.5" style={{ color: '#FF00FF' }} /> Refresh
-              </Button>
-              <Button variant="outline" size="sm" asChild
-                className="border-[#00FFFF]/40 hover:border-[#00FFFF]/70 hover:bg-[#00FFFF]/10">
-                <Link to={`/music/configure?config_id=${config.id}`}>
-                  <Settings className="w-4 h-4 mr-1.5" style={{ color: '#00FFFF' }} /> Edit
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* PP-ARCH-001: Universal Department Pipeline */}
-        <DepartmentWorkflowBar
-          profileKey="music"
+        <RadioDashboardOverview
+          config={config}
+          playlist={playlist}
+          rundown={rundown}
+          topics={topics}
+          assets={assets}
           pipeline={pipeline}
-          loading={pipelineLoading}
-          actionLoading={deptActionLoading}
-          onAdvance={(dept) => setDetailDept(dept)}
+          readinessPercent={readinessPercent}
         />
 
-        {/* Metrics + Readiness Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <MetricCard label="Total Runtime" value={formatMinutes(config.total_show_runtime)} icon={Clock} delay={0.05} />
-          <MetricCard label="Music Runtime" value={formatMinutes(config.required_music_runtime)} accent="pink" icon={Headphones} delay={0.1} />
-          <MetricCard label="Genres" value={`${genres.length} selected`} accent="cyan" icon={Music} delay={0.15} />
-          <MetricCard label="Mood" value={`${moods.length} selected`} icon={Sparkles} delay={0.2} />
-          {/* Readiness Ring */}
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.25 }}
-            className="relative overflow-hidden cp-glass p-4 flex items-center gap-3"
-            style={{ borderColor: 'rgba(0,255,255,0.2)' }}
-          >
-            <ReadinessRing percent={readinessPercent} done={checklistDone} total={checklist.length} />
-            <div>
-              <p className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Readiness</p>
-              <p className="text-sm font-medium" style={{ color: '#00FFFF' }}>
-                {checklistDone === checklist.length ? 'Ready to go!' : 'In progress...'}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{checklist.length - checklistDone} tasks left</p>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Quick Actions */}
+        {/* Show controls */}
         <div className="flex flex-wrap gap-2 items-center">
           <RegenerateDropdown onRegenerate={handleRegenerateSection} disabled={refreshing} />
           <Button size="sm" variant="outline" onClick={handleRefresh}
@@ -434,61 +349,18 @@ export default function MusicDashboard() {
           })}
         </div>
 
-        {/* Widgets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Playlist Plan */}
-          <WidgetCard icon={ListMusic} title="Playlist Plan" accent="pink" delay={0.1}
-            action={<StatusBadge status={playlistStatus} matched={playlistMatched} />}
-          >
-            {playlist.length > 0 ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-lg bg-white/5 px-3 py-2">
-                    <p className="text-xs text-gray-400">Songs</p>
-                    <p className="text-base font-bold text-white">{playlist.length}</p>
-                  </div>
-                  <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,0,255,0.1)' }}>
-                    <p className="text-xs text-gray-400">Runtime</p>
-                    <p className="text-base font-bold" style={{ color: '#FF00FF' }}>{formatRuntime(playlistRuntime)}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/5 px-3 py-2">
-                    <p className="text-xs text-gray-400">Required</p>
-                    <p className="text-base font-bold text-white">{formatRuntime(requiredMusicSeconds)}</p>
-                  </div>
-                </div>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {playlist.slice(0, 5).map((song, i) => (
-                    <motion.div
-                      key={song.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.15 + i * 0.05 }}
-                      className="flex items-center gap-2.5 text-sm py-2 px-2.5 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <span
-                        className="w-6 h-6 rounded-md text-xs flex items-center justify-center font-bold"
-                        style={{ background: 'rgba(255,0,255,0.15)', color: '#FF00FF' }}
-                      >
-                        {i + 1}
-                      </span>
-                      <span className="font-medium truncate flex-1 text-white">{song.song_title}</span>
-                      <span className="text-gray-400 text-xs truncate hidden sm:inline">{song.artist}</span>
-                      <span className="text-gray-400 text-xs">{formatRuntime(song.length_seconds)}</span>
-                    </motion.div>
-                  ))}
-                  {playlist.length > 5 && <p className="text-xs text-gray-400 text-center pt-1">+ {playlist.length - 5} more songs</p>}
-                </div>
-                <Button size="sm" variant="ghost" asChild className="w-full hover:bg-white/5">
-                  <Link to="/music/playlist">Open Playlist Builder <ArrowRight className="w-3 h-3 ml-1" /></Link>
-                </Button>
-              </div>
-            ) : (
-              <EmptyState message="No playlist has been generated yet." actionLabel="Generate playlist" onAction={handleRefresh} />
-            )}
-          </WidgetCard>
+        {/* Production status / departments */}
+        <DepartmentWorkflowBar
+          profileKey="music"
+          pipeline={pipeline}
+          loading={pipelineLoading}
+          actionLoading={deptActionLoading}
+          onAdvance={(dept) => setDetailDept(dept)}
+        />
 
-          {/* Runtime Status */}
-          <WidgetCard icon={Clock} title="Runtime Breakdown" accent="cyan" delay={0.15}>
+        {/* Secondary production material */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <WidgetCard icon={Clock} title="Runtime Breakdown" accent="cyan" delay={0.1}>
             <div className="space-y-4">
               <RuntimeBar config={config} />
               <div className="space-y-1.5 text-sm pt-2 border-t border-white/5">
@@ -498,187 +370,104 @@ export default function MusicDashboard() {
                 <RuntimeRow label="Commercial / Sponsor" minutes={config.commercial_sponsor_runtime} />
                 <RuntimeRow label="Intro" minutes={config.intro_runtime} />
                 <RuntimeRow label="Outro" minutes={config.outro_runtime} />
-                <div className="border-t border-white/5 pt-1.5 mt-1.5">
-                  <RuntimeRow label="Unassigned" minutes={Math.max(0, (config.total_show_runtime || 0) - (config.required_music_runtime || 0) - (config.talk_segment_runtime || 0) - (config.commercial_sponsor_runtime || 0) - (config.intro_runtime || 0) - (config.outro_runtime || 0))} />
-                </div>
               </div>
             </div>
           </WidgetCard>
 
-          {/* Selected Topics */}
-          <WidgetCard icon={Mic} title="Selected Topics" accent="cyan" delay={0.2}>
+          <WidgetCard icon={Mic} title="Selected Topics" accent="cyan" delay={0.15}>
             {topics.length > 0 ? (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
                 {topics.map((topic, i) => (
-                  <motion.div
-                    key={topic.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.04 }}
-                    className="flex items-center justify-between text-sm py-2 px-2.5 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    <span className="font-medium truncate text-white">{topic.topic_name}</span>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full border"
-                      style={topic.status === 'ready'
-                        ? { background: 'rgba(0,255,255,0.15)', color: '#00FFFF', borderColor: 'rgba(0,255,255,0.3)' }
-                        : { background: 'rgba(255,255,255,0.05)', color: '#999', borderColor: 'rgba(255,255,255,0.1)' }
-                      }
-                    >
-                      {topic.status}
-                    </span>
-                  </motion.div>
+                  <div key={topic.id || i} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
+                    <p className="text-sm font-medium text-white">{topic.topic_name}</p>
+                    {topic.sources && <p className="text-[10px] text-cyan-300/70 mt-1">Source: {topic.sources}</p>}
+                    {topic.generated_summary && <p className="text-xs text-white/40 mt-1 line-clamp-2">{topic.generated_summary}</p>}
+                  </div>
                 ))}
               </div>
             ) : (
-              <EmptyState message="No music topics were selected. Edit your configuration to add topics." />
+              <EmptyState message="No music topics were selected." />
             )}
           </WidgetCard>
 
-          {/* Research Updates */}
-          <WidgetCard icon={TrendingUp} title="Research Updates" accent="pink" delay={0.25}>
+          <WidgetCard icon={TrendingUp} title="Research Used" accent="pink" delay={0.2}>
             {research.length > 0 ? (
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {research.slice(0, 6).map((item, i) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.25 + i * 0.04 }}
-                    className="text-sm py-2 px-2.5 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    <p className="font-medium truncate text-white">{item.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                      <span>{item.source}</span>
-                      <span
-                        className="px-1.5 py-0.5 rounded border"
-                        style={item.relevance === 'high'
-                          ? { background: 'rgba(0,255,255,0.15)', color: '#00FFFF', borderColor: 'rgba(0,255,255,0.3)' }
-                          : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
-                        }
-                      >
-                        {item.relevance}
-                      </span>
-                    </div>
-                  </motion.div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {research.map((item, i) => (
+                  <div key={item.id || i} className="rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2">
+                    <p className="text-sm font-medium text-white line-clamp-1">{item.title}</p>
+                    <p className="text-[10px] text-white/35 mt-1">{item.source || 'Research source'} · {item.relevance || 'medium'}</p>
+                    {item.summary && <p className="text-xs text-white/40 mt-1 line-clamp-2">{item.summary}</p>}
+                  </div>
                 ))}
               </div>
             ) : (
-              <EmptyState message="No research has been generated yet." onAction={handleRefresh} actionLabel="Refresh" />
+              <EmptyState message="No research was used for this production." />
             )}
           </WidgetCard>
 
-          {/* Show Rundown Preview */}
-          <WidgetCard icon={ClipboardList} title="Show Rundown" accent="pink" delay={0.3}>
-            {rundown.length > 0 ? (
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {rundown.slice(0, 8).map((item, i) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.04 }}
-                    className="flex items-center gap-2 text-sm py-2 px-2.5 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    <span className="text-xs text-gray-400 w-12 font-mono">{item.start_time || ''}</span>
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded border"
-                      style={SEGMENT_TYPE_LABELS[item.segment_type]
-                        ? { background: 'rgba(255,0,255,0.15)', color: '#FF00FF', borderColor: 'rgba(255,0,255,0.3)' }
-                        : { background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }
-                      }
-                    >
-                      {SEGMENT_TYPE_LABELS[item.segment_type] || item.segment_type}
-                    </span>
-                    <span className="truncate text-white">{item.title}</span>
-                  </motion.div>
-                ))}
-                <Button size="sm" variant="ghost" asChild className="w-full mt-2 hover:bg-white/5">
-                  <Link to="/music/rundown">Open Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link>
-                </Button>
-              </div>
-            ) : (
-              <EmptyState message="No show rundown has been generated yet." onAction={handleRefresh} actionLabel="Generate" />
-            )}
-          </WidgetCard>
-
-          {/* AI Assets */}
-          <WidgetCard icon={Sparkles} title="AI Generated Assets" accent="cyan" delay={0.35}>
+          <WidgetCard icon={Sparkles} title="Generated Production Assets" accent="cyan" delay={0.25}>
             {assets.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {assets.slice(0, 8).map((asset, i) => (
-                  <motion.div
-                    key={asset.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.35 + i * 0.04 }}
-                    className="text-xs py-2 px-2.5 rounded-lg flex items-center gap-1.5"
-                    style={{ background: 'rgba(0,255,255,0.06)', border: '1px solid rgba(0,255,255,0.15)' }}
+              <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                {assets.map((asset, i) => (
+                  <div key={asset.id || i}
+                    className="text-xs py-2 px-2.5 rounded-lg"
+                    style={{ background: 'rgba(0,255,255,0.05)', border: '1px solid rgba(0,255,255,0.12)' }}
                   >
-                    <CheckCircle2 className="w-3 h-3 shrink-0" style={{ color: '#00FFFF' }} />
-                    <span className="truncate text-white">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
-                  </motion.div>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3 h-3 shrink-0" style={{ color: '#00FFFF' }} />
+                      <span className="truncate text-white">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
+                    </div>
+                    {asset.associated_song_title && <p className="text-[9px] text-white/35 mt-1 truncate">{asset.associated_song_title}</p>}
+                    {asset.associated_topic && <p className="text-[9px] text-white/35 mt-1 truncate">{asset.associated_topic}</p>}
+                  </div>
                 ))}
-                <Button size="sm" variant="ghost" asChild className="col-span-2 mt-1 hover:bg-white/5">
-                  <Link to="/music/assets">View All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link>
-                </Button>
               </div>
             ) : (
-              <EmptyState message="No AI assets have been generated yet." onAction={handleRefresh} actionLabel="Generate" />
+              <EmptyState message="No production assets have been generated yet." />
             )}
           </WidgetCard>
         </div>
 
-        {/* Show Archive */}
         <MusicShowArchive currentConfigId={config.id} />
 
         {/* Production Checklist */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
           className="relative overflow-hidden cp-glass"
           style={{ borderColor: 'rgba(0,255,255,0.15)' }}
         >
           <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #00FFFF, #FF00FF)' }} />
           <div className="p-5">
             <h3 className="font-semibold text-white mb-4 flex items-center gap-2.5">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(0,255,255,0.12)', border: '1px solid rgba(0,255,255,0.3)' }}
-              >
-                <CheckCircle2 className="w-4 h-4" style={{ color: '#00FFFF' }} />
-              </div>
+              <CheckCircle2 className="w-4 h-4" style={{ color: '#00FFFF' }} />
               Production Checklist
               <span className="ml-auto text-sm text-gray-400">{checklistDone}/{checklist.length}</span>
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {checklist.map((item, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.45 + i * 0.03 }}
-                  className="flex items-center gap-2.5 text-sm py-2 px-3 rounded-lg transition-colors"
+                  className="flex items-center gap-2.5 text-sm py-2 px-3 rounded-lg"
                   style={item.done
                     ? { background: 'rgba(0,255,255,0.05)' }
                     : { background: 'rgba(255,255,255,0.02)' }
                   }
                 >
-                  {item.done ? (
-                    <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: '#00FFFF' }} />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-gray-600 shrink-0" />
-                  )}
+                  {item.done
+                    ? <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: '#00FFFF' }} />
+                    : <div className="w-4 h-4 rounded-full border-2 border-gray-600 shrink-0" />
+                  }
                   <span className={item.done ? 'text-white' : 'text-gray-500'}>{item.label}</span>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
         </motion.div>
       </div>
 
-      {/* Department Detail Panel */}
       <DepartmentDetailPanel
         department={detailDept}
         profileKey="music"
