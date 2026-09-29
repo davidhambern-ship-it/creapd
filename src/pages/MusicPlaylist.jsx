@@ -70,9 +70,9 @@ export default function MusicPlaylist() {
       youtube_video_id: trackData.youtube_video_id,
       thumbnail_url: trackData.thumbnail_url,
       channel_name: trackData.channel_name,
-      source: 'user_selected',
+      source: 'youtube_lyric_verified',
       status: 'suggested',
-      length_seconds: 0,
+      length_seconds: Math.max(75, Number(trackData.length_seconds || 0)),
     });
     refresh();
   };
