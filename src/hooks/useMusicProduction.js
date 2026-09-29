@@ -56,6 +56,33 @@ export function useMusicProduction(configId) {
     setError(null);
 
     try {
+      // Fast path: Preview/Neon returns the whole Radio production in one HTTP request.
+      try {
+        const response = await base44.functions.invoke('getMusicProductionBundle', {
+          configuration_id: configId || null,
+        });
+        const bundle = response?.data;
+
+        if (bundle && Object.prototype.hasOwnProperty.call(bundle, 'configuration')) {
+          if (!bundle.configuration) {
+            clearProduction();
+          } else {
+            setConfig(bundle.configuration);
+            setPlaylist(bundle.playlist || []);
+            setTopics(bundle.topics || []);
+            setResearch(bundle.research || []);
+            setRundown(bundle.rundown || []);
+            setAssets(bundle.assets || []);
+          }
+          setLoading(false);
+          setContentLoading(false);
+          return;
+        }
+      } catch (bundleError) {
+        console.warn('Radio bundle load unavailable; using compatibility loader.', bundleError);
+      }
+
+      // Compatibility fallback: old entity-by-entity loader.
       let activeId = configId;
       let activeConfig = null;
 
@@ -74,8 +101,6 @@ export function useMusicProduction(configId) {
         activeConfig = await base44.entities.MusicProductionConfiguration.get(activeId);
       }
       setConfig(activeConfig);
-      // Let the page shell render as soon as the show configuration is known.
-      // Playlist/topics/research/rundown/assets hydrate in parallel afterward.
       setLoading(false);
 
       const results = await Promise.allSettled([
