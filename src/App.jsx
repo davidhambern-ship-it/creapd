@@ -137,6 +137,7 @@ import SourceManagementCenter from '@/pages/admin/SourceManagementCenter';
 import HandlerRegistry from '@/pages/admin/HandlerRegistry';
 import CreapSettings from '@/pages/admin/CreapSettings';
 import ControllerDashboard from '@/components/creapd/ControllerDashboard';
+import StudioAvailabilityGate from '@/components/shared/StudioAvailabilityGate';
 import AssetLibrary from '@/pages/admin/AssetLibrary';
 
 const AuthenticatedApp = () => {
@@ -244,6 +245,7 @@ const AuthenticatedApp = () => {
         </Route>
 
         {/* Cooking Production */}
+        <Route element={<StudioAvailabilityGate studioKey="cooking" />}>
         <Route element={<CookingLayout />}>
           <Route path="/cooking/configure" element={<CookingConfigure />} />
           <Route path="/cooking/dashboard" element={<CookingDashboard />} />
@@ -254,8 +256,10 @@ const AuthenticatedApp = () => {
           <Route path="/cooking/assets" element={<CookingAssets />} />
           <Route path="/cooking/export" element={<CookingExport />} />
         </Route>
+        </Route>
 
         {/* Sports Production */}
+        <Route element={<StudioAvailabilityGate studioKey="sports" />}>
         <Route element={<SportsLayout />}>
           <Route path="/sports/configure" element={<SportsConfigure />} />
           <Route path="/sports/dashboard" element={<SportsDashboard />} />
@@ -266,8 +270,10 @@ const AuthenticatedApp = () => {
           <Route path="/sports/assets" element={<SportsAssets />} />
           <Route path="/sports/export" element={<SportsExport />} />
         </Route>
+        </Route>
 
         {/* Beauty Production — legacy Cosmo internals retained during backend migration */}
+        <Route element={<StudioAvailabilityGate studioKey="cosmo" />}>
         <Route element={<CosmoLayout />}>
           <Route path="/beauty/configure" element={<CosmoConfigure />} />
           <Route path="/beauty/dashboard" element={<CosmoDashboard />} />
@@ -288,6 +294,7 @@ const AuthenticatedApp = () => {
           <Route path="/cosmo/assets" element={<Navigate to="/beauty/assets" replace />} />
           <Route path="/cosmo/export" element={<Navigate to="/beauty/export" replace />} />
         </Route>
+        </Route>
 
         {/* Research Production Profile */}
         <Route element={<ResearchLayout />}>
@@ -303,6 +310,7 @@ const AuthenticatedApp = () => {
         </Route>
 
         {/* Spiritual Production */}
+        <Route element={<StudioAvailabilityGate studioKey="spiritual" />}>
         <Route element={<SpiritualLayout />}>
           <Route path="/spiritual/configure" element={<SpiritualConfigure />} />
           <Route path="/spiritual/dashboard" element={<SpiritualDashboard />} />
@@ -320,6 +328,7 @@ const AuthenticatedApp = () => {
           <Route path="/spiritual/assets" element={<SpiritualAssets />} />
           <Route path="/spiritual/package" element={<SpiritualPackage />} />
           <Route path="/spiritual/export" element={<SpiritualExport />} />
+        </Route>
         </Route>
 
         {/* Admin */}
