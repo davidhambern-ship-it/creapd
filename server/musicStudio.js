@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   runMusicBuild,
   regenerateMusicSection,
+  regenerateRejectedMusicMaterials,
   generateMusicTop10,
   fetchYoutubeMetadata,
   refreshMusicPlaylistYoutubeMetadata,
@@ -626,6 +627,13 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return { result: await runMusicBuild({ sql, ownerUserId, configurationId: body.configuration_id }) };
     case 'music_regenerate_section':
       return { result: await regenerateMusicSection({ sql, ownerUserId, configurationId: body.configuration_id, section: body.section }) };
+    case 'music_regenerate_rejected':
+      return { result: await regenerateRejectedMusicMaterials({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+        kind: body.kind || 'all',
+      }) };
     case 'music_generate_top10':
       return { top10: await generateMusicTop10({ sql, ownerUserId, configurationId: body.configuration_id, preserveLocked: true }) };
     case 'music_fetch_youtube_metadata':
