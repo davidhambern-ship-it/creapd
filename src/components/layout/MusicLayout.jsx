@@ -6,14 +6,11 @@ import {
 } from 'lucide-react';
 import ProductionFooter from './ProductionFooter';
 import MobileNavDrawer from './MobileNavDrawer';
-import MobileBottomNav from './MobileBottomNav';
-import PPNavBar from './PPNavBar';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 import { ShowPlaybackProvider } from '@/components/music/ShowPlaybackContext';
 import MiniShowBar from '@/components/music/MiniShowBar';
-import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 
 const ICON_MAP = {
   LayoutDashboard, Search, ListMusic, Compass, Sparkles
@@ -29,7 +26,7 @@ export default function MusicLayout() {
         <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
 
         <div className="flex flex-1 overflow-hidden">
-          <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+          <main className="flex-1 overflow-y-auto">
             <MobilePageShell>
               <Outlet />
             </MobilePageShell>
@@ -37,10 +34,8 @@ export default function MusicLayout() {
         </div>
 
         <ProductionFooter variant="music" />
-        <PPNavBar />
         </div>
         <MiniShowBar />
-        <MobileBottomNav items={PP_NAV_ITEMS} />
 
         <MobileNavDrawer
           open={mobileNavOpen}
