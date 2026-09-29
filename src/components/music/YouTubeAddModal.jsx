@@ -18,7 +18,10 @@ export default function YouTubeAddModal({ open, onClose, onAdd, configurationId,
     setError('');
     setMetadata(null);
     try {
-      const response = await base44.functions.invoke('fetchYoutubeMetadata', { url: url.trim() });
+      const response = await base44.functions.invoke('fetchYoutubeMetadata', {
+        url: url.trim(),
+        require_lyrics: targetType === 'playlist',
+      });
       setMetadata(response.data);
     } catch (err) {
       setError(err?.response?.data?.error || 'Could not fetch video info. Check the URL and try again.');
@@ -37,6 +40,8 @@ export default function YouTubeAddModal({ open, onClose, onAdd, configurationId,
         title: metadata.title,
         thumbnail_url: metadata.thumbnail_url,
         channel_name: metadata.channel_name,
+        length_seconds: metadata.duration_seconds,
+        source_type: metadata.source_type,
       });
       // Reset and close
       setUrl('');
@@ -113,7 +118,9 @@ export default function YouTubeAddModal({ open, onClose, onAdd, configurationId,
                   </Button>
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1.5">
-                  Tip: Find a song on YouTube, copy the URL from the address bar, and paste it here.
+                  {targetType === 'playlist'
+                    ? 'Radio playlists accept lyric videos only. Paste the YouTube lyric-video URL here.'
+                    : 'Find a video on YouTube, copy the URL from the address bar, and paste it here.'}
                 </p>
               </div>
 
