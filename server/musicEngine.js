@@ -1852,7 +1852,21 @@ Return one fresh repair for every listed order. Do not reuse the rejected wordin
 
   for (const target of targets) {
     const repair = repairs.find(item => Math.round(num(item.order, 0)) === target.order);
-    const script = text(repair?.script_content);
+    let script = text(repair?.script_content);
+
+    if (target.item.segment_type === 'station_id') {
+      if (!stationIdIsValid(script, config, target.item.script_content || '')) {
+        script = await generateStationIdReplacement({
+          config,
+          previousScript: target.item.script_content || '',
+          avoidScripts: rundown
+            .filter(item => item.id !== target.item.id && item.segment_type === 'station_id')
+            .map(item => item.script_content)
+            .filter(Boolean),
+        });
+      }
+    }
+
     if (!script) {
       unresolved.push({ id: target.item.id, title: target.item.title, segment_type: target.item.segment_type });
       continue;
