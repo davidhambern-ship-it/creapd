@@ -710,6 +710,7 @@ function TalkProgramMonitorLive() {
 }
 
 export default function TalkProgramMonitor() {
-  if (window.location.pathname !== '/talk/live') return null;
+  const path = window.location.pathname;
+  if (path !== '/talk/live' && path !== '/music/live') return null;
   return <TalkProgramMonitorLive />;
 }
