@@ -4,6 +4,7 @@ import {
   regenerateMusicSection,
   generateMusicTop10,
   fetchYoutubeMetadata,
+  refreshMusicPlaylistYoutubeMetadata,
   generateMusicStructured,
 } from './musicEngine.js';
 
@@ -629,6 +630,12 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return { top10: await generateMusicTop10({ sql, ownerUserId, configurationId: body.configuration_id, preserveLocked: true }) };
     case 'music_fetch_youtube_metadata':
       return await fetchYoutubeMetadata(body.url);
+    case 'music_refresh_youtube_metadata':
+      return { result: await refreshMusicPlaylistYoutubeMetadata({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+      }) };
     case 'music_generate_structured':
       return { result: await generateMusicStructured({ prompt: body.prompt, schema: body.schema, schemaName: body.schema_name, maxOutputTokens: body.max_output_tokens }) };
     case 'music_entity_get':
