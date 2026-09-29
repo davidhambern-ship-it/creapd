@@ -123,7 +123,7 @@ export default function MusicShowArchive({ currentConfigId }) {
                     className="text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0"
                     style={{ background: style.bg, color: style.color, borderColor: style.border }}
                   >
-                    {show.status}
+                    {String(show.status || '').replaceAll('_', ' ')}
                   </span>
                   {show.total_show_runtime > 0 && (
                     <span className="text-xs text-gray-400 flex-shrink-0 hidden sm:inline">{formatMinutes(show.total_show_runtime)}</span>
