@@ -572,15 +572,22 @@ function stationIdIsValid(script, config, previousScript = '', avoidScripts = []
   const copy = text(script);
   if (!copy) return false;
 
+  const rules = radioProductionTools(config);
   const normalizedCopy = normalizedIdentity(copy);
   const hostName = normalizedIdentity(config.host_name);
   const stationName = normalizedIdentity(config.station_name);
+  const words = stationIdWordRange(config);
+  const wordCount = countWords(copy);
 
-  if (hostName && !normalizedCopy.includes(hostName)) return false;
+  if (rules.quality.require_station_host_name && hostName && !normalizedCopy.includes(hostName)) return false;
   if (hostName && /\b(with\s+)?your\s+host\b/i.test(copy)) return false;
-  if (stationName && !normalizedCopy.includes(stationName)) return false;
-  if (previousScript && scriptSimilarity(copy, previousScript) >= 0.72) return false;
-  if (avoidScripts.some(existing => scriptSimilarity(copy, existing) >= 0.72)) return false;
+  if (rules.quality.require_station_name && stationName && !normalizedCopy.includes(stationName)) return false;
+  if (wordCount < words.min || wordCount > words.max) return false;
+
+  if (rules.quality.avoid_repeated_phrasing) {
+    if (previousScript && scriptSimilarity(copy, previousScript) >= 0.72) return false;
+    if (avoidScripts.some(existing => scriptSimilarity(copy, existing) >= 0.72)) return false;
+  }
 
   return true;
 }
@@ -606,7 +613,9 @@ function fallbackStationId(config, previousScript = '') {
 }
 
 async function generateStationIdReplacement({ config, previousScript = '', avoidScripts = [] }) {
-  const words = spokenWordRange(15, 'station_id');
+  const rules = radioProductionTools(config);
+  const words = stationIdWordRange(config);
+  const customInstruction = producerInstruction(config, 'station_id');
   const prompt = `Write ONE fresh radio Station ID.
 
 SHOW IDENTITY
@@ -624,6 +633,8 @@ HARD RULES
 - Make it sound like a real radio liner/ID, not an explanation.
 - Do not invent slogans, frequencies, cities, call letters, sponsors, awards, or facts that were not configured.
 - Make the wording materially different from the rejected/current version: change the opening, sentence structure, and closing.
+${rules.quality.require_station_name && config.station_name ? `- The station name "${config.station_name}" is required.` : '- Station name mention is optional for this show.'}
+${customInstruction ? `- Producer instruction: ${customInstruction}` : ''}
 
 REJECTED/CURRENT VERSION TO AVOID:
 ${previousScript || '(none)'}
@@ -642,8 +653,8 @@ Return one repair with order=1 and script_content containing only the new Statio
   return fallbackStationId(config, previousScript);
 }
 
-function spokenWordRange(seconds, segmentType) {
-  if (segmentType === 'station_id') return { min: 24, target: 30, max: 38 };
+function spokenWordRange(seconds, segmentType, config = null) {
+  if (segmentType === 'station_id') return config ? stationIdWordRange(config) : { min: 24, target: 30, max: 38 };
   const safeSeconds = Math.max(10, num(seconds, 60));
   // Native speech runs at ~0.95 rate. 140-150 WPM keeps generated copy close
   // to the configured segment runtime instead of ending minutes early.
