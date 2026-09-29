@@ -1,3 +1,4 @@
+import React, { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -10,100 +11,99 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
 
-import Login from '@/pages/Login';
-import AuthDebug from '@/pages/AuthDebug';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import Dashboard from '@/pages/Dashboard';
-import WeeklyPlanner from '@/pages/WeeklyPlanner';
-import TodaysBrief from '@/pages/TodaysBrief';
-import StoryQueue from '@/pages/StoryQueue';
-import StoryIntelligenceReview from '@/pages/StoryIntelligenceReview';
-import StoryDetail from '@/pages/StoryDetail';
-import StoryLibrary from '@/pages/StoryLibrary';
-import StoryManager from '@/pages/StoryManager';
-import ProductionPackages from '@/pages/ProductionPackages';
-import BrandProfiles from '@/pages/BrandProfiles';
-import ShowProfiles from '@/pages/ShowProfiles';
-import ExportCenter from '@/pages/ExportCenter';
-import ImageLibrary from '@/pages/ImageLibrary';
-import ResearchDesk from '@/pages/ResearchDesk';
-import Sources from '@/pages/Sources';
-import ManualImport from '@/pages/ManualImport';
-import ArchivePage from '@/pages/ArchivePage';
-import AutomationCenter from '@/pages/AutomationCenter';
-import SecurityCenter from '@/pages/SecurityCenter';
-import AcceptanceChecklist from '@/pages/AcceptanceChecklist';
-import SettingsPage from '@/pages/SettingsPage';
-import UserProfile from '@/pages/UserProfile';
-import Organizations from '@/pages/Organizations';
-import ActivityCenter from '@/pages/ActivityCenter';
-import TemplateLibrary from '@/pages/TemplateLibrary';
-import ProductionTemplates from '@/pages/ProductionTemplates';
-import PromptTemplates from '@/pages/PromptTemplates';
+const Login = lazy(() => import('@/pages/Login'));
+const AuthDebug = lazy(() => import('@/pages/AuthDebug'));
+const Register = lazy(() => import('@/pages/Register'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const WeeklyPlanner = lazy(() => import('@/pages/WeeklyPlanner'));
+const TodaysBrief = lazy(() => import('@/pages/TodaysBrief'));
+const StoryQueue = lazy(() => import('@/pages/StoryQueue'));
+const StoryIntelligenceReview = lazy(() => import('@/pages/StoryIntelligenceReview'));
+const StoryDetail = lazy(() => import('@/pages/StoryDetail'));
+const StoryLibrary = lazy(() => import('@/pages/StoryLibrary'));
+const StoryManager = lazy(() => import('@/pages/StoryManager'));
+const ProductionPackages = lazy(() => import('@/pages/ProductionPackages'));
+const BrandProfiles = lazy(() => import('@/pages/BrandProfiles'));
+const ShowProfiles = lazy(() => import('@/pages/ShowProfiles'));
+const ExportCenter = lazy(() => import('@/pages/ExportCenter'));
+const ImageLibrary = lazy(() => import('@/pages/ImageLibrary'));
+const ResearchDesk = lazy(() => import('@/pages/ResearchDesk'));
+const Sources = lazy(() => import('@/pages/Sources'));
+const ManualImport = lazy(() => import('@/pages/ManualImport'));
+const ArchivePage = lazy(() => import('@/pages/ArchivePage'));
+const AutomationCenter = lazy(() => import('@/pages/AutomationCenter'));
+const SecurityCenter = lazy(() => import('@/pages/SecurityCenter'));
+const AcceptanceChecklist = lazy(() => import('@/pages/AcceptanceChecklist'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const UserProfile = lazy(() => import('@/pages/UserProfile'));
+const Organizations = lazy(() => import('@/pages/Organizations'));
+const ActivityCenter = lazy(() => import('@/pages/ActivityCenter'));
+const TemplateLibrary = lazy(() => import('@/pages/TemplateLibrary'));
+const ProductionTemplates = lazy(() => import('@/pages/ProductionTemplates'));
+const PromptTemplates = lazy(() => import('@/pages/PromptTemplates'));
 import ProducerLayout from '@/components/layout/ProducerLayout';
 import MusicLayout from '@/components/layout/MusicLayout';
 import DashboardRouter from '@/components/DashboardRouter';
-import Onboarding from '@/pages/Onboarding';
-import ProductionTypes from '@/pages/ProductionTypes';
-import CreapdHome from '@/pages/CreapdHome';
-import MusicConfigure from '@/pages/MusicConfigure';
-import MusicDashboard from '@/pages/MusicDashboard';
-import RadioLive from '@/pages/RadioLive';
-import EmbedDemo from '@/pages/EmbedDemo';
-import MusicResearch from '@/pages/MusicResearch';
-import MusicPlaylist from '@/pages/MusicPlaylist';
-import MusicTop10 from '@/pages/MusicTop10';
-import MusicTopics from '@/pages/MusicTopics';
-import MusicRundown from '@/pages/MusicRundown';
-import MusicAssets from '@/pages/MusicAssets';
-import RadioProductionTools from '@/pages/RadioProductionTools';
-import TalkConfigure from '@/pages/TalkConfigure';
-import TalkDashboard from '@/pages/TalkDashboard';
-import TalkResearch from '@/pages/TalkResearch';
-import TalkTopics from '@/pages/TalkTopics';
-import TalkGuests from '@/pages/TalkGuests';
-import TalkRundown from '@/pages/TalkRundown';
-import TalkAssets from '@/pages/TalkAssets';
-import TalkExport from '@/pages/TalkExport';
-import TalkLive from '@/pages/TalkLive';
-import CookingConfigure from '@/pages/CookingConfigure';
-import CookingDashboard from '@/pages/CookingDashboard';
-import CookingResearch from '@/pages/CookingResearch';
-import CookingRecipes from '@/pages/CookingRecipes';
-import CookingIngredients from '@/pages/CookingIngredients';
-import CookingRundown from '@/pages/CookingRundown';
-import CookingAssets from '@/pages/CookingAssets';
-import CookingExport from '@/pages/CookingExport';
-import SportsConfigure from '@/pages/SportsConfigure';
-import SportsDashboard from '@/pages/SportsDashboard';
-import SportsResearch from '@/pages/SportsResearch';
-import SportsGames from '@/pages/SportsGames';
-import SportsAthletes from '@/pages/SportsAthletes';
-import SportsRundown from '@/pages/SportsRundown';
-import SportsAssets from '@/pages/SportsAssets';
-import SportsExport from '@/pages/SportsExport';
-import CosmoConfigure from '@/pages/CosmoConfigure';
-import CosmoDashboard from '@/pages/CosmoDashboard';
-import CosmoResearch from '@/pages/CosmoResearch';
-import CosmoTopics from '@/pages/CosmoTopics';
-import CosmoGuests from '@/pages/CosmoGuests';
-import CosmoRundown from '@/pages/CosmoRundown';
-import CosmoAssets from '@/pages/CosmoAssets';
-import CosmoExport from '@/pages/CosmoExport';
-import ResearchConfigure from '@/pages/ResearchConfigure';
-import ResearchDashboard from '@/pages/ResearchDashboard';
-import ResearchTopics from '@/pages/ResearchTopics';
-import ResearchManager from '@/pages/ResearchManager';
-import ResearchDossier from '@/pages/ResearchDossier';
-import ResearchAssets from '@/pages/ResearchAssets';
-import ResearchExport from '@/pages/ResearchExport';
-import ResearchArchive from '@/pages/ResearchArchive';
-import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
-import Presentations from '@/pages/Presentations';
-import PresentationEditor from '@/pages/PresentationEditor';
-
+const Onboarding = lazy(() => import('@/pages/Onboarding'));
+const ProductionTypes = lazy(() => import('@/pages/ProductionTypes'));
+const CreapdHome = lazy(() => import('@/pages/CreapdHome'));
+const MusicConfigure = lazy(() => import('@/pages/MusicConfigure'));
+const MusicDashboard = lazy(() => import('@/pages/MusicDashboard'));
+const RadioLive = lazy(() => import('@/pages/RadioLive'));
+const EmbedDemo = lazy(() => import('@/pages/EmbedDemo'));
+const MusicResearch = lazy(() => import('@/pages/MusicResearch'));
+const MusicPlaylist = lazy(() => import('@/pages/MusicPlaylist'));
+const MusicTop10 = lazy(() => import('@/pages/MusicTop10'));
+const MusicTopics = lazy(() => import('@/pages/MusicTopics'));
+const MusicRundown = lazy(() => import('@/pages/MusicRundown'));
+const MusicAssets = lazy(() => import('@/pages/MusicAssets'));
+const RadioProductionTools = lazy(() => import('@/pages/RadioProductionTools'));
+const TalkConfigure = lazy(() => import('@/pages/TalkConfigure'));
+const TalkDashboard = lazy(() => import('@/pages/TalkDashboard'));
+const TalkResearch = lazy(() => import('@/pages/TalkResearch'));
+const TalkTopics = lazy(() => import('@/pages/TalkTopics'));
+const TalkGuests = lazy(() => import('@/pages/TalkGuests'));
+const TalkRundown = lazy(() => import('@/pages/TalkRundown'));
+const TalkAssets = lazy(() => import('@/pages/TalkAssets'));
+const TalkExport = lazy(() => import('@/pages/TalkExport'));
+const TalkLive = lazy(() => import('@/pages/TalkLive'));
+const CookingConfigure = lazy(() => import('@/pages/CookingConfigure'));
+const CookingDashboard = lazy(() => import('@/pages/CookingDashboard'));
+const CookingResearch = lazy(() => import('@/pages/CookingResearch'));
+const CookingRecipes = lazy(() => import('@/pages/CookingRecipes'));
+const CookingIngredients = lazy(() => import('@/pages/CookingIngredients'));
+const CookingRundown = lazy(() => import('@/pages/CookingRundown'));
+const CookingAssets = lazy(() => import('@/pages/CookingAssets'));
+const CookingExport = lazy(() => import('@/pages/CookingExport'));
+const SportsConfigure = lazy(() => import('@/pages/SportsConfigure'));
+const SportsDashboard = lazy(() => import('@/pages/SportsDashboard'));
+const SportsResearch = lazy(() => import('@/pages/SportsResearch'));
+const SportsGames = lazy(() => import('@/pages/SportsGames'));
+const SportsAthletes = lazy(() => import('@/pages/SportsAthletes'));
+const SportsRundown = lazy(() => import('@/pages/SportsRundown'));
+const SportsAssets = lazy(() => import('@/pages/SportsAssets'));
+const SportsExport = lazy(() => import('@/pages/SportsExport'));
+const CosmoConfigure = lazy(() => import('@/pages/CosmoConfigure'));
+const CosmoDashboard = lazy(() => import('@/pages/CosmoDashboard'));
+const CosmoResearch = lazy(() => import('@/pages/CosmoResearch'));
+const CosmoTopics = lazy(() => import('@/pages/CosmoTopics'));
+const CosmoGuests = lazy(() => import('@/pages/CosmoGuests'));
+const CosmoRundown = lazy(() => import('@/pages/CosmoRundown'));
+const CosmoAssets = lazy(() => import('@/pages/CosmoAssets'));
+const CosmoExport = lazy(() => import('@/pages/CosmoExport'));
+const ResearchConfigure = lazy(() => import('@/pages/ResearchConfigure'));
+const ResearchDashboard = lazy(() => import('@/pages/ResearchDashboard'));
+const ResearchTopics = lazy(() => import('@/pages/ResearchTopics'));
+const ResearchManager = lazy(() => import('@/pages/ResearchManager'));
+const ResearchDossier = lazy(() => import('@/pages/ResearchDossier'));
+const ResearchAssets = lazy(() => import('@/pages/ResearchAssets'));
+const ResearchExport = lazy(() => import('@/pages/ResearchExport'));
+const ResearchArchive = lazy(() => import('@/pages/ResearchArchive'));
+const DefaultProductionSettings = lazy(() => import('@/pages/DefaultProductionSettings'));
+const Presentations = lazy(() => import('@/pages/Presentations'));
+const PresentationEditor = lazy(() => import('@/pages/PresentationEditor'));
 // Redirects /news/presentations/:id → /editor/:id (Navigate doesn't interpolate route params)
 const RedirectToEditor = () => {
   const { id } = useParams();
@@ -113,35 +113,34 @@ import TalkLayout from '@/components/layout/TalkLayout';
 import CookingLayout from '@/components/layout/CookingLayout';
 import SportsLayout from '@/components/layout/SportsLayout';
 import CosmoLayout from '@/components/layout/CosmoLayout';
-import RPPLobby from '@/pages/RPPLobby';
+const RPPLobby = lazy(() => import('@/pages/RPPLobby'));
 import ResearchLayout from '@/components/rpp/ResearchLayout';
 import SpiritualLayout from '@/components/layout/SpiritualLayout';
-import SpiritualConfigure from '@/pages/SpiritualConfigure';
-import SpiritualDashboard from '@/pages/SpiritualDashboard';
-import SpiritualResearch from '@/pages/SpiritualResearch';
-import SpiritualResearchDetail from '@/pages/SpiritualResearchDetail';
-import SpiritualLibrary from '@/pages/SpiritualLibrary';
-import LibraryReader from '@/pages/LibraryReader';
-import LibraryWordStudy from '@/pages/LibraryWordStudy';
-import LibraryCompare from '@/pages/LibraryCompare';
-import LibraryLanguages from '@/pages/LibraryLanguages';
-import SpiritualStudy from '@/pages/SpiritualStudy';
-import SpiritualStudySession from '@/pages/SpiritualStudySession';
-import SpiritualMessage from '@/pages/SpiritualMessage';
-import SpiritualAssets from '@/pages/SpiritualAssets';
-import SpiritualPackage from '@/pages/SpiritualPackage';
-import SpiritualExport from '@/pages/SpiritualExport';
-import WorldScriptureRegistry from '@/pages/admin/WorldScriptureRegistry';
-import WorldScriptureRegistryDetail from '@/pages/admin/WorldScriptureRegistryDetail';
-import ContentAcquisitionEngine from '@/pages/admin/ContentAcquisitionEngine';
-import FoundationSeeder from '@/pages/admin/FoundationSeeder';
-import SourceManagementCenter from '@/pages/admin/SourceManagementCenter';
-import HandlerRegistry from '@/pages/admin/HandlerRegistry';
-import CreapSettings from '@/pages/admin/CreapSettings';
+const SpiritualConfigure = lazy(() => import('@/pages/SpiritualConfigure'));
+const SpiritualDashboard = lazy(() => import('@/pages/SpiritualDashboard'));
+const SpiritualResearch = lazy(() => import('@/pages/SpiritualResearch'));
+const SpiritualResearchDetail = lazy(() => import('@/pages/SpiritualResearchDetail'));
+const SpiritualLibrary = lazy(() => import('@/pages/SpiritualLibrary'));
+const LibraryReader = lazy(() => import('@/pages/LibraryReader'));
+const LibraryWordStudy = lazy(() => import('@/pages/LibraryWordStudy'));
+const LibraryCompare = lazy(() => import('@/pages/LibraryCompare'));
+const LibraryLanguages = lazy(() => import('@/pages/LibraryLanguages'));
+const SpiritualStudy = lazy(() => import('@/pages/SpiritualStudy'));
+const SpiritualStudySession = lazy(() => import('@/pages/SpiritualStudySession'));
+const SpiritualMessage = lazy(() => import('@/pages/SpiritualMessage'));
+const SpiritualAssets = lazy(() => import('@/pages/SpiritualAssets'));
+const SpiritualPackage = lazy(() => import('@/pages/SpiritualPackage'));
+const SpiritualExport = lazy(() => import('@/pages/SpiritualExport'));
+const WorldScriptureRegistry = lazy(() => import('@/pages/admin/WorldScriptureRegistry'));
+const WorldScriptureRegistryDetail = lazy(() => import('@/pages/admin/WorldScriptureRegistryDetail'));
+const ContentAcquisitionEngine = lazy(() => import('@/pages/admin/ContentAcquisitionEngine'));
+const FoundationSeeder = lazy(() => import('@/pages/admin/FoundationSeeder'));
+const SourceManagementCenter = lazy(() => import('@/pages/admin/SourceManagementCenter'));
+const HandlerRegistry = lazy(() => import('@/pages/admin/HandlerRegistry'));
+const CreapSettings = lazy(() => import('@/pages/admin/CreapSettings'));
 import ControllerDashboard from '@/components/creapd/ControllerDashboard';
 import StudioAvailabilityGate from '@/components/shared/StudioAvailabilityGate';
-import AssetLibrary from '@/pages/admin/AssetLibrary';
-
+const AssetLibrary = lazy(() => import('@/pages/admin/AssetLibrary'));
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -163,6 +162,13 @@ const AuthenticatedApp = () => {
   }
 
   return (
+    <Suspense
+      fallback={
+        <div className="fixed inset-0 flex items-center justify-center bg-background">
+          <CreapdLoading size="lg" />
+        </div>
+      }
+    >
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -351,6 +357,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 
