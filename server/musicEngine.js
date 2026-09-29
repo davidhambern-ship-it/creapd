@@ -168,6 +168,68 @@ function safeJson(value) {
   return JSON.stringify(value ?? null);
 }
 
+function radioProductionTools(config) {
+  const plan = object(config?.production_plan, {});
+  const tools = object(plan.production_tools, {});
+  const quality = object(tools.quality, {});
+  const scripts = object(tools.scripts, {});
+
+  return {
+    quality: {
+      ground_current_facts: quality.ground_current_facts !== false,
+      avoid_repeated_phrasing: quality.avoid_repeated_phrasing !== false,
+      keep_show_premise: quality.keep_show_premise !== false,
+      require_station_host_name: true,
+      require_station_name: quality.require_station_name !== false,
+    },
+    scripts: {
+      intro: object(scripts.intro, {}),
+      station_id: object(scripts.station_id, {}),
+      topic_segment: object(scripts.topic_segment, {}),
+      talk_break: object(scripts.talk_break, {}),
+      song_copy: object(scripts.song_copy, {}),
+      outro: object(scripts.outro, {}),
+    },
+  };
+}
+
+function producerInstruction(config, key) {
+  const rules = radioProductionTools(config);
+  return text(rules.scripts?.[key]?.instruction).slice(0, 500);
+}
+
+function producerInstructionBlock(config, keys = []) {
+  const labels = {
+    intro: 'show intro',
+    station_id: 'station ID',
+    topic_segment: 'topic segment',
+    talk_break: 'talk break',
+    song_copy: 'song intro/outro copy',
+    outro: 'show outro',
+  };
+  const lines = keys
+    .map(key => {
+      const instruction = producerInstruction(config, key);
+      return instruction ? `- ${labels[key] || key}: ${instruction}` : '';
+    })
+    .filter(Boolean);
+
+  return lines.length ? `\nPRODUCER OVERRIDES:\n${lines.join('\n')}\n` : '';
+}
+
+function stationIdWordRange(config) {
+  const settings = radioProductionTools(config).scripts.station_id;
+  const rawMin = Math.round(num(settings.min_words, 24));
+  const rawMax = Math.round(num(settings.max_words, 38));
+  const min = Math.max(8, Math.min(80, rawMin));
+  const max = Math.max(min + 2, Math.min(100, rawMax));
+  return {
+    min,
+    max,
+    target: Math.round((min + max) / 2),
+  };
+}
+
 function decodeXml(value) {
   return String(value || '')
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
