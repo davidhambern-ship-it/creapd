@@ -107,6 +107,24 @@ const RUNDOWN_SCHEMA = {
   },
 };
 
+const SCRIPT_REPAIR_SCHEMA = {
+  type: 'object',
+  required: ['repairs'],
+  properties: {
+    repairs: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['order', 'script_content'],
+        properties: {
+          order: { type: 'number' },
+          script_content: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
 const VALID_ASSET_TYPES = new Set([
   'host_banter', 'song_intro', 'song_outro', 'artist_bio', 'artist_fact',
   'music_trivia', 'tour_dates', 'concert_news', 'topic_talking_points',
@@ -274,6 +292,88 @@ async function updateBuildFailure(sql, ownerUserId, configurationId, buildLog, e
   `;
 }
 
+const YOUTUBE_NOISE_WORDS = new Set([
+  'official', 'video', 'music', 'audio', 'lyrics', 'lyric', 'visualizer',
+  'hd', '4k', 'remastered', 'remaster', 'version', 'explicit', 'clean',
+  'feat', 'featuring', 'ft', 'the', 'a', 'an',
+]);
+
+function youtubeMatchTokens(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token && !YOUTUBE_NOISE_WORDS.has(token));
+}
+
+function tokenCoverage(requiredTokens, candidateText) {
+  if (!requiredTokens.length) return 1;
+  const haystack = new Set(youtubeMatchTokens(candidateText));
+  const hits = requiredTokens.filter(token => haystack.has(token)).length;
+  return hits / requiredTokens.length;
+}
+
+function scoreYoutubeMatch(metadata, songTitle, artist, expectedLength = 0) {
+  const titleTokens = youtubeMatchTokens(songTitle);
+  const artistTokens = youtubeMatchTokens(artist);
+  const titleCoverage = tokenCoverage(titleTokens, metadata?.title || '');
+  const artistCoverage = tokenCoverage(
+    artistTokens,
+    `${metadata?.title || ''} ${metadata?.channel_name || ''}`,
+  );
+
+  let score = (titleCoverage * 0.68) + (artistCoverage * 0.32);
+  const duration = num(metadata?.duration_seconds, 0);
+  const expected = num(expectedLength, 0);
+
+  if (duration > 0 && expected > 0) {
+    const difference = Math.abs(duration - expected);
+    const tolerance = Math.max(75, expected * 0.35);
+    if (difference <= tolerance) score += 0.08;
+  }
+
+  return { score, titleCoverage, artistCoverage };
+}
+
+async function fetchYoutubeDuration(videoId) {
+  try {
+    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const match =
+      html.match(/"lengthSeconds":"(\d+)"/) ||
+      html.match(/"approxDurationMs":"(\d+)"/);
+    if (!match) return null;
+    const raw = Number(match[1]);
+    if (!Number.isFinite(raw) || raw <= 0) return null;
+    return match[0].includes('approxDurationMs') ? Math.round(raw / 1000) : Math.round(raw);
+  } catch {
+    return null;
+  }
+}
+
+function countWords(value) {
+  return String(value || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+function spokenWordRange(seconds, segmentType) {
+  if (segmentType === 'station_id') return { min: 24, target: 30, max: 38 };
+  const safeSeconds = Math.max(10, num(seconds, 60));
+  // Native speech runs at ~0.95 rate. 140-150 WPM keeps generated copy close
+  // to the configured segment runtime instead of ending minutes early.
+  const target = Math.max(18, Math.round((safeSeconds / 60) * 145));
+  return {
+    min: Math.max(14, Math.round(target * 0.93)),
+    target,
+    max: Math.max(20, Math.round(target * 1.07)),
+  };
+}
+
 async function validateYoutubeVideo(videoId) {
   if (!videoId) return null;
   try {
@@ -282,20 +382,22 @@ async function validateYoutubeVideo(videoId) {
     });
     if (!response.ok) return null;
     const payload = await response.json();
+    const durationSeconds = await fetchYoutubeDuration(videoId);
     return {
       video_id: videoId,
       title: text(payload?.title),
       thumbnail_url: text(payload?.thumbnail_url, `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`),
       channel_name: text(payload?.author_name),
+      duration_seconds: durationSeconds,
     };
   } catch {
     return null;
   }
 }
 
-async function searchYoutubeVideo(songTitle, artist, usedIds = new Set()) {
+async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0) {
   try {
-    const query = encodeURIComponent(`${songTitle} ${artist} official music video`);
+    const query = encodeURIComponent(`${songTitle} ${artist} official audio official music video`);
     const response = await fetch(`https://www.youtube.com/results?search_query=${query}`, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
       signal: AbortSignal.timeout(12000),
@@ -305,13 +407,21 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set()) {
     const ids = [];
     const regex = /"videoId":"([A-Za-z0-9_-]{11})"/g;
     let match;
-    while ((match = regex.exec(html)) !== null && ids.length < 8) {
+    while ((match = regex.exec(html)) !== null && ids.length < 10) {
       if (!ids.includes(match[1]) && !usedIds.has(match[1])) ids.push(match[1]);
     }
-    for (const id of ids.slice(0, 5)) {
-      const meta = await validateYoutubeVideo(id);
-      if (meta) return meta;
-    }
+
+    const metadata = (await Promise.all(ids.slice(0, 8).map(validateYoutubeVideo))).filter(Boolean);
+    const ranked = metadata
+      .map(meta => ({ meta, ...scoreYoutubeMatch(meta, songTitle, artist, expectedLength) }))
+      .filter(({ meta, titleCoverage, artistCoverage }) => {
+        const duration = num(meta.duration_seconds, 0);
+        const durationLooksLikeSong = !duration || (duration >= 75 && duration <= 900);
+        return durationLooksLikeSong && titleCoverage >= 0.67 && artistCoverage >= 0.5;
+      })
+      .sort((a, b) => b.score - a.score);
+
+    return ranked[0]?.meta || null;
   } catch {}
   return null;
 }
@@ -365,16 +475,22 @@ async function buildPlaylist({ sql, ownerUserId, config, targetCount }) {
   const year = new Date().getUTCFullYear();
   const genres = array(config.genres, []);
   const moods = array(config.moods, []);
-  const prompt = `You are the playlist director for CREAPD Music Studio. Build a real, playable show playlist using real commercially released songs.
+  const editorialTopics = array(config.music_topics, []);
+  const candidateCount = Math.min(24, Math.max(targetCount + 8, 14));
+  const targetMusicSeconds = Math.max(15, num(config.required_music_runtime, 45)) * 60;
+
+  const prompt = `You are the playlist director for CREAPD Music Studio. Build a pool of REAL, commercially released songs for a playable show. CREAPD will independently verify every song against YouTube before it can enter the rundown.
 
 SHOW
 Name: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Editorial focus: ${editorialTopics.join(', ') || 'Music and artist conversation'}
 Host: ${config.host_name || 'Host'}
 Format: ${config.production_format || 'radio'}
 Genres: ${genres.join(', ') || 'Top 40'}
 Moods: ${moods.join(', ') || 'Feel Good'}
 Tone: ${config.show_tone || 'Professional'}
-Music runtime: ${num(config.required_music_runtime, 45)} minutes
+Music runtime target: ${num(config.required_music_runtime, 45)} minutes
 Energy flow: ${config.playlist_energy_flow || 'Build Energy Gradually'}
 Must play: ${config.must_play_songs || 'None'}
 Blocked songs: ${config.blocked_songs || 'None'}
@@ -389,45 +505,74 @@ Clean only: ${config.clean_only === true}
 Explicit allowed: ${config.explicit_allowed === true}
 Preferred eras: ${config.preferred_eras || 'Modern/current'}
 
-Return exactly ${targetCount} songs. Prefer releases from ${year - 2}-${year} unless the user requested older eras or throwbacks. Never invent songs or artists. Include realistic song length in seconds and actual/reasonable release year. Respect all blocks and must-play rules.`;
-  const result = await structured(prompt, PLAYLIST_SCHEMA, 'creapd_music_playlist_v1', 5000);
-  const songs = array(result?.data?.playlist, []).slice(0, targetCount);
-  if (songs.length < Math.min(6, targetCount)) throw new Error(`Playlist generation returned only ${songs.length} songs`);
+Return exactly ${candidateCount} candidates so CREAPD has enough verified options to fill the runtime. Prefer releases from ${year - 2}-${year} unless the user requested older eras or throwbacks. NEVER invent a song title, artist, collaboration, remix, or release. The title and artist must correspond to a real recording someone can search for on YouTube. Include a realistic song length in seconds. The show description and editorial focus are instructions, not decoration: song choices must fit them unless a must-play rule overrides them.`;
 
-  const rows = await Promise.all(songs.map(async (song, index) => {
+  const result = await structured(prompt, PLAYLIST_SCHEMA, 'creapd_music_playlist_v2', 6500);
+  const candidates = array(result?.data?.playlist, []).slice(0, candidateCount);
+  if (candidates.length < Math.min(8, candidateCount)) {
+    throw new Error(`Playlist generation returned only ${candidates.length} candidates`);
+  }
+
+  const resolved = await Promise.all(candidates.map(async song => ({
+    song,
+    metadata: await searchYoutubeVideo(
+      text(song.song_title),
+      text(song.artist),
+      new Set(),
+      num(song.length_seconds, 180),
+    ),
+  })));
+
+  const selected = [];
+  const usedIds = new Set();
+  let selectedRuntime = 0;
+
+  for (const { song, metadata } of resolved) {
+    if (!metadata || usedIds.has(metadata.video_id)) continue;
+    usedIds.add(metadata.video_id);
+    const actualDuration = Math.max(60, num(metadata.duration_seconds, num(song.length_seconds, 180)));
+    selected.push({ song, metadata, actualDuration });
+    selectedRuntime += actualDuration;
+
+    if (
+      selected.length >= 6 &&
+      selectedRuntime >= targetMusicSeconds * 0.95
+    ) break;
+
+    if (selected.length >= 15) break;
+  }
+
+  if (selected.length < Math.min(6, targetCount)) {
+    throw new Error(`Only ${selected.length} playlist songs could be verified against full-length YouTube matches`);
+  }
+
+  const rows = [];
+  for (let index = 0; index < selected.length; index += 1) {
+    const { song, metadata, actualDuration } = selected[index];
     const [row] = await sql`
       INSERT INTO creapd.music_playlist_items (
         id, configuration_id, owner_user_id, order_index, song_title, artist,
-        length_seconds, genre, mood, era_year, reason_selected, status, source
+        length_seconds, genre, mood, era_year, reason_selected, status, source,
+        youtube_video_id, thumbnail_url, channel_name, source_payload
       ) VALUES (
         ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${index},
-        ${text(song.song_title, 'Unknown')}, ${text(song.artist, 'Unknown')},
-        ${Math.max(60, num(song.length_seconds, 180))}, ${text(song.genre) || null},
-        ${text(song.mood) || null}, ${text(song.era_year) || null},
-        ${text(song.reason_selected) || null}, 'suggested', 'ai_generated'
+        ${text(song.song_title, metadata.title || 'Unknown')}, ${text(song.artist, metadata.channel_name || 'Unknown')},
+        ${actualDuration}, ${text(song.genre) || null}, ${text(song.mood) || null},
+        ${text(song.era_year) || null}, ${text(song.reason_selected) || null},
+        'suggested', 'youtube_verified',
+        ${metadata.video_id}, ${metadata.thumbnail_url}, ${metadata.channel_name},
+        ${safeJson({
+          youtube_title: metadata.title,
+          youtube_duration_seconds: metadata.duration_seconds,
+          requested_title: text(song.song_title),
+          requested_artist: text(song.artist),
+        })}::jsonb
       ) RETURNING *
     `;
-    return row;
-  }));
+    rows.push(row);
+  }
 
-  const used = new Set();
-  await Promise.all(rows.map(async (row) => {
-    const metadata = await searchYoutubeVideo(row.song_title, row.artist, used);
-    if (!metadata) return;
-    used.add(metadata.video_id);
-    await sql`
-      UPDATE creapd.music_playlist_items
-      SET youtube_video_id=${metadata.video_id}, thumbnail_url=${metadata.thumbnail_url},
-          channel_name=${metadata.channel_name}, updated_at=now()
-      WHERE id=${row.id} AND owner_user_id=${String(ownerUserId)}
-    `;
-  }));
-
-  return sql`
-    SELECT * FROM creapd.music_playlist_items
-    WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}
-    ORDER BY order_index ASC
-  `;
+  return rows;
 }
 
 async function buildResearch({ sql, ownerUserId, config }) {
@@ -447,6 +592,7 @@ Summary text: ${item.description || ''}`).join('\n\n');
   const prompt = `You are a music-show research producer. Use ONLY the supplied RSS news items; do not invent facts or URLs. Select up to 12 useful stories for the configured show and summarize each for a host.
 
 SHOW: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
 Genres: ${array(config.genres, []).join(', ')}
 Requested topics: ${array(config.music_topics, []).join(', ')}
 
@@ -485,9 +631,12 @@ async function buildTopics({ sql, ownerUserId, config, research }) {
   const prompt = `You are the topic producer for a music radio/show production. Create 5-8 strong discussion topics that fit the show and can be used between songs.
 
 SHOW: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
 Tone: ${config.show_tone}
 Genres: ${array(config.genres, []).join(', ') || 'General music'}
 Requested topic categories: ${requested.join(', ') || 'Artist news, releases, culture, charts'}
+
+The show's description/premise is the primary editorial instruction. Every topic should clearly serve that premise instead of drifting into generic music chatter.
 
 CURRENT RSS RESEARCH:
 ${researchText || 'No fresh RSS items were available. In that case use evergreen music discussion topics and do not claim current facts.'}
@@ -520,6 +669,8 @@ async function buildAssets({ sql, ownerUserId, config, playlist, topics, researc
   const prompt = `You are the production-assets writer for CREAPD Music Studio. Generate practical on-air material for this show.
 
 SHOW: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Editorial focus: ${array(config.music_topics, []).join(', ') || 'Music and artist conversation'}
 Host: ${config.host_name || 'Host'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
@@ -582,6 +733,7 @@ export async function generateMusicTop10({ sql, ownerUserId, configurationId, pr
   const prompt = `You are the countdown curator for CREAPD Music Studio. Suggest ${Math.max(remaining * 2, 14)} REAL music-video candidates so the system can independently search and validate them on YouTube.
 
 SHOW: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
 Genres: ${array(config.genres, []).join(', ') || 'Top 40'}
 Moods: ${array(config.moods, []).join(', ') || 'Feel Good'}
 Preferred eras: ${config.preferred_eras || 'Current'}
@@ -663,15 +815,29 @@ function buildRundownBlueprint(playlist, topics, config) {
 
 async function buildRundown({ sql, ownerUserId, config, playlist, topics }) {
   const blueprint = buildRundownBlueprint(playlist, topics, config);
-  const blueprintText = blueprint.map((item, index) => `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_song_title ? ` | song=${item.associated_song_title}` : ''}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s`).join('\n');
-  const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\n${t.talking_points}`).join('\n\n');
-  const prompt = `You are the rundown/script writer for CREAPD Music Studio. The rundown structure below is LOCKED. Return exactly the same number of items in exactly the same order. Do not add/remove/reorder segments. Write only the host script/notes needed for each item.
+  const blueprintText = blueprint.map((item, index) => {
+    if (item.segment_type === 'song') {
+      return `${index + 1}. [song] ${item.title} | song=${item.associated_song_title || item.title} | full track=${Math.round(item.target_duration)}s`;
+    }
+    const words = spokenWordRange(item.target_duration, item.segment_type);
+    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target})`;
+  }).join('\n');
 
-SHOW: ${config.production_name}
+  const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\n${t.talking_points}`).join('\n\n');
+  const editorialFocus = array(config.music_topics, []).join(', ') || 'Music and artist conversation';
+
+  const prompt = `You are the rundown/script writer for CREAPD Music Studio. The rundown structure below is LOCKED. Return exactly the same number of items in exactly the same order. Do not add, remove, merge, split, or reorder segments.
+
+SHOW INSTRUCTIONS
+Name: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Editorial focus chosen by the user: ${editorialFocus}
 Host: ${config.host_name || 'Host'}
 Co-host: ${config.co_host_name || 'None'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
+
+The description/premise and editorial focus are PRIMARY instructions. The host script must sound like THIS show, not a generic music show.
 
 LOCKED BLUEPRINT:
 ${blueprintText}
@@ -680,27 +846,83 @@ TOPIC MATERIAL:
 ${topicText || 'No generated topics'}
 
 SCRIPT RULES:
-- Song segments: 1-3 sentence intro/segue mentioning the artist and song title.
-- Topic segments: conversational script based only on supplied topic material; target roughly 110-130 spoken words/minute but stay concise.
-- Talk breaks: natural host banter without invented current facts.
-- Sponsor breaks: generic placeholder ad-read unless show data names a sponsor.
-- Station ID: brief ID.
-- Intro/outro: polished open/close.
-Return rundown array matching the blueprint.`;
-  const result = await structured(prompt, RUNDOWN_SCHEMA, 'creapd_music_rundown_v1', 9000);
+- For every spoken segment, obey its REQUIRED WORDS range. This is a runtime requirement, not a suggestion.
+- Do NOT shorten long segments for concision. A 10-minute segment needs roughly 1,400-1,500 spoken words.
+- Topic segments: develop the supplied material into a natural radio conversation that stays on the show's premise. Use transitions, examples, framing, recaps, and host personality to fill the required runtime without inventing unsupported current facts.
+- Talk breaks: natural host commentary tied to the show's premise/editorial focus.
+- Sponsor breaks: generic placeholder ad-read unless show data names a sponsor; fill the required runtime with a realistic break structure.
+- Station IDs may be brief but must still fit their listed word range.
+- Intro/outro: establish and close the specific show premise, not generic filler.
+- Song segments: keep script_content to a short 1-3 sentence segue only; the full song itself supplies that segment's runtime.
+- Never change a song title or artist from the playlist.
+Return rundown array matching the blueprint exactly.`;
+
+  const result = await structured(prompt, RUNDOWN_SCHEMA, 'creapd_music_rundown_v2', 12000);
   const scripts = array(result?.data?.rundown, []);
+
+  const underfilled = [];
+  for (let index = 0; index < blueprint.length; index += 1) {
+    const bp = blueprint[index];
+    if (bp.segment_type === 'song') continue;
+    const script = text(scripts[index]?.script_content);
+    const words = spokenWordRange(bp.target_duration, bp.segment_type);
+    if (countWords(script) < Math.round(words.min * 0.9)) {
+      underfilled.push({
+        order: index + 1,
+        index,
+        segment_type: bp.segment_type,
+        title: bp.title,
+        topic: bp.associated_topic || '',
+        current_script: script,
+        min_words: words.min,
+        max_words: words.max,
+        target_words: words.target,
+      });
+    }
+  }
+
+  if (underfilled.length) {
+    const repairPrompt = `You are repairing under-length CREAPD Music Studio scripts. Rewrite ONLY the listed segments so their spoken copy fills the configured runtime.
+
+SHOW
+Name: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Editorial focus: ${editorialFocus}
+Tone: ${config.show_tone || 'Professional'}
+
+TOPIC MATERIAL:
+${topicText || 'No generated topics'}
+
+UNDER-LENGTH SEGMENTS:
+${underfilled.map(item => `${item.order}. [${item.segment_type}] ${item.title}${item.topic ? ` | topic=${item.topic}` : ''} | REQUIRED ${item.min_words}-${item.max_words} words, aim ${item.target_words}\nCurrent draft: ${item.current_script || '(empty)'}`).join('\n\n')}
+
+Return one repair per listed order. Each repaired script MUST fall inside its required word range. Preserve the show's actual premise and supplied topic facts. Do not pad with meaningless repetition and do not invent current facts.`;
+
+    const repairResult = await structured(repairPrompt, SCRIPT_REPAIR_SCHEMA, 'creapd_music_rundown_repair_v1', 12000);
+    const repairs = array(repairResult?.data?.repairs, []);
+    for (const repair of repairs) {
+      const order = Math.round(num(repair.order, 0));
+      const target = underfilled.find(item => item.order === order);
+      if (!target) continue;
+      if (!scripts[target.index]) scripts[target.index] = {};
+      scripts[target.index].script_content = text(repair.script_content, scripts[target.index].script_content || '');
+    }
+  }
+
   let cursor = parseTimeToSeconds(config.show_start_time || '06:00');
   const rows = [];
   for (let index = 0; index < blueprint.length; index += 1) {
     const bp = blueprint[index];
     const generated = scripts[index] || {};
     const script = text(generated.script_content);
-    let duration = Math.max(10, num(bp.target_duration, 60));
-    if (bp.segment_type !== 'song' && script) duration = Math.max(duration, Math.ceil(script.split(/\s+/).filter(Boolean).length / 2.1));
+    const duration = Math.max(10, num(bp.target_duration, 60));
     const start = formatSecondsToTime(cursor);
     cursor += duration;
     const end = formatSecondsToTime(cursor);
-    const matchingSong = bp.associated_song_title ? playlist.find(s => text(s.song_title).toLowerCase() === text(bp.associated_song_title).toLowerCase()) : null;
+    const matchingSong = bp.associated_song_title
+      ? playlist.find(s => text(s.song_title).toLowerCase() === text(bp.associated_song_title).toLowerCase())
+      : null;
+
     const [row] = await sql`
       INSERT INTO creapd.music_rundown_items (
         id, configuration_id, owner_user_id, order_index, segment_type, title,
