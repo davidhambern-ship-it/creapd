@@ -30,6 +30,7 @@ export function ShowPlaybackProvider({ children }) {
   const [isYtPlaying, setIsYtPlaying] = useState(false);
   const [isYtReady, setIsYtReady] = useState(false);
   const [activeVideoId, setActiveVideoId] = useState(null);
+  const activeVideoIdRef = useRef(null);
 
   // ── Refs for latest values (used in callbacks) ──
   const autoplayIndexRef = useRef(autoplayIndex);
@@ -61,7 +62,7 @@ export function ShowPlaybackProvider({ children }) {
     const track = findSongTrack(item);
     const titleKey = (track?.song_title || item.title || '').toLowerCase().trim();
     const intro = assets.find(a => a.asset_type === 'song_intro' && (a.associated_song_title || '').toLowerCase().trim() === titleKey);
-    return intro?.content || '';
+    return intro?.content || item.script_content || '';
   }, [findSongTrack, showDataVersion]);
 
   const getSongOutroScript = useCallback((item) => {
@@ -99,6 +100,9 @@ export function ShowPlaybackProvider({ children }) {
   // ── Autoplay engine ──
   const advanceAutoplay = useCallback(() => {
     setSongPhase(null);
+    activeVideoIdRef.current = null;
+    setActiveVideoId(null);
+    setIsYtPlaying(false);
     setAutoplayIndex(prev => {
       if (prev === null) return null;
       const { rundown = [] } = getData();
@@ -215,7 +219,8 @@ export function ShowPlaybackProvider({ children }) {
         }
       } else if (songPhase === 'song') {
         const track = findSongTrack(item);
-        if (track?.youtube_video_id) {
+        if (track?.youtube_video_id && activeVideoIdRef.current !== track.youtube_video_id) {
+          activeVideoIdRef.current = track.youtube_video_id;
           setActiveVideoId(track.youtube_video_id);
           if (ytPlayerRef.current && isYtReadyRef.current) {
             try { ytPlayerRef.current.loadVideoById(track.youtube_video_id); } catch {}
@@ -233,6 +238,12 @@ export function ShowPlaybackProvider({ children }) {
   // ── Public actions ──
   const startAutoplay = useCallback((index) => {
     stop();
+    if (ytPlayerRef.current) {
+      try { ytPlayerRef.current.stopVideo(); } catch {}
+    }
+    activeVideoIdRef.current = null;
+    setActiveVideoId(null);
+    setIsYtPlaying(false);
     setSongPhase(null);
     setAutoplayIndex(index);
   }, [stop]);
@@ -240,6 +251,7 @@ export function ShowPlaybackProvider({ children }) {
   const stopAutoplay = useCallback(() => {
     setSongPhase(null);
     setAutoplayIndex(null);
+    activeVideoIdRef.current = null;
     setActiveVideoId(null);
     stop();
     if (ytPlayerRef.current) {
@@ -266,6 +278,7 @@ export function ShowPlaybackProvider({ children }) {
       setAutoplayIndex(itemIndex);
       setSongPhase('song');
     } else {
+      activeVideoIdRef.current = videoId;
       setActiveVideoId(videoId);
       if (ytPlayerRef.current && isYtReadyRef.current) {
         try { ytPlayerRef.current.loadVideoById(videoId); } catch {}
