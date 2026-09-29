@@ -161,10 +161,10 @@ export default function MusicDiscoveryNav({
             icon={studioApproved ? Radio : LockKeyhole}
             label="Radio Studio"
             color="#FF00FF"
-            disabled={Boolean(config) && !studioApproved}
+            disabled={!studioApproved}
             active={location.pathname === '/music/live'}
             title={
-              Boolean(config) && !studioApproved
+              !studioApproved
                 ? 'Approve every track and spoken segment to unlock Radio Studio'
                 : 'Open Radio Studio'
             }
