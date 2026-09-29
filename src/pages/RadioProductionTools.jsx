@@ -311,6 +311,7 @@ export default function RadioProductionTools() {
               onChange={value => updateQuality('ground_current_facts', value)}
               label="Ground current facts in approved research"
               detail="If CREAPD cannot support a current factual claim from approved material, keep the copy evergreen."
+              locked
             />
             <RuleToggle
               checked={rules.quality.avoid_repeated_phrasing}
@@ -323,6 +324,7 @@ export default function RadioProductionTools() {
               onChange={value => updateQuality('keep_show_premise', value)}
               label="Keep scripts tied to the show premise"
               detail="The configured show description and editorial focus remain the primary creative instructions."
+              locked
             />
 
             <div className="rounded-xl border border-emerald-400/12 bg-emerald-500/[0.025] p-3 mt-4">
