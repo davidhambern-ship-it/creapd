@@ -853,6 +853,14 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
 
+        if (shouldUseNeonAuth() && functionName === 'getMusicProductionBundle') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_get_bundle',
+            configuration_id: payload?.configuration_id || null,
+          });
+          return { data: result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'buildMusicProduction') {
           const result = await creapdApi.post('/production/core', {
             action: 'music_build',
