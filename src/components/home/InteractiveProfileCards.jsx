@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Construction } from 'lucide-react';
 
 const PROFILE_VISUALS = {
   news:      { x: '0%',      accent: '#ff6a00', tagline: 'Real Stories. Real People. Bigger Solutions.' },
@@ -96,14 +96,17 @@ export default function InteractiveProfileCards({ profiles = [], onEnter }) {
               <button
                 type="button"
                 onClick={() => onEnter?.(profile)}
-                className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border bg-black/45 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/[0.07] focus:outline-none focus-visible:ring-2"
+                className={`mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 ${profile.available ? 'bg-black/45 text-white hover:bg-white/[0.07]' : 'bg-amber-400/[0.07] text-amber-200'}`}
                 style={{
-                  borderColor: `${visual.accent}88`,
-                  '--tw-ring-color': visual.accent,
+                  borderColor: profile.available ? `${visual.accent}88` : 'rgba(251,191,36,.28)',
+                  '--tw-ring-color': profile.available ? visual.accent : '#fbbf24',
                 }}
               >
-                Enter {profile.shortLabel || profile.label}
-                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                {profile.available ? (
+                  <>Enter {profile.shortLabel || profile.label}<ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" /></>
+                ) : (
+                  <><Construction className="h-4 w-4" />Under Construction</>
+                )}
               </button>
             </div>
           </article>
