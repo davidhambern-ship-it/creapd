@@ -14,6 +14,7 @@ import {
   Package,
   Radio,
   Search,
+  Trophy,
   Sparkles,
   Wrench,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ const TOOLS = [
   { icon: ListMusic, label: 'Playlist', path: '/music/playlist', color: '#8B5CF6' },
   { icon: Sparkles, label: 'Assets', path: '/music/assets', color: '#FF00FF' },
   { icon: Package, label: 'Rundown', path: '/music/rundown', color: '#FFD700' },
+  { icon: Trophy, label: 'Top 10 Video', path: '/music/top10', color: '#FF8A4C' },
   { icon: Download, label: 'Export', path: '/music/export', color: '#00FFFF' },
 ];
 
@@ -126,7 +128,7 @@ export default function MusicDiscoveryNav({
           boxShadow: '0 12px 34px rgba(0,0,0,0.24)',
         }}
       >
-        <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-2">
           <NavButton
             icon={Compass}
             label="Discovery Room"
