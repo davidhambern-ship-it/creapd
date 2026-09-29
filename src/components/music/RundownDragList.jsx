@@ -30,7 +30,7 @@ export default function RundownDragList({
   const {
     autoplayIndex, songPhase, speakingId, isSupported,
     startAutoplay, stopAutoplay, handleNativePreview,
-    findSongTrack, getScriptForItem, songScriptsByTitle,
+    findSongTrack, getScriptForItem,
   } = playbackCtx;
 
   // Retiming helper — recalculates start/end times based on durations
