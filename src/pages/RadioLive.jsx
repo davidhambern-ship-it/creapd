@@ -544,8 +544,8 @@ export default function RadioLive() {
   const nextTrack = activeDeck === 'A' ? deckBTrack : deckATrack;
 
   return (
-    <div className="h-screen overflow-hidden bg-[#07090d] text-white flex flex-col">
-      <header className="h-[66px] shrink-0 border-b border-white/10 bg-black/90 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-3">
+    <div className="min-h-screen bg-[#07090d] text-white">
+      <header className="sticky top-0 z-40 h-[66px] border-b border-white/10 bg-black/90 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button variant="ghost" size="sm" asChild className="text-white/70">
             <Link to="/music/dashboard"><ArrowLeft className="w-4 h-4 mr-1" /> Radio</Link>
@@ -581,8 +581,8 @@ export default function RadioLive() {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 p-3 md:p-4 flex flex-col gap-3">
-        <section className="h-[72px] shrink-0 rounded-xl border border-white/10 bg-gradient-to-r from-fuchsia-500/[0.08] via-white/[0.025] to-cyan-500/[0.07] px-4 flex items-center">
+      <main className="p-3 md:p-4 space-y-4 max-w-[1900px] mx-auto">
+        <section className="min-h-[72px] rounded-xl border border-white/10 bg-gradient-to-r from-fuchsia-500/[0.08] via-white/[0.025] to-cyan-500/[0.07] px-4 py-3 flex items-center">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 w-full min-w-0">
             <div className="min-w-0">
               <p className="text-[9px] uppercase tracking-[0.18em] text-fuchsia-300 font-semibold">Current Segment · {segmentIndex + 1}/{sortedRundown.length || 0}</p>
@@ -602,9 +602,9 @@ export default function RadioLive() {
           </div>
         </section>
 
-        <div className="min-h-0 flex-1 grid grid-cols-1 xl:grid-cols-[minmax(0,1.08fr)_minmax(510px,.92fr)] gap-3">
-          <section className="min-h-0 grid grid-rows-[minmax(220px,.92fr)_minmax(190px,.72fr)] gap-3">
-            <div className="relative min-h-0 rounded-2xl border border-white/10 bg-black overflow-hidden">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.18fr)_minmax(520px,.82fr)] gap-4 items-start">
+          <section className="space-y-4 min-w-0">
+            <div className="relative rounded-2xl border border-white/10 bg-black overflow-hidden aspect-video min-h-[420px] xl:min-h-[520px]">
               <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-md border border-white/10 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/60">
                 <MonitorPlay className="w-4 h-4" /> PROGRAM MONITOR
               </div>
@@ -617,7 +617,7 @@ export default function RadioLive() {
               </div>
             </div>
 
-            <div className="min-h-0 rounded-2xl border border-fuchsia-400/20 bg-gradient-to-br from-fuchsia-500/[0.07] to-white/[0.02] overflow-hidden flex flex-col">
+            <div className="rounded-2xl border border-fuchsia-400/20 bg-gradient-to-br from-fuchsia-500/[0.07] to-white/[0.02] overflow-hidden flex flex-col min-h-[360px]">
               <div className="h-12 shrink-0 border-b border-white/10 px-4 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 text-fuchsia-300">
@@ -631,13 +631,13 @@ export default function RadioLive() {
                   <button type="button" onClick={() => setTeleprompterSize(value => Math.min(40, value + 2))} className="h-7 px-2 rounded border border-white/10 bg-white/5 text-xs">A+</button>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <div className="flex-1 overflow-y-auto max-h-[520px] px-5 py-5">
                 <div className="whitespace-pre-line font-medium leading-[1.55]" style={{ fontSize: `${teleprompterSize}px` }}>{teleprompterText}</div>
               </div>
             </div>
           </section>
 
-          <section className="min-h-0 rounded-2xl border border-white/10 bg-white/[0.025] p-3 flex flex-col gap-3">
+          <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-3 flex flex-col gap-3 min-w-0">
             <div className="shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2"><Headphones className="w-4 h-4 text-fuchsia-300" /><h2 className="font-heading font-semibold text-sm">Dual Decks</h2></div>
@@ -689,13 +689,13 @@ export default function RadioLive() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 grid grid-rows-[minmax(120px,1fr)_auto] gap-3">
-              <div className="min-h-0 rounded-xl border border-white/10 bg-black/25 p-2.5 flex flex-col">
+            <div className="grid gap-3">
+              <div className="rounded-xl border border-white/10 bg-black/25 p-2.5 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2"><ListMusic className="w-4 h-4 text-cyan-300" /><h3 className="text-xs font-semibold">Playlist / Queue</h3></div>
                   <span className="text-[10px] text-white/35">{sortedPlaylist.length} tracks</span>
                 </div>
-                <div className="min-h-0 overflow-y-auto space-y-1 pr-1">
+                <div className="overflow-y-auto space-y-1 pr-1 max-h-[360px]">
                   {sortedPlaylist.map((track, index) => {
                     const id = trackKey(track);
                     const onA = id === deckAId;
@@ -746,12 +746,12 @@ export default function RadioLive() {
           </section>
         </div>
 
-        <section className="h-[116px] shrink-0 rounded-xl border border-white/10 bg-white/[0.025] p-2.5">
+        <section className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-fuchsia-300" /><h3 className="text-xs font-semibold">Run of Show</h3></div>
             <span className="text-[10px] text-white/35">{sortedRundown.length} segments</span>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {sortedRundown.map((segment, index) => {
               const selected = index === segmentIndex;
               return (
@@ -759,7 +759,7 @@ export default function RadioLive() {
                   key={segment.id || index}
                   type="button"
                   onClick={() => setSegmentIndex(index)}
-                  className={`shrink-0 w-[210px] h-[72px] rounded-lg border px-3 py-2 text-left transition-colors ${selected ? 'border-fuchsia-400/35 bg-fuchsia-500/[0.09]' : 'border-white/[0.06] bg-black/25 hover:bg-white/[0.04]'}`}
+                  className={`shrink-0 w-[230px] min-h-[82px] rounded-lg border px-3 py-2.5 text-left transition-colors ${selected ? 'border-fuchsia-400/35 bg-fuchsia-500/[0.09]' : 'border-white/[0.06] bg-black/25 hover:bg-white/[0.04]'}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[9px] text-white/35">#{index + 1} · {segmentLabel(segment)}</span>
