@@ -9,11 +9,22 @@ export const neonAuth = createAuthClient(
 export function shouldUseNeonAuth() {
   if (typeof window === 'undefined') return false;
 
+  const hostname = window.location.hostname.toLowerCase();
+
+  // CREAPD production now runs on the migrated Vercel + Neon stack.
+  // Force the public CREAPD domains onto Neon even if an old production
+  // environment variable still says "base44".
+  if (
+    hostname === 'creapd.com' ||
+    hostname === 'www.creapd.com' ||
+    hostname.endsWith('.vercel.app')
+  ) {
+    return true;
+  }
+
   const explicitProvider = import.meta.env.VITE_AUTH_PROVIDER;
   if (explicitProvider === 'neon') return true;
   if (explicitProvider === 'base44') return false;
 
-  // During migration, all Vercel Preview deployments use Neon Auth while
-  // production remains on Base44 until the replacement is proven end-to-end.
-  return window.location.hostname.endsWith('.vercel.app');
+  return false;
 }
