@@ -1422,7 +1422,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
 
     await sql`
       UPDATE creapd.music_production_configurations
-      SET status='ready', build_log=${safeJson(buildLog)}::jsonb,
+      SET status='in_review', build_log=${safeJson(buildLog)}::jsonb,
           build_metadata=${safeJson({
             provider: configuredProvider(),
             completed_at: new Date().toISOString(),
@@ -1759,6 +1759,12 @@ Return one fresh repair for every listed order. Do not reuse the rejected wordin
 export async function regenerateRejectedMusicMaterials({ sql, ownerUserId, configurationId, kind = 'all' }) {
   const config = await requireConfig(sql, ownerUserId, configurationId);
   const ownerId = String(ownerUserId);
+
+  await sql`
+    UPDATE creapd.music_production_configurations
+    SET status='in_review', updated_at=now()
+    WHERE id=${config.id} AND owner_user_id=${ownerId}
+  `;
   const normalizedKind = ['all', 'tracks', 'segments'].includes(text(kind).toLowerCase())
     ? text(kind).toLowerCase()
     : 'all';
