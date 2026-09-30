@@ -14,6 +14,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const ssoStatus = new URLSearchParams(window.location.search).get("sso");
+  const bernaverseSsoUrl =
+    "https://bernaverse.hireberna.app/sso.html?app=creapd";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,7 +66,7 @@ export default function Login() {
     <AuthImmersiveLayout
       icon={LogIn}
       title="Welcome back"
-      subtitle="Log in to your account"
+      subtitle="Use your BERNAverse Passport. Existing Preview accounts can still use their original CREAPD sign-in."
       footer={
         <>
           Don't have an account?{" "}
@@ -73,6 +76,36 @@ export default function Login() {
         </>
       }
     >
+      {ssoStatus === "legacy" && (
+        <div className="mb-4 p-3 rounded-lg border text-sm leading-relaxed" style={{ background: "hsl(45 80% 50% / 0.08)", borderColor: "hsl(45 80% 55% / 0.35)", color: "hsl(45 90% 75%)" }}>
+          <strong>Your existing CREAPD Preview login was preserved.</strong><br />
+          This account predates BERNAverse SSO, so use the original sign-in below.
+        </div>
+      )}
+
+      {["invalid", "setup", "unavailable"].includes(ssoStatus) && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          BERNAverse could not finish the CREAPD Preview handoff. No existing password was changed.
+        </div>
+      )}
+
+      <a
+        href={bernaverseSsoUrl}
+        className="w-full h-12 mb-4 rounded-md font-medium inline-flex items-center justify-center no-underline"
+        style={{
+          background: "linear-gradient(135deg, hsl(45 90% 55% / 0.22), hsl(270 70% 55% / 0.18))",
+          border: "1px solid hsl(45 80% 60% / 0.55)",
+          color: "hsl(45 95% 75%)",
+          boxShadow: "0 0 20px hsl(45 80% 50% / 0.12)",
+        }}
+      >
+        Continue with BERNAverse
+      </a>
+
+      <div className="text-center text-xs uppercase tracking-wider mb-4" style={{ color: "hsl(220 10% 45%)" }}>
+        Existing CREAPD Preview sign-in
+      </div>
+
       <Button
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6 bg-white text-black hover:bg-white/90 border-0"
