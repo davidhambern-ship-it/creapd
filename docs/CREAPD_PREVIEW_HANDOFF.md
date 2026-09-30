@@ -454,3 +454,14 @@ After Neon is available:
 
 
 Prisma Music Preview database was provisioned and `MUSIC_DATABASE_URL` was configured in Vercel Preview on 2026-09-28. This commit intentionally triggers a fresh Preview deployment so the new environment variable is loaded.
+
+
+## 2026-09-30 — BERNAverse identity routing checkpoint
+
+- Preview-only auth/signup integration updated; live `main` remains frozen.
+- `bce857842c8a3a9ebf162b7c524e45954c12891f` — CREAPD Preview `/register` now redirects new accounts to `https://bernaverse.hireberna.app/?auth=signup&app=creapd`.
+- `96ad724c9516072b59a266baace3255aed7e6324` — existing `/api/creapd/auth/me` Preview function now accepts BERNAverse-origin provisioning POSTs and creates the matching CREAPD Neon Auth account with the same email/password. No extra Vercel function was added.
+- Vercel status for `96ad724...`: **SUCCESS / Deployment has completed**.
+- BERNAverse landing repo was updated to recognize CREAPD as a signup destination and call the Preview provisioning bridge.
+- Actual end-to-end user signup from BERNAverse -> CREAPD Preview is **USER TEST REQUIRED** before any production auth promotion.
+- Do not promote this auth path to CREAPD `main` until the full Preview migration is approved for launch.
