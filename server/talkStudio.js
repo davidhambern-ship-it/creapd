@@ -296,6 +296,214 @@ export async function saveTalkConfiguration({ sql, ownerUserId, ownerEmail, inpu
   return { configuration: withConfigAliases(saved), created: !requestedId };
 }
 
+async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} }) {
+  const ownerId = String(ownerUserId);
+  const episode = body.episode && typeof body.episode === 'object' ? body.episode : {};
+  const rawItems = Array.isArray(body.items) ? body.items : [];
+  const items = rawItems
+    .map((item, index) => ({
+      title: clean(item?.title, `Topic ${index + 1}`),
+      summary: clean(item?.summary),
+      script: clean(item?.script || item?.teleprompter_script || item?.summary),
+      source: clean(item?.source),
+      source_url: clean(item?.source_url),
+      duration_seconds: Math.max(60, Math.min(1800, cleanNumber(item?.duration_seconds, 420))),
+    }))
+    .filter(item => item.title);
+
+  if (!items.length) {
+    throw makeError('At least one approved episode item is required', 'podcast_episode_items_required');
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const totalSeconds = items.reduce((sum, item) => sum + item.duration_seconds, 0) + 240;
+  const totalMinutes = Math.max(5, Math.ceil(totalSeconds / 60));
+
+  const saved = await saveTalkConfiguration({
+    sql,
+    ownerUserId: ownerId,
+    ownerEmail,
+    input: {
+      production_name: clean(episode.title, 'Podcast Episode'),
+      host_name: cleanNullable(episode.host_name),
+      co_host_name: cleanNullable(episode.co_host_name),
+      show_date: clean(episode.show_date, today),
+      show_start_time: clean(episode.show_start_time, '12:00'),
+      live_or_recorded: ['live', 'recorded'].includes(episode.live_or_recorded)
+        ? episode.live_or_recorded
+        : 'recorded',
+      station_name: cleanNullable(episode.show_name),
+      show_description: cleanNullable(episode.description),
+      show_format: clean(episode.show_format, 'Podcast Episode'),
+      total_show_runtime: totalMinutes,
+      talk_segment_runtime: Math.max(1, Math.ceil(items[0].duration_seconds / 60)),
+      commercial_sponsor_runtime: 0,
+      intro_runtime: 2,
+      outro_runtime: 2,
+      topics: items.map(item => item.title),
+      research_sources: items
+        .map(item => item.source || item.source_url)
+        .filter(Boolean),
+      show_tone: clean(episode.show_tone, 'Conversational'),
+      ai_automation: [],
+      vo_requirements: {},
+    },
+  });
+
+  const configuration = saved.configuration;
+  const configId = configuration.id;
+  const sourcePayloadBase = {
+    pipeline: 'podcast_import_v1',
+    imported_from: clean(episode.source, 'news-prep'),
+    imported_at: new Date().toISOString(),
+    approved: true,
+  };
+
+  await Promise.all([
+    sql`DELETE FROM creapd.talk_topics WHERE configuration_id=${configId} AND owner_user_id=${ownerId}`,
+    sql`DELETE FROM creapd.talk_research_items WHERE configuration_id=${configId} AND owner_user_id=${ownerId}`,
+    sql`DELETE FROM creapd.talk_segments WHERE configuration_id=${configId} AND owner_user_id=${ownerId}`,
+    sql`DELETE FROM creapd.talk_assets WHERE configuration_id=${configId} AND owner_user_id=${ownerId}`,
+    sql`DELETE FROM creapd.talk_sessions WHERE configuration_id=${configId} AND owner_user_id=${ownerId}`,
+  ]);
+
+  const topicIds = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const topicId = randomUUID();
+    topicIds.push(topicId);
+    const links = item.source_url ? [item.source_url] : [];
+    const sourcePayload = asJson({
+      ...sourcePayloadBase,
+      source_url: item.source_url || null,
+      source: item.source || null,
+    });
+
+    await sql`
+      INSERT INTO creapd.talk_topics (
+        id, configuration_id, owner_user_id, topic_name, generated_summary, talking_points,
+        sources, source_links, suggested_placement, verification_status, verification_notes,
+        counter_perspectives, debate_questions, confidence_score, status, display_order,
+        source_system, source_payload
+      ) VALUES (
+        ${topicId}, ${configId}, ${ownerId}, ${item.title},
+        ${item.summary || item.script}, ${item.script || item.summary},
+        ${item.source || item.source_url || 'Approved Podcast Prep'},
+        ${JSON.stringify(links)}::jsonb, ${`Segment ${index + 1}`}, 'verified',
+        'Imported from producer-approved Podcast preparation material.',
+        '[]'::jsonb, '[]'::jsonb, 100, 'approved', ${index},
+        'creapd-podcast-import', ${sourcePayload}::jsonb
+      )
+    `;
+
+    await sql`
+      INSERT INTO creapd.talk_research_items (
+        id, configuration_id, owner_user_id, topic_name, title, source, source_url,
+        category, summary, research_date, relevance, verification_status,
+        verification_notes, confidence_score, source_system, source_payload
+      ) VALUES (
+        ${randomUUID()}, ${configId}, ${ownerId}, ${item.title}, ${item.title},
+        ${item.source || 'Approved Podcast Prep'}, ${item.source_url || null},
+        'approved_episode_material', ${item.summary || item.script}, ${clean(episode.show_date, today)}::date,
+        'high', 'verified', 'Imported after producer approval.', 100,
+        'creapd-podcast-import', ${sourcePayload}::jsonb
+      )
+    `;
+
+    await sql`
+      INSERT INTO creapd.talk_assets (
+        id, configuration_id, owner_user_id, asset_type, title, content,
+        associated_topic, status, source_system, source_payload
+      ) VALUES (
+        ${randomUUID()}, ${configId}, ${ownerId}, 'host_script',
+        ${`Host Script: ${item.title}`}, ${item.script || item.summary || item.title},
+        ${item.title}, 'approved', 'creapd-podcast-import', ${sourcePayload}::jsonb
+      )
+    `;
+  }
+
+  let orderIndex = 0;
+  await sql`
+    INSERT INTO creapd.talk_segments (
+      id, configuration_id, owner_user_id, order_index, segment_type, title,
+      duration_seconds, notes, status, runtime_status, source_system, source_payload
+    ) VALUES (
+      ${randomUUID()}, ${configId}, ${ownerId}, ${orderIndex++}, 'intro', 'Episode Intro',
+      120, ${clean(episode.intro_notes, 'Welcome the audience and introduce today’s episode.')},
+      'approved', 'queued', 'creapd-podcast-import',
+      ${asJson({ ...sourcePayloadBase, topic_name: '' })}::jsonb
+    )
+  `;
+
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    await sql`
+      INSERT INTO creapd.talk_segments (
+        id, configuration_id, owner_user_id, order_index, segment_type, title,
+        duration_seconds, notes, status, runtime_status, source_system, source_payload
+      ) VALUES (
+        ${randomUUID()}, ${configId}, ${ownerId}, ${orderIndex++}, 'solo_commentary', ${item.title},
+        ${item.duration_seconds}, ${item.summary || item.script},
+        'approved', 'queued', 'creapd-podcast-import',
+        ${asJson({ ...sourcePayloadBase, topic_name: item.title, topic_id: topicIds[index] })}::jsonb
+      )
+    `;
+  }
+
+  await sql`
+    INSERT INTO creapd.talk_segments (
+      id, configuration_id, owner_user_id, order_index, segment_type, title,
+      duration_seconds, notes, status, runtime_status, source_system, source_payload
+    ) VALUES (
+      ${randomUUID()}, ${configId}, ${ownerId}, ${orderIndex}, 'outro', 'Episode Outro',
+      120, ${clean(episode.outro_notes, 'Recap the episode and close the show.')},
+      'approved', 'queued', 'creapd-podcast-import',
+      ${asJson({ ...sourcePayloadBase, topic_name: '' })}::jsonb
+    )
+  `;
+
+  const [session] = await sql`
+    INSERT INTO creapd.talk_sessions (
+      id, configuration_id, owner_user_id, episode_id, status, host_view_state
+    ) VALUES (
+      ${randomUUID()}, ${configId}, ${ownerId}, ${configuration.episode_id || null},
+      'ready', ${asJson({ source: 'podcast-prep', imported: true })}::jsonb
+    )
+    RETURNING *
+  `;
+
+  const buildMetadata = asJson({
+    ...sourcePayloadBase,
+    stage: 'studio_ready',
+    imported_item_count: items.length,
+  });
+
+  await sql`
+    UPDATE creapd.talk_production_configurations
+    SET status='ready', build_metadata=${buildMetadata}::jsonb, updated_at=now()
+    WHERE id=${configId} AND owner_user_id=${ownerId}
+  `;
+
+  if (configuration.episode_id) {
+    await sql`
+      UPDATE creapd.episodes
+      SET status='ready', updated_at=now()
+      WHERE id=${configuration.episode_id} AND owner_user_id=${ownerId}
+    `;
+  }
+
+  return {
+    configuration: withConfigAliases({
+      ...configuration,
+      status: 'ready',
+      build_metadata: JSON.parse(buildMetadata),
+    }),
+    session: withDates(session),
+    imported_item_count: items.length,
+    studio_ready: true,
+  };
+}
+
 async function createGuest(sql, ownerUserId, body) {
   const configuration = await requireConfiguration(sql, ownerUserId, body.configuration_id);
   const guest = body.guest && typeof body.guest === 'object' ? body.guest : body;
@@ -402,6 +610,9 @@ export async function runTalkStudioAction({ sql, ownerUserId, ownerEmail, action
   switch (action) {
     case 'talk_save_configuration':
       return saveTalkConfiguration({ sql, ownerUserId, ownerEmail, input: body.configuration || body });
+
+    case 'talk_import_episode':
+      return importPodcastEpisode({ sql, ownerUserId, ownerEmail, body });
 
     case 'talk_build':
     case 'talk_refresh': {

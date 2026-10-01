@@ -231,6 +231,7 @@ function normalizePost(path, body = {}) {
       build_research: 'talk_build_research',
       build_production: 'talk_build_production',
       generate_media: 'talk_generate_media',
+      import_episode: 'talk_import_episode',
       set_topic_status: 'talk_set_topic_status',
       create_guest: 'talk_create_guest',
       update_guest: 'talk_update_guest',

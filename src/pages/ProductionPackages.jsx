@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard, Play } from 'lucide-react';
+import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard, Play, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/components/ui/use-toast";
 import ApprovedPackageCard from '@/components/production/ApprovedPackageCard';
 import PresentationTimeline from '@/components/message/PresentationTimeline';
 import PresentationViewer from '@/components/production/PresentationViewer';
 import { logActivity } from '@/lib/activityUtils';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 
 export default function ProductionPackages() {
   const [packages, setPackages] = useState([]);
@@ -15,6 +17,7 @@ export default function ProductionPackages() {
   const [loading, setLoading] = useState(true);
   const [generatingPresentation, setGeneratingPresentation] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
+  const [sendingToStudio, setSendingToStudio] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,6 +57,64 @@ export default function ProductionPackages() {
       setPresentationScenes(scenes);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSendToPodcastStudio = async () => {
+    if (!packages.length) return;
+
+    if (!shouldUseNeonAuth()) {
+      toast({
+        title: 'Podcast Studio Preview',
+        description: 'Send to Podcast Studio is available in the owned CREAPD Preview build.',
+      });
+      return;
+    }
+
+    setSendingToStudio(true);
+    try {
+      const items = packages.map((pkg, index) => {
+        const article = articleMap[pkg.article_id] || {};
+        return {
+          title: article.title || pkg.story_title || pkg.title || `Episode Topic ${index + 1}`,
+          summary: pkg.story_summary || article.summary || article.description || '',
+          script: pkg.teleprompter_script || pkg.script || pkg.story_summary || article.summary || '',
+          source: article.source_name || article.source || '',
+          source_url: article.url || article.source_url || '',
+          duration_seconds: Number(pkg.estimated_duration_seconds || pkg.duration_seconds || 420),
+        };
+      });
+
+      const result = await creapdApi.post('/talk/production', {
+        action: 'import_episode',
+        episode: {
+          title: `Podcast Episode — ${new Date().toLocaleDateString()}`,
+          show_date: new Date().toISOString().slice(0, 10),
+          show_format: 'Podcast Episode',
+          show_tone: 'Conversational',
+          source: 'news-prep',
+          description: `Imported from ${packages.length} producer-approved Podcast preparation packages.`,
+        },
+        items,
+      });
+
+      const configId = result?.configuration?.id;
+      if (!configId) throw new Error('Podcast Studio did not return a configuration id.');
+
+      toast({
+        title: 'Episode sent to Podcast Studio',
+        description: `${packages.length} approved items are ready in the studio.`,
+      });
+      window.location.href = `/talk/live?config_id=${encodeURIComponent(configId)}`;
+    } catch (error) {
+      console.error('Podcast Studio handoff failed:', error);
+      toast({
+        title: 'Studio handoff failed',
+        description: error?.message || 'CREAPD could not send this episode to the Podcast Studio.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingToStudio(false);
     }
   };
 
@@ -103,14 +164,23 @@ export default function ProductionPackages() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Production</h1>
-          <p className="text-xs text-muted-foreground mt-1">Approved story packages ready for presentation generation</p>
+          <h1 className="text-xl font-bold text-white">Episode Production</h1>
+          <p className="text-xs text-muted-foreground mt-1">Producer-approved episode material ready for final assembly and studio handoff</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{packages.length} approved</span>
           <span className="text-xs text-berna-emerald flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />Ready for APD
+            <CheckCircle2 className="w-3 h-3" />Ready for Studio
           </span>
+          <Button
+            size="sm"
+            className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
+            onClick={handleSendToPodcastStudio}
+            disabled={sendingToStudio || packages.length === 0}
+          >
+            {sendingToStudio ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Mic2 className="w-3.5 h-3.5 mr-1.5" />}
+            {sendingToStudio ? 'Sending…' : 'Send to Podcast Studio'}
+          </Button>
         </div>
       </div>
 
