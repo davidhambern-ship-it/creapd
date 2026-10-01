@@ -393,7 +393,7 @@ export default function TalkLive() {
           <Mic2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-xl font-heading font-bold mb-2">Podcast Studio could not open this episode</h1>
           <p className="text-sm text-muted-foreground mb-5">{error?.message || 'No Podcast episode was found.'}</p>
-          <Button asChild><Link to="/talk/dashboard">Back to Podcast Dashboard</Link></Button>
+          <Button asChild><Link to="/podcast">Back to Podcast Dashboard</Link></Button>
         </div>
       </div>
     );
@@ -406,7 +406,7 @@ export default function TalkLive() {
           <WifiOff className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-xl font-heading font-bold mb-2">Podcast Studio is available in the owned Preview build</h1>
           <p className="text-sm text-muted-foreground mb-5">This execution cockpit intentionally does not fall back to Base44.</p>
-          <Button asChild><Link to="/talk/dashboard">Back to Talk Dashboard</Link></Button>
+          <Button asChild><Link to="/podcast">Back to Podcast Dashboard</Link></Button>
         </div>
       </div>
     );
@@ -418,7 +418,7 @@ export default function TalkLive() {
         <div className="px-4 md:px-6 py-2.5 flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/talk/dashboard"><ArrowLeft className="w-4 h-4 mr-1" /> Podcast</Link>
+              <Link to="/podcast"><ArrowLeft className="w-4 h-4 mr-1" /> Podcast</Link>
             </Button>
             <div className="h-6 w-px bg-white/10" />
             <div className="min-w-0">
