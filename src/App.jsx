@@ -154,6 +154,29 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<CreapdHome />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route element={<ProducerLayout />}>
+          {/* Podcast Production — user-facing routes. Legacy /news and /talk routes remain below during migration. */}
+          <Route path="/podcast" element={<PodcastDashboard />} />
+          <Route path="/podcast/dashboard" element={<Navigate to="/podcast" replace />} />
+          <Route path="/podcast/setup" element={<TalkConfigure />} />
+          <Route path="/podcast/planner" element={<WeeklyPlanner />} />
+          <Route path="/podcast/research" element={<ResearchDesk />} />
+          <Route path="/podcast/sources" element={<Sources />} />
+          <Route path="/podcast/import" element={<ManualImport />} />
+          <Route path="/podcast/brief" element={<TodaysBrief />} />
+          <Route path="/podcast/queue" element={<StoryQueue />} />
+          <Route path="/podcast/review" element={<StoryIntelligenceReview />} />
+          <Route path="/podcast/story/:id" element={<StoryDetail />} />
+          <Route path="/podcast/library" element={<StoryLibrary />} />
+          <Route path="/podcast/workspace" element={<StoryManager />} />
+          <Route path="/podcast/production" element={<ProductionPackages />} />
+          <Route path="/podcast/guests" element={<TalkGuests />} />
+          <Route path="/podcast/rundown" element={<TalkRundown />} />
+          <Route path="/podcast/assets" element={<TalkAssets />} />
+          <Route path="/podcast/archive" element={<ArchivePage />} />
+          <Route path="/podcast/export" element={<ExportCenter />} />
+          <Route path="/podcast/profile" element={<UserProfile />} />
+          <Route path="/podcast/presentations" element={<Presentations />} />
+
           <Route path="/news/dashboard" element={<PodcastDashboard />} />
           <Route path="/news/planner" element={<WeeklyPlanner />} />
           <Route path="/news/brief" element={<TodaysBrief />} />
@@ -197,7 +220,8 @@ const AuthenticatedApp = () => {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/production-types" element={<Navigate to="/" replace />} />
 
-        {/* CREAPD Live — standalone show execution cockpit */}
+        {/* Podcast Studio — standalone execution cockpit */}
+        <Route path="/podcast/studio" element={<TalkLive />} />
         <Route path="/talk/live" element={<TalkLive />} />
 
         {/* Radio Studio — full-screen live production workspace */}
@@ -221,7 +245,7 @@ const AuthenticatedApp = () => {
         {/* Talk Production */}
         <Route element={<TalkLayout />}>
           <Route path="/talk/configure" element={<TalkConfigure />} />
-          <Route path="/talk/dashboard" element={<TalkDashboard />} />
+          <Route path="/talk/dashboard" element={<Navigate to="/podcast" replace />} />
           <Route path="/talk/research" element={<TalkResearch />} />
           <Route path="/talk/topics" element={<TalkTopics />} />
           <Route path="/talk/guests" element={<TalkGuests />} />
