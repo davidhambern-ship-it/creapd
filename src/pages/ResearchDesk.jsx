@@ -47,7 +47,7 @@ export default function ResearchDesk() {
     if (!echoPrompt.trim() || !selected) return;
     setEchoLoading(true);
     setEchoResponse('');
-    const prompt = `You are Echo, a newsroom AI assistant for TexasNomad Network. Analyze this story:\n\nTitle: ${selected.title}\nSummary: ${selected.summary || 'N/A'}\nSource: ${selected.source_name || 'N/A'}\nCategory: ${selected.category || 'N/A'}\n\nUser request: ${echoPrompt}\n\nProvide concise, actionable insights for a radio producer.`;
+    const prompt = `You are Echo, a podcast research assistant inside CREAPD. Analyze this material:\n\nTitle: ${selected.title}\nSummary: ${selected.summary || 'N/A'}\nSource: ${selected.source_name || 'N/A'}\nCategory: ${selected.category || 'N/A'}\n\nUser request: ${echoPrompt}\n\nProvide concise, actionable insights for a podcast producer preparing an episode.`;
     const response = await base44.integrations.Core.InvokeLLM({ prompt });
     setEchoResponse(response);
     // Save as echo note
