@@ -92,7 +92,7 @@ export default function ProductionPackages() {
           show_date: new Date().toISOString().slice(0, 10),
           show_format: 'Podcast Episode',
           show_tone: 'Conversational',
-          source: 'news-prep',
+          source: 'podcast-prep',
           description: `Imported from ${packages.length} producer-approved Podcast preparation packages.`,
         },
         items,
@@ -105,7 +105,7 @@ export default function ProductionPackages() {
         title: 'Episode sent to Podcast Studio',
         description: `${packages.length} approved items are ready in the studio.`,
       });
-      window.location.href = `/talk/live?config_id=${encodeURIComponent(configId)}`;
+      window.location.href = `/podcast/studio?config_id=${encodeURIComponent(configId)}`;
     } catch (error) {
       console.error('Podcast Studio handoff failed:', error);
       toast({
@@ -132,7 +132,7 @@ export default function ProductionPackages() {
         await loadPresentationScenes();
         logActivity('generate', {
           entity_type: 'PresentationScene',
-          entity_name: `Full Presentation — ${packages.length} stories`,
+          entity_name: `Full Presentation — ${packages.length} episode items`,
           details: `APD generated presentation from ${packages.length} approved packages`,
         });
       } else {
@@ -194,7 +194,7 @@ export default function ProductionPackages() {
             <div>
               <h2 className="text-sm font-bold text-white">AI Presentation Director</h2>
               <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                Generates a full timed presentation from all approved packages. The APD analyzes each story's voiceover timing,
+                Generates a full timed presentation from all approved packages. The APD analyzes each episode item's voiceover timing,
                 scripts, and media to create a synchronized visual presentation with scene transitions, text overlays, and media cues.
               </p>
             </div>
@@ -224,7 +224,7 @@ export default function ProductionPackages() {
         {packages.length < 5 && (
           <p className="text-[10px] text-muted-foreground mt-3 pt-3 border-t border-white/[0.04]">
             {packages.length === 0
-              ? 'No approved packages yet. Approve packages from the Story Manager to generate a presentation.'
+              ? 'No approved episode packages yet. Approve material from the Episode Workspace to generate a presentation.'
               : `${packages.length}/5 approved packages. The APD requires a minimum of 5 approved packages to generate a presentation.`}
           </p>
         )}
@@ -257,7 +257,7 @@ export default function ProductionPackages() {
           <div className="glass-panel p-12 text-center">
             <Film className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No approved packages yet.</p>
-            <p className="text-xs text-muted-foreground mt-1">Approve packages from the Story Manager to see them here.</p>
+            <p className="text-xs text-muted-foreground mt-1">Approve material from the Episode Workspace to see it here.</p>
           </div>
         ) : (
           <div className="space-y-2">
