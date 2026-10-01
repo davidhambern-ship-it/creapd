@@ -11,7 +11,7 @@ export default function ProducerLayout() {
 
   return (
     <div
-      className="news-studio-shell relative h-screen flex flex-col overflow-hidden env-root"
+      className="talk-studio-shell relative h-screen flex flex-col overflow-hidden env-root"
       style={PRODUCTION_PROFILE_THEMES.talk.vars}
     >
       <div className="talk-studio-backdrop" aria-hidden="true" />
@@ -25,8 +25,8 @@ export default function ProducerLayout() {
           onOpenNav={() => setNavDrawerOpen(true)}
         />
 
-        <main className="news-studio-main relative flex-1 overflow-y-auto">
-          <div className="news-studio-content relative z-20">
+        <main className="talk-studio-main relative flex-1 overflow-y-auto">
+          <div className="relative z-20 min-h-full">
             <MobilePageShell>
               <Outlet />
             </MobilePageShell>
