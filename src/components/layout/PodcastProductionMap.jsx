@@ -45,8 +45,8 @@ export default function PodcastProductionMap({ open, onClose }) {
                 <Map className="h-4 w-4" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Production Map</span>
               </div>
-              <h2 className="mt-1 font-heading text-xl font-bold text-white">Podcast Room</h2>
-              <p className="mt-1 text-xs text-white/45">Jump anywhere without covering the room with permanent navigation.</p>
+              <h2 className="mt-1 font-heading text-xl font-bold text-white">Podcast Production</h2>
+              <p className="mt-1 text-xs text-white/45">Move through the episode workflow or open a supporting production tool.</p>
             </div>
             <button
               type="button"
@@ -61,7 +61,7 @@ export default function PodcastProductionMap({ open, onClose }) {
 
         <div className="space-y-6 p-5">
           <Link
-            to="/news/dashboard"
+            to="/podcast"
             onClick={onClose}
             className="flex items-center gap-3 rounded-xl border border-orange-300/20 bg-gradient-to-r from-orange-400/10 via-fuchsia-400/[0.07] to-violet-400/[0.07] p-4 text-white transition hover:border-orange-300/35"
           >
@@ -83,7 +83,7 @@ export default function PodcastProductionMap({ open, onClose }) {
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {section.items
-                  .filter(item => item.path !== '/news/dashboard')
+                  .filter(item => item.path !== '/podcast')
                   .map((item) => {
                     const Icon = item.icon;
                     const active = location.pathname === item.path ||
