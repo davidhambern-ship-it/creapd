@@ -28,7 +28,7 @@ export default function ProducerLayout() {
 
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
         <ProducerHeader
-          variant="news"
+          variant="podcast"
           onGenerateBrief={() => {}}
           onOpenNav={() => setNavDrawerOpen(true)}
         />
@@ -53,7 +53,7 @@ export default function ProducerLayout() {
         </div>
 
         <div className="news-studio-footer-wrap">
-          <ProductionFooter variant="news" />
+          <ProductionFooter variant="podcast" />
         </div>
         <PPNavBar />
       </div>

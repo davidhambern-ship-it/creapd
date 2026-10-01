@@ -262,7 +262,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
             </div>
             <div className="space-y-2">
               <Label>Short Show Description</Label>
-              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your talk show..." rows={3} />
+              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your podcast..." rows={3} />
             </div>
           </div>
         );
@@ -277,7 +277,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
                 <Input type="number" value={config.total_show_runtime} onChange={e => updateConfig('total_show_runtime', Number(e.target.value))} />
               </div>
               <div className="space-y-2">
-                <Label>Talk / Discussion Runtime (min)</Label>
+                <Label>Main Discussion Runtime (min)</Label>
                 <Input type="number" value={config.talk_segment_runtime} onChange={e => updateConfig('talk_segment_runtime', Number(e.target.value))} />
               </div>
               <div className="space-y-2">
@@ -361,8 +361,8 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
-          <h2 className="text-xl font-heading font-bold mb-3">CREAPD is building your Talk production.</h2>
-          <p className="text-white/60 mb-8">I’ve got your answers. Now I’m researching, verifying, and assembling the show.</p>
+          <h2 className="text-xl font-heading font-bold mb-3">CREAPD is building your Podcast episode.</h2>
+          <p className="text-white/60 mb-8">I’ve got your answers. Now I’m preparing the episode research, rundown, scripts, and studio package.</p>
           <div className="space-y-3 text-left">
             {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating host-ready assets'].map((label, i) => (
               <div key={i} className="!flex items-center gap-3 text-sm">
@@ -385,7 +385,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
           <div className="flex items-center justify-center gap-3">
             <CreapdLogo height="h-8" />
             <span className="h-6 w-px bg-white/20" />
-            <span className="text-xs font-semibold tracking-[0.28em] text-white/70">TALK INTERVIEW</span>
+            <span className="text-xs font-semibold tracking-[0.28em] text-white/70">PODCAST SETUP</span>
           </div>
           <p className="mt-2 text-center text-xs text-white/45">
             Question {step + 1} of {STEPS.length} · {STEPS[step].label}
@@ -445,7 +445,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
               ) : (
                 <Button onClick={handleBuild} size="lg" disabled={!canProceed() || cardExiting} className="talk-cue-next">
                   <Building2 className="w-4 h-4 mr-2" />
-                  Build My Show
+                  Build My Podcast
                 </Button>
               )}
             </div>

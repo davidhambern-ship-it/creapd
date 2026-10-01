@@ -1,36 +1,34 @@
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
   CalendarDays, Package, Download, Bookmark, ClipboardList,
-  Film, FlaskConical, CheckCircle, Mic2, Users, Sparkles
+  Film, FlaskConical, CheckCircle, Mic2, Users, Sparkles,
+  Settings2, Archive
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
   {
-    label: 'Episode Prep',
+    label: 'Start Here',
     items: [
-      { icon: LayoutDashboard, label: 'Podcast Dashboard', path: '/news/dashboard' },
-      { icon: FileText, label: 'Next Episode Brief', path: '/news/brief' },
-      { icon: CalendarDays, label: 'Episode Planner', path: '/news/planner' },
+      { icon: LayoutDashboard, label: 'Podcast Home', path: '/news/dashboard' },
+      { icon: Settings2, label: '1. Podcast Setup', path: '/talk/configure' },
+      { icon: FileText, label: '2. Episode Brief', path: '/news/brief' },
+      { icon: Layers, label: '3. Topic Queue', path: '/news/queue' },
+      { icon: CheckCircle, label: '4. Review & Approve', path: '/news/review' },
+      { icon: ClipboardList, label: '5. Episode Workspace', path: '/news/workspace' },
+      { icon: Package, label: '6. Episode Production', path: '/news/production' },
+      { icon: Radio, label: '7. Podcast Studio', path: '/talk/live' },
     ]
   },
   {
-    label: 'Editorial',
+    label: 'Podcast Tools',
     items: [
-      { icon: Layers, label: 'Topic Queue', path: '/news/queue' },
-      { icon: CheckCircle, label: 'Review & Approve', path: '/news/review' },
+      { icon: CalendarDays, label: 'Episode Planner', path: '/news/planner' },
       { icon: Search, label: 'Research Desk', path: '/news/research' },
       { icon: Bookmark, label: 'Topic Library', path: '/news/library' },
-    ]
-  },
-  {
-    label: 'Build & Produce',
-    items: [
-      { icon: ClipboardList, label: 'Episode Workspace', path: '/news/workspace' },
-      { icon: Package, label: 'Production Packages', path: '/news/production' },
       { icon: Users, label: 'Guests', path: '/talk/guests' },
       { icon: Mic2, label: 'Rundown', path: '/talk/rundown' },
       { icon: Sparkles, label: 'Assets', path: '/talk/assets' },
-      { icon: Radio, label: 'Podcast Studio', path: '/talk/live' },
+      { icon: Archive, label: 'Archive', path: '/news/archive' },
       { icon: Film, label: 'Presentations', path: '/presentations' },
       { icon: Download, label: 'Export', path: '/news/export' },
     ]

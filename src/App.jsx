@@ -17,6 +17,7 @@ const Register = lazy(() => import('@/pages/Register'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const PodcastDashboard = lazy(() => import('@/pages/PodcastDashboard'));
 const WeeklyPlanner = lazy(() => import('@/pages/WeeklyPlanner'));
 const TodaysBrief = lazy(() => import('@/pages/TodaysBrief'));
 const StoryQueue = lazy(() => import('@/pages/StoryQueue'));
@@ -153,7 +154,7 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<CreapdHome />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/news/dashboard" element={<DashboardRouter />} />
+          <Route path="/news/dashboard" element={<PodcastDashboard />} />
           <Route path="/news/planner" element={<WeeklyPlanner />} />
           <Route path="/news/brief" element={<TodaysBrief />} />
           <Route path="/news/queue" element={<StoryQueue />} />
