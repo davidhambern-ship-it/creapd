@@ -19,12 +19,11 @@ export default function ProducerLayout() {
   return (
     <div
       className="news-studio-shell relative h-screen flex flex-col overflow-hidden env-root"
-      style={PRODUCTION_PROFILE_THEMES.news.vars}
+      style={PRODUCTION_PROFILE_THEMES.talk.vars}
     >
-      <EnvironmentLayer profileKey="news" />
+      <div className="talk-studio-backdrop" aria-hidden="true" />
+      <EnvironmentLayer profileKey="talk" />
 
-      <div className="news-studio-lightbar news-studio-lightbar-left" aria-hidden="true" />
-      <div className="news-studio-lightbar news-studio-lightbar-right" aria-hidden="true" />
 
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
         <ProducerHeader
@@ -46,9 +45,6 @@ export default function ProducerLayout() {
               </MobilePageShell>
             </div>
 
-            <div className="news-desk-ghost hidden xl:block" aria-hidden="true">
-              <img src="/assets/news/NewsPP_broadcast_desk.png" alt="" />
-            </div>
           </main>
         </div>
 
