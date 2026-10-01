@@ -187,7 +187,7 @@ async function promoteSsoAdmin() {
   }
 }
 
-async function getSsoAdminCookie({ force = false } = {}) {
+async function getSsoAdminCookie({ force = false, browserOrigin } = {}) {
   if (
     !force &&
     ssoAdminCookie &&
@@ -197,7 +197,7 @@ async function getSsoAdminCookie({ force = false } = {}) {
   }
 
   const adminPassword = deriveAdminPassword();
-  const origin = 'https://creapd.hireberna.app';
+  const origin = browserOrigin || 'https://project-1nufq-git-backend-vercel-foundation-texasnomadgames.vercel.app';
 
   let signIn = await neonEmailAuth(
     '/sign-in/email',
@@ -283,7 +283,7 @@ async function neonAdmin(path, body, cookieHeader, browserOrigin) {
 }
 
 async function impersonateExistingUser(userId, browserOrigin) {
-  let cookie = await getSsoAdminCookie();
+  let cookie = await getSsoAdminCookie({ browserOrigin });
   let result = await neonAdmin(
     '/admin/impersonate-user',
     { userId },
@@ -294,7 +294,7 @@ async function impersonateExistingUser(userId, browserOrigin) {
   if ([401, 403].includes(result.upstream.status)) {
     ssoAdminCookie = '';
     ssoAdminCookieAt = 0;
-    cookie = await getSsoAdminCookie({ force: true });
+    cookie = await getSsoAdminCookie({ force: true, browserOrigin });
     result = await neonAdmin(
       '/admin/impersonate-user',
       { userId },
