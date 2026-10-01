@@ -10,6 +10,10 @@
       "handle": "filesystem"
     },
     {
+      "src": "/api/creapd/neon-auth/(.*)",
+      "dest": "/api/creapd/neon-auth.js?path=$1"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "https://creapd.base44.app/api/$1"
     },
