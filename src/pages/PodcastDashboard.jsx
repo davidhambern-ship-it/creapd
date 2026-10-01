@@ -54,7 +54,7 @@ function nextMove({ config, topics, segments, assets }) {
       title: 'Tell CREAPD what this podcast is.',
       description: 'Save the show identity, host, runtime, topics, sources, tone, and automation rules.',
       label: 'Configure Podcast',
-      path: '/talk/configure',
+      path: '/podcast/setup',
     };
   }
 
@@ -65,7 +65,7 @@ function nextMove({ config, topics, segments, assets }) {
       title: 'Build the next episode brief.',
       description: 'Let CREAPD gather and organize the material you want to review.',
       label: 'Open Episode Brief',
-      path: '/news/brief',
+      path: '/podcast/brief',
     };
   }
 
@@ -77,7 +77,7 @@ function nextMove({ config, topics, segments, assets }) {
       title: 'Approve what belongs in the episode.',
       description: 'Review the prepared topics and keep only the material you want CREAPD to build around.',
       label: 'Review & Approve',
-      path: '/news/review',
+      path: '/podcast/review',
     };
   }
 
@@ -88,7 +88,7 @@ function nextMove({ config, topics, segments, assets }) {
       title: 'Turn approvals into a production package.',
       description: 'Build the rundown, scripts, talking points, and production assets before opening Studio.',
       label: 'Open Episode Production',
-      path: '/news/production',
+      path: '/podcast/production',
     };
   }
 
@@ -98,7 +98,7 @@ function nextMove({ config, topics, segments, assets }) {
     title: `${config.production_name || 'Your podcast'} is ready to produce.`,
     description: `${segments.length} rundown segments and ${assets.length} production assets are prepared.`,
     label: 'Open Podcast Studio',
-    path: `/talk/live?config_id=${encodeURIComponent(config.id)}`,
+    path: `/podcast/studio?config_id=${encodeURIComponent(config.id)}`,
   };
 }
 
@@ -126,8 +126,8 @@ export default function PodcastDashboard() {
   const approvedAssets = assets.filter(asset => asset.status === 'approved').length;
   const move = nextMove({ config, topics, segments, assets });
   const studioPath = config?.id
-    ? `/talk/live?config_id=${encodeURIComponent(config.id)}`
-    : '/talk/configure';
+    ? `/podcast/studio?config_id=${encodeURIComponent(config.id)}`
+    : '/podcast/setup';
 
   const checklist = [
     Boolean(config?.production_name),
@@ -181,7 +181,7 @@ export default function PodcastDashboard() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button variant="outline" size="sm" asChild className="h-9 w-9 p-0 border-white/15 bg-white/5 text-white hover:bg-white/10">
-                <Link to={config?.id ? `/talk/configure?config_id=${encodeURIComponent(config.id)}` : '/talk/configure'}>
+                <Link to={config?.id ? `/podcast/setup?config_id=${encodeURIComponent(config.id)}` : '/podcast/setup'}>
                   <Settings className="w-3.5 h-3.5" />
                 </Link>
               </Button>
@@ -213,7 +213,7 @@ export default function PodcastDashboard() {
           className="absolute top-[34%] left-[22%] w-[18%] z-20"
           icon={Users}
           title="Guest Chair"
-          to="/talk/guests"
+          to="/podcast/guests"
         >
           {guests.length > 0 ? (
             <div className="space-y-1.5">
@@ -234,7 +234,7 @@ export default function PodcastDashboard() {
           className="absolute top-[34%] right-[14.5%] w-[19%] z-20"
           icon={Lightbulb}
           title="Discussion Topics"
-          to="/news/review"
+          to="/podcast/review"
         >
           {topics.length > 0 ? (
             <div className="space-y-1.5">
@@ -272,7 +272,7 @@ export default function PodcastDashboard() {
           className="absolute bottom-[3%] left-[1.5%] w-[23%] z-20"
           icon={ClipboardList}
           title="Show Rundown"
-          to="/talk/rundown"
+          to="/podcast/rundown"
         >
           {segments.length > 0 ? (
             <div className="space-y-1">
@@ -292,7 +292,7 @@ export default function PodcastDashboard() {
           className="absolute bottom-[3%] right-[1.5%] w-[23%] z-20"
           icon={Sparkles}
           title="AI Assets"
-          to="/talk/assets"
+          to="/podcast/assets"
         >
           {assets.length > 0 ? (
             <div className="grid grid-cols-2 gap-1.5">
@@ -344,19 +344,19 @@ export default function PodcastDashboard() {
           onNext={() => { window.location.href = move.path; }}
         />
 
-        <ScenePanel icon={Lightbulb} title="Discussion Topics" to="/news/review">
+        <ScenePanel icon={Lightbulb} title="Discussion Topics" to="/podcast/review">
           <p className="text-xs text-white/60">{approvedTopics}/{topics.length} approved</p>
         </ScenePanel>
 
-        <ScenePanel icon={Users} title="Guest Chair" to="/talk/guests">
+        <ScenePanel icon={Users} title="Guest Chair" to="/podcast/guests">
           <p className="text-xs text-white/60">{confirmedGuests} confirmed · {guests.length} total</p>
         </ScenePanel>
 
-        <ScenePanel icon={ClipboardList} title="Show Rundown" to="/talk/rundown">
+        <ScenePanel icon={ClipboardList} title="Show Rundown" to="/podcast/rundown">
           <p className="text-xs text-white/60">{segments.length} segments prepared</p>
         </ScenePanel>
 
-        <ScenePanel icon={Sparkles} title="AI Assets" to="/talk/assets">
+        <ScenePanel icon={Sparkles} title="AI Assets" to="/podcast/assets">
           <p className="text-xs text-white/60">{approvedAssets}/{assets.length} approved</p>
         </ScenePanel>
       </div>
