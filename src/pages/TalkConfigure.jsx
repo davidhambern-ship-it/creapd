@@ -143,7 +143,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
           ...(editConfigId ? { id: editConfigId } : {}),
         });
         savedConfig = saveResult?.configuration;
-        if (!savedConfig?.id) throw new Error('Talk configuration did not return an id.');
+        if (!savedConfig?.id) throw new Error('Podcast setup did not return an id.');
 
         await creapdApi.post('/talk/production', {
           action: 'build',
@@ -167,14 +167,14 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
       if (embedded && onBuilt) {
         await onBuilt();
       } else {
-        navigate('/talk/dashboard');
+        navigate('/podcast');
       }
     } catch (err) {
       setBuildError(
         err?.data?.diagnostic?.message ||
         err?.data?.error ||
         err?.message ||
-        'Failed to build production. Please try again.'
+        'Failed to prepare this podcast. Please try again.'
       );
       setBuilding(false);
     }
