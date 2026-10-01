@@ -10,6 +10,18 @@
       "handle": "filesystem"
     },
     {
+      "src": "/api/creapd/health",
+      "dest": "/api/creapd/diagnostics.js?probe=backend"
+    },
+    {
+      "src": "/api/creapd/db-health",
+      "dest": "/api/creapd/diagnostics.js?probe=db"
+    },
+    {
+      "src": "/api/creapd/ai/health",
+      "dest": "/api/creapd/diagnostics.js?probe=ai"
+    },
+    {
       "src": "/api/creapd/neon-auth/(.*)",
       "dest": "/api/creapd/neon-auth.js?path=$1"
     },
