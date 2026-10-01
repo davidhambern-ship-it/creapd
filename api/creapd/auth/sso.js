@@ -9,6 +9,15 @@ const BERNAVERSE_SSO_URL =
   process.env.BERNAVERSE_SSO_URL ||
   'https://emexrsuuazbowxxwvalj.supabase.co/functions/v1/bernaverse-sso';
 
+const SSO_ADMIN_EMAIL =
+  String(process.env.CREAPD_SSO_ADMIN_EMAIL || 'bernaverse-sso@hireberna.app')
+    .trim()
+    .toLowerCase();
+
+let ssoAdminCookie = '';
+let ssoAdminCookieAt = 0;
+const SSO_ADMIN_COOKIE_TTL_MS = 45 * 60 * 1000;
+
 function requestOrigin(request) {
   const forwardedProto = String(request.headers?.['x-forwarded-proto'] || 'https').split(',')[0].trim();
   const host = String(request.headers?.host || '');
@@ -57,7 +66,7 @@ function redirect(response, location, cookies = []) {
   return response.status(302).end();
 }
 
-function deriveInternalPassword(memberId) {
+function getSsoSecret() {
   const secret =
     String(process.env.CREAPD_SSO_SECRET || '').trim() ||
     String(process.env.DATABASE_URL || '').trim();
@@ -66,11 +75,23 @@ function deriveInternalPassword(memberId) {
     throw new Error('CREAPD SSO secret is unavailable.');
   }
 
-  const digest = createHmac('sha256', secret)
+  return secret;
+}
+
+function deriveInternalPassword(memberId) {
+  const digest = createHmac('sha256', getSsoSecret())
     .update(`creapd:${memberId}`)
     .digest('base64url');
 
   return `Bv!${digest}9a`;
+}
+
+function deriveAdminPassword() {
+  const digest = createHmac('sha256', getSsoSecret())
+    .update('creapd:bernaverse-sso-admin')
+    .digest('base64url');
+
+  return `BvAdmin!${digest}9a`;
 }
 
 async function exchangeTicket(ticket) {
@@ -118,11 +139,184 @@ async function neonEmailAuth(path, body, browserOrigin) {
       ? upstream.headers.getSetCookie()
       : (upstream.headers.get('set-cookie') ? [upstream.headers.get('set-cookie')] : []);
 
+  const rawSetCookies = setCookies.filter(Boolean);
+
+  return {
+    upstream,
+    payload,
+    rawSetCookies,
+    cookieHeader: rawSetCookies
+      .map((value) => String(value || '').split(';', 1)[0])
+      .filter(Boolean)
+      .join('; '),
+    setCookies: rawSetCookies.map(rewriteCookie),
+  };
+}
+
+async function promoteSsoAdmin() {
+  if (!hasDatabaseConfig()) {
+    throw new Error('CREAPD database is not configured.');
+  }
+
+  const sql = getSql();
+  const columns = await sql`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'neon_auth'
+      AND table_name = 'user'
+  `;
+
+  const names = new Set(columns.map((row) => String(row.column_name || '')));
+  if (!names.has('role')) {
+    throw new Error('CREAPD Neon Auth admin role is unavailable.');
+  }
+
+  if (names.has('emailVerified')) {
+    await sql`
+      UPDATE neon_auth.user
+      SET role = 'admin',
+          "emailVerified" = true
+      WHERE LOWER(email) = LOWER(${SSO_ADMIN_EMAIL})
+    `;
+  } else {
+    await sql`
+      UPDATE neon_auth.user
+      SET role = 'admin'
+      WHERE LOWER(email) = LOWER(${SSO_ADMIN_EMAIL})
+    `;
+  }
+}
+
+async function getSsoAdminCookie({ force = false } = {}) {
+  if (
+    !force &&
+    ssoAdminCookie &&
+    Date.now() - ssoAdminCookieAt < SSO_ADMIN_COOKIE_TTL_MS
+  ) {
+    return ssoAdminCookie;
+  }
+
+  const adminPassword = deriveAdminPassword();
+  const origin = 'https://creapd.hireberna.app';
+
+  let signIn = await neonEmailAuth(
+    '/sign-in/email',
+    { email: SSO_ADMIN_EMAIL, password: adminPassword },
+    origin,
+  );
+
+  if (!signIn.upstream.ok) {
+    const signUp = await neonEmailAuth(
+      '/sign-up/email',
+      {
+        email: SSO_ADMIN_EMAIL,
+        password: adminPassword,
+        name: 'BERNAverse SSO',
+      },
+      origin,
+    );
+
+    if (!signUp.upstream.ok) {
+      const message = String(
+        signUp.payload?.message ||
+        signUp.payload?.error?.message ||
+        '',
+      );
+
+      if (!/already|exist|registered|email/i.test(message)) {
+        throw new Error(
+          message || `CREAPD SSO admin provisioning failed (${signUp.upstream.status}).`,
+        );
+      }
+    }
+  }
+
+  await promoteSsoAdmin();
+
+  signIn = await neonEmailAuth(
+    '/sign-in/email',
+    { email: SSO_ADMIN_EMAIL, password: adminPassword },
+    origin,
+  );
+
+  if (!signIn.upstream.ok || !signIn.cookieHeader) {
+    const message = String(
+      signIn.payload?.message ||
+      signIn.payload?.error?.message ||
+      '',
+    );
+    throw new Error(
+      message || `CREAPD SSO admin sign-in failed (${signIn.upstream.status}).`,
+    );
+  }
+
+  ssoAdminCookie = signIn.cookieHeader;
+  ssoAdminCookieAt = Date.now();
+  return ssoAdminCookie;
+}
+
+async function neonAdmin(path, body, cookieHeader, browserOrigin) {
+  const upstream = await fetch(`${CREAPD_NEON_AUTH_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Cookie: cookieHeader,
+      Origin: browserOrigin,
+      Referer: `${browserOrigin}/`,
+    },
+    body: JSON.stringify(body),
+    redirect: 'manual',
+  });
+
+  const payload = await upstream.json().catch(() => ({}));
+  const setCookies =
+    typeof upstream.headers.getSetCookie === 'function'
+      ? upstream.headers.getSetCookie()
+      : (upstream.headers.get('set-cookie') ? [upstream.headers.get('set-cookie')] : []);
+
   return {
     upstream,
     payload,
     setCookies: setCookies.filter(Boolean).map(rewriteCookie),
   };
+}
+
+async function impersonateExistingUser(userId, browserOrigin) {
+  let cookie = await getSsoAdminCookie();
+  let result = await neonAdmin(
+    '/admin/impersonate-user',
+    { userId },
+    cookie,
+    browserOrigin,
+  );
+
+  if ([401, 403].includes(result.upstream.status)) {
+    ssoAdminCookie = '';
+    ssoAdminCookieAt = 0;
+    cookie = await getSsoAdminCookie({ force: true });
+    result = await neonAdmin(
+      '/admin/impersonate-user',
+      { userId },
+      cookie,
+      browserOrigin,
+    );
+  }
+
+  if (!result.upstream.ok || !result.setCookies.length) {
+    const message = String(
+      result.payload?.message ||
+      result.payload?.error?.message ||
+      result.payload?.error ||
+      '',
+    );
+
+    throw new Error(
+      message || `CREAPD existing-account SSO failed (${result.upstream.status}).`,
+    );
+  }
+
+  return result;
 }
 
 async function existingNeonUserByEmail(email) {
@@ -183,8 +377,18 @@ export default async function handler(request, response) {
     const existing = await existingNeonUserByEmail(email).catch(() => null);
 
     if (existing?.id) {
-      // Do not overwrite a pre-SSO CREAPD Preview password.
-      return redirect(response, failureUrl(request, 'legacy'));
+      // Preserve the existing password. BERNAverse creates a short-lived
+      // CREAPD Preview session through Neon Auth's Admin impersonation API.
+      try {
+        const impersonation = await impersonateExistingUser(existing.id, origin);
+        return redirect(response, returnUrl, impersonation.setCookies);
+      } catch (impersonationError) {
+        console.error(
+          '[CREAPD BERNAverse SSO] existing-account handoff failed:',
+          impersonationError?.message || impersonationError,
+        );
+        return redirect(response, failureUrl(request, 'legacy'));
+      }
     }
 
     const signUp = await neonEmailAuth(
