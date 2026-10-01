@@ -80,10 +80,12 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = '
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={onOpenNav}
-            className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-berna-purple/30 to-berna-purple/10 border border-berna-purple/30 text-foreground hover:from-berna-purple/40 hover:to-berna-purple/20 transition-all glow-purple"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-orange-400/20 via-fuchsia-400/15 to-violet-400/15 border border-fuchsia-300/20 text-white/85 hover:border-fuchsia-300/35 hover:text-white transition-all"
+            title="Open Production Map"
           >
-            <MenuIcon className="w-4 h-4 text-berna-purple" />
-            <span className="text-xs font-medium">Sidebar</span>
+            <MenuIcon className="w-4 h-4 text-orange-300" />
+            <span className="hidden sm:inline text-xs font-medium">Production Map</span>
+            <span className="sm:hidden text-xs font-medium">Map</span>
           </button>
           <Link to="/" className="flex items-center gap-2">
             <CreapdLogo height="h-8 lg:h-10" />
@@ -153,26 +155,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = '
         </div>
       </div>
 
-      {/* Production Mode Switcher — sub-bar (mobile only) */}
-      <div className="lg:hidden flex items-center gap-1 px-3 py-1.5 glass-panel-navy border-b border-white/[0.06] overflow-x-auto scrollbar-thin scrollbar-thumb-white/10">
-        {PRODUCTION_MODES.map(mode => {
-          const isActive = activeMode === mode.key;
-          return (
-            <Link
-              key={mode.key}
-              to={mode.path}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
-                isActive
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'text-muted-foreground border border-transparent hover:text-foreground'
-              }`}
-            >
-              <mode.icon className="w-3.5 h-3.5" />
-              {mode.label}
-            </Link>
-          );
-        })}
-      </div>
+      {/* Format switching now lives inside the Production Map so the room stays visually clean. */}
     </header>
   );
 }
