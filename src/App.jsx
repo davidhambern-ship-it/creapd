@@ -69,30 +69,6 @@ const TalkRundown = lazy(() => import('@/pages/TalkRundown'));
 const TalkAssets = lazy(() => import('@/pages/TalkAssets'));
 const TalkExport = lazy(() => import('@/pages/TalkExport'));
 const TalkLive = lazy(() => import('@/pages/TalkLive'));
-const CookingConfigure = lazy(() => import('@/pages/CookingConfigure'));
-const CookingDashboard = lazy(() => import('@/pages/CookingDashboard'));
-const CookingResearch = lazy(() => import('@/pages/CookingResearch'));
-const CookingRecipes = lazy(() => import('@/pages/CookingRecipes'));
-const CookingIngredients = lazy(() => import('@/pages/CookingIngredients'));
-const CookingRundown = lazy(() => import('@/pages/CookingRundown'));
-const CookingAssets = lazy(() => import('@/pages/CookingAssets'));
-const CookingExport = lazy(() => import('@/pages/CookingExport'));
-const SportsConfigure = lazy(() => import('@/pages/SportsConfigure'));
-const SportsDashboard = lazy(() => import('@/pages/SportsDashboard'));
-const SportsResearch = lazy(() => import('@/pages/SportsResearch'));
-const SportsGames = lazy(() => import('@/pages/SportsGames'));
-const SportsAthletes = lazy(() => import('@/pages/SportsAthletes'));
-const SportsRundown = lazy(() => import('@/pages/SportsRundown'));
-const SportsAssets = lazy(() => import('@/pages/SportsAssets'));
-const SportsExport = lazy(() => import('@/pages/SportsExport'));
-const CosmoConfigure = lazy(() => import('@/pages/CosmoConfigure'));
-const CosmoDashboard = lazy(() => import('@/pages/CosmoDashboard'));
-const CosmoResearch = lazy(() => import('@/pages/CosmoResearch'));
-const CosmoTopics = lazy(() => import('@/pages/CosmoTopics'));
-const CosmoGuests = lazy(() => import('@/pages/CosmoGuests'));
-const CosmoRundown = lazy(() => import('@/pages/CosmoRundown'));
-const CosmoAssets = lazy(() => import('@/pages/CosmoAssets'));
-const CosmoExport = lazy(() => import('@/pages/CosmoExport'));
 const ResearchConfigure = lazy(() => import('@/pages/ResearchConfigure'));
 const ResearchDashboard = lazy(() => import('@/pages/ResearchDashboard'));
 const ResearchTopics = lazy(() => import('@/pages/ResearchTopics'));
@@ -110,9 +86,6 @@ const RedirectToEditor = () => {
   return <Navigate to={`/editor/${id}`} replace />;
 };
 const TalkLayout = lazy(() => import('@/components/layout/TalkLayout'));
-const CookingLayout = lazy(() => import('@/components/layout/CookingLayout'));
-const SportsLayout = lazy(() => import('@/components/layout/SportsLayout'));
-const CosmoLayout = lazy(() => import('@/components/layout/CosmoLayout'));
 const RPPLobby = lazy(() => import('@/pages/RPPLobby'));
 const ResearchLayout = lazy(() => import('@/components/rpp/ResearchLayout'));
 const SpiritualLayout = lazy(() => import('@/components/layout/SpiritualLayout'));
@@ -254,58 +227,6 @@ const AuthenticatedApp = () => {
           <Route path="/talk/rundown" element={<TalkRundown />} />
           <Route path="/talk/assets" element={<TalkAssets />} />
           <Route path="/talk/export" element={<TalkExport />} />
-        </Route>
-
-        {/* Cooking Production */}
-        <Route element={<StudioAvailabilityGate studioKey="cooking" />}>
-        <Route element={<CookingLayout />}>
-          <Route path="/cooking/configure" element={<CookingConfigure />} />
-          <Route path="/cooking/dashboard" element={<CookingDashboard />} />
-          <Route path="/cooking/research" element={<CookingResearch />} />
-          <Route path="/cooking/recipes" element={<CookingRecipes />} />
-          <Route path="/cooking/ingredients" element={<CookingIngredients />} />
-          <Route path="/cooking/rundown" element={<CookingRundown />} />
-          <Route path="/cooking/assets" element={<CookingAssets />} />
-          <Route path="/cooking/export" element={<CookingExport />} />
-        </Route>
-        </Route>
-
-        {/* Sports Production */}
-        <Route element={<StudioAvailabilityGate studioKey="sports" />}>
-        <Route element={<SportsLayout />}>
-          <Route path="/sports/configure" element={<SportsConfigure />} />
-          <Route path="/sports/dashboard" element={<SportsDashboard />} />
-          <Route path="/sports/research" element={<SportsResearch />} />
-          <Route path="/sports/games" element={<SportsGames />} />
-          <Route path="/sports/athletes" element={<SportsAthletes />} />
-          <Route path="/sports/rundown" element={<SportsRundown />} />
-          <Route path="/sports/assets" element={<SportsAssets />} />
-          <Route path="/sports/export" element={<SportsExport />} />
-        </Route>
-        </Route>
-
-        {/* Beauty Production — legacy Cosmo internals retained during backend migration */}
-        <Route element={<StudioAvailabilityGate studioKey="cosmo" />}>
-        <Route element={<CosmoLayout />}>
-          <Route path="/beauty/configure" element={<CosmoConfigure />} />
-          <Route path="/beauty/dashboard" element={<CosmoDashboard />} />
-          <Route path="/beauty/research" element={<CosmoResearch />} />
-          <Route path="/beauty/topics" element={<CosmoTopics />} />
-          <Route path="/beauty/guests" element={<CosmoGuests />} />
-          <Route path="/beauty/rundown" element={<CosmoRundown />} />
-          <Route path="/beauty/assets" element={<CosmoAssets />} />
-          <Route path="/beauty/export" element={<CosmoExport />} />
-
-          {/* Legacy Cosmo URLs redirect to the renamed Beauty Production Profile. */}
-          <Route path="/cosmo/configure" element={<Navigate to="/beauty/configure" replace />} />
-          <Route path="/cosmo/dashboard" element={<Navigate to="/beauty/dashboard" replace />} />
-          <Route path="/cosmo/research" element={<Navigate to="/beauty/research" replace />} />
-          <Route path="/cosmo/topics" element={<Navigate to="/beauty/topics" replace />} />
-          <Route path="/cosmo/guests" element={<Navigate to="/beauty/guests" replace />} />
-          <Route path="/cosmo/rundown" element={<Navigate to="/beauty/rundown" replace />} />
-          <Route path="/cosmo/assets" element={<Navigate to="/beauty/assets" replace />} />
-          <Route path="/cosmo/export" element={<Navigate to="/beauty/export" replace />} />
-        </Route>
         </Route>
 
         {/* Research Production Profile */}
