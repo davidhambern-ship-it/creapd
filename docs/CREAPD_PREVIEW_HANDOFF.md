@@ -465,3 +465,6 @@ Prisma Music Preview database was provisioned and `MUSIC_DATABASE_URL` was confi
 - BERNAverse landing repo was updated to recognize CREAPD as a signup destination and call the Preview provisioning bridge.
 - Actual end-to-end user signup from BERNAverse -> CREAPD Preview is **USER TEST REQUIRED** before any production auth promotion.
 - Do not promote this auth path to CREAPD `main` until the full Preview migration is approved for launch.
+
+
+<!-- BERNAverse SSO Preview deployment retry: 2026-10-01 -->
