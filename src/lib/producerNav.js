@@ -1,48 +1,45 @@
 import {
   LayoutDashboard, FileText, Layers, Search, Radio,
-  Archive, Settings, Activity, CalendarDays, Package, Palette, Tv, Download,
-  Building2, UserCircle, Bell, LayoutTemplate, Bookmark,
-  ClipboardList, FileInput, ImageIcon, MessageSquareCode,
-  ShieldCheck, Newspaper, Church, Mic2, ChefHat, Trophy, Brush, Film, FlaskConical, CheckCircle
+  CalendarDays, Package, Download, Bookmark, ClipboardList,
+  Film, FlaskConical, CheckCircle, Mic2, Users, Sparkles
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
   {
-    label: 'News Desk',
+    label: 'Episode Prep',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/news/dashboard' },
-      { icon: FileText, label: "Today's Brief", path: '/news/brief' },
-      { icon: CalendarDays, label: 'Weekly Planner', path: '/news/planner' },
+      { icon: LayoutDashboard, label: 'Podcast Dashboard', path: '/news/dashboard' },
+      { icon: FileText, label: 'Next Episode Brief', path: '/news/brief' },
+      { icon: CalendarDays, label: 'Episode Planner', path: '/news/planner' },
     ]
   },
   {
-    label: 'Assignment Desk',
+    label: 'Editorial',
     items: [
-      { icon: Layers, label: 'Story Queue', path: '/news/queue' },
-      { icon: CheckCircle, label: 'Story Review', path: '/news/review' },
+      { icon: Layers, label: 'Topic Queue', path: '/news/queue' },
+      { icon: CheckCircle, label: 'Review & Approve', path: '/news/review' },
       { icon: Search, label: 'Research Desk', path: '/news/research' },
-      { icon: Bookmark, label: 'Story Library', path: '/news/library' },
+      { icon: Bookmark, label: 'Topic Library', path: '/news/library' },
     ]
   },
   {
-    label: 'Production',
+    label: 'Build & Produce',
     items: [
-      { icon: ClipboardList, label: 'Story Workspace', path: '/news/workspace' },
+      { icon: ClipboardList, label: 'Episode Workspace', path: '/news/workspace' },
       { icon: Package, label: 'Production Packages', path: '/news/production' },
+      { icon: Users, label: 'Guests', path: '/talk/guests' },
+      { icon: Mic2, label: 'Rundown', path: '/talk/rundown' },
+      { icon: Sparkles, label: 'Assets', path: '/talk/assets' },
+      { icon: Radio, label: 'Podcast Studio', path: '/talk/live' },
       { icon: Film, label: 'Presentations', path: '/presentations' },
-      { icon: Download, label: 'Export Center', path: '/news/export' },
+      { icon: Download, label: 'Export', path: '/news/export' },
     ]
   },
 ];
 
 export const PRODUCTION_MODES = [
-  { key: 'news', label: 'News', icon: Newspaper, path: '/news/dashboard' },
-  { key: 'talk', label: 'Talk', icon: Mic2, path: '/talk/dashboard' },
-  { key: 'cooking', label: 'Cooking', icon: ChefHat, path: '/cooking/dashboard' },
-  { key: 'sports', label: 'Sports', icon: Trophy, path: '/sports/dashboard' },
-  { key: 'cosmo', label: 'Beauty', icon: Brush, path: '/beauty/dashboard' },
   { key: 'radio', label: 'Radio', icon: Radio, path: '/music/configure' },
-  { key: 'spiritual', label: 'Spiritual', icon: Church, path: '/spiritual/dashboard' },
+  { key: 'podcast', label: 'Podcast', icon: Mic2, path: '/news/dashboard' },
   { key: 'research', label: 'Research', icon: FlaskConical, path: '/research' },
 ];
 
@@ -52,12 +49,7 @@ export const PRODUCER_NAV_ITEMS = PRODUCER_NAV_SECTIONS.flatMap(section =>
 
 export function getActiveProductionMode(pathname) {
   if (pathname.startsWith('/music')) return 'radio';
-  if (pathname.startsWith('/spiritual')) return 'spiritual';
-  if (pathname.startsWith('/talk')) return 'talk';
-  if (pathname.startsWith('/cooking')) return 'cooking';
-  if (pathname.startsWith('/sports')) return 'sports';
-  if (pathname.startsWith('/beauty') || pathname.startsWith('/cosmo')) return 'cosmo';
   if (pathname.startsWith('/research')) return 'research';
-  if (pathname.startsWith('/news')) return 'news';
-  return 'news';
+  if (pathname.startsWith('/news') || pathname.startsWith('/talk')) return 'podcast';
+  return 'podcast';
 }

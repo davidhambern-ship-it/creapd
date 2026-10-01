@@ -32,7 +32,7 @@ function TalkProfileDock({ pathname, onOpenNav }) {
 
   return (
     <nav
-      aria-label="Production Profiles"
+      aria-label="Production Formats"
       className="absolute right-3 top-3 z-40 flex flex-col items-end gap-1.5"
     >
       <div className="flex items-center gap-1.5">
@@ -40,7 +40,7 @@ function TalkProfileDock({ pathname, onOpenNav }) {
           type="button"
           onClick={onOpenNav}
           className="flex h-8 items-center gap-1 rounded-lg border border-white/10 bg-black/30 px-2.5 text-[10px] font-semibold text-white/70 shadow-lg backdrop-blur-md transition hover:border-fuchsia-300/25 hover:bg-fuchsia-300/10 hover:text-white lg:hidden"
-          title="Talk menu"
+          title="Podcast menu"
         >
           <Menu className="h-3.5 w-3.5" />
           Menu

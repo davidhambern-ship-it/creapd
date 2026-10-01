@@ -1,87 +1,14 @@
-import {
-  Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush, FlaskConical
-} from 'lucide-react';
+import { Mic2, Music, FlaskConical } from 'lucide-react';
 
-// Canonical CREAPD terminology: Production Studio.
-// Legacy aliases remain at the bottom of this file while older pages migrate.
-export const PRODUCTION_STUDIOS = [
+// CREAPD is organized by production FORMAT, not subject matter.
+// Topics such as Sports, Beauty, Cooking, Faith, News, etc. live inside a Format.
+export const CREAPD_FORMATS = [
   {
-    key: 'news',
-    label: 'News Studio',
-    shortLabel: 'News',
-    description: 'Daily news briefings, breaking news, story queues, teleprompter scripts, and broadcast production packages.',
-    icon: Newspaper,
-    available: true,
-    path: '/news/dashboard',
-    gradient: 'from-blue-500/20 to-cyan-500/10',
-    accent: 'text-blue-400',
-    accentBg: 'bg-blue-500/10',
-    accentBorder: 'border-blue-500/20',
-    spotlightFeature: 'Story Manager',
-    spotlightDescription: 'Turn approved stories into complete broadcast-ready Production Packages with scripts, voice, media, fact checks, and everything the Presentation Studio needs.',
-    workflow: [
-      'Select or import stories into the Story Queue',
-      'Generate a complete Production Package with AI workers',
-      'Generate voiceover, thumbnail, story image, and supporting media',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
-    ],
-    outputs: 'Teleprompter scripts, voiceovers, thumbnails, story images, production assets, approved Production Packages',
-    examples: ['Daily News Briefing', 'Breaking News Report', 'Weekly Recap Show']
-  },
-  {
-    key: 'spiritual',
-    label: 'Spiritual Studio',
-    shortLabel: 'Spiritual',
-    description: 'Sermons, Bible studies, devotionals, worship services, prayer meetings, and faith-based content for any tradition.',
-    icon: Church,
-    available: false,
-    path: '/spiritual/dashboard',
-    gradient: 'from-amber-500/20 to-yellow-500/10',
-    accent: 'text-amber-400',
-    accentBg: 'bg-amber-500/10',
-    accentBorder: 'border-amber-500/20',
-    spotlightFeature: 'Message Builder',
-    spotlightDescription: 'Build meaningful messages from Scripture, teaching materials, narration, visuals, and complete Production Packages ready for the Presentation Studio.',
-    workflow: [
-      'Research scripture, topics, and study materials',
-      'Build the message structure, narration, and teaching assets',
-      'Generate voiceovers and visual assets',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
-    ],
-    outputs: 'Sermon scripts, scripture references, voiceovers, teaching materials, study guides, approved Production Packages',
-    examples: ['Sunday Sermon', 'Bible Study Session', 'Daily Devotional']
-  },
-  {
-    key: 'talk',
-    label: 'Talk Studio',
-    shortLabel: 'Talk',
-    description: 'Talk shows, interview programs, panel discussions, and conversation-driven content.',
-    icon: Mic2,
-    available: true,
-    path: '/talk/dashboard',
-    gradient: 'from-pink-500/20 to-rose-500/10',
-    accent: 'text-pink-400',
-    accentBg: 'bg-pink-500/10',
-    accentBorder: 'border-pink-500/20',
-    spotlightFeature: 'Topic Builder',
-    spotlightDescription: 'Develop show topics, talking points, host notes, episode structures, media, and approved Production Packages.',
-    workflow: [
-      'Choose a topic and define the show format',
-      'Generate talking points, host notes, questions, and segment assets',
-      'Generate voice and media assets for each segment',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
-    ],
-    outputs: 'Topic outlines, talking points, host notes, episode structures, media assets, approved Production Packages',
-    examples: ['Interview Show', 'Panel Discussion', 'Daily Talk Show']
-  },
-  {
-    key: 'music',
-    label: 'Radio Studio',
+    key: 'radio',
+    legacyKey: 'music',
+    label: 'Radio',
     shortLabel: 'Radio',
-    description: 'Radio shows, playlist-driven broadcasts, live DJ programs, countdown shows, and artist spotlights.',
+    description: 'Music-centered programming with playlists, host scripting, DJ workflow, rundown control, OBS, teleprompter, and live production tools.',
     icon: Music,
     available: true,
     path: '/music/configure',
@@ -89,125 +16,89 @@ export const PRODUCTION_STUDIOS = [
     accent: 'text-purple-400',
     accentBg: 'bg-purple-500/10',
     accentBorder: 'border-purple-500/20',
-    spotlightFeature: 'Radio Show Builder',
-    spotlightDescription: 'Build radio-ready rundowns, host scripts, playlists, commentary segments, media assets, and complete Production Packages.',
+    spotlightFeature: 'Radio Pipeline',
+    spotlightDescription: 'Configure the show, prepare music and segments, review the package, build the rundown, then produce it in the Radio Studio.',
     workflow: [
-      'Configure your Show and brand',
-      'Research music topics and build the rundown',
-      'Generate host scripts and playlist segments',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
+      'Configure the show identity, host, length, music rules, and recurring segments',
+      'Gather music, topics, notes, station IDs, and supporting material',
+      'Review tracks, scripts, and individual segments',
+      'Build the approved show rundown and production package',
+      'Produce live or recorded in the Radio Studio',
+      'Archive the episode, playlist, scripts, and production history'
     ],
-    outputs: 'Show scripts, playlist segments, artist facts, host notes, show rundowns, approved Production Packages',
+    outputs: 'Show rundowns, playlists, host scripts, station IDs, production assets, archived episodes',
     examples: ['Morning Radio Show', 'Artist Spotlight', 'Countdown Show']
   },
   {
-    key: 'sports',
-    label: 'Sports Studio',
-    shortLabel: 'Sports',
-    description: 'Game previews, recaps, scoreboard updates, athlete interviews, and sports commentary shows.',
-    icon: Trophy,
-    available: false,
-    path: '/sports/dashboard',
-    gradient: 'from-orange-500/20 to-red-500/10',
-    accent: 'text-orange-400',
+    key: 'podcast',
+    legacyKey: 'news',
+    label: 'Podcast',
+    shortLabel: 'Podcast',
+    description: 'Spoken-word production for any subject. CREAPD prepares the next episode, lets you approve the material, builds the package, and sends it to the studio.',
+    icon: Mic2,
+    available: true,
+    path: '/news/dashboard',
+    gradient: 'from-orange-500/20 via-fuchsia-500/10 to-violet-500/10',
+    accent: 'text-orange-300',
     accentBg: 'bg-orange-500/10',
     accentBorder: 'border-orange-500/20',
-    spotlightFeature: 'Game Desk',
-    spotlightDescription: 'Build sports programs with game research, previews, recaps, statistics, scripts, voiceovers, and complete Production Packages.',
+    spotlightFeature: 'Episode Pipeline',
+    spotlightDescription: 'The News preparation engine and Talk studio become one Podcast workflow: prepare, review, approve, package, and produce.',
     workflow: [
-      'Select sports and define the show format',
-      'Generate matchups, research, athlete profiles, and analysis',
-      'Generate host scripts, co-host scripts, voiceovers, and graphics',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
+      'Configure the podcast, hosts, cadence, topic/category, sources, and recurring segments',
+      'Gather stories, topics, research leads, guest material, and source content',
+      'Review and approve the next episode material',
+      'Build the episode rundown, scripts, talking points, assets, and production package',
+      'Send the approved episode to the Podcast Studio',
+      'Archive the episode and use its history to prepare what comes next'
     ],
-    outputs: 'Game previews, key matchups, stats, scripts, voiceovers, show rundowns, approved Production Packages',
-    examples: ['Game Preview', 'Post-Game Analysis', 'Scoreboard Show']
-  },
-  {
-    key: 'cooking',
-    label: 'Cooking Studio',
-    shortLabel: 'Cooking',
-    description: 'Recipe shows, cooking tutorials, ingredient spotlights, and culinary entertainment programs.',
-    icon: ChefHat,
-    available: false,
-    path: '/cooking/dashboard',
-    gradient: 'from-green-500/20 to-emerald-500/10',
-    accent: 'text-green-400',
-    accentBg: 'bg-green-500/10',
-    accentBorder: 'border-green-500/20',
-    spotlightFeature: 'Recipe Studio',
-    spotlightDescription: 'Build cooking programs with recipes, ingredient spotlights, technique demos, scripts, voiceovers, visuals, and complete Production Packages.',
-    workflow: [
-      'Select cuisines and define the show format',
-      'Generate recipes, research, and ingredient spotlights',
-      'Generate scripts, voiceovers, graphics, and demonstration assets',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
-    ],
-    outputs: 'Recipes, cooking instructions, ingredient guides, scripts, voiceovers, demonstration assets, approved Production Packages',
-    examples: ['Step-by-Step Tutorial', 'Cuisine Exploration', 'Ingredient Spotlight']
+    outputs: 'Episode briefs, topic queues, source lists, talking points, rundowns, studio packages, archived episodes',
+    examples: ['Sports Podcast', 'News & Current Events', 'Faith & Theology', 'Beauty Podcast', 'Interview Show']
   },
   {
     key: 'research',
-    label: 'Research Studio',
+    legacyKey: 'research',
+    label: 'Research',
     shortLabel: 'Research',
-    description: 'Deep research investigations, synthesized findings, evidence, and production-ready assets from any topic.',
+    description: 'Deep investigation and dossier building for any subject, with evidence, source review, structured findings, and outputs that can feed other CREAPD formats.',
     icon: FlaskConical,
     available: true,
-    path: '/research/dashboard',
+    path: '/research',
     gradient: 'from-cyan-500/20 to-blue-500/10',
     accent: 'text-cyan-400',
     accentBg: 'bg-cyan-500/10',
     accentBorder: 'border-cyan-500/20',
-    spotlightFeature: 'Point Card System',
-    spotlightDescription: 'Define research topics, run deep research, extract structured Point Cards, and generate complete Production Packages from approved findings.',
+    spotlightFeature: 'Research Pipeline',
+    spotlightDescription: 'Define the question, gather and review evidence, build the dossier, then export it or send the findings into Podcast or Radio.',
     workflow: [
-      'Define research topics and production parameters',
-      'Run deep research and build verified dossiers',
-      'Extract and approve structured Point Cards',
-      'Generate, review, and approve complete Production Packages',
-      'Send approved packages to the Presentation Studio for direction and editing'
+      'Define the research question, scope, depth, and source requirements',
+      'Gather sources, evidence, documents, timelines, and data',
+      'Review claims, conflicts, credibility, and research gaps',
+      'Build the dossier, chronology, source library, and structured findings',
+      'Refine findings in the Research Workspace',
+      'Export the dossier or send approved research into Podcast or Radio'
     ],
-    outputs: 'Research dossiers, Point Cards, teleprompter scripts, talking points, fact-check notes, visual assets, approved Production Packages',
-    examples: ['Deep Investigation', 'Expert Briefing', 'Research-Driven Documentary']
-  },
-  {
-    key: 'cosmo',
-    label: 'Beauty Studio',
-    shortLabel: 'Beauty',
-    description: 'Cosmetology shows, hair, nails, skincare, makeup, esthetics, barbering, salon education, and beauty product reviews.',
-    icon: Brush,
-    available: false,
-    path: '/beauty/dashboard',
-    gradient: 'from-pink-500/20 to-fuchsia-500/10',
-    accent: 'text-pink-400',
-    accentBg: 'bg-pink-500/10',
-    accentBorder: 'border-pink-500/20',
-    spotlightFeature: 'Beauty Studio',
-    spotlightDescription: 'Build cosmetology and beauty programs with tutorials, expert interviews, salon education, scripts, voiceovers, visuals, and complete Production Packages.',
-    workflow: [
-      'Select cosmetology and beauty topics and define the show format',
-      'Generate research, topic summaries, and talking points',
-      'Generate scripts, voiceovers, tutorials, and media assets',
-      'Approve the Production Package and send a copy to the Presentation Studio',
-      'Direct, edit, rehearse, present, or export inside the Presentation Editor'
-    ],
-    outputs: 'Cosmetology research, tutorials, talking points, scripts, voiceovers, beauty assets, show rundowns, approved Production Packages',
-    examples: ['Hair Tutorial', 'Nail Technique', 'Skincare Demo', 'Beauty Product Review']
+    outputs: 'Research dossiers, source libraries, timelines, Point Cards, evidence notes, production-ready findings',
+    examples: ['Deep Investigation', 'Doctrine Breakdown', 'Company Research', 'Historical Dossier']
   },
 ];
 
-export const ACTIVE_STUDIOS = PRODUCTION_STUDIOS.filter(studio => studio.available);
-export const COMING_SOON_STUDIOS = PRODUCTION_STUDIOS.filter(studio => !studio.available);
+export const ACTIVE_FORMATS = CREAPD_FORMATS.filter(format => format.available);
+export const COMING_SOON_FORMATS = CREAPD_FORMATS.filter(format => !format.available);
 
-export function getStudioByKey(key) {
-  return PRODUCTION_STUDIOS.find(studio => studio.key === key);
+export function getFormatByKey(key) {
+  const normalized = String(key || '').toLowerCase();
+  return CREAPD_FORMATS.find(format =>
+    format.key === normalized || format.legacyKey === normalized
+  );
 }
 
-// Legacy aliases for pages that have not been renamed internally yet.
-export const PRODUCTION_PROFILES = PRODUCTION_STUDIOS;
-export const ACTIVE_PROFILES = ACTIVE_STUDIOS;
-export const COMING_SOON_PROFILES = COMING_SOON_STUDIOS;
-export const getProfileByKey = getStudioByKey;
+// Temporary aliases while older internal code migrates from PP/Studio terminology.
+export const PRODUCTION_STUDIOS = CREAPD_FORMATS;
+export const ACTIVE_STUDIOS = ACTIVE_FORMATS;
+export const COMING_SOON_STUDIOS = COMING_SOON_FORMATS;
+export const PRODUCTION_PROFILES = CREAPD_FORMATS;
+export const ACTIVE_PROFILES = ACTIVE_FORMATS;
+export const COMING_SOON_PROFILES = COMING_SOON_FORMATS;
+export const getStudioByKey = getFormatByKey;
+export const getProfileByKey = getFormatByKey;

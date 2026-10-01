@@ -4,13 +4,13 @@ import { ChevronLeft, ChevronRight, LayoutGrid, RadioTower } from 'lucide-react'
 import { PRODUCER_NAV_SECTIONS } from '@/lib/producerNav';
 import MobileBottomNav from './MobileBottomNav';
 
-const allNewsItems = PRODUCER_NAV_SECTIONS.flatMap(section => section.items);
+const allPodcastItems = PRODUCER_NAV_SECTIONS.flatMap(section => section.items);
 const mobileItems = [
-  allNewsItems.find(item => item.path === '/news/dashboard'),
-  allNewsItems.find(item => item.path === '/news/brief'),
-  allNewsItems.find(item => item.path === '/news/queue'),
-  allNewsItems.find(item => item.path === '/news/workspace'),
-  allNewsItems.find(item => item.path === '/news/export'),
+  allPodcastItems.find(item => item.path === '/news/dashboard'),
+  allPodcastItems.find(item => item.path === '/news/brief'),
+  allPodcastItems.find(item => item.path === '/news/queue'),
+  allPodcastItems.find(item => item.path === '/news/workspace'),
+  allPodcastItems.find(item => item.path === '/news/export'),
 ].filter(Boolean);
 
 export default function ProducerSidebar({ collapsed, onToggle }) {
@@ -43,8 +43,8 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-white/45">CREAPD News</div>
-              <div className="text-xs font-semibold text-white tracking-wide">Assignment Console</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-white/45">CREAPD Podcast</div>
+              <div className="text-xs font-semibold text-white tracking-wide">Production Console</div>
             </div>
           )}
           {!collapsed && <span className="news-console-onair">ON AIR</span>}
@@ -75,7 +75,7 @@ export default function ProducerSidebar({ collapsed, onToggle }) {
         <button
           onClick={onToggle}
           className="h-10 border-t border-white/[0.08] text-white/45 hover:text-white hover:bg-white/[0.04] flex items-center justify-center transition-colors"
-          aria-label={collapsed ? 'Expand newsroom navigation' : 'Collapse newsroom navigation'}
+          aria-label={collapsed ? 'Expand podcast navigation' : 'Collapse podcast navigation'}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>

@@ -68,10 +68,10 @@ export default function CreapdHome() {
           <PipelineExplainer />
         </div>
 
-        {/* Production Profile Cards */}
+        {/* Production Format Cards */}
         <section id="profiles" className="px-4 lg:px-6 py-8 max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Profiles</h2>
+            <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Formats</h2>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground hidden sm:inline">{ACTIVE_PROFILES.length} active</span>
               <Button size="sm" className="bg-gradient-to-r from-berna-emerald to-berna-purple hover:opacity-90 text-white text-xs h-8" onClick={() => setSetupOpen(true)}>
@@ -87,7 +87,7 @@ export default function CreapdHome() {
 
           {COMING_SOON_PROFILES.length > 0 && (
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              Studios marked Under Construction are being rebuilt for the new CREAPD system.
+              CREAPD now uses three core production formats: Radio, Podcast, and Research.
             </p>
           )}
         </section>

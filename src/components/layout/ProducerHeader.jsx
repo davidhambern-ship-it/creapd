@@ -26,7 +26,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = '
   // News Briefing is a News-only entity. Do not query or display it inside
   // unrelated Production Profiles.
   useEffect(() => {
-    if (activeMode !== 'news') {
+    if (activeMode !== 'podcast') {
       setBriefingStatus(null);
       return;
     }
@@ -71,7 +71,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = '
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-berna-purple/40 to-transparent" />
 
         {/* Emerald pulse when the News brief is actually ready */}
-        {activeMode === 'news' && briefingStatus === 'ready' && (
+        {activeMode === 'podcast' && briefingStatus === 'ready' && (
           <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-berna-emerald/60 to-transparent pulse-glow" />
         )}
 
@@ -89,7 +89,7 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = '
             {variant === 'news' && (
               <div className="hidden sm:flex items-center gap-2">
                 <span className="h-6 w-px bg-white/20" />
-                <span className="text-xs lg:text-sm tracking-[0.28em] text-white font-semibold">NEWS</span>
+                <span className="text-xs lg:text-sm tracking-[0.28em] text-white font-semibold">PODCAST</span>
               </div>
             )}
           </Link>
@@ -108,16 +108,16 @@ export default function ProducerHeader({ onGenerateBrief, onOpenNav, variant = '
               </p>
             </div>
 
-            {activeMode === 'news' ? (
+            {activeMode === 'podcast' ? (
               <>
                 <div className="h-8 w-px bg-white/10" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Next Run</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Next Prep</p>
                   <p className="text-xs font-mono text-berna-purple">{hoursUntil}h {minsUntil}m</p>
                 </div>
                 <div className="h-8 w-px bg-white/10" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Brief</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Episode Brief</p>
                   <p className={`text-xs font-semibold ${statusColors[briefingStatus] || 'text-muted-foreground'}`}>
                     {statusLabels[briefingStatus] || 'No Brief'}
                   </p>
