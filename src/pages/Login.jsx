@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { neonAuth, shouldUseNeonAuth } from "@/api/neonAuthClient";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import AuthImmersiveLayout from "@/components/AuthImmersiveLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 
 export default function Login() {
+  const { isAuthenticated, authChecked } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,6 +19,14 @@ export default function Login() {
   const ssoStatus = new URLSearchParams(window.location.search).get("sso");
   const bernaverseSsoUrl =
     "https://bernaverse.hireberna.app/sso.html?app=creapd";
+
+  useEffect(() => {
+    if (ssoStatus !== "1" || !authChecked) return;
+
+    if (isAuthenticated) {
+      window.location.replace("/");
+    }
+  }, [ssoStatus, authChecked, isAuthenticated]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,6 +96,12 @@ export default function Login() {
       {["invalid", "setup", "unavailable"].includes(ssoStatus) && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
           BERNAverse could not finish the CREAPD Preview handoff. No existing password was changed.
+        </div>
+      )}
+
+      {ssoStatus === "1" && authChecked && !isAuthenticated && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          Your BERNAverse Passport was verified, but CREAPD did not receive a usable Preview session. Try the Passport again; if it returns here again, the SSO session cookie still needs adjustment.
         </div>
       )}
 
