@@ -46,54 +46,65 @@ function ScenePanel({ className = '', icon: Icon, title, actionLabel = 'Open', t
   return to ? <Link to={to} className="block">{panel}</Link> : panel;
 }
 
-function nextMove({ config, topics, segments, assets }) {
+function nextMove({ config, research, topics, segments, assets, session }) {
   if (!config?.id) {
     return {
       step: 1,
-      eyebrow: 'Set up the format',
+      eyebrow: 'Podcast setup',
       title: 'Tell CREAPD what this podcast is.',
-      description: 'Save the show identity, host, runtime, topics, sources, tone, and automation rules.',
-      label: 'Configure Podcast',
+      description: 'Set the show identity, format, tone, runtime, topics, sources, guests, and automation preferences.',
+      label: 'Set Up Podcast',
       path: '/podcast/setup',
     };
   }
 
-  if (!topics.length) {
+  if (!research.length) {
     return {
       step: 2,
-      eyebrow: 'Prepare the episode',
-      title: 'Build the next episode brief.',
-      description: 'Let CREAPD gather and organize the material you want to review.',
-      label: 'Open Episode Brief',
-      path: '/podcast/brief',
+      eyebrow: 'Research',
+      title: 'Gather the material this episode needs.',
+      description: 'Use the podcast setup to guide source collection, background research, and current information.',
+      label: 'Open Research',
+      path: '/podcast/research',
     };
   }
 
   const approvedTopics = topics.filter(topic => topic.status === 'approved').length;
-  if (approvedTopics === 0) {
+  if (!topics.length || approvedTopics === 0) {
     return {
-      step: 4,
-      eyebrow: 'Producer review',
-      title: 'Approve what belongs in the episode.',
-      description: 'Review the prepared topics and keep only the material you want CREAPD to build around.',
-      label: 'Review & Approve',
-      path: '/podcast/review',
+      step: 3,
+      eyebrow: 'Episode brief',
+      title: 'Shape the research into the episode.',
+      description: 'Review the strongest material, approve what belongs, and lock the direction before production.',
+      label: topics.length ? 'Review Episode Material' : 'Build Episode Brief',
+      path: topics.length ? '/podcast/review' : '/podcast/brief',
     };
   }
 
   if (!segments.length || !assets.length) {
     return {
-      step: 6,
-      eyebrow: 'Build the episode',
-      title: 'Turn approvals into a production package.',
-      description: 'Build the rundown, scripts, talking points, and production assets before opening Studio.',
+      step: 4,
+      eyebrow: 'Episode production',
+      title: 'Turn approvals into a studio-ready episode.',
+      description: 'Build the rundown, host scripts, guest questions, transitions, and production assets.',
       label: 'Open Episode Production',
       path: '/podcast/production',
     };
   }
 
+  if (session?.status === 'complete') {
+    return {
+      step: 6,
+      eyebrow: 'Post-production',
+      title: 'The recording is finished. Package the episode.',
+      description: 'Prepare show notes, export assets, and the material needed to publish and promote the episode.',
+      label: 'Finish & Publish',
+      path: '/podcast/export',
+    };
+  }
+
   return {
-    step: 7,
+    step: 5,
     eyebrow: 'Studio ready',
     title: `${config.production_name || 'Your podcast'} is ready to produce.`,
     description: `${segments.length} rundown segments and ${assets.length} production assets are prepared.`,
@@ -110,6 +121,7 @@ export default function PodcastDashboard() {
     guests = [],
     segments = [],
     assets = [],
+    session,
     loading,
   } = useTalkProduction();
 
@@ -124,7 +136,7 @@ export default function PodcastDashboard() {
   const approvedTopics = topics.filter(topic => topic.status === 'approved').length;
   const confirmedGuests = guests.filter(guest => guest.status === 'confirmed').length;
   const approvedAssets = assets.filter(asset => asset.status === 'approved').length;
-  const move = nextMove({ config, topics, segments, assets });
+  const move = nextMove({ config, research, topics, segments, assets, session });
   const studioPath = config?.id
     ? `/podcast/studio?config_id=${encodeURIComponent(config.id)}`
     : '/podcast/setup';
@@ -328,7 +340,7 @@ export default function PodcastDashboard() {
         <div className="rounded-2xl border border-white/10 bg-black/45 p-4 backdrop-blur-md">
           <p className="text-[10px] uppercase tracking-[0.18em] text-orange-300">Podcast Format</p>
           <h1 className="mt-1 text-2xl font-heading font-bold text-white">{config?.production_name || 'New Podcast'}</h1>
-          <p className="mt-2 text-sm text-white/60">Prepare → approve → build → studio.</p>
+          <p className="mt-2 text-sm text-white/60">Setup → research → brief → production → studio → publish.</p>
           <Button asChild className="mt-4 w-full bg-gradient-to-r from-orange-500 to-fuchsia-600">
             <Link to={move.path}>{move.label}<ArrowRight className="w-4 h-4 ml-2" /></Link>
           </Button>
