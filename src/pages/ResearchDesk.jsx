@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   CirclePlus,
   CircleMinus,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,9 +85,25 @@ function articleBody(article) {
     article.body_content ||
     article.transcript ||
     article.full_text_excerpt ||
-    article.summary ||
     '',
   );
+}
+
+function normalizedText(value) {
+  return plainArticleText(value).toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function hasRealFullSource(article) {
+  if (!article) return false;
+  const body = articleBody(article);
+  if (body.length < 600 || body.split(/\s+/).filter(Boolean).length < 120) return false;
+
+  const summary = normalizedText(article.summary);
+  const normalizedBody = normalizedText(body);
+  if (summary && normalizedBody === summary) return false;
+  if (summary && normalizedBody.length <= summary.length * 1.35 && normalizedBody.includes(summary)) return false;
+
+  return true;
 }
 
 function detailRows(article) {
@@ -119,6 +136,8 @@ export default function ResearchDesk() {
   const [analysisError, setAnalysisError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fullTextLoading, setFullTextLoading] = useState(false);
+  const [fullTextError, setFullTextError] = useState('');
 
   useEffect(() => {
     base44.entities.Article.filter({}, '-opportunity_score', 100)
@@ -133,6 +152,7 @@ export default function ResearchDesk() {
     setActiveView('story');
     setEchoPrompt('');
     setAnalysisError('');
+    setFullTextError('');
 
     if (!selected) {
       setNotes([]);
@@ -142,6 +162,62 @@ export default function ResearchDesk() {
     base44.entities.ProducerNote.filter({ article_id: selected.id }, '-created_date', 50)
       .then(setNotes)
       .catch(() => setNotes([]));
+  }, [selected?.id]);
+
+  const fetchFullSource = async (article = selected, force = false) => {
+    if (!article?.id || !article?.url) return;
+    if (!force && hasRealFullSource(article)) return;
+
+    const articleId = article.id;
+    setFullTextLoading(true);
+    setFullTextError('');
+
+    try {
+      const result = await creapdApi.post('/production/core', {
+        action: 'podcast_fetch_source_article',
+        url: article.url,
+        title: article.title,
+        source_name: article.source_name,
+      });
+
+      const bodyContent = String(result?.body_content || '').trim();
+      if (!bodyContent) throw new Error('The source did not return readable full article text.');
+
+      const patch = {
+        body_content: bodyContent,
+        body_fetched_at: result?.fetched_at || new Date().toISOString(),
+      };
+
+      setArticles(prev => prev.map(item =>
+        item.id === articleId ? { ...item, ...patch } : item
+      ));
+      setSelected(prev =>
+        prev?.id === articleId ? { ...prev, ...patch } : prev
+      );
+
+      try {
+        await base44.entities.Article.update(articleId, patch);
+      } catch (persistError) {
+        console.warn('Full article loaded but could not be cached to Article:', persistError);
+      }
+    } catch (error) {
+      console.error('Full source fetch failed:', error);
+      if (selected?.id === articleId || article.id === articleId) {
+        setFullTextError(
+          error?.data?.diagnostic?.message ||
+          error?.data?.message ||
+          error?.message ||
+          'CREAPD could not retrieve the full article from this source.'
+        );
+      }
+    } finally {
+      setFullTextLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selected?.id || !selected?.url || hasRealFullSource(selected)) return;
+    fetchFullSource(selected, false);
   }, [selected?.id]);
 
   const filteredArticles = useMemo(() => {
@@ -496,27 +572,72 @@ export default function ResearchDesk() {
                 )}
 
                 <section className="rounded-2xl border border-white/10 bg-black/42 p-4 lg:p-5 backdrop-blur-md">
-                  <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-orange-300">Full Source Material</p>
                       <h2 className="mt-1 text-base font-semibold text-white">Article / Transcript</h2>
                     </div>
-                    {selected.body_fetched_at && (
-                      <span className="text-[9px] text-white/30">
-                        fetched {new Date(selected.body_fetched_at).toLocaleDateString()}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {selected.body_fetched_at && hasRealFullSource(selected) && (
+                        <span className="text-[9px] text-white/30">
+                          fetched {new Date(selected.body_fetched_at).toLocaleDateString()}
+                        </span>
+                      )}
+                      {selected.url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 border-white/10 bg-black/20 px-2 text-[10px] text-white/65"
+                          onClick={() => fetchFullSource(selected, true)}
+                          disabled={fullTextLoading}
+                        >
+                          <RefreshCw className={`mr-1 h-3 w-3 ${fullTextLoading ? 'animate-spin' : ''}`} />
+                          {fullTextLoading ? 'Fetching…' : 'Refresh Full Article'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
-                  {fullText ? (
+                  {fullTextLoading && !hasRealFullSource(selected) ? (
+                    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-fuchsia-300/10 bg-fuchsia-400/[0.04] text-center">
+                      <Loader2 className="h-7 w-7 animate-spin text-fuchsia-300" />
+                      <p className="mt-3 text-sm text-white/60">Pulling the full article directly from the source…</p>
+                      <p className="mt-1 text-xs text-white/35">CREAPD will cache the real source text when it is available.</p>
+                    </div>
+                  ) : hasRealFullSource(selected) ? (
                     <div className="whitespace-pre-wrap text-[14px] leading-7 text-white/82">
                       {fullText}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] p-8 text-center">
                       <FileText className="mx-auto h-7 w-7 text-white/25" />
-                      <p className="mt-2 text-sm text-white/55">CREAPD does not have the full source text stored for this item yet.</p>
-                      <p className="mt-1 text-xs text-white/35">The original source link is available above.</p>
+                      <p className="mt-2 text-sm text-white/60">
+                        {fullTextError || 'The full article has not been retrieved from this source yet.'}
+                      </p>
+                      <p className="mt-1 text-xs text-white/35">
+                        CREAPD will not label the RSS summary as the full article.
+                      </p>
+                      <div className="mt-4 flex justify-center gap-2">
+                        {selected.url && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="h-8 bg-fuchsia-500/20 text-fuchsia-100 hover:bg-fuchsia-500/30"
+                              onClick={() => fetchFullSource(selected, true)}
+                              disabled={fullTextLoading}
+                            >
+                              <RefreshCw className="mr-1 h-3 w-3" />
+                              Try Full Article Again
+                            </Button>
+                            <a href={selected.url} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline" size="sm" className="h-8 border-white/10 text-white/65">
+                                <ExternalLink className="mr-1 h-3 w-3" />
+                                Open Source
+                              </Button>
+                            </a>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </section>
