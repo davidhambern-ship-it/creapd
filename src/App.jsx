@@ -27,6 +27,7 @@ const StoryDetail = lazy(() => import('@/pages/StoryDetail'));
 const StoryLibrary = lazy(() => import('@/pages/StoryLibrary'));
 const StoryManager = lazy(() => import('@/pages/StoryManager'));
 const ProductionPackages = lazy(() => import('@/pages/ProductionPackages'));
+const PodcastProduction = lazy(() => import('@/pages/PodcastProduction'));
 const BrandProfiles = lazy(() => import('@/pages/BrandProfiles'));
 const ShowProfiles = lazy(() => import('@/pages/ShowProfiles'));
 const ExportCenter = lazy(() => import('@/pages/ExportCenter'));
@@ -170,7 +171,7 @@ const AuthenticatedApp = () => {
           <Route path="/podcast/story/:id" element={<StoryDetail />} />
           <Route path="/podcast/library" element={<StoryLibrary />} />
           <Route path="/podcast/workspace" element={<StoryManager />} />
-          <Route path="/podcast/production" element={<ProductionPackages />} />
+          <Route path="/podcast/production" element={<PodcastProduction />} />
           <Route path="/podcast/guests" element={<TalkGuests />} />
           <Route path="/podcast/rundown" element={<TalkRundown />} />
           <Route path="/podcast/assets" element={<TalkAssets />} />
