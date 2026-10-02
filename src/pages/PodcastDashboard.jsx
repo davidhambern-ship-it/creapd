@@ -73,11 +73,11 @@ function nextMove({ config, research, topics, segments, assets, session }) {
   if (!topics.length || approvedTopics === 0) {
     return {
       step: 3,
-      eyebrow: 'Episode brief',
-      title: 'Shape the research into the episode.',
-      description: 'Review the strongest material, approve what belongs, and lock the direction before production.',
-      label: topics.length ? 'Review Episode Material' : 'Build Episode Brief',
-      path: topics.length ? '/podcast/review' : '/podcast/brief',
+      eyebrow: 'Episode assembly',
+      title: 'Turn the approved research into the episode blueprint.',
+      description: 'Combine related sources into podcast segments, define what each part needs to accomplish, and prepare the material Production will script.',
+      label: 'Open Episode Assembly',
+      path: '/podcast/assembly',
     };
   }
 
@@ -258,7 +258,7 @@ export default function PodcastDashboard() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-white/45">Prepare an episode brief to create discussion topics.</p>
+            <p className="text-xs text-white/45">Assemble approved research to create episode topics.</p>
           )}
         </ScenePanel>
 
@@ -340,7 +340,7 @@ export default function PodcastDashboard() {
         <div className="rounded-2xl border border-white/10 bg-black/45 p-4 backdrop-blur-md">
           <p className="text-[10px] uppercase tracking-[0.18em] text-orange-300">Podcast Format</p>
           <h1 className="mt-1 text-2xl font-heading font-bold text-white">{config?.production_name || 'New Podcast'}</h1>
-          <p className="mt-2 text-sm text-white/60">Setup → research → brief → production → studio → publish.</p>
+          <p className="mt-2 text-sm text-white/60">Setup → research → assembly → production → studio → publish.</p>
           <Button asChild className="mt-4 w-full bg-gradient-to-r from-orange-500 to-fuchsia-600">
             <Link to={move.path}>{move.label}<ArrowRight className="w-4 h-4 ml-2" /></Link>
           </Button>
