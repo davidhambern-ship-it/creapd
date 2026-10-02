@@ -711,6 +711,6 @@ function TalkProgramMonitorLive() {
 
 export default function TalkProgramMonitor() {
   const path = window.location.pathname;
-  if (path !== '/talk/live' && path !== '/music/live') return null;
+  if (!['/talk/live', '/podcast/studio', '/music/live'].includes(path)) return null;
   return <TalkProgramMonitorLive />;
 }
