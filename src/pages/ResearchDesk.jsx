@@ -296,7 +296,7 @@ export default function ResearchDesk() {
   useEffect(() => {
     if (loading || !podcastConfig?.id) return;
 
-    const key = `creapd:podcast:${podcastConfig.id}:research-ready-forwarded`;
+    const key = `creapd:podcast:${podcastConfig.id}:research-ready-assembly-forwarded`;
 
     if (materialAssessment.state !== 'ready') {
       sessionStorage.removeItem(key);
@@ -388,7 +388,7 @@ export default function ResearchDesk() {
     ) {
       if (podcastConfig?.id) {
         sessionStorage.setItem(
-          `creapd:podcast:${podcastConfig.id}:research-ready-forwarded`,
+          `creapd:podcast:${podcastConfig.id}:research-ready-assembly-forwarded`,
           '1',
         );
       }
