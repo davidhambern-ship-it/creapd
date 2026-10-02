@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { runTalkBuild } from './talkEngine.js';
 import { runTalkProductionStage } from './talkProductionEngine.js';
+import { assessPodcastMaterialSufficiency } from '../src/lib/podcastMaterialSufficiency.js';
 
 function clean(value, fallback = '') {
   const text = String(value ?? '').trim();
@@ -368,6 +369,26 @@ async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} })
   }
 
   const configId = configuration.id;
+
+  const sufficiency = assessPodcastMaterialSufficiency(
+    configuration,
+    items.map(item => ({
+      ...item,
+      approved: true,
+      body_content: item.script || item.summary,
+    })),
+  );
+
+  if (sufficiency.state !== 'ready') {
+    const error = makeError(
+      `Podcast material is not production-ready. CREAPD estimates ${sufficiency.remaining_minutes} more minute${sufficiency.remaining_minutes === 1 ? '' : 's'} of usable approved material are needed.`,
+      'PODCAST_MATERIAL_INSUFFICIENT',
+      409,
+    );
+    error.details = sufficiency;
+    throw error;
+  }
+
   const sourcePayloadBase = {
     pipeline: 'podcast_episode_handoff_v2',
     imported_from: clean(episode.source, 'podcast-prep'),
@@ -453,6 +474,7 @@ async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} })
     session: studio.session,
     imported_item_count: items.length,
     studio_ready: true,
+    material_sufficiency: sufficiency,
     production,
   };
 }
