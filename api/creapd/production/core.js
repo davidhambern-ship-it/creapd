@@ -702,6 +702,63 @@ async function fetchPodcastSourceArticle(body = {}) {
   };
 }
 
+async function setPodcastSourceApproval({ sql, ownerUserId, body = {} }) {
+  const configId = String(body.configuration_id || '').trim();
+  const articleId = String(body.article_id || '').trim();
+  const approved = Boolean(body.approved);
+
+  if (!configId || !articleId) {
+    const error = new Error('Podcast source approval requires configuration_id and article_id.');
+    error.code = 'PODCAST_SOURCE_APPROVAL_INPUT_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  const [configuration] = await sql`
+    SELECT build_metadata
+    FROM creapd.talk_production_configurations
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+    LIMIT 1
+  `;
+
+  if (!configuration) {
+    const error = new Error('Podcast configuration was not found.');
+    error.code = 'PODCAST_CONFIGURATION_NOT_FOUND';
+    error.status = 404;
+    throw error;
+  }
+
+  const metadata = configuration.build_metadata && typeof configuration.build_metadata === 'object'
+    ? configuration.build_metadata
+    : {};
+  const current = Array.isArray(metadata.podcast_approved_source_ids)
+    ? metadata.podcast_approved_source_ids.map(String)
+    : [];
+  const ids = new Set(current);
+
+  if (approved) ids.add(articleId);
+  else ids.delete(articleId);
+
+  const nextMeta = {
+    ...metadata,
+    podcast_approved_source_ids: [...ids],
+    podcast_source_selection_updated_at: new Date().toISOString(),
+  };
+
+  await sql`
+    UPDATE creapd.talk_production_configurations
+    SET build_metadata=${JSON.stringify(nextMeta)}::jsonb, updated_at=now()
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+  `;
+
+  return {
+    configuration_id: configId,
+    article_id: articleId,
+    approved,
+    approved_source_ids: [...ids],
+  };
+}
+
 async function runPodcastResearchAssist(body = {}) {
   const mode = String(body.mode || 'custom').trim().toLowerCase();
   const article = body.article && typeof body.article === 'object' ? body.article : {};
@@ -871,6 +928,11 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         body,
       });
       return success(response, action, result);
+    }
+
+    if (action === 'podcast_set_source_approval') {
+      const result = await setPodcastSourceApproval({ sql, ownerUserId, body });
+      return success(response, action, { result });
     }
 
     if (action === 'podcast_build_assembly') {
