@@ -14,6 +14,7 @@ import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
 import { buildPodcastAssembly } from '../../../server/podcastAssemblyEngine.js';
+import { regeneratePodcastScript } from '../../../server/podcastScriptEngine.js';
 import { generateTalkImages } from '../../../server/talkMedia.js';
 import {
   isObsBridgeAgentAction,
@@ -988,6 +989,17 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
 
     if (action === 'podcast_set_source_approval') {
       const result = await setPodcastSourceApproval({ sql, ownerUserId, body });
+      return success(response, action, { result });
+    }
+
+    if (action === 'podcast_regenerate_script') {
+      const result = await regeneratePodcastScript({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+        assetId: body.asset_id,
+        instruction: body.instruction || '',
+      });
       return success(response, action, { result });
     }
 
