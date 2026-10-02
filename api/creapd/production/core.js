@@ -759,6 +759,62 @@ async function setPodcastSourceApproval({ sql, ownerUserId, body = {} }) {
   };
 }
 
+async function approvePodcastAssembly({ sql, ownerUserId, body = {} }) {
+  const configId = String(body.configuration_id || '').trim();
+
+  if (!configId) {
+    const error = new Error('Podcast Assembly approval requires configuration_id.');
+    error.code = 'PODCAST_ASSEMBLY_APPROVAL_INPUT_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  const [configuration] = await sql`
+    SELECT build_metadata
+    FROM creapd.talk_production_configurations
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+    LIMIT 1
+  `;
+
+  if (!configuration) {
+    const error = new Error('Podcast configuration was not found.');
+    error.code = 'PODCAST_CONFIGURATION_NOT_FOUND';
+    error.status = 404;
+    throw error;
+  }
+
+  const current = configuration.build_metadata && typeof configuration.build_metadata === 'object'
+    ? configuration.build_metadata
+    : {};
+
+  if (!Array.isArray(current.assembly_segments) || !current.assembly_segments.length) {
+    const error = new Error('Episode Assembly must be completed before it can be approved.');
+    error.code = 'PODCAST_ASSEMBLY_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const approvedAt = new Date().toISOString();
+  const nextMeta = {
+    ...current,
+    stage: 'assembly_approved',
+    assembly_approved_at: approvedAt,
+    assembly_approved: true,
+  };
+
+  await sql`
+    UPDATE creapd.talk_production_configurations
+    SET status='assembled', build_metadata=${JSON.stringify(nextMeta)}::jsonb, updated_at=now()
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+  `;
+
+  return {
+    configuration_id: configId,
+    approved: true,
+    approved_at: approvedAt,
+  };
+}
+
 async function runPodcastResearchAssist(body = {}) {
   const mode = String(body.mode || 'custom').trim().toLowerCase();
   const article = body.article && typeof body.article === 'object' ? body.article : {};
@@ -932,6 +988,11 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
 
     if (action === 'podcast_set_source_approval') {
       const result = await setPodcastSourceApproval({ sql, ownerUserId, body });
+      return success(response, action, { result });
+    }
+
+    if (action === 'podcast_approve_assembly') {
+      const result = await approvePodcastAssembly({ sql, ownerUserId, body });
       return success(response, action, { result });
     }
 
