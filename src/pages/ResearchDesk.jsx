@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
@@ -124,6 +125,7 @@ function scoreValue(value) {
 }
 
 export default function ResearchDesk() {
+  const navigate = useNavigate();
   const { config: podcastConfig } = useTalkProduction();
   const [articles, setArticles] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -257,6 +259,35 @@ export default function ResearchDesk() {
     return assessPodcastMaterialSufficiency(podcastConfig || {}, enriched);
   }, [podcastConfig, articles, analysisCache]);
 
+  useEffect(() => {
+    if (loading || !podcastConfig?.id) return;
+
+    const key = `creapd:podcast:${podcastConfig.id}:research-ready-forwarded`;
+
+    if (materialAssessment.state !== 'ready') {
+      sessionStorage.removeItem(key);
+      return;
+    }
+
+    if (sessionStorage.getItem(key) === '1') return;
+
+    sessionStorage.setItem(key, '1');
+    navigate('/podcast/brief', {
+      replace: true,
+      state: {
+        autoAdvancedFromResearch: true,
+        materialAssessment,
+      },
+    });
+  }, [
+    loading,
+    podcastConfig?.id,
+    materialAssessment.state,
+    materialAssessment.approved_material_minutes,
+    materialAssessment.research_target_minutes,
+    navigate,
+  ]);
+
   const selectedIsApproved = selected
     ? ['approved', 'bernas_pick', 'selected', 'in_production', 'package_generated', 'edited', 'ready_for_export']
         .includes(String(selected.status || '').toLowerCase())
@@ -266,10 +297,44 @@ export default function ResearchDesk() {
     if (!selected) return;
     const nextStatus = selectedIsApproved ? 'pending' : 'approved';
     await base44.entities.Article.update(selected.id, { status: nextStatus });
-    setArticles(prev => prev.map(article =>
+
+    const nextArticles = articles.map(article =>
       article.id === selected.id ? { ...article, status: nextStatus } : article
-    ));
+    );
+
+    setArticles(nextArticles);
     setSelected(prev => prev ? { ...prev, status: nextStatus } : prev);
+
+    const nextAssessment = assessPodcastMaterialSufficiency(
+      podcastConfig || {},
+      nextArticles.map(article => ({
+        ...article,
+        talking_points: analysisCache[article.id]?.talking_points || '',
+        opposing_viewpoints: analysisCache[article.id]?.opposing_viewpoints || '',
+        fact_check_notes: analysisCache[article.id]?.fact_check || '',
+        broll_suggestions: analysisCache[article.id]?.broll || '',
+      })),
+    );
+
+    if (
+      nextStatus === 'approved' &&
+      materialAssessment.state !== 'ready' &&
+      nextAssessment.state === 'ready'
+    ) {
+      if (podcastConfig?.id) {
+        sessionStorage.setItem(
+          `creapd:podcast:${podcastConfig.id}:research-ready-forwarded`,
+          '1',
+        );
+      }
+
+      navigate('/podcast/brief', {
+        state: {
+          autoAdvancedFromResearch: true,
+          materialAssessment: nextAssessment,
+        },
+      });
+    }
   };
 
   const addNote = async () => {
