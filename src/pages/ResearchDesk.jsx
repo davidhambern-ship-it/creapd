@@ -17,6 +17,9 @@ import {
   Film,
   Sparkles,
   BookOpenText,
+  CheckCircle2,
+  CirclePlus,
+  CircleMinus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import OpportunityScore from '@/components/shared/OpportunityScore';
 import CategoryBadge from '@/components/shared/CategoryBadge';
 import StatusBadge from '@/components/shared/StatusBadge';
+import { assessPodcastMaterialSufficiency } from '@/lib/podcastMaterialSufficiency';
 
 const RESEARCH_ACTIONS = [
   { key: 'story', label: 'Full story', icon: BookOpenText },
@@ -165,6 +169,32 @@ export default function ResearchDesk() {
     research_sources: safeArray(podcastConfig?.research_sources),
     guest_details: podcastConfig?.guest_details || '',
   }), [podcastConfig]);
+
+  const materialAssessment = useMemo(() => {
+    const enriched = articles.map(article => ({
+      ...article,
+      talking_points: analysisCache[article.id]?.talking_points || '',
+      opposing_viewpoints: analysisCache[article.id]?.opposing_viewpoints || '',
+      fact_check_notes: analysisCache[article.id]?.fact_check || '',
+      broll_suggestions: analysisCache[article.id]?.broll || '',
+    }));
+    return assessPodcastMaterialSufficiency(podcastConfig || {}, enriched);
+  }, [podcastConfig, articles, analysisCache]);
+
+  const selectedIsApproved = selected
+    ? ['approved', 'bernas_pick', 'selected', 'in_production', 'package_generated', 'edited', 'ready_for_export']
+        .includes(String(selected.status || '').toLowerCase())
+    : false;
+
+  const toggleEpisodeApproval = async () => {
+    if (!selected) return;
+    const nextStatus = selectedIsApproved ? 'pending' : 'approved';
+    await base44.entities.Article.update(selected.id, { status: nextStatus });
+    setArticles(prev => prev.map(article =>
+      article.id === selected.id ? { ...article, status: nextStatus } : article
+    ));
+    setSelected(prev => prev ? { ...prev, status: nextStatus } : prev);
+  };
 
   const addNote = async () => {
     if (!newNote.trim() || !selected) return;
@@ -316,6 +346,66 @@ export default function ResearchDesk() {
       <main className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 lg:px-6 lg:py-5">
         {selected ? (
           <div className="mx-auto max-w-4xl space-y-5 pb-12">
+            <section className={`rounded-2xl border p-4 backdrop-blur-md ${
+              materialAssessment.state === 'ready'
+                ? 'border-emerald-300/20 bg-emerald-500/[0.07]'
+                : materialAssessment.state === 'almost_ready'
+                  ? 'border-amber-300/20 bg-amber-500/[0.06]'
+                  : 'border-fuchsia-300/15 bg-black/38'
+            }`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/35">Episode Material</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    {materialAssessment.state === 'ready' && <CheckCircle2 className="h-4 w-4 text-emerald-300" />}
+                    <h2 className="text-sm font-semibold text-white">
+                      {materialAssessment.approved_material_minutes} / {materialAssessment.research_target_minutes} min approved
+                    </h2>
+                  </div>
+                  <p className="mt-1 max-w-2xl text-xs leading-relaxed text-white/50">{materialAssessment.message}</p>
+                </div>
+
+                <div className="flex gap-4 text-right">
+                  <div>
+                    <p className="text-lg font-mono font-semibold text-white">{materialAssessment.approved_item_count}</p>
+                    <p className="text-[9px] uppercase tracking-wide text-white/30">Approved</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-mono font-semibold text-white">~{materialAssessment.recommended_item_count}</p>
+                    <p className="text-[9px] uppercase tracking-wide text-white/30">Est. Needed</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-mono font-semibold text-white">{materialAssessment.editorial_runtime_minutes}</p>
+                    <p className="text-[9px] uppercase tracking-wide text-white/30">Show Content</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    materialAssessment.state === 'ready'
+                      ? 'bg-emerald-300'
+                      : materialAssessment.state === 'almost_ready'
+                        ? 'bg-amber-300'
+                        : 'bg-fuchsia-400'
+                  }`}
+                  style={{ width: `${materialAssessment.progress_percent}%` }}
+                />
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-white/35">
+                <span>{materialAssessment.show_format} · {materialAssessment.total_runtime_minutes}-minute show</span>
+                {materialAssessment.recommended_additional_items > 0 ? (
+                  <span>
+                    CREAPD recommends about {materialAssessment.recommended_additional_items} more strong source{materialAssessment.recommended_additional_items === 1 ? '' : 's'}
+                  </span>
+                ) : (
+                  <span className="text-emerald-200/80">Material target reached · ready for episode assembly</span>
+                )}
+              </div>
+            </section>
+
             <header className="rounded-2xl border border-white/10 bg-black/35 p-4 backdrop-blur-md">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <StatusBadge status={selected.status} />
@@ -342,6 +432,23 @@ export default function ResearchDesk() {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={selectedIsApproved ? 'outline' : 'default'}
+                  className={`h-8 text-xs ${
+                    selectedIsApproved
+                      ? 'border-emerald-300/25 bg-emerald-400/[0.08] text-emerald-200 hover:bg-emerald-400/[0.12]'
+                      : 'bg-fuchsia-500/25 text-fuchsia-100 hover:bg-fuchsia-500/35'
+                  }`}
+                  onClick={toggleEpisodeApproval}
+                >
+                  {selectedIsApproved ? (
+                    <><CircleMinus className="w-3 h-3 mr-1" />Remove from Episode</>
+                  ) : (
+                    <><CirclePlus className="w-3 h-3 mr-1" />Approve for Episode</>
+                  )}
+                </Button>
+
                 {selected.url && (
                   <a href={selected.url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="sm" className="h-8 border-white/10 text-fuchsia-200 text-xs bg-black/20">
