@@ -8,7 +8,7 @@ import { creapdApi } from '@/api/creapdClient';
 
 export default function TalkLiveRestartControl() {
   const location = useLocation();
-  if (location.pathname !== '/talk/live') return null;
+  if (!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
   return <TalkLiveRestartInner />;
 }
 
