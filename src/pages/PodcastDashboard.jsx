@@ -58,6 +58,34 @@ function nextMove({ config, research, topics, segments, assets, session }) {
     };
   }
 
+  const meta = config?.build_metadata && typeof config.build_metadata === 'object'
+    ? config.build_metadata
+    : {};
+  const hasAssembly = Array.isArray(meta.assembly_segments) && meta.assembly_segments.length > 0;
+  const assemblyApproved = Boolean(meta.assembly_approved_at);
+
+  if (hasAssembly && !assemblyApproved) {
+    return {
+      step: 3,
+      eyebrow: 'Episode assembly',
+      title: 'Review the episode structure CREAPD created.',
+      description: 'Check the segment order, runtime, source mapping, and talking direction before Production writes the show.',
+      label: 'Review Episode Assembly',
+      path: '/podcast/assembly',
+    };
+  }
+
+  if (assemblyApproved && (!segments.length || !assets.length)) {
+    return {
+      step: 4,
+      eyebrow: 'Episode production',
+      title: 'The Assembly is approved. Build the actual show material.',
+      description: 'Generate the rundown, host scripts, questions, transitions, and Studio assets from the approved blueprint.',
+      label: 'Open Episode Production',
+      path: '/podcast/production',
+    };
+  }
+
   if (!research.length) {
     return {
       step: 2,
@@ -70,7 +98,7 @@ function nextMove({ config, research, topics, segments, assets, session }) {
   }
 
   const approvedTopics = topics.filter(topic => topic.status === 'approved').length;
-  if (!topics.length || approvedTopics === 0) {
+  if (!hasAssembly) {
     return {
       step: 3,
       eyebrow: 'Episode assembly',
