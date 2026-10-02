@@ -55,6 +55,7 @@ function formatRule(format) {
 }
 
 function approvedMaterial(item) {
+  if (typeof item?.episode_approved === 'boolean') return item.episode_approved;
   if (item?.approved === true) return true;
   return READY_STATUSES.has(String(item?.status || '').toLowerCase());
 }
