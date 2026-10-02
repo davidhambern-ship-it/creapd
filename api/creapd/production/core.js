@@ -7,6 +7,7 @@ import { requireCreapdUser, getRequestedAuthProvider } from '../../../server/cre
 import { requireNeonUser } from '../../../server/neonAuth.js';
 import { requireBase44User } from '../../../server/base44Auth.js';
 import { readProductionCore } from '../../../server/productionCore.js';
+import { generateStructuredGatewayResponse } from '../../../server/aiGateway.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
 import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../../server/musicStudio.js';
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
@@ -439,6 +440,88 @@ async function handleMusicRequest(request, response, action = '') {
   });
 }
 
+function safePodcastResearchText(value, max = 18000) {
+  return String(value || '').trim().slice(0, max);
+}
+
+async function runPodcastResearchAssist(body = {}) {
+  const mode = String(body.mode || 'custom').trim().toLowerCase();
+  const article = body.article && typeof body.article === 'object' ? body.article : {};
+  const show = body.show && typeof body.show === 'object' ? body.show : {};
+  const userPrompt = safePodcastResearchText(body.prompt, 1200);
+
+  const modeInstructions = {
+    summary: 'Create a clean producer summary of the material. Capture the central point, the strongest supporting facts, and why it may matter to this podcast. Do not turn this into a host script.',
+    talking_points: 'Create useful host talking points from the material. Organize them in a natural discussion order and include specific facts or angles the host can use. These are research notes, not the final script.',
+    opposing_viewpoints: 'Identify credible counterarguments, competing interpretations, caveats, and perspectives that would help the host avoid a one-sided treatment. Clearly distinguish sourced facts from interpretation.',
+    fact_check: 'Identify the key factual claims that should be verified before production. For each claim, explain what needs verification and whether the supplied material itself supports it. Do not claim live verification unless current source evidence is actually available.',
+    broll: 'Suggest practical B-roll, graphics, screenshots, data visuals, archival material, or other visual support that matches this material and the configured podcast format.',
+    custom: userPrompt || 'Analyze this material and give the producer the most useful next-step research notes for the configured podcast.',
+  };
+
+  const showTopics = Array.isArray(show.topics)
+    ? show.topics.join(', ')
+    : safePodcastResearchText(show.topics, 1600);
+
+  const sourceText = safePodcastResearchText(
+    article.body_content ||
+    article.transcript ||
+    article.full_text_excerpt ||
+    article.summary ||
+    '',
+  );
+
+  const prompt = [
+    'You are Echo, the research assistant inside CREAPD.',
+    'Your job at this stage is to help the producer understand source material. Do NOT write the finished podcast episode unless explicitly asked.',
+    '',
+    'PODCAST CONFIGURATION:',
+    `Show: ${safePodcastResearchText(show.production_name || show.show_name || 'Podcast', 300)}`,
+    `Description: ${safePodcastResearchText(show.show_description, 1200) || 'Not provided'}`,
+    `Format: ${safePodcastResearchText(show.show_format, 240) || 'Podcast'}`,
+    `Tone: ${safePodcastResearchText(show.show_tone, 240) || 'Conversational'}`,
+    `Target runtime: ${safePodcastResearchText(show.total_show_runtime, 120) || 'Not specified'}`,
+    `Configured topics: ${showTopics || 'Not specified'}`,
+    '',
+    'SOURCE MATERIAL:',
+    `Title: ${safePodcastResearchText(article.title, 500)}`,
+    `Source: ${safePodcastResearchText(article.source_name || article.publication, 300) || 'Unknown'}`,
+    `Author: ${safePodcastResearchText(article.author, 200) || 'Unknown'}`,
+    `Published: ${safePodcastResearchText(article.published_at, 120) || 'Unknown'}`,
+    `Existing summary: ${safePodcastResearchText(article.summary, 2200) || 'None'}`,
+    '',
+    sourceText || 'No full source text is available.',
+    '',
+    'TASK:',
+    modeInstructions[mode] || modeInstructions.custom,
+    '',
+    'Keep the output useful for a producer who will later combine multiple research items into one coherent episode.',
+  ].join('\n');
+
+  const result = await generateStructuredGatewayResponse({
+    prompt,
+    schema: {
+      type: 'object',
+      properties: {
+        content: { type: 'string' },
+      },
+      required: ['content'],
+    },
+    schemaName: 'creapd_podcast_research_assist_v1',
+    webSearch: mode === 'fact_check',
+    maxOutputTokens: 1400,
+    timeoutMs: 50000,
+  });
+
+  return {
+    mode,
+    content: result?.data?.content || '',
+    provider: result?.provider || null,
+    model: result?.model || null,
+    web_search_used: Boolean(result?.webSearchUsed),
+  };
+}
+
 async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   const body = request.body && typeof request.body === 'object' ? request.body : {};
   const action = String(body.action || '').trim();
@@ -529,6 +612,11 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         action,
         body,
       });
+      return success(response, action, result);
+    }
+
+    if (action === 'podcast_research_assist') {
+      const result = await runPodcastResearchAssist(body);
       return success(response, action, result);
     }
 
