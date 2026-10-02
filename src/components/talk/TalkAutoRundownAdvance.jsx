@@ -174,7 +174,7 @@ function TalkAutoRundownAdvanceLive({ configId }) {
 
 export default function TalkAutoRundownAdvance() {
   const location = useLocation();
-  if (location.pathname !== '/talk/live') return null;
+  if (!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
   const configId = new URLSearchParams(location.search).get('config_id') || '';
   return <TalkAutoRundownAdvanceLive configId={configId} />;
 }
