@@ -290,6 +290,17 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
     throw error;
   }
 
+  const buildMetadata = configuration.build_metadata && typeof configuration.build_metadata === 'object'
+    ? configuration.build_metadata
+    : {};
+
+  if (!buildMetadata.assembly_approved_at) {
+    const error = new Error('Approve Episode Assembly before Production begins.');
+    error.code = 'PODCAST_ASSEMBLY_APPROVAL_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
   const startedAt = new Date().toISOString();
   const previousMeta = configuration.build_metadata && typeof configuration.build_metadata === 'object'
     ? configuration.build_metadata
