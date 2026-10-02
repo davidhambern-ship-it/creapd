@@ -467,7 +467,7 @@ internal sealed class ObsClient : IAsyncDisposable
         ["overlay_input_name"] = OverlayInputName,
         ["protocol"] = "obs-websocket-v5",
         ["bridge"] = "windows-desktop",
-        ["bridge_version"] = "0.1.0",
+        ["bridge_version"] = "0.1.1",
     };
 
     private async Task RefreshSceneSourcesAsync(CancellationToken cancellationToken)
@@ -607,6 +607,7 @@ internal sealed class ObsClient : IAsyncDisposable
                 ["inputSettings"] = settings,
                 ["sceneItemEnabled"] = true,
             }, cancellationToken);
+            _log($"Created OBS browser source: {OverlayInputName}");
         }
         else
         {
@@ -618,26 +619,105 @@ internal sealed class ObsClient : IAsyncDisposable
             }, cancellationToken);
         }
 
-        foreach (var scene in Scenes)
+        var targetScenes = Scenes
+            .Concat(string.IsNullOrWhiteSpace(CurrentScene) ? Array.Empty<string>() : new[] { CurrentScene })
+            .Where(scene => !string.IsNullOrWhiteSpace(scene))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var scene in targetScenes)
         {
+            int sceneItemId;
             try
             {
-                await RequestAsync("GetSceneItemId", new { sceneName = scene, sourceName = OverlayInputName }, cancellationToken);
+                var existingItem = await RequestAsync("GetSceneItemId", new
+                {
+                    sceneName = scene,
+                    sourceName = OverlayInputName,
+                }, cancellationToken);
+                sceneItemId = GetInt(existingItem, "sceneItemId");
             }
             catch
             {
-                try
+                var createdItem = await RequestAsync("CreateSceneItem", new
                 {
-                    await RequestAsync("CreateSceneItem", new
+                    sceneName = scene,
+                    sourceName = OverlayInputName,
+                    sceneItemEnabled = true,
+                }, cancellationToken);
+                sceneItemId = GetInt(createdItem, "sceneItemId");
+            }
+
+            if (sceneItemId <= 0) continue;
+
+            // A lower third can exist in OBS but still be invisible if an older scene
+            // item is disabled, transformed off-canvas, or layered behind a full-screen
+            // camera/background. Normalize it every time CREAPD takes the graphic live.
+            await RequestAsync("SetSceneItemEnabled", new
+            {
+                sceneName = scene,
+                sceneItemId,
+                sceneItemEnabled = true,
+            }, cancellationToken);
+
+            await RequestAsync("SetSceneItemTransform", new Dictionary<string, object?>
+            {
+                ["sceneName"] = scene,
+                ["sceneItemId"] = sceneItemId,
+                ["sceneItemTransform"] = new Dictionary<string, object?>
+                {
+                    ["positionX"] = 0,
+                    ["positionY"] = 0,
+                    ["scaleX"] = 1,
+                    ["scaleY"] = 1,
+                    ["rotation"] = 0,
+                    ["cropLeft"] = 0,
+                    ["cropTop"] = 0,
+                    ["cropRight"] = 0,
+                    ["cropBottom"] = 0,
+                },
+            }, cancellationToken);
+
+            try
+            {
+                var items = await RequestAsync("GetSceneItemList", new { sceneName = scene }, cancellationToken);
+                var count = items.TryGetProperty("sceneItems", out var sceneItems) && sceneItems.ValueKind == JsonValueKind.Array
+                    ? sceneItems.GetArrayLength()
+                    : 0;
+                if (count > 0)
+                {
+                    await RequestAsync("SetSceneItemIndex", new
                     {
                         sceneName = scene,
-                        sourceName = OverlayInputName,
-                        sceneItemEnabled = true,
+                        sceneItemId,
+                        sceneItemIndex = count - 1,
                     }, cancellationToken);
                 }
-                catch {}
+            }
+            catch
+            {
+                // If OBS refuses a layer-index adjustment, keeping the source enabled
+                // and full-canvas is still better than failing the graphic command.
             }
         }
+
+        // Browser sources occasionally keep the previous local-file render in memory
+        // after SetInputSettings. Ask OBS to force-refresh the page when that property
+        // button is available.
+        try
+        {
+            await RequestAsync("PressInputPropertiesButton", new
+            {
+                inputName = OverlayInputName,
+                propertyName = "refreshnocache",
+            }, cancellationToken);
+        }
+        catch
+        {
+            // Some OBS builds/source variants do not expose the refresh button.
+        }
+
+        _log($"Lower-third browser source ready · {Path.GetFileName(localFile)} · {VideoWidth}x{VideoHeight}");
     }
 
     private static string OverlayHtml(string title, string subtitle, string label, bool visible, string position)
