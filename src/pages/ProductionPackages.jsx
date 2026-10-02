@@ -9,8 +9,10 @@ import PresentationViewer from '@/components/production/PresentationViewer';
 import { logActivity } from '@/lib/activityUtils';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { useTalkProduction } from '@/hooks/useTalkProduction';
 
 export default function ProductionPackages() {
+  const { config: podcastConfig } = useTalkProduction();
   const [packages, setPackages] = useState([]);
   const [articleMap, setArticleMap] = useState({});
   const [presentationScenes, setPresentationScenes] = useState([]);
@@ -78,7 +80,10 @@ export default function ProductionPackages() {
         return {
           title: article.title || pkg.story_title || pkg.title || `Episode Topic ${index + 1}`,
           summary: pkg.story_summary || article.summary || article.description || '',
-          script: pkg.teleprompter_script || pkg.script || pkg.story_summary || article.summary || '',
+          script: pkg.teleprompter_script || pkg.show_script || pkg.script || pkg.story_summary || article.summary || '',
+          talking_points: pkg.talking_points || '',
+          fact_check_notes: pkg.fact_check_notes || '',
+          broll_suggestions: pkg.broll_suggestions || '',
           source: article.source_name || article.source || '',
           source_url: article.url || article.source_url || '',
           duration_seconds: Number(pkg.estimated_duration_seconds || pkg.duration_seconds || 420),
@@ -87,13 +92,20 @@ export default function ProductionPackages() {
 
       const result = await creapdApi.post('/talk/production', {
         action: 'import_episode',
+        configuration_id: podcastConfig?.id || undefined,
         episode: {
-          title: `Podcast Episode — ${new Date().toLocaleDateString()}`,
-          show_date: new Date().toISOString().slice(0, 10),
-          show_format: 'Podcast Episode',
-          show_tone: 'Conversational',
+          configuration_id: podcastConfig?.id || undefined,
+          title: podcastConfig?.production_name || `Podcast Episode — ${new Date().toLocaleDateString()}`,
+          host_name: podcastConfig?.host_name || '',
+          co_host_name: podcastConfig?.co_host_name || '',
+          show_name: podcastConfig?.station_name || '',
+          show_date: String(podcastConfig?.show_date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+          show_start_time: podcastConfig?.show_start_time || '12:00',
+          live_or_recorded: podcastConfig?.live_or_recorded || 'recorded',
+          show_format: podcastConfig?.show_format || 'Podcast Episode',
+          show_tone: podcastConfig?.show_tone || 'Conversational',
           source: 'podcast-prep',
-          description: `Imported from ${packages.length} producer-approved Podcast preparation packages.`,
+          description: podcastConfig?.show_description || `Imported from ${packages.length} producer-approved Podcast research packages.`,
         },
         items,
       });
@@ -103,7 +115,7 @@ export default function ProductionPackages() {
 
       toast({
         title: 'Episode sent to Podcast Studio',
-        description: `${packages.length} approved items are ready in the studio.`,
+        description: `${packages.length} approved research items were assembled using your Podcast Setup and are ready in Studio.`,
       });
       window.location.href = `/podcast/studio?config_id=${encodeURIComponent(configId)}`;
     } catch (error) {
