@@ -53,9 +53,12 @@ export default function PodcastProduction() {
   const autoStarted = useRef(false);
 
   const meta = useMemo(() => metadata(config?.build_metadata), [config?.build_metadata]);
-  const assemblyReady =
-    meta.stage === 'assembly_complete' ||
-    Boolean(meta.episode_direction && Array.isArray(meta.assembly_segments) && meta.assembly_segments.length);
+  const assemblyReady = Boolean(
+    meta.assembly_approved_at &&
+    meta.episode_direction &&
+    Array.isArray(meta.assembly_segments) &&
+    meta.assembly_segments.length
+  );
 
   const buildProduction = async ({ force = false } = {}) => {
     if (!config?.id || building) return;
@@ -116,11 +119,11 @@ export default function PodcastProduction() {
       <div className="flex h-full items-center justify-center p-8 text-center">
         <div className="max-w-lg">
           <ClipboardList className="mx-auto h-9 w-9 text-white/30" />
-          <h1 className="mt-3 text-lg font-semibold text-white">Episode Assembly comes first.</h1>
+          <h1 className="mt-3 text-lg font-semibold text-white">Approve Episode Assembly first.</h1>
           <p className="mt-2 text-sm text-white/45">
-            Production needs the assembled episode blueprint before it can write scripts, build the rundown, and prepare Studio assets.
+            Production only starts after you review and approve the episode structure. Assembly decides what the show is; Production writes the material needed to perform it.
           </p>
-          <Button className="mt-4" onClick={() => navigate('/podcast/assembly')}>Open Assembly</Button>
+          <Button className="mt-4" onClick={() => navigate('/podcast/assembly')}>Review Assembly</Button>
         </div>
       </div>
     );
