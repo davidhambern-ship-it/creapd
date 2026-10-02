@@ -13,6 +13,7 @@ import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../..
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
+import { buildPodcastAssembly } from '../../../server/podcastAssemblyEngine.js';
 import { generateTalkImages } from '../../../server/talkMedia.js';
 import {
   isObsBridgeAgentAction,
@@ -870,6 +871,16 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         body,
       });
       return success(response, action, result);
+    }
+
+    if (action === 'podcast_build_assembly') {
+      const result = await buildPodcastAssembly({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+        articles: Array.isArray(body.articles) ? body.articles : [],
+      });
+      return success(response, action, { result });
     }
 
     if (action === 'podcast_fetch_source_article') {
