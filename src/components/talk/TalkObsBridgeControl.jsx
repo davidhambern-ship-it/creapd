@@ -281,6 +281,6 @@ function TalkObsBridgeControlLive() {
 
 export default function TalkObsBridgeControl() {
   const location = useLocation();
-  if (location.pathname !== '/talk/live') return null;
+  if (!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
   return <TalkObsBridgeControlLive />;
 }
