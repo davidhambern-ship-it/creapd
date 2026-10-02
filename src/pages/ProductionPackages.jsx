@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard, Play, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { logActivity } from '@/lib/activityUtils';
 import { creapdApi } from '@/api/creapdClient';
 import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import { assessPodcastMaterialSufficiency } from '@/lib/podcastMaterialSufficiency';
 
 export default function ProductionPackages() {
   const { config: podcastConfig } = useTalkProduction();
@@ -25,6 +26,32 @@ export default function ProductionPackages() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const episodeItems = useMemo(() => packages.map((pkg, index) => {
+    const article = articleMap[pkg.article_id] || {};
+    return {
+      id: article.id || pkg.article_id || pkg.id,
+      approved: true,
+      title: article.title || pkg.story_title || pkg.title || `Episode Topic ${index + 1}`,
+      summary: pkg.story_summary || article.summary || article.description || '',
+      script: pkg.teleprompter_script || pkg.show_script || pkg.script || pkg.story_summary || article.summary || '',
+      talking_points: pkg.talking_points || '',
+      fact_check_notes: pkg.fact_check_notes || '',
+      broll_suggestions: pkg.broll_suggestions || '',
+      key_facts: article.key_facts || '',
+      why_it_matters: article.why_it_matters || '',
+      timeline: article.timeline || '',
+      duplicate_group_id: article.duplicate_group_id || '',
+      source: article.source_name || article.source || '',
+      source_url: article.url || article.source_url || '',
+      duration_seconds: Number(pkg.estimated_duration_seconds || pkg.duration_seconds || 420),
+    };
+  }), [packages, articleMap]);
+
+  const materialAssessment = useMemo(
+    () => assessPodcastMaterialSufficiency(podcastConfig || {}, episodeItems),
+    [podcastConfig, episodeItems],
+  );
 
   const loadData = async () => {
     try {
@@ -75,20 +102,7 @@ export default function ProductionPackages() {
 
     setSendingToStudio(true);
     try {
-      const items = packages.map((pkg, index) => {
-        const article = articleMap[pkg.article_id] || {};
-        return {
-          title: article.title || pkg.story_title || pkg.title || `Episode Topic ${index + 1}`,
-          summary: pkg.story_summary || article.summary || article.description || '',
-          script: pkg.teleprompter_script || pkg.show_script || pkg.script || pkg.story_summary || article.summary || '',
-          talking_points: pkg.talking_points || '',
-          fact_check_notes: pkg.fact_check_notes || '',
-          broll_suggestions: pkg.broll_suggestions || '',
-          source: article.source_name || article.source || '',
-          source_url: article.url || article.source_url || '',
-          duration_seconds: Number(pkg.estimated_duration_seconds || pkg.duration_seconds || 420),
-        };
-      });
+      const items = episodeItems;
 
       const result = await creapdApi.post('/talk/production', {
         action: 'import_episode',
@@ -122,7 +136,11 @@ export default function ProductionPackages() {
       console.error('Podcast Studio handoff failed:', error);
       toast({
         title: 'Studio handoff failed',
-        description: error?.message || 'CREAPD could not send this episode to the Podcast Studio.',
+        description:
+          error?.data?.diagnostic?.message ||
+          error?.data?.message ||
+          error?.message ||
+          'CREAPD could not send this episode to the Podcast Studio.',
         variant: 'destructive',
       });
     } finally {
@@ -181,18 +199,40 @@ export default function ProductionPackages() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{packages.length} approved</span>
-          <span className="text-xs text-berna-emerald flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />Ready for Studio
+          <span className={`text-xs flex items-center gap-1 ${
+            materialAssessment.state === 'ready' ? 'text-berna-emerald' : 'text-amber-300'
+          }`}>
+            <CheckCircle2 className="w-3 h-3" />
+            {materialAssessment.state === 'ready'
+              ? 'Material Ready'
+              : `${materialAssessment.approved_material_minutes}/${materialAssessment.research_target_minutes} min`}
           </span>
           <Button
             size="sm"
             className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
             onClick={handleSendToPodcastStudio}
-            disabled={sendingToStudio || packages.length === 0}
+            disabled={sendingToStudio || packages.length === 0 || materialAssessment.state !== 'ready'}
           >
             {sendingToStudio ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Mic2 className="w-3.5 h-3.5 mr-1.5" />}
             {sendingToStudio ? 'Sending…' : 'Send to Podcast Studio'}
           </Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-white/70">
+            Episode material: {materialAssessment.approved_material_minutes} / {materialAssessment.research_target_minutes} min
+          </span>
+          <span className="text-white/45">{materialAssessment.message}</span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+          <div
+            className={`h-full rounded-full transition-all ${
+              materialAssessment.state === 'ready' ? 'bg-emerald-300' : 'bg-fuchsia-400'
+            }`}
+            style={{ width: `${materialAssessment.progress_percent}%` }}
+          />
         </div>
       </div>
 
