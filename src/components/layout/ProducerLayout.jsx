@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import ProducerHeader from './ProducerHeader';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
@@ -8,6 +8,11 @@ import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ProducerLayout() {
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const location = useLocation();
+  const fixedWorkspace = [
+    '/podcast/research',
+    '/news/research',
+  ].some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   return (
     <div
@@ -25,8 +30,8 @@ export default function ProducerLayout() {
           onOpenNav={() => setNavDrawerOpen(true)}
         />
 
-        <main className="talk-studio-main relative flex-1 overflow-y-auto">
-          <div className="relative z-20 min-h-full">
+        <main className={`talk-studio-main relative flex-1 min-h-0 ${fixedWorkspace ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <div className={`relative z-20 ${fixedWorkspace ? 'h-full min-h-0' : 'min-h-full'}`}>
             <MobilePageShell>
               <Outlet />
             </MobilePageShell>
