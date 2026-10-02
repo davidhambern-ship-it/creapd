@@ -124,6 +124,17 @@ function scoreValue(value) {
   return value === null || value === undefined || value === '' ? '-' : value;
 }
 
+function buildMetadata(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {}
+  }
+  return {};
+}
+
 export default function ResearchDesk() {
   const navigate = useNavigate();
   const { config: podcastConfig } = useTalkProduction();
@@ -140,6 +151,8 @@ export default function ResearchDesk() {
   const [loading, setLoading] = useState(true);
   const [fullTextLoading, setFullTextLoading] = useState(false);
   const [fullTextError, setFullTextError] = useState('');
+  const [episodeApprovedIds, setEpisodeApprovedIds] = useState(() => new Set());
+  const [approvalInitialized, setApprovalInitialized] = useState(false);
 
   useEffect(() => {
     base44.entities.Article.filter({}, '-opportunity_score', 100)
@@ -149,6 +162,24 @@ export default function ResearchDesk() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!podcastConfig?.id || !articles.length || approvalInitialized) return;
+
+    const meta = buildMetadata(podcastConfig.build_metadata);
+    if (Array.isArray(meta.podcast_approved_source_ids)) {
+      setEpisodeApprovedIds(new Set(meta.podcast_approved_source_ids.map(String)));
+    } else {
+      const legacyApproved = articles
+        .filter(article =>
+          ['approved', 'bernas_pick', 'selected', 'in_production', 'package_generated', 'edited', 'ready_for_export']
+            .includes(String(article.status || '').toLowerCase())
+        )
+        .map(article => String(article.id));
+      setEpisodeApprovedIds(new Set(legacyApproved));
+    }
+    setApprovalInitialized(true);
+  }, [podcastConfig?.id, podcastConfig?.build_metadata, articles, approvalInitialized]);
 
   useEffect(() => {
     setActiveView('story');
@@ -251,13 +282,16 @@ export default function ResearchDesk() {
   const materialAssessment = useMemo(() => {
     const enriched = articles.map(article => ({
       ...article,
+      episode_approved: approvalInitialized
+        ? episodeApprovedIds.has(String(article.id))
+        : undefined,
       talking_points: analysisCache[article.id]?.talking_points || '',
       opposing_viewpoints: analysisCache[article.id]?.opposing_viewpoints || '',
       fact_check_notes: analysisCache[article.id]?.fact_check || '',
       broll_suggestions: analysisCache[article.id]?.broll || '',
     }));
     return assessPodcastMaterialSufficiency(podcastConfig || {}, enriched);
-  }, [podcastConfig, articles, analysisCache]);
+  }, [podcastConfig, articles, analysisCache, approvalInitialized, episodeApprovedIds]);
 
   useEffect(() => {
     if (loading || !podcastConfig?.id) return;
@@ -272,7 +306,7 @@ export default function ResearchDesk() {
     if (sessionStorage.getItem(key) === '1') return;
 
     sessionStorage.setItem(key, '1');
-    navigate('/podcast/brief', {
+    navigate('/podcast/assembly', {
       replace: true,
       state: {
         autoAdvancedFromResearch: true,
@@ -289,14 +323,44 @@ export default function ResearchDesk() {
   ]);
 
   const selectedIsApproved = selected
-    ? ['approved', 'bernas_pick', 'selected', 'in_production', 'package_generated', 'edited', 'ready_for_export']
-        .includes(String(selected.status || '').toLowerCase())
+    ? (
+        approvalInitialized
+          ? episodeApprovedIds.has(String(selected.id))
+          : ['approved', 'bernas_pick', 'selected', 'in_production', 'package_generated', 'edited', 'ready_for_export']
+              .includes(String(selected.status || '').toLowerCase())
+      )
     : false;
 
   const toggleEpisodeApproval = async () => {
     if (!selected) return;
-    const nextStatus = selectedIsApproved ? 'pending' : 'approved';
+
+    const approving = !selectedIsApproved;
+    const nextStatus = approving ? 'approved' : 'pending';
     await base44.entities.Article.update(selected.id, { status: nextStatus });
+
+    let nextApprovedIds = new Set(episodeApprovedIds);
+    if (approving) nextApprovedIds.add(String(selected.id));
+    else nextApprovedIds.delete(String(selected.id));
+
+    if (podcastConfig?.id) {
+      try {
+        const result = await creapdApi.post('/production/core', {
+          action: 'podcast_set_source_approval',
+          configuration_id: podcastConfig.id,
+          article_id: selected.id,
+          approved: approving,
+        });
+
+        if (Array.isArray(result?.result?.approved_source_ids)) {
+          nextApprovedIds = new Set(result.result.approved_source_ids.map(String));
+        }
+      } catch (error) {
+        console.warn('Could not persist episode-scoped source approval:', error);
+      }
+    }
+
+    setEpisodeApprovedIds(nextApprovedIds);
+    setApprovalInitialized(true);
 
     const nextArticles = articles.map(article =>
       article.id === selected.id ? { ...article, status: nextStatus } : article
@@ -309,6 +373,7 @@ export default function ResearchDesk() {
       podcastConfig || {},
       nextArticles.map(article => ({
         ...article,
+        episode_approved: nextApprovedIds.has(String(article.id)),
         talking_points: analysisCache[article.id]?.talking_points || '',
         opposing_viewpoints: analysisCache[article.id]?.opposing_viewpoints || '',
         fact_check_notes: analysisCache[article.id]?.fact_check || '',
@@ -317,7 +382,7 @@ export default function ResearchDesk() {
     );
 
     if (
-      nextStatus === 'approved' &&
+      approving &&
       materialAssessment.state !== 'ready' &&
       nextAssessment.state === 'ready'
     ) {
@@ -328,7 +393,7 @@ export default function ResearchDesk() {
         );
       }
 
-      navigate('/podcast/brief', {
+      navigate('/podcast/assembly', {
         state: {
           autoAdvancedFromResearch: true,
           materialAssessment: nextAssessment,
