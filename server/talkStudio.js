@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { runTalkBuild } from './talkEngine.js';
+import { runTalkProductionStage } from './talkProductionEngine.js';
 
 function clean(value, fallback = '') {
   const text = String(value ?? '').trim();
@@ -299,12 +300,17 @@ export async function saveTalkConfiguration({ sql, ownerUserId, ownerEmail, inpu
 async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} }) {
   const ownerId = String(ownerUserId);
   const episode = body.episode && typeof body.episode === 'object' ? body.episode : {};
+  const requestedConfigId = clean(body.configuration_id || episode.configuration_id);
   const rawItems = Array.isArray(body.items) ? body.items : [];
   const items = rawItems
     .map((item, index) => ({
       title: clean(item?.title, `Topic ${index + 1}`),
       summary: clean(item?.summary),
       script: clean(item?.script || item?.teleprompter_script || item?.summary),
+      talking_points: clean(item?.talking_points),
+      opposing_viewpoints: clean(item?.opposing_viewpoints || item?.counter_perspectives),
+      fact_check_notes: clean(item?.fact_check_notes),
+      broll_suggestions: clean(item?.broll_suggestions),
       source: clean(item?.source),
       source_url: clean(item?.source_url),
       duration_seconds: Math.max(60, Math.min(1800, cleanNumber(item?.duration_seconds, 420))),
@@ -316,47 +322,58 @@ async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} })
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const totalSeconds = items.reduce((sum, item) => sum + item.duration_seconds, 0) + 240;
-  const totalMinutes = Math.max(5, Math.ceil(totalSeconds / 60));
+  let configuration;
 
-  const saved = await saveTalkConfiguration({
-    sql,
-    ownerUserId: ownerId,
-    ownerEmail,
-    input: {
-      production_name: clean(episode.title, 'Podcast Episode'),
-      host_name: cleanNullable(episode.host_name),
-      co_host_name: cleanNullable(episode.co_host_name),
-      show_date: clean(episode.show_date, today),
-      show_start_time: clean(episode.show_start_time, '12:00'),
-      live_or_recorded: ['live', 'recorded'].includes(episode.live_or_recorded)
-        ? episode.live_or_recorded
-        : 'recorded',
-      station_name: cleanNullable(episode.show_name),
-      show_description: cleanNullable(episode.description),
-      show_format: clean(episode.show_format, 'Podcast Episode'),
-      total_show_runtime: totalMinutes,
-      talk_segment_runtime: Math.max(1, Math.ceil(items[0].duration_seconds / 60)),
-      commercial_sponsor_runtime: 0,
-      intro_runtime: 2,
-      outro_runtime: 2,
-      topics: items.map(item => item.title),
-      research_sources: items
-        .map(item => item.source || item.source_url)
-        .filter(Boolean),
-      show_tone: clean(episode.show_tone, 'Conversational'),
-      ai_automation: [],
-      vo_requirements: {},
-    },
-  });
+  // The Podcast Setup is authoritative. When the handoff includes the current
+  // configuration id, reuse it instead of creating a generic "Podcast Episode"
+  // configuration that forgets how the show is supposed to work.
+  if (requestedConfigId) {
+    configuration = withConfigAliases(
+      await requireConfiguration(sql, ownerId, requestedConfigId),
+    );
+  } else {
+    const totalSeconds = items.reduce((sum, item) => sum + item.duration_seconds, 0) + 240;
+    const totalMinutes = Math.max(5, Math.ceil(totalSeconds / 60));
+    const saved = await saveTalkConfiguration({
+      sql,
+      ownerUserId: ownerId,
+      ownerEmail,
+      input: {
+        production_name: clean(episode.title, 'Podcast Episode'),
+        host_name: cleanNullable(episode.host_name),
+        co_host_name: cleanNullable(episode.co_host_name),
+        show_date: clean(episode.show_date, today),
+        show_start_time: clean(episode.show_start_time, '12:00'),
+        live_or_recorded: ['live', 'recorded'].includes(episode.live_or_recorded)
+          ? episode.live_or_recorded
+          : 'recorded',
+        station_name: cleanNullable(episode.show_name),
+        show_description: cleanNullable(episode.description),
+        show_format: clean(episode.show_format, 'Podcast Episode'),
+        total_show_runtime: totalMinutes,
+        talk_segment_runtime: Math.max(1, Math.ceil(totalMinutes * 0.75)),
+        commercial_sponsor_runtime: 0,
+        intro_runtime: 2,
+        outro_runtime: 2,
+        topics: items.map(item => item.title),
+        research_sources: items
+          .map(item => item.source || item.source_url)
+          .filter(Boolean),
+        show_tone: clean(episode.show_tone, 'Conversational'),
+        ai_automation: [],
+        vo_requirements: {},
+      },
+    });
+    configuration = saved.configuration;
+  }
 
-  const configuration = saved.configuration;
   const configId = configuration.id;
   const sourcePayloadBase = {
-    pipeline: 'podcast_import_v1',
-    imported_from: clean(episode.source, 'news-prep'),
+    pipeline: 'podcast_episode_handoff_v2',
+    imported_from: clean(episode.source, 'podcast-prep'),
     imported_at: new Date().toISOString(),
     approved: true,
+    configuration_preserved: Boolean(requestedConfigId),
   };
 
   await Promise.all([
@@ -367,16 +384,18 @@ async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} })
     sql`DELETE FROM creapd.talk_sessions WHERE configuration_id=${configId} AND owner_user_id=${ownerId}`,
   ]);
 
-  const topicIds = [];
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
     const topicId = randomUUID();
-    topicIds.push(topicId);
     const links = item.source_url ? [item.source_url] : [];
+    const counterPerspectives = item.opposing_viewpoints ? [item.opposing_viewpoints] : [];
     const sourcePayload = asJson({
       ...sourcePayloadBase,
       source_url: item.source_url || null,
       source: item.source || null,
+      fact_check_notes: item.fact_check_notes || null,
+      broll_suggestions: item.broll_suggestions || null,
+      prior_package_script: item.script || null,
     });
 
     await sql`
@@ -387,14 +406,20 @@ async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} })
         source_system, source_payload
       ) VALUES (
         ${topicId}, ${configId}, ${ownerId}, ${item.title},
-        ${item.summary || item.script}, ${item.script || item.summary},
-        ${item.source || item.source_url || 'Approved Podcast Prep'},
+        ${item.summary || item.script}, ${item.talking_points || item.script || item.summary},
+        ${item.source || item.source_url || 'Approved Podcast Research'},
         ${JSON.stringify(links)}::jsonb, ${`Segment ${index + 1}`}, 'verified',
-        'Imported from producer-approved Podcast preparation material.',
-        '[]'::jsonb, '[]'::jsonb, 100, 'approved', ${index},
-        'creapd-podcast-import', ${sourcePayload}::jsonb
+        ${item.fact_check_notes || 'Imported from producer-approved Podcast research.'},
+        ${JSON.stringify(counterPerspectives)}::jsonb, '[]'::jsonb, 100, 'approved', ${index},
+        'creapd-podcast-handoff', ${sourcePayload}::jsonb
       )
     `;
+
+    const researchSummary = [
+      item.summary,
+      item.talking_points ? `Talking points:\n${item.talking_points}` : '',
+      item.fact_check_notes ? `Fact-check notes:\n${item.fact_check_notes}` : '',
+    ].filter(Boolean).join('\n\n');
 
     await sql`
       INSERT INTO creapd.talk_research_items (
@@ -403,104 +428,32 @@ async function importPodcastEpisode({ sql, ownerUserId, ownerEmail, body = {} })
         verification_notes, confidence_score, source_system, source_payload
       ) VALUES (
         ${randomUUID()}, ${configId}, ${ownerId}, ${item.title}, ${item.title},
-        ${item.source || 'Approved Podcast Prep'}, ${item.source_url || null},
-        'approved_episode_material', ${item.summary || item.script}, ${clean(episode.show_date, today)}::date,
-        'high', 'verified', 'Imported after producer approval.', 100,
-        'creapd-podcast-import', ${sourcePayload}::jsonb
-      )
-    `;
-
-    await sql`
-      INSERT INTO creapd.talk_assets (
-        id, configuration_id, owner_user_id, asset_type, title, content,
-        associated_topic, status, source_system, source_payload
-      ) VALUES (
-        ${randomUUID()}, ${configId}, ${ownerId}, 'host_script',
-        ${`Host Script: ${item.title}`}, ${item.script || item.summary || item.title},
-        ${item.title}, 'approved', 'creapd-podcast-import', ${sourcePayload}::jsonb
+        ${item.source || 'Approved Podcast Research'}, ${item.source_url || null},
+        'approved_episode_material', ${researchSummary || item.script || item.title},
+        ${clean(episode.show_date, configuration.show_date || today)}::date,
+        'high', 'verified', ${item.fact_check_notes || 'Imported after producer approval.'}, 100,
+        'creapd-podcast-handoff', ${sourcePayload}::jsonb
       )
     `;
   }
 
-  let orderIndex = 0;
-  await sql`
-    INSERT INTO creapd.talk_segments (
-      id, configuration_id, owner_user_id, order_index, segment_type, title,
-      duration_seconds, notes, status, runtime_status, source_system, source_payload
-    ) VALUES (
-      ${randomUUID()}, ${configId}, ${ownerId}, ${orderIndex++}, 'intro', 'Episode Intro',
-      120, ${clean(episode.intro_notes, 'Welcome the audience and introduce today’s episode.')},
-      'approved', 'queued', 'creapd-podcast-import',
-      ${asJson({ ...sourcePayloadBase, topic_name: '' })}::jsonb
-    )
-  `;
-
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index];
-    await sql`
-      INSERT INTO creapd.talk_segments (
-        id, configuration_id, owner_user_id, order_index, segment_type, title,
-        duration_seconds, notes, status, runtime_status, source_system, source_payload
-      ) VALUES (
-        ${randomUUID()}, ${configId}, ${ownerId}, ${orderIndex++}, 'solo_commentary', ${item.title},
-        ${item.duration_seconds}, ${item.summary || item.script},
-        'approved', 'queued', 'creapd-podcast-import',
-        ${asJson({ ...sourcePayloadBase, topic_name: item.title, topic_id: topicIds[index] })}::jsonb
-      )
-    `;
-  }
-
-  await sql`
-    INSERT INTO creapd.talk_segments (
-      id, configuration_id, owner_user_id, order_index, segment_type, title,
-      duration_seconds, notes, status, runtime_status, source_system, source_payload
-    ) VALUES (
-      ${randomUUID()}, ${configId}, ${ownerId}, ${orderIndex}, 'outro', 'Episode Outro',
-      120, ${clean(episode.outro_notes, 'Recap the episode and close the show.')},
-      'approved', 'queued', 'creapd-podcast-import',
-      ${asJson({ ...sourcePayloadBase, topic_name: '' })}::jsonb
-    )
-  `;
-
-  const [session] = await sql`
-    INSERT INTO creapd.talk_sessions (
-      id, configuration_id, owner_user_id, episode_id, status, host_view_state
-    ) VALUES (
-      ${randomUUID()}, ${configId}, ${ownerId}, ${configuration.episode_id || null},
-      'ready', ${asJson({ source: 'podcast-prep', imported: true })}::jsonb
-    )
-    RETURNING *
-  `;
-
-  const buildMetadata = asJson({
-    ...sourcePayloadBase,
-    stage: 'studio_ready',
-    imported_item_count: items.length,
+  // This is the actual handoff: the approved research becomes a coherent show
+  // using the Podcast Setup as the source of truth for format, tone, runtime,
+  // host/co-host behavior, guests, automation, intro/outro timing, and segment structure.
+  const production = await runTalkProductionStage({
+    sql,
+    ownerUserId: ownerId,
+    configurationId: configId,
   });
 
-  await sql`
-    UPDATE creapd.talk_production_configurations
-    SET status='ready', build_metadata=${buildMetadata}::jsonb, updated_at=now()
-    WHERE id=${configId} AND owner_user_id=${ownerId}
-  `;
-
-  if (configuration.episode_id) {
-    await sql`
-      UPDATE creapd.episodes
-      SET status='ready', updated_at=now()
-      WHERE id=${configuration.episode_id} AND owner_user_id=${ownerId}
-    `;
-  }
+  const studio = await readTalkStudio(sql, ownerId, configId);
 
   return {
-    configuration: withConfigAliases({
-      ...configuration,
-      status: 'ready',
-      build_metadata: JSON.parse(buildMetadata),
-    }),
-    session: withDates(session),
+    configuration: studio.configuration,
+    session: studio.session,
     imported_item_count: items.length,
     studio_ready: true,
+    production,
   };
 }
 
