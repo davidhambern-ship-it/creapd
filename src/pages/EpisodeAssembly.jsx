@@ -43,7 +43,7 @@ function noteContent(note) {
 
 function assemblyFromMetadata(config) {
   const meta = metadata(config?.build_metadata);
-  if (meta.stage !== 'assembly_complete' || !Array.isArray(meta.assembly_segments)) return null;
+  if (!Array.isArray(meta.assembly_segments) || !meta.assembly_segments.length) return null;
   return {
     episode_direction: meta.episode_direction || '',
     opening_goal: meta.opening_goal || '',
@@ -61,6 +61,7 @@ export default function EpisodeAssembly() {
   const [loadingSources, setLoadingSources] = useState(true);
   const [assembly, setAssembly] = useState(null);
   const [building, setBuilding] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [error, setError] = useState('');
   const autoStarted = useRef(false);
 
@@ -187,6 +188,45 @@ export default function EpisodeAssembly() {
     [assembly],
   );
 
+  const assemblyMeta = metadata(config?.build_metadata);
+  const assemblyApproved = Boolean(assemblyMeta.assembly_approved_at || assemblyMeta.assembly_approved);
+
+  const usedSourceIds = useMemo(
+    () => new Set(
+      (assembly?.segments || [])
+        .flatMap(segment => Array.isArray(segment.source_ids) ? segment.source_ids : [])
+        .map(String),
+    ),
+    [assembly],
+  );
+
+  const unmappedSources = approvedArticles.filter(article => !usedSourceIds.has(String(article.id)));
+
+  const approveAssembly = async () => {
+    if (!config?.id || !assembly?.segments?.length || approving) return;
+
+    setApproving(true);
+    setError('');
+    try {
+      await creapdApi.post('/production/core', {
+        action: 'podcast_approve_assembly',
+        configuration_id: config.id,
+      });
+      await refresh();
+      navigate('/podcast/production');
+    } catch (err) {
+      console.error('Podcast Assembly approval failed:', err);
+      setError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.message ||
+        err?.message ||
+        'CREAPD could not approve this Assembly.'
+      );
+    } finally {
+      setApproving(false);
+    }
+  };
+
   if (configLoading || loadingSources) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -232,10 +272,10 @@ export default function EpisodeAssembly() {
                   <Layers3 className="h-4 w-4 text-fuchsia-300" />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Episode Assembly</p>
                 </div>
-                <h1 className="mt-2 text-2xl font-bold text-white">Turn research into a show.</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/50">
-                  CREAPD groups the approved sources into coherent podcast segments, decides what each segment needs to accomplish,
-                  and prepares the blueprint Production will use to write the actual show.
+                <h1 className="mt-2 text-2xl font-bold text-white">The research is done. Now organize the episode.</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/50">
+                  You already approved the source material in Research. Here, CREAPD combines those sources into podcast segments
+                  and proposes the structure of the show. You are reviewing the episode plan — not approving the articles again.
                 </p>
               </div>
 
@@ -247,19 +287,41 @@ export default function EpisodeAssembly() {
                   onClick={() => buildAssembly({ force: true })}
                 >
                   <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                  Reassemble
+                  Reassemble Episode
                 </Button>
               )}
             </div>
           </header>
 
+          <section className="grid gap-2 md:grid-cols-4">
+            {[
+              ['1', 'Sources are locked', 'The articles you approved in Research are the source pool.'],
+              ['2', 'CREAPD groups them', 'Related sources are combined into meaningful podcast segments.'],
+              ['3', 'You review the plan', 'Check the order, runtime, source mapping, and talking direction.'],
+              ['4', 'Production writes it', 'After approval, Production creates scripts, rundown, transitions, and Studio assets.'],
+            ].map(([step, title, description]) => (
+              <div key={step} className="rounded-xl border border-white/[0.08] bg-black/25 p-3">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-fuchsia-400/10 text-[9px] font-semibold text-fuchsia-200">
+                    {step}
+                  </span>
+                  <p className="text-xs font-semibold text-white/80">{title}</p>
+                </div>
+                <p className="mt-2 text-[10px] leading-relaxed text-white/40">{description}</p>
+              </div>
+            ))}
+          </section>
+
           {building && (
             <section className="rounded-2xl border border-fuchsia-300/15 bg-fuchsia-400/[0.05] p-8 text-center backdrop-blur-md">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-fuchsia-300" />
-              <h2 className="mt-4 text-base font-semibold text-white">Assembling the episode…</h2>
+              <h2 className="mt-4 text-base font-semibold text-white">CREAPD is assembling the episode…</h2>
               <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-white/45">
-                CREAPD is comparing the approved sources, combining related material, calculating segment depth, and shaping the episode around
-                {config?.show_format ? ` your ${config.show_format} format` : ' your Podcast Setup'}.
+                No action is needed yet. CREAPD is comparing the approved sources, combining related material, calculating segment depth,
+                and shaping the episode around {config?.show_format ? ` your ${config.show_format} format` : ' your Podcast Setup'}.
+              </p>
+              <p className="mx-auto mt-2 max-w-xl text-[11px] leading-relaxed text-white/30">
+                When this finishes, your job is simply to review whether the proposed episode structure makes sense.
               </p>
             </section>
           )}
@@ -280,6 +342,20 @@ export default function EpisodeAssembly() {
 
           {assembly && !building && (
             <>
+              <section className="rounded-2xl border border-fuchsia-300/15 bg-fuchsia-400/[0.05] p-4 backdrop-blur-md">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200/70">Your job on this page</p>
+                <p className="mt-1 text-sm font-semibold text-white">Review the episode structure CREAPD created.</p>
+                <div className="mt-3 grid gap-2 text-[11px] text-white/55 sm:grid-cols-2 lg:grid-cols-4">
+                  <span>✓ Do the segment topics make sense?</span>
+                  <span>✓ Are the right sources grouped together?</span>
+                  <span>✓ Does the order feel natural?</span>
+                  <span>✓ Does the planned runtime fit the show?</span>
+                </div>
+                <p className="mt-3 text-[10px] text-white/35">
+                  If the structure is wrong, use Reassemble Episode. If it looks right, approve it and Production will write the actual show.
+                </p>
+              </section>
+
               <section className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.05] p-5 backdrop-blur-md">
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
@@ -293,7 +369,7 @@ export default function EpisodeAssembly() {
                 </div>
               </section>
 
-              <section className="grid gap-3 md:grid-cols-3">
+              <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
                   <Route className="h-4 w-4 text-orange-300" />
                   <p className="mt-2 text-[9px] uppercase tracking-wider text-white/35">Opening Goal</p>
@@ -301,9 +377,17 @@ export default function EpisodeAssembly() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
                   <Timer className="h-4 w-4 text-fuchsia-300" />
-                  <p className="mt-2 text-[9px] uppercase tracking-wider text-white/35">Editorial Plan</p>
+                  <p className="mt-2 text-[9px] uppercase tracking-wider text-white/35">Episode Structure</p>
                   <p className="mt-1 text-sm font-semibold text-white">~{Math.round(segmentMinutes)} minutes</p>
                   <p className="mt-1 text-xs text-white/45">{assembly.segments.length} substantive segments</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                  <FileText className="h-4 w-4 text-emerald-300" />
+                  <p className="mt-2 text-[9px] uppercase tracking-wider text-white/35">Source Mapping</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{usedSourceIds.size} / {approvedArticles.length} sources mapped</p>
+                  <p className="mt-1 text-xs text-white/45">
+                    {unmappedSources.length ? `${unmappedSources.length} approved source${unmappedSources.length === 1 ? '' : 's'} not used` : 'All approved sources accounted for'}
+                  </p>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-black/30 p-4">
                   <Route className="h-4 w-4 rotate-180 text-orange-300" />
@@ -311,6 +395,15 @@ export default function EpisodeAssembly() {
                   <p className="mt-1 text-xs leading-relaxed text-white/70">{assembly.closing_goal}</p>
                 </div>
               </section>
+
+              {unmappedSources.length > 0 && (
+                <section className="rounded-xl border border-amber-300/15 bg-amber-400/[0.05] p-4">
+                  <p className="text-xs font-semibold text-amber-100">CREAPD did not map every approved source into a segment.</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/45">
+                    That can be intentional when a source duplicates stronger material. Review the segment mapping below and reassemble if you want a different structure.
+                  </p>
+                </section>
+              )}
 
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -344,7 +437,7 @@ export default function EpisodeAssembly() {
 
                       <div className="mt-4 grid gap-4 lg:grid-cols-2">
                         <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-wider text-fuchsia-300">Production Talking Material</p>
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-fuchsia-300">Key Material Production Will Script</p>
                           <div className="mt-2 space-y-1.5">
                             {(segment.key_points || []).map((point, pointIndex) => (
                               <div key={pointIndex} className="flex gap-2 text-xs leading-relaxed text-white/70">
@@ -398,18 +491,37 @@ export default function EpisodeAssembly() {
               <section className="sticky bottom-4 rounded-2xl border border-fuchsia-300/20 bg-[#120d1c]/95 p-4 shadow-2xl backdrop-blur-xl">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-white">Assembly complete.</p>
+                    <p className="text-sm font-semibold text-white">
+                      {assemblyApproved ? 'Assembly approved.' : 'Does this episode structure look right?'}
+                    </p>
                     <p className="mt-0.5 text-xs text-white/45">
-                      Production can now turn this blueprint into the actual rundown, scripts, transitions, and studio assets.
+                      {assemblyApproved
+                        ? 'Production is ready to turn this blueprint into the actual rundown, scripts, transitions, and Studio assets.'
+                        : 'Approve the structure once you are satisfied. This does not publish anything — it simply locks the plan for Production.'}
                     </p>
                   </div>
-                  <Button
-                    className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
-                    onClick={() => navigate('/podcast/production')}
-                  >
-                    Continue to Production
-                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Button>
+                  {assemblyApproved ? (
+                    <Button
+                      className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
+                      onClick={() => navigate('/podcast/production')}
+                    >
+                      Continue to Production
+                      <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
+                      onClick={approveAssembly}
+                      disabled={approving}
+                    >
+                      {approving ? (
+                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                      )}
+                      {approving ? 'Approving Assembly…' : 'Approve Assembly & Continue'}
+                    </Button>
+                  )}
                 </div>
               </section>
             </>
