@@ -718,6 +718,6 @@ function TalkLiveDirectorControlLive() {
 }
 
 export default function TalkLiveDirectorControl() {
-  if (window.!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
+  if (!['/talk/live', '/podcast/studio'].includes(window.location.pathname)) return null;
   return <TalkLiveDirectorControlLive />;
 }
