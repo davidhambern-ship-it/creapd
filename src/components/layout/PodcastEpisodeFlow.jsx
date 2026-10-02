@@ -20,10 +20,10 @@ const STAGES = [
     ],
   },
   {
-    key: 'brief',
-    label: 'Brief',
-    path: '/podcast/brief',
-    matches: ['/podcast/brief', '/news/brief'],
+    key: 'assembly',
+    label: 'Assembly',
+    path: '/podcast/assembly',
+    matches: ['/podcast/assembly', '/podcast/brief', '/news/brief'],
   },
   {
     key: 'production',
