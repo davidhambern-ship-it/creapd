@@ -313,6 +313,8 @@ export async function buildPodcastAssembly({
       closing_goal: assembly.closing_goal,
       assembly_notes: assembly.assembly_notes,
       assembly_segments: normalizedSegments,
+      assembly_approved: false,
+      assembly_approved_at: null,
       assembly_model: result?.model || null,
       assembly_elapsed_ms: result?.elapsedMs || null,
     };
