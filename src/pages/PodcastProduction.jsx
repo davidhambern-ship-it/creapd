@@ -340,13 +340,18 @@ export default function PodcastProduction() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 border-fuchsia-300/15 bg-fuchsia-400/[0.05] px-2.5 text-[10px] text-fuchsia-200"
+                              className="h-7 flex-1 border-fuchsia-300/15 bg-fuchsia-400/[0.05] px-2.5 text-[10px] text-fuchsia-200"
                               onClick={() => {
                                 openScript(asset);
                               }}
                               disabled={regenerating}
                             >
-                              {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <WandSparkles className="h-3 w-3" />}
+                              {regenerating ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : (
+                                <WandSparkles className="mr-1 h-3 w-3" />
+                              )}
+                              Regenerate
                             </Button>
                           </div>
                         </div>
@@ -416,7 +421,7 @@ export default function PodcastProduction() {
           }
         }}
       >
-        <DialogContent className="max-h-[88vh] max-w-4xl overflow-hidden border-white/10 bg-[#0d0b14] p-0 text-white">
+        <DialogContent className="max-h-[88vh] max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-white/10 bg-[#0d0b14] p-0 text-white">
           {selectedScript && (
             <>
               <DialogHeader className="border-b border-white/[0.07] px-5 py-4 pr-12">
