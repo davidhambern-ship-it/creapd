@@ -12,7 +12,7 @@ export const PRODUCER_NAV_SECTIONS = [
       { icon: LayoutDashboard, label: 'Podcast Home', path: '/podcast' },
       { icon: Settings2, label: '1. Setup', path: '/podcast/setup' },
       { icon: Search, label: '2. Research', path: '/podcast/research' },
-      { icon: FileText, label: '3. Episode Brief', path: '/podcast/brief' },
+      { icon: Layers, label: '3. Episode Assembly', path: '/podcast/assembly' },
       { icon: Package, label: '4. Episode Production', path: '/podcast/production' },
       { icon: Radio, label: '5. Podcast Studio', path: '/podcast/studio' },
       { icon: Download, label: '6. Finish & Publish', path: '/podcast/export' },
