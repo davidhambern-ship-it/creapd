@@ -23,7 +23,11 @@ function currentPodcastStage(pathname) {
     pathname.startsWith('/news/queue') ||
     pathname.startsWith('/news/review')
   ) return 'Research';
-  if (pathname.startsWith('/podcast/brief') || pathname.startsWith('/news/brief')) return 'Episode Brief';
+  if (
+    pathname.startsWith('/podcast/assembly') ||
+    pathname.startsWith('/podcast/brief') ||
+    pathname.startsWith('/news/brief')
+  ) return 'Assembly';
   if (
     pathname.startsWith('/podcast/production') ||
     pathname.startsWith('/podcast/workspace') ||
