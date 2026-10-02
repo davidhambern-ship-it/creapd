@@ -362,6 +362,6 @@ function TalkObsSceneCueControlLive() {
 }
 
 export default function TalkObsSceneCueControl() {
-  if (window.location.pathname !== '/talk/live') return null;
+  if (window.!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
   return <TalkObsSceneCueControlLive />;
 }
