@@ -127,6 +127,19 @@ function buildIdentityLowerThirdAssets(configuration, guests) {
 
 function buildProductionPrompt(configuration, topics, researchItems, guests) {
   const automation = parseArray(configuration.ai_automation);
+  const buildMeta = configuration.build_metadata && typeof configuration.build_metadata === 'object'
+    ? configuration.build_metadata
+    : {};
+  const assemblySegments = Array.isArray(buildMeta.assembly_segments) ? buildMeta.assembly_segments : [];
+  const assemblyContext = assemblySegments.length
+    ? {
+        episode_direction: buildMeta.episode_direction || '',
+        opening_goal: buildMeta.opening_goal || '',
+        closing_goal: buildMeta.closing_goal || '',
+        assembly_notes: buildMeta.assembly_notes || '',
+        segments: assemblySegments,
+      }
+    : null;
   const compactTopics = topics.map(topic => ({
     topic_name: topic.topic_name,
     summary: topic.generated_summary,
@@ -185,6 +198,9 @@ ${JSON.stringify(compactResearch)}
 GUEST CONTEXT:
 ${JSON.stringify(compactGuests)}
 
+EPISODE ASSEMBLY BLUEPRINT:
+${assemblyContext ? JSON.stringify(assemblyContext) : 'No Assembly blueprint was supplied. Use the verified topics and research conservatively.'}
+
 PRODUCTION JOBS:
 1. RUNDOWN PRODUCER — build a coherent practical show rundown using only these segment types: intro, host_monologue, interview, panel_discussion, debate, solo_commentary, audience_qa, sponsor_break, station_id, transition, outro. Every substantive segment must identify its primary verified topic in topic_name using the exact topic_name from VERIFIED TOPIC DOSSIERS. Use an empty string only when the segment is genuinely not about one topic, such as a generic intro, sponsor break, station ID, transition, or outro.
 2. HOST PRODUCER — write the host opening/closing, guest intro, one global broadcast-ready anchor host script, AND one natural spoken teleprompter script for every verified topic. Topic scripts are what the host should actually say on-air, not producer directions or bullet-point notes.
@@ -193,6 +209,7 @@ PRODUCTION JOBS:
 5. PROMOTION / PRESENTATION PRODUCER — create concise social copy, hashtags, thumbnail prompt, presentation prompt, and internal production notes.
 
 OUTPUT CONTRACT:
+- If an EPISODE ASSEMBLY BLUEPRINT is present, treat it as the editorial source of truth for episode direction, segment grouping, source relationships, opening/closing goals, and transitions. Do not flatten it back into one segment per article.
 - Rundown durations must approximately fill the configured total runtime. Use realistic sponsor/transition/intro/outro timing.
 - For long shows, create enough substantive segments to make the rundown usable, but avoid dozens of tiny filler segments.
 - Every rundown item MUST return topic_name. For substantive topic segments it must exactly match one verified topic_name; otherwise return an empty string.
@@ -267,8 +284,8 @@ export async function runTalkProductionStage({ sql, ownerUserId, configurationId
   ]);
 
   if (!topics.length || !researchItems.length) {
-    const error = new Error('Verified Talk research checkpoint is missing. Run the research stage first.');
-    error.code = 'TALK_RESEARCH_CHECKPOINT_REQUIRED';
+    const error = new Error('Podcast Assembly is incomplete. Assemble approved research before Production.');
+    error.code = 'PODCAST_ASSEMBLY_REQUIRED';
     error.status = 409;
     throw error;
   }
