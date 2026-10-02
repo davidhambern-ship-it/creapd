@@ -633,6 +633,6 @@ function TalkObsGraphicsControlLive() {
 }
 
 export default function TalkObsGraphicsControl() {
-  if (window.location.pathname !== '/talk/live') return null;
+  if (window.!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
   return <TalkObsGraphicsControlLive />;
 }
