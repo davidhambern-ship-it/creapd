@@ -4,15 +4,26 @@ import {
   ArrowRight,
   CheckCircle2,
   ClipboardList,
+  Eye,
   FileText,
   Loader2,
   Mic2,
   RefreshCw,
   Sparkles,
+  WandSparkles,
 } from 'lucide-react';
 import { creapdApi } from '@/api/creapdClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ASSET_TYPE_LABELS } from '@/lib/talkConstants';
 
 function metadata(value) {
@@ -34,6 +45,18 @@ function secondsLabel(value) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+const SCRIPT_ASSET_TYPES = new Set([
+  'host_script',
+  'cohost_script',
+  'host_intro',
+  'host_outro',
+  'guest_intro',
+]);
+
+function scriptWordCount(value) {
+  return String(value || '').trim().split(/\s+/).filter(Boolean).length;
+}
+
 export default function PodcastProduction() {
   const navigate = useNavigate();
   const {
@@ -50,6 +73,10 @@ export default function PodcastProduction() {
 
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState('');
+  const [selectedScript, setSelectedScript] = useState(null);
+  const [regenInstruction, setRegenInstruction] = useState('');
+  const [regeneratingAssetId, setRegeneratingAssetId] = useState('');
+  const [scriptError, setScriptError] = useState('');
   const autoStarted = useRef(false);
 
   const meta = useMemo(() => metadata(config?.build_metadata), [config?.build_metadata]);
@@ -92,8 +119,49 @@ export default function PodcastProduction() {
   }, [loading, config?.id, assemblyReady, segments.length, assets.length]);
 
   const totalSegmentSeconds = segments.reduce((sum, segment) => sum + Number(segment.duration_seconds || 0), 0);
+  const scriptAssets = assets.filter(asset => SCRIPT_ASSET_TYPES.has(asset.asset_type));
   const hostAssets = assets.filter(asset => asset.asset_type === 'host_script');
-  const productionAssets = assets.filter(asset => asset.asset_type !== 'host_script');
+  const productionAssets = assets.filter(asset => !SCRIPT_ASSET_TYPES.has(asset.asset_type));
+
+  const openScript = asset => {
+    setSelectedScript(asset);
+    setRegenInstruction('');
+    setScriptError('');
+  };
+
+  const regenerateScript = async asset => {
+    if (!config?.id || !asset?.id || regeneratingAssetId) return;
+
+    setRegeneratingAssetId(asset.id);
+    setScriptError('');
+    try {
+      const response = await creapdApi.post('/production/core', {
+        action: 'podcast_regenerate_script',
+        configuration_id: config.id,
+        asset_id: asset.id,
+        instruction: regenInstruction.trim(),
+      });
+
+      const updatedAsset = response?.result?.asset;
+      if (!updatedAsset?.id) {
+        throw new Error('CREAPD did not return the regenerated script.');
+      }
+
+      setSelectedScript(updatedAsset);
+      setRegenInstruction('');
+      await refresh();
+    } catch (err) {
+      console.error('Podcast script regeneration failed:', err);
+      setScriptError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.message ||
+        err?.message ||
+        'CREAPD could not regenerate this script.'
+      );
+    } finally {
+      setRegeneratingAssetId('');
+    }
+  };
 
   if (loading) {
     return (
@@ -191,7 +259,7 @@ export default function PodcastProduction() {
               {[
                 ['Segments', segments.length],
                 ['Runtime', secondsLabel(totalSegmentSeconds)],
-                ['Host Scripts', hostAssets.length],
+                ['Spoken Scripts', scriptAssets.length],
                 ['Assets', assets.length],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl border border-white/10 bg-black/30 p-4">
@@ -228,18 +296,63 @@ export default function PodcastProduction() {
 
               <div className="space-y-4">
                 <section className="rounded-2xl border border-white/10 bg-black/35 p-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-fuchsia-300" />
-                    <h2 className="text-sm font-semibold text-white">Host Material</h2>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {hostAssets.length ? hostAssets.map(asset => (
-                      <div key={asset.id} className="rounded-lg border border-white/[0.06] bg-white/[0.025] p-3">
-                        <p className="text-xs font-semibold text-white/80">{asset.title}</p>
-                        <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-white/45">{asset.content}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-fuchsia-300" />
+                      <div>
+                        <h2 className="text-sm font-semibold text-white">Scripts & Spoken Material</h2>
+                        <p className="mt-0.5 text-[10px] text-white/35">Open any script to read it in full or regenerate only that script.</p>
                       </div>
-                    )) : (
-                      <p className="text-xs text-white/40">Host scripts are being prepared.</p>
+                    </div>
+                    <span className="text-[10px] text-white/30">{scriptAssets.length} items</span>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {scriptAssets.length ? scriptAssets.map(asset => {
+                      const regenerating = regeneratingAssetId === asset.id;
+                      return (
+                        <div key={asset.id} className="rounded-lg border border-white/[0.06] bg-white/[0.025] p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-white/80">{asset.title}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[9px] text-white/30">
+                                <span>{scriptWordCount(asset.content)} words</span>
+                                {asset.associated_topic && <span>· {asset.associated_topic}</span>}
+                              </div>
+                            </div>
+                            <span className="rounded-full border border-white/[0.06] px-2 py-0.5 text-[8px] uppercase tracking-wider text-white/30">
+                              {ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+
+                          <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-white/45">{asset.content}</p>
+
+                          <div className="mt-3 flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 flex-1 border-white/10 bg-black/20 text-[10px] text-white/65"
+                              onClick={() => openScript(asset)}
+                            >
+                              <Eye className="mr-1 h-3 w-3" />
+                              View Full Script
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 border-fuchsia-300/15 bg-fuchsia-400/[0.05] px-2.5 text-[10px] text-fuchsia-200"
+                              onClick={() => {
+                                openScript(asset);
+                              }}
+                              disabled={regenerating}
+                            >
+                              {regenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <WandSparkles className="h-3 w-3" />}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    }) : (
+                      <p className="text-xs text-white/40">Scripts are being prepared.</p>
                     )}
                   </div>
                 </section>
@@ -292,6 +405,90 @@ export default function PodcastProduction() {
           </section>
         )}
       </div>
+
+      <Dialog
+        open={Boolean(selectedScript)}
+        onOpenChange={open => {
+          if (!open && !regeneratingAssetId) {
+            setSelectedScript(null);
+            setRegenInstruction('');
+            setScriptError('');
+          }
+        }}
+      >
+        <DialogContent className="max-h-[88vh] max-w-4xl overflow-hidden border-white/10 bg-[#0d0b14] p-0 text-white">
+          {selectedScript && (
+            <>
+              <DialogHeader className="border-b border-white/[0.07] px-5 py-4 pr-12">
+                <DialogTitle className="text-base text-white">{selectedScript.title}</DialogTitle>
+                <DialogDescription className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-white/40">
+                  <span>{scriptWordCount(selectedScript.content)} words</span>
+                  <span>{ASSET_TYPE_LABELS[selectedScript.asset_type] || selectedScript.asset_type?.replace(/_/g, ' ')}</span>
+                  {selectedScript.associated_topic && <span>Topic: {selectedScript.associated_topic}</span>}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+                <div className="rounded-xl border border-white/[0.07] bg-black/30 p-4">
+                  <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Full Script</p>
+                  <div className="whitespace-pre-wrap text-[14px] leading-7 text-white/80">
+                    {selectedScript.content}
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4">
+                  <div className="flex items-center gap-2">
+                    <WandSparkles className="h-4 w-4 text-orange-300" />
+                    <div>
+                      <p className="text-xs font-semibold text-white">Regenerate this script only</p>
+                      <p className="mt-0.5 text-[10px] text-white/35">
+                        The Assembly structure and the rest of the episode stay unchanged.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Textarea
+                    value={regenInstruction}
+                    onChange={event => setRegenInstruction(event.target.value)}
+                    placeholder="Optional: tell CREAPD what should change — e.g. make it more conversational, tighten the opening, add more energy, preserve a specific point..."
+                    className="mt-3 min-h-24 resize-y border-white/10 bg-black/30 text-sm text-white"
+                    disabled={regeneratingAssetId === selectedScript.id}
+                  />
+
+                  {scriptError && (
+                    <div className="mt-3 rounded-lg border border-red-400/20 bg-red-500/[0.06] p-3 text-xs text-red-100">
+                      {scriptError}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="border-t border-white/[0.07] bg-black/20 px-5 py-4">
+                <Button
+                  variant="outline"
+                  className="border-white/10 bg-black/20 text-white/65"
+                  onClick={() => setSelectedScript(null)}
+                  disabled={regeneratingAssetId === selectedScript.id}
+                >
+                  Close
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
+                  onClick={() => regenerateScript(selectedScript)}
+                  disabled={regeneratingAssetId === selectedScript.id}
+                >
+                  {regeneratingAssetId === selectedScript.id ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <WandSparkles className="mr-1.5 h-4 w-4" />
+                  )}
+                  {regeneratingAssetId === selectedScript.id ? 'Regenerating…' : 'Regenerate Script'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
