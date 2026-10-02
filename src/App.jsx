@@ -20,6 +20,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const PodcastDashboard = lazy(() => import('@/pages/PodcastDashboard'));
 const WeeklyPlanner = lazy(() => import('@/pages/WeeklyPlanner'));
 const TodaysBrief = lazy(() => import('@/pages/TodaysBrief'));
+const EpisodeAssembly = lazy(() => import('@/pages/EpisodeAssembly'));
 const StoryQueue = lazy(() => import('@/pages/StoryQueue'));
 const StoryIntelligenceReview = lazy(() => import('@/pages/StoryIntelligenceReview'));
 const StoryDetail = lazy(() => import('@/pages/StoryDetail'));
@@ -162,7 +163,8 @@ const AuthenticatedApp = () => {
           <Route path="/podcast/research" element={<ResearchDesk />} />
           <Route path="/podcast/sources" element={<Sources />} />
           <Route path="/podcast/import" element={<ManualImport />} />
-          <Route path="/podcast/brief" element={<TodaysBrief />} />
+          <Route path="/podcast/assembly" element={<EpisodeAssembly />} />
+          <Route path="/podcast/brief" element={<Navigate to="/podcast/assembly" replace />} />
           <Route path="/podcast/queue" element={<StoryQueue />} />
           <Route path="/podcast/review" element={<StoryIntelligenceReview />} />
           <Route path="/podcast/story/:id" element={<StoryDetail />} />
