@@ -1157,8 +1157,14 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return { track: await addArtistCatalogTrack(sql, ownerUserId, body.track || body) };
     case 'music_artist_catalog_delete':
       return await deleteArtistCatalogTrack(sql, ownerUserId, body.track_id);
-    case 'music_artist_youtube_scan':
-      return await scanArtistYoutubeChannel(body.channel_url, { limit: body.limit || 24 });
+    case 'music_artist_youtube_scan': {
+      const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+      return await scanArtistYoutubeChannel(body.channel_url, {
+        limit: body.limit || 24,
+        artist_name: profile.artist_name,
+        public_name: profile.public_name,
+      });
+    }
     case 'music_artist_youtube_import':
       return await importArtistYoutubeVideos(sql, ownerUserId, body);
     case 'music_artist_interview_start':
