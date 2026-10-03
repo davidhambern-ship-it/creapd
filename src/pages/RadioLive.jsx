@@ -43,14 +43,38 @@ function trackKey(track) {
   return track?.id || `${track?.song_title || ''}::${track?.artist || ''}`;
 }
 
-function useDualYouTubeDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }) {
+function trackPayload(track) {
+  const value = track?.source_payload;
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {}
+  }
+  return {};
+}
+
+function trackAudioUrl(track) {
+  return String(trackPayload(track)?.audio_url || '').trim();
+}
+
+function trackPlayable(track) {
+  return Boolean(track?.youtube_video_id || trackAudioUrl(track));
+}
+
+function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }) {
   const wrapperARef = useRef(null);
   const wrapperBRef = useRef(null);
   const playerARef = useRef(null);
   const playerBRef = useRef(null);
+  const audioARef = useRef(null);
+  const audioBRef = useRef(null);
   const activeDeckRef = useRef(activeDeck);
   const endedRef = useRef(onActiveEnded);
-  const [ready, setReady] = useState({ A: false, B: false });
+  const tracksRef = useRef({ A: deckATrack, B: deckBTrack });
+  const [ytReady, setYtReady] = useState({ A: false, B: false });
+  const [audioReady, setAudioReady] = useState({ A: false, B: false });
   const [playing, setPlaying] = useState({ A: false, B: false });
   const [timing, setTiming] = useState({
     A: { current: 0, duration: 0 },
@@ -59,6 +83,39 @@ function useDualYouTubeDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded
 
   activeDeckRef.current = activeDeck;
   endedRef.current = onActiveEnded;
+  tracksRef.current = { A: deckATrack, B: deckBTrack };
+
+  useEffect(() => {
+    const makeAudio = deck => {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.addEventListener('canplay', () => setAudioReady(value => ({ ...value, [deck]: true })));
+      audio.addEventListener('loadedmetadata', () => setAudioReady(value => ({ ...value, [deck]: true })));
+      audio.addEventListener('play', () => setPlaying(value => ({ ...value, [deck]: true })));
+      audio.addEventListener('pause', () => setPlaying(value => ({ ...value, [deck]: false })));
+      audio.addEventListener('ended', () => {
+        setPlaying(value => ({ ...value, [deck]: false }));
+        if (activeDeckRef.current === deck) endedRef.current?.(deck);
+      });
+      return audio;
+    };
+
+    audioARef.current = makeAudio('A');
+    audioBRef.current = makeAudio('B');
+
+    return () => {
+      for (const ref of [audioARef, audioBRef]) {
+        try {
+          ref.current?.pause?.();
+          if (ref.current) {
+            ref.current.removeAttribute('src');
+            ref.current.load?.();
+          }
+        } catch {}
+        ref.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,10 +160,10 @@ function useDualYouTubeDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded
         events: {
           onReady: () => {
             if (cancelled) return;
-            setReady(value => ({ ...value, [deck]: true }));
+            setYtReady(value => ({ ...value, [deck]: true }));
           },
           onStateChange: event => {
-            if (cancelled) return;
+            if (cancelled || trackAudioUrl(tracksRef.current[deck])) return;
             const isPlaying = event.data === 1;
             if (event.data === 1 || event.data === 2 || event.data === 0) {
               setPlaying(value => ({ ...value, [deck]: isPlaying }));
@@ -135,65 +192,156 @@ function useDualYouTubeDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded
     };
   }, []);
 
-  useEffect(() => {
-    if (!ready.A || !deckATrack?.youtube_video_id || !playerARef.current) return;
+  const loadDeck = useCallback((deck, track, isActive) => {
+    const audioRef = deck === 'A' ? audioARef : audioBRef;
+    const playerRef = deck === 'A' ? playerARef : playerBRef;
+    const audioUrl = trackAudioUrl(track);
+
+    setPlaying(value => ({ ...value, [deck]: false }));
+
+    if (audioUrl) {
+      setAudioReady(value => ({ ...value, [deck]: false }));
+      try { playerRef.current?.pauseVideo?.(); } catch {}
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (audio.src !== audioUrl) {
+        audio.src = audioUrl;
+        audio.load();
+      }
+      audio.volume = isActive ? 1 : 0;
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (audio) {
+      try { audio.pause(); } catch {}
+      if (audio.src) {
+        try {
+          audio.removeAttribute('src');
+          audio.load();
+        } catch {}
+      }
+    }
+    setAudioReady(value => ({ ...value, [deck]: false }));
+
+    const videoId = track?.youtube_video_id;
+    if (!videoId || !playerRef.current) return;
     try {
-      playerARef.current.cueVideoById(deckATrack.youtube_video_id);
-      playerARef.current.setVolume(activeDeck === 'A' ? 100 : 0);
+      playerRef.current.cueVideoById(videoId);
+      playerRef.current.setVolume(isActive ? 100 : 0);
     } catch {}
-  }, [deckATrack?.youtube_video_id, ready.A]);
+  }, []);
 
   useEffect(() => {
-    if (!ready.B || !deckBTrack?.youtube_video_id || !playerBRef.current) return;
-    try {
-      playerBRef.current.cueVideoById(deckBTrack.youtube_video_id);
-      playerBRef.current.setVolume(activeDeck === 'B' ? 100 : 0);
-    } catch {}
-  }, [deckBTrack?.youtube_video_id, ready.B]);
+    loadDeck('A', deckATrack, activeDeck === 'A');
+  }, [deckATrack?.id, deckATrack?.youtube_video_id, trackAudioUrl(deckATrack), activeDeck, loadDeck]);
+
+  useEffect(() => {
+    loadDeck('B', deckBTrack, activeDeck === 'B');
+  }, [deckBTrack?.id, deckBTrack?.youtube_video_id, trackAudioUrl(deckBTrack), activeDeck, loadDeck]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       const next = {};
-      for (const [deck, ref] of [['A', playerARef], ['B', playerBRef]]) {
-        const player = ref.current;
+      for (const deck of ['A', 'B']) {
+        const track = tracksRef.current[deck];
+        const audioUrl = trackAudioUrl(track);
         let current = 0;
         let duration = 0;
-        try {
-          current = Number(player?.getCurrentTime?.() || 0);
-          duration = Number(player?.getDuration?.() || 0);
-        } catch {}
-        next[deck] = { current, duration };
+
+        if (audioUrl) {
+          const audio = deck === 'A' ? audioARef.current : audioBRef.current;
+          current = Number(audio?.currentTime || 0);
+          duration = Number(audio?.duration || track?.length_seconds || 0);
+        } else {
+          const player = deck === 'A' ? playerARef.current : playerBRef.current;
+          try {
+            current = Number(player?.getCurrentTime?.() || 0);
+            duration = Number(player?.getDuration?.() || track?.length_seconds || 0);
+          } catch {}
+        }
+
+        next[deck] = {
+          current: Number.isFinite(current) ? current : 0,
+          duration: Number.isFinite(duration) ? duration : Number(track?.length_seconds || 0),
+        };
       }
       setTiming(next);
     }, 450);
     return () => window.clearInterval(timer);
   }, []);
 
-  const playerFor = useCallback(deck => deck === 'A' ? playerARef.current : playerBRef.current, []);
+  const sourceFor = useCallback(deck => {
+    const track = tracksRef.current[deck];
+    const audioUrl = trackAudioUrl(track);
+    return {
+      track,
+      audioUrl,
+      audio: deck === 'A' ? audioARef.current : audioBRef.current,
+      player: deck === 'A' ? playerARef.current : playerBRef.current,
+    };
+  }, []);
 
   const setVolume = useCallback((deck, volume) => {
-    try { playerFor(deck)?.setVolume?.(Math.max(0, Math.min(100, volume))); } catch {}
-  }, [playerFor]);
+    const safe = Math.max(0, Math.min(100, Number(volume || 0)));
+    const source = sourceFor(deck);
+    if (source.audioUrl && source.audio) {
+      source.audio.volume = safe / 100;
+    } else {
+      try { source.player?.setVolume?.(safe); } catch {}
+    }
+  }, [sourceFor]);
 
   const play = useCallback(deck => {
-    try { playerFor(deck)?.playVideo?.(); } catch {}
-  }, [playerFor]);
+    const source = sourceFor(deck);
+    if (source.audioUrl && source.audio) {
+      source.audio.play().catch(() => {});
+    } else {
+      try { source.player?.playVideo?.(); } catch {}
+    }
+  }, [sourceFor]);
 
   const pause = useCallback(deck => {
-    try { playerFor(deck)?.pauseVideo?.(); } catch {}
-  }, [playerFor]);
+    const source = sourceFor(deck);
+    if (source.audioUrl && source.audio) {
+      try { source.audio.pause(); } catch {}
+    } else {
+      try { source.player?.pauseVideo?.(); } catch {}
+    }
+  }, [sourceFor]);
 
   const restart = useCallback(deck => {
-    try {
-      const player = playerFor(deck);
-      player?.seekTo?.(0, true);
-      player?.playVideo?.();
-    } catch {}
-  }, [playerFor]);
+    const source = sourceFor(deck);
+    if (source.audioUrl && source.audio) {
+      try {
+        source.audio.currentTime = 0;
+        source.audio.play().catch(() => {});
+      } catch {}
+    } else {
+      try {
+        source.player?.seekTo?.(0, true);
+        source.player?.playVideo?.();
+      } catch {}
+    }
+  }, [sourceFor]);
 
   const seek = useCallback((deck, seconds) => {
-    try { playerFor(deck)?.seekTo?.(Number(seconds || 0), true); } catch {}
-  }, [playerFor]);
+    const source = sourceFor(deck);
+    if (source.audioUrl && source.audio) {
+      try { source.audio.currentTime = Number(seconds || 0); } catch {}
+    } else {
+      try { source.player?.seekTo?.(Number(seconds || 0), true); } catch {}
+    }
+  }, [sourceFor]);
+
+  const ready = {
+    A: trackAudioUrl(deckATrack)
+      ? audioReady.A
+      : Boolean(deckATrack?.youtube_video_id && ytReady.A),
+    B: trackAudioUrl(deckBTrack)
+      ? audioReady.B
+      : Boolean(deckBTrack?.youtube_video_id && ytReady.B),
+  };
 
   return {
     wrapperARef,
@@ -223,6 +371,8 @@ function DeckCard({
   const duration = timing?.duration || Number(track?.length_seconds || 0);
   const current = Math.min(timing?.current || 0, duration || Number.MAX_SAFE_INTEGER);
   const progressMax = Math.max(1, duration || 1);
+  const playable = trackPlayable(track);
+  const sourceLabel = trackAudioUrl(track) ? 'ARTIST AUDIO' : track?.youtube_video_id ? 'YOUTUBE' : 'NO MEDIA';
 
   return (
     <div className={`rounded-xl border p-3 transition-all ${isActive ? 'border-fuchsia-400/45 bg-fuchsia-500/[0.09] shadow-[0_0_26px_rgba(217,70,239,.10)]' : 'border-cyan-400/20 bg-cyan-500/[0.04]'}`}>
@@ -239,7 +389,7 @@ function DeckCard({
           </div>
         </div>
         <span className={`text-[10px] px-2 py-1 rounded-full border ${ready ? 'border-emerald-400/20 text-emerald-300 bg-emerald-500/[0.06]' : 'border-white/10 text-white/35'}`}>
-          {ready ? 'READY' : 'LOADING'}
+          {ready ? 'READY' : playable ? 'LOADING' : 'NO MEDIA'}
         </span>
       </div>
 
@@ -255,13 +405,13 @@ function DeckCard({
         step="0.25"
         value={Math.min(current, progressMax)}
         onChange={event => onSeek(Number(event.target.value))}
-        disabled={!track?.youtube_video_id}
+        disabled={!playable}
         className="w-full accent-fuchsia-400 mt-3"
       />
 
       <div className="flex items-center justify-between text-[10px] text-white/40 font-mono mt-1">
         <span>{formatClock(current)}</span>
-        <span>-{formatClock(Math.max(0, duration - current))}</span>
+        <span>{sourceLabel} · -{formatClock(Math.max(0, duration - current))}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mt-3">
@@ -269,7 +419,7 @@ function DeckCard({
           type="button"
           size="sm"
           variant={isActive ? 'default' : 'outline'}
-          disabled={!track?.youtube_video_id || !ready}
+          disabled={!playable || !ready}
           onClick={onPlayPause}
           className="h-8"
         >
@@ -280,7 +430,7 @@ function DeckCard({
           type="button"
           size="sm"
           variant="outline"
-          disabled={!track?.youtube_video_id || !ready}
+          disabled={!playable || !ready}
           onClick={onRestart}
           className="h-8"
         >
@@ -502,7 +652,7 @@ export default function RadioLive() {
 
   const transitionDeckRef = useRef(async () => {});
 
-  const decks = useDualYouTubeDecks({
+  const decks = useDualRadioDecks({
     deckATrack,
     deckBTrack,
     activeDeck,
@@ -523,7 +673,7 @@ export default function RadioLive() {
     const targetTrack = toDeck === 'A'
       ? playlistRef.current.find(track => trackKey(track) === deckAIdRef.current)
       : playlistRef.current.find(track => trackKey(track) === deckBIdRef.current);
-    if (!targetTrack?.youtube_video_id) return;
+    if (!trackPlayable(targetTrack)) return;
 
     transitionRef.current = true;
     setTransitioning(true);
@@ -844,7 +994,7 @@ export default function RadioLive() {
                     <button
                       key={seconds}
                       type="button"
-                      disabled={transitioning || !nextTrack?.youtube_video_id}
+                      disabled={transitioning || !trackPlayable(nextTrack)}
                       onClick={() => transitionToOther(seconds)}
                       className="h-7 rounded-md border border-white/10 bg-white/[0.035] text-[10px] font-semibold hover:bg-white/[0.08] disabled:opacity-35"
                     >
