@@ -355,6 +355,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     try {
       const result = await creapdApi.post('/production/core', {
         action: 'music_artist_youtube_scan',
+        profile_id: profile?.id,
         channel_url: youtubeChannelUrl,
         limit: 30,
       });
@@ -365,7 +366,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       ));
       setNotice(
         videos.length
-          ? `CREAPD found ${videos.length} public YouTube uploads. Review the list and import the tracks that belong in the artist catalogue.`
+          ? `CREAPD found ${videos.length} YouTube candidate${videos.length === 1 ? '' : 's'} using ${String(result?.discovery_mode || 'channel').replaceAll('_', ' ')} discovery. Review the list and import only the tracks that belong in the artist catalogue.`
           : 'CREAPD did not find public uploads on that YouTube page.'
       );
     } catch (err) {
