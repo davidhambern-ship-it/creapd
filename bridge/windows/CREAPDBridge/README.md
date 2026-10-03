@@ -1,4 +1,4 @@
-# CREAPD OBS Bridge — Windows Native
+# CREAPD OBS Bridge — Windows Native v0.3.0
 
 The CREAPD OBS Bridge keeps the existing CREAPD Studio → bridge → OBS architecture intact while removing PowerShell from the normal user workflow.
 
@@ -58,3 +58,25 @@ When all six are present, the workflow:
 If the signing configuration is missing, the workflow still builds for development but uploads `CREAPD-OBS-Bridge-Windows-x64-UNSIGNED-DEV` so it cannot be mistaken for a public release.
 
 The PowerShell bridge remains a developer fallback.
+
+
+## Microsoft Store package
+
+Version 0.3.0 adds a reproducible MSIX packaging path for Microsoft Store distribution.
+
+The package:
+
+- keeps the WinForms bridge as a full-trust desktop app,
+- declares the `creapd-obs://` protocol in the MSIX manifest,
+- passes the pairing URI into the bridge,
+- includes Windows tile/store assets generated during CI,
+- uses the Microsoft Store package identity when configured,
+- produces an unsigned Store-submission MSIX because the Microsoft Store re-signs MSIX/AppX packages after certification.
+
+Required repository secrets after the Store product is reserved:
+
+- `MS_STORE_IDENTITY_NAME`
+- `MS_STORE_PUBLISHER`
+- `MS_STORE_PUBLISHER_DISPLAY_NAME` (optional; defaults to CREAPD)
+
+Until the Partner Center identity is supplied, CI produces `CREAPD-OBS-Bridge-MSIX-UNSIGNED-DEV` only. That artifact validates the packaging pipeline but is not intended for public installation.
