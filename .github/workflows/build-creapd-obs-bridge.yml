@@ -11,11 +11,19 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   windows-bridge:
     name: Windows x64 bridge
     runs-on: windows-latest
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+      ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+      ARTIFACT_SIGNING_PROFILE: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
 
     steps:
       - name: Checkout
@@ -39,14 +47,79 @@ jobs:
           -p:PublishTrimmed=false
           --output bridge-dist
 
+      - name: Detect Artifact Signing configuration
+        id: signing
+        shell: pwsh
+        run: |
+          $required = @(
+            $env:AZURE_CLIENT_ID,
+            $env:AZURE_TENANT_ID,
+            $env:AZURE_SUBSCRIPTION_ID,
+            $env:ARTIFACT_SIGNING_ENDPOINT,
+            $env:ARTIFACT_SIGNING_ACCOUNT,
+            $env:ARTIFACT_SIGNING_PROFILE
+          )
+          $configured = -not ($required | Where-Object { [string]::IsNullOrWhiteSpace($_) })
+          "configured=$($configured.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if ($configured) {
+            Write-Host "Azure Artifact Signing configuration detected."
+          } else {
+            Write-Warning "Artifact Signing is not configured. This run will produce an UNSIGNED developer artifact."
+          }
+
+      - name: Azure login for Artifact Signing
+        if: steps.signing.outputs.configured == 'true'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign CREAPD Bridge with Azure Artifact Signing
+        if: steps.signing.outputs.configured == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.ARTIFACT_SIGNING_PROFILE }}
+          files: ${{ github.workspace }}\bridge-dist\CREAPDBridge.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: CREAPD OBS Bridge
+          description-url: https://creapd.com
+
+      - name: Verify Authenticode signature
+        if: steps.signing.outputs.configured == 'true'
+        shell: pwsh
+        run: |
+          $path = Join-Path $env:GITHUB_WORKSPACE 'bridge-dist\CREAPDBridge.exe'
+          $signature = Get-AuthenticodeSignature -FilePath $path
+          $signature | Format-List Status, StatusMessage, SignerCertificate, TimeStamperCertificate
+          if ($signature.Status -ne 'Valid') {
+            throw "CREAPDBridge.exe signature verification failed: $($signature.Status) — $($signature.StatusMessage)"
+          }
+
       - name: Show output
         shell: pwsh
         run: Get-ChildItem -Path bridge-dist -Recurse | Format-Table FullName, Length
 
-      - name: Upload Windows bridge
+      - name: Upload signed Windows bridge
+        if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: CREAPD-OBS-Bridge-Windows-x64
+          name: CREAPD-OBS-Bridge-Windows-x64-SIGNED
+          path: |
+            bridge-dist/CREAPDBridge.exe
+            bridge/windows/CREAPDBridge/README.md
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload unsigned developer bridge
+        if: steps.signing.outputs.configured != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CREAPD-OBS-Bridge-Windows-x64-UNSIGNED-DEV
           path: |
             bridge-dist/CREAPDBridge.exe
             bridge/windows/CREAPDBridge/README.md
