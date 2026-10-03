@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CREAPD OBS Bridge</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,Segoe UI,Arial,sans-serif}
+    *{box-sizing:border-box}
+    body{margin:0;background:#090b10;color:#fff;min-height:100vh;display:grid;place-items:center;padding:24px}
+    .card{width:min(680px,100%);border:1px solid #ffffff1a;background:linear-gradient(180deg,#11141d,#090b10);border-radius:22px;padding:26px;box-shadow:0 24px 80px #0008}
+    .brand{font-weight:900;letter-spacing:.08em;color:#ec4899;font-size:26px}
+    h1{font-size:24px;margin:12px 0 8px}
+    p{color:#b8bdca;line-height:1.5;margin:6px 0}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+    label{font-size:12px;color:#b8bdca}
+    input{width:100%;height:44px;margin-top:6px;border-radius:10px;border:1px solid #ffffff1a;background:#06080d;color:#fff;padding:0 12px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    button{height:42px;padding:0 16px;border:0;border-radius:10px;background:#9333ea;color:white;font-weight:700;cursor:pointer}
+    button.secondary{background:#202531}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .status{margin-top:18px;padding:14px;border-radius:12px;background:#11151f;border:1px solid #ffffff12}
+    .ok{color:#6ee7b7}.warn{color:#fbbf24}.bad{color:#f87171}
+    .log{margin-top:14px;height:170px;overflow:auto;white-space:pre-wrap;background:#05070a;border:1px solid #ffffff10;border-radius:10px;padding:12px;color:#cbd5e1;font:12px/1.5 Consolas,monospace}
+    .small{font-size:12px}
+    @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">CREAPD</div>
+    <h1>OBS Bridge</h1>
+    <p>This tiny browser bridge connects CREAPD directly to OBS on this computer. No installer, no PowerShell, no bridge token.</p>
+
+    <div class="grid">
+      <label>OBS WebSocket
+        <input id="endpoint" value="ws://127.0.0.1:4455" />
+      </label>
+      <label>OBS WebSocket Password
+        <input id="password" type="password" placeholder="Enter once" />
+      </label>
+    </div>
+
+    <label class="small"><input id="remember" type="checkbox" checked style="width:auto;height:auto;margin-right:8px">Remember OBS connection on this browser</label>
+
+    <div class="actions">
+      <button id="connect">Connect OBS</button>
+      <button id="openStudio" class="secondary" disabled>Open CREAPD Studio</button>
+    </div>
+
+    <div class="status">
+      <strong id="statusText" class="warn">Not connected</strong>
+      <p id="statusDetail" class="small">Open OBS → Tools → WebSocket Server Settings, then connect here.</p>
+    </div>
+
+    <div id="log" class="log"></div>
+  </main>
+
+<script>
+(() => {
+  const CREAPD_ORIGIN = "__CREAPD_ORIGIN__";
+  const STUDIO_PATH = "/podcast/studio";
+  const storage = {
+    get(key){ try { return localStorage.getItem(key) || ""; } catch { return ""; } },
+    set(key,val){ try { localStorage.setItem(key,val); } catch {} },
+    remove(key){ try { localStorage.removeItem(key); } catch {} },
+  };
+
+  const endpointInput = document.getElementById("endpoint");
+  const passwordInput = document.getElementById("password");
+  const rememberInput = document.getElementById("remember");
+  const connectButton = document.getElementById("connect");
+  const openStudioButton = document.getElementById("openStudio");
+  const statusText = document.getElementById("statusText");
+  const statusDetail = document.getElementById("statusDetail");
+  const logBox = document.getElementById("log");
+
+  endpointInput.value = storage.get("creapd_obs_endpoint") || "ws://127.0.0.1:4455";
+  passwordInput.value = storage.get("creapd_obs_password");
+
+  let socket = null;
+  let identified = false;
+  let studioWindow = null;
+  let nonce = "";
+  let requestCounter = 0;
+  const pending = new Map();
+
+  const state = {
+    connected:false,
+    obs_endpoint:endpointInput.value,
+    obs_studio_version:"",
+    obs_websocket_version:"",
+    current_scene:"",
+    scenes:[],
+    video_width:1920,
+    video_height:1080,
+    recording_active:false,
+    recording_paused:false,
+    recording_timecode:"",
+    recording_duration:0,
+    recording_bytes:0,
+    scene_sources:[],
+    overlay_visible:false,
+    overlay_title:"",
+    overlay_subtitle:"",
+    overlay_label:"",
+    overlay_position:"bottom_left",
+    last_error:null,
+  };
+
+  function log(message){
+    const line = "[" + new Date().toLocaleTimeString() + "] " + message;
+    logBox.textContent += line + "\n";
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function setStatus(label, detail, cls){
+    statusText.textContent = label;
+    statusText.className = cls || "warn";
+    statusDetail.textContent = detail || "";
+  }
+
+  function randomNonce(){
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+  }
+
+  async function sha256Base64(value){
+    const data = new TextEncoder().encode(value);
+    const hash = await crypto.subtle.digest("SHA-256", data);
+    const bytes = new Uint8Array(hash);
+    let binary = "";
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return btoa(binary);
+  }
+
+  function sendJson(value){
+    if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error("OBS WebSocket is not connected.");
+    socket.send(JSON.stringify(value));
+  }
+
+  function request(requestType, requestData = {}){
+    if (!identified) return Promise.reject(new Error("OBS is not ready yet."));
+    const requestId = "creapd-" + (++requestCounter) + "-" + Date.now();
+    return new Promise((resolve,reject)=>{
+      const timeout = setTimeout(()=>{
+        pending.delete(requestId);
+        reject(new Error(requestType + " timed out."));
+      },12000);
+      pending.set(requestId,{resolve,reject,timeout,requestType});
+      sendJson({op:6,d:{requestType,requestId,requestData}});
+    });
+  }
+
+  async function handleSocketMessage(event){
+    const message = JSON.parse(event.data);
+    if (message.op === 0) {
+      const hello = message.d || {};
+      const identify = {rpcVersion:Math.min(1, Number(hello.rpcVersion || 1)), eventSubscriptions:0};
+      if (hello.authentication) {
+        const password = passwordInput.value;
+        if (!password) throw new Error("OBS requires its WebSocket password.");
+        const secret = await sha256Base64(password + hello.authentication.salt);
+        identify.authentication = await sha256Base64(secret + hello.authentication.challenge);
+      }
+      sendJson({op:1,d:identify});
+      return;
+    }
+
+    if (message.op === 2) {
+      identified = true;
+      state.connected = true;
+      state.last_error = null;
+      if (rememberInput.checked) {
+        storage.set("creapd_obs_endpoint", endpointInput.value);
+        storage.set("creapd_obs_password", passwordInput.value);
+      } else {
+        storage.remove("creapd_obs_password");
+      }
+      await refreshState(true);
+      setStatus("Connected to OBS", state.current_scene ? "Current scene: " + state.current_scene : "OBS is under CREAPD control.", "ok");
+      connectButton.textContent = "Reconnect OBS";
+      openStudioButton.disabled = false;
+      log("OBS connected · " + (state.obs_studio_version || "unknown version"));
+      openStudio();
+      postState();
+      return;
+    }
+
+    if (message.op === 7) {
+      const data = message.d || {};
+      const slot = pending.get(data.requestId);
+      if (!slot) return;
+      clearTimeout(slot.timeout);
+      pending.delete(data.requestId);
+      const status = data.requestStatus || {};
+      if (!status.result) {
+        slot.reject(new Error(status.comment || (slot.requestType + " failed.")));
+      } else {
+        slot.resolve(data.responseData || {});
+      }
+    }
+  }
+
+  async function connectObs(){
+    if (socket) {
+      try { socket.close(); } catch {}
+      socket = null;
+    }
+    identified = false;
+    state.connected = false;
+    state.obs_endpoint = endpointInput.value.trim() || "ws://127.0.0.1:4455";
+    setStatus("Connecting…","Trying " + state.obs_endpoint,"warn");
+    log("Connecting to OBS at " + state.obs_endpoint + "…");
+
+    try {
+      socket = new WebSocket(state.obs_endpoint, "obswebsocket.json");
+      socket.onmessage = event => handleSocketMessage(event).catch(error => fail(error));
+      socket.onerror = () => fail(new Error("Could not connect to OBS. Make sure OBS is open and WebSocket Server is enabled."));
+      socket.onclose = () => {
+        if (state.connected) log("OBS connection closed.");
+        state.connected = false;
+        identified = false;
+        postState();
+        setStatus("OBS disconnected","Open OBS and click Connect OBS.","warn");
+      };
+    } catch (error) {
+      fail(error);
+    }
+  }
+
+  function fail(error){
+    state.last_error = error && error.message ? error.message : String(error);
+    log("ERROR: " + state.last_error);
+    setStatus("Connection error",state.last_error,"bad");
+  }
+
+  async function refreshSceneSources(){
+    state.scene_sources = [];
+    if (!state.current_scene) return;
+    try {
+      const list = await request("GetSceneItemList",{sceneName:state.current_scene});
+      for (const item of (list.sceneItems || [])) {
+        let transform = null;
+        try {
+          const t = await request("GetSceneItemTransform",{sceneName:state.current_scene,sceneItemId:item.sceneItemId});
+          const x = t.sceneItemTransform || {};
+          transform = {
+            position_x:Number(x.positionX || 0), position_y:Number(x.positionY || 0),
+            scale_x:Number(x.scaleX ?? 1), scale_y:Number(x.scaleY ?? 1),
+            rotation:Number(x.rotation || 0), width:Number(x.width || 0), height:Number(x.height || 0),
+            source_width:Number(x.sourceWidth || 0), source_height:Number(x.sourceHeight || 0),
+            crop_left:Number(x.cropLeft || 0), crop_top:Number(x.cropTop || 0),
+            crop_right:Number(x.cropRight || 0), crop_bottom:Number(x.cropBottom || 0),
+            alignment:Number(x.alignment || 0),
+          };
+        } catch {}
+        state.scene_sources.push({
+          name:item.sourceName || "", id:item.sceneItemId, index:item.sceneItemIndex || 0,
+          enabled:Boolean(item.sceneItemEnabled), kind:item.inputKind || "", source_type:item.sourceType || "",
+          transform
+        });
+      }
+    } catch {
+      state.scene_sources = [];
+    }
+  }
+
+  async function refreshState(refreshScenes){
+    const version = await request("GetVersion");
+    state.obs_studio_version = version.obsVersion || "";
+    state.obs_websocket_version = version.obsWebSocketVersion || "";
+
+    try {
+      const video = await request("GetVideoSettings");
+      state.video_width = Math.max(1, Number(video.baseWidth || 1920));
+      state.video_height = Math.max(1, Number(video.baseHeight || 1080));
+    } catch {}
+
+    const current = await request("GetCurrentProgramScene");
+    state.current_scene = current.currentProgramSceneName || "";
+
+    if (refreshScenes || !state.scenes.length) {
+      const list = await request("GetSceneList");
+      state.scenes = (list.scenes || []).map(s=>s.sceneName).filter(Boolean);
+    }
+
+    try {
+      const rec = await request("GetRecordStatus");
+      state.recording_active = Boolean(rec.outputActive);
+      state.recording_paused = Boolean(rec.outputPaused);
+      state.recording_timecode = rec.outputTimecode || "";
+      state.recording_duration = Number(rec.outputDuration || 0);
+      state.recording_bytes = Number(rec.outputBytes || 0);
+    } catch {}
+
+    await refreshSceneSources();
+    postState();
+  }
+
+  function publicState(){
+    return {
+      id:"browser-direct",
+      name:"CREAPD Browser Bridge",
+      status:state.connected ? "connected" : "offline",
+      online:true,
+      connected:state.connected,
+      obs_endpoint:state.obs_endpoint,
+      obs_studio_version:state.obs_studio_version,
+      obs_websocket_version:state.obs_websocket_version,
+      current_scene:state.current_scene,
+      scenes:state.scenes.slice(),
+      last_error:state.last_error,
+      last_seen_at:new Date().toISOString(),
+      capabilities:{
+        scene_control:true,
+        scene_create_control:true,
+        source_control:true,
+        source_transform_control:true,
+        direct_layout_editor:true,
+        canvas_width:state.video_width,
+        canvas_height:state.video_height,
+        scene_source_scene:state.current_scene,
+        scene_sources:state.scene_sources.slice(),
+        source_types:["image","media","text","browser","camera","audio_input","display_capture","window_capture"],
+        recording_control:true,
+        recording_active:state.recording_active,
+        recording_paused:state.recording_paused,
+        recording_timecode:state.recording_timecode,
+        recording_duration:state.recording_duration,
+        recording_bytes:state.recording_bytes,
+        overlay_control:true,
+        overlay_position_control:true,
+        overlay_visible:state.overlay_visible,
+        overlay_title:state.overlay_title,
+        overlay_subtitle:state.overlay_subtitle,
+        overlay_label:state.overlay_label,
+        overlay_position:state.overlay_position,
+        overlay_input_name:"CREAPD Overlay",
+        protocol:"obs-websocket-v5",
+        bridge:"browser-direct",
+        bridge_version:"0.4.0-browser",
+      }
+    };
+  }
+
+  function postState(){
+    if (!studioWindow || studioWindow.closed || !nonce) return;
+    studioWindow.postMessage({type:"CREAPD_OBS_BRIDGE_STATE",nonce,state:publicState()},CREAPD_ORIGIN);
+  }
+
+  function openStudio(){
+    if (!nonce) nonce = randomNonce();
+    const url = CREAPD_ORIGIN + STUDIO_PATH + "?creapd_obs_bridge=" + encodeURIComponent(nonce);
+    if (studioWindow && !studioWindow.closed) {
+      try { studioWindow.focus(); } catch {}
+      postState();
+      return;
+    }
+    studioWindow = window.open(url,"CREAPDStudio");
+    if (!studioWindow) {
+      setStatus("Popup blocked","Allow popups for this local bridge, then click Open CREAPD Studio.","warn");
+      return;
+    }
+    log("Opened CREAPD Studio.");
+  }
+
+  async function getSceneItem(scene, source){
+    const item = await request("GetSceneItemId",{sceneName:scene,sourceName:source});
+    return Number(item.sceneItemId || 0);
+  }
+
+  function safeText(value){
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  }
+
+  function overlayHtml(title,subtitle,label,visible,position){
+    const pos = ["bottom_left","bottom_center","bottom_right","top_left","top_center","top_right"].includes(position) ? position : "bottom_left";
+    const subtitleMarkup = subtitle ? '<div class="subtitle">'+safeText(subtitle)+'</div>' : "";
+    return '<!doctype html><html><head><meta charset="utf-8"><style>'+
+      '*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent;font-family:Arial,Helvetica,sans-serif}'+
+      '.stage{position:relative;width:100vw;height:100vh}.anchor{position:absolute;max-width:90vw}'+
+      '.bottom_left{left:5.2vw;bottom:6.5vh}.bottom_center{left:50%;bottom:6.5vh;transform:translateX(-50%)}.bottom_right{right:5.2vw;bottom:6.5vh}'+
+      '.top_left{left:5.2vw;top:6.5vh}.top_center{left:50%;top:6.5vh;transform:translateX(-50%)}.top_right{right:5.2vw;top:6.5vh}'+
+      '.lower{min-width:420px;max-width:72vw;display:flex;filter:drop-shadow(0 14px 28px rgba(0,0,0,.45))}.accent{width:10px;border-radius:12px 0 0 12px;background:linear-gradient(180deg,#8b5cf6,#d946ef)}'+
+      '.card{min-width:0;padding:17px 25px 18px 22px;border-radius:0 12px 12px 0;background:linear-gradient(105deg,rgba(10,11,18,.97),rgba(25,22,38,.94));border:1px solid rgba(255,255,255,.15);border-left:0}'+
+      '.label{margin-bottom:7px;font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#c4b5fd}.title{font-size:42px;line-height:1.04;font-weight:850;letter-spacing:-.025em;color:white}.subtitle{margin-top:7px;font-size:23px;color:rgba(255,255,255,.76)}'+
+      '.hidden .lower{opacity:0}'+
+      '</style></head><body class="'+(visible?"show":"hidden")+'"><div class="stage"><div class="anchor '+pos+'"><div class="lower"><div class="accent"></div><div class="card"><div class="label">'+safeText(label)+'</div><div class="title">'+safeText(title)+'</div>'+subtitleMarkup+'</div></div></div></div></body></html>';
+  }
+
+  function dataHtml(html){
+    return "data:text/html;charset=utf-8," + encodeURIComponent(html);
+  }
+
+  async function ensureOverlay(visible,title,subtitle,label,position){
+    const name = "CREAPD Overlay";
+    const inputs = await request("GetInputList");
+    const exists = (inputs.inputs || []).some(input => input.inputName === name);
+    const settings = {
+      url:dataHtml(overlayHtml(title,subtitle,label,visible,position)),
+      width:state.video_width,
+      height:state.video_height,
+      shutdown:false,
+      restart_when_active:false,
+      reroute_audio:false
+    };
+
+    if (!exists) {
+      await request("CreateInput",{sceneName:state.current_scene,inputName:name,inputKind:"browser_source",inputSettings:settings,sceneItemEnabled:true});
+    } else {
+      await request("SetInputSettings",{inputName:name,inputSettings:settings,overlay:true});
+    }
+
+    const targets = Array.from(new Set([...state.scenes,state.current_scene].filter(Boolean)));
+    for (const scene of targets) {
+      let id = 0;
+      try { id = await getSceneItem(scene,name); }
+      catch {
+        const created = await request("CreateSceneItem",{sceneName:scene,sourceName:name,sceneItemEnabled:true});
+        id = Number(created.sceneItemId || 0);
+      }
+      if (!id) continue;
+      await request("SetSceneItemEnabled",{sceneName:scene,sceneItemId:id,sceneItemEnabled:true});
+      await request("SetSceneItemTransform",{sceneName:scene,sceneItemId:id,sceneItemTransform:{positionX:0,positionY:0,scaleX:1,scaleY:1,rotation:0,cropLeft:0,cropTop:0,cropRight:0,cropBottom:0}});
+      try {
+        const items = await request("GetSceneItemList",{sceneName:scene});
+        const count = (items.sceneItems || []).length;
+        if (count) await request("SetSceneItemIndex",{sceneName:scene,sceneItemId:id,sceneItemIndex:count-1});
+      } catch {}
+    }
+
+    try { await request("PressInputPropertiesButton",{inputName:name,propertyName:"refreshnocache"}); } catch {}
+    state.overlay_visible=visible;
+    state.overlay_title=visible?title:"";
+    state.overlay_subtitle=visible?subtitle:"";
+    state.overlay_label=visible?label:"";
+    state.overlay_position=position || "bottom_left";
+  }
+
+  function remoteMediaHtml(url,type,loop){
+    const safeUrl = safeText(url);
+    if (type === "image") {
+      return '<!doctype html><html><body style="margin:0;overflow:hidden;background:transparent;width:100vw;height:100vh"><img src="'+safeUrl+'" style="width:100%;height:100%;object-fit:contain"></body></html>';
+    }
+    return '<!doctype html><html><body style="margin:0;overflow:hidden;background:transparent;width:100vw;height:100vh"><video src="'+safeUrl+'" autoplay muted playsinline '+(loop?"loop":"")+' style="width:100%;height:100%;object-fit:contain"></video></body></html>';
+  }
+
+  async function createSource(payload){
+    const scene = payload.scene_name || state.current_scene;
+    const name = payload.source_name;
+    const type = String(payload.source_type || "").toLowerCase();
+    let inputKind = "";
+    const settings = {};
+
+    if (type === "image" || type === "media") {
+      inputKind = "browser_source";
+      settings.url = dataHtml(remoteMediaHtml(payload.path || payload.url || "",type,Boolean(payload.loop)));
+      settings.width = state.video_width;
+      settings.height = state.video_height;
+      settings.shutdown = false;
+      settings.restart_when_active = false;
+    } else if (type === "text") {
+      inputKind = "text_gdiplus_v2"; settings.text = payload.text || "";
+    } else if (type === "browser") {
+      inputKind = "browser_source"; settings.url = payload.url || ""; settings.width=Number(payload.width||1920); settings.height=Number(payload.height||1080); settings.shutdown=false; settings.restart_when_active=false;
+    } else if (type === "camera") {
+      inputKind = "dshow_input"; if (payload.device_id) settings.video_device_id=payload.device_id;
+    } else if (type === "audio_input") {
+      inputKind = "wasapi_input_capture"; if (payload.device_id) settings.device_id=payload.device_id;
+    } else if (type === "display_capture") {
+      inputKind = "monitor_capture"; settings.monitor=Number(payload.monitor||0);
+    } else if (type === "window_capture") {
+      inputKind = "window_capture"; if (payload.window) settings.window=payload.window;
+    } else {
+      throw new Error("Unsupported source type: " + type);
+    }
+
+    return request("CreateInput",{sceneName:scene,inputName:name,inputKind,inputSettings:settings,sceneItemEnabled:true});
+  }
+
+  async function executeCommand(commandType,payload={}){
+    if (!state.connected) throw new Error("OBS is not connected.");
+    if (commandType === "refresh_state") {
+      await refreshState(true);
+      return {current_scene:state.current_scene};
+    }
+    if (commandType === "set_scene") {
+      await request("SetCurrentProgramScene",{sceneName:payload.scene_name});
+    } else if (commandType === "start_recording") {
+      await request("StartRecord");
+    } else if (commandType === "stop_recording") {
+      await request("StopRecord");
+    } else if (commandType === "pause_recording") {
+      await request("PauseRecord");
+    } else if (commandType === "resume_recording") {
+      await request("ResumeRecord");
+    } else if (commandType === "create_scene") {
+      await request("CreateScene",{sceneName:payload.scene_name});
+      await request("SetCurrentProgramScene",{sceneName:payload.scene_name});
+    } else if (commandType === "create_source") {
+      await createSource(payload);
+    } else if (["remove_source","set_source_visibility","set_source_transform","move_source_up","move_source_down"].includes(commandType)) {
+      const scene = payload.scene_name || state.current_scene;
+      const id = await getSceneItem(scene,payload.source_name);
+      if (commandType === "remove_source") {
+        await request("RemoveSceneItem",{sceneName:scene,sceneItemId:id});
+      } else if (commandType === "set_source_visibility") {
+        await request("SetSceneItemEnabled",{sceneName:scene,sceneItemId:id,sceneItemEnabled:Boolean(payload.visible)});
+      } else if (commandType === "set_source_transform") {
+        const transform = {};
+        if (payload.x !== undefined) transform.positionX=Number(payload.x);
+        if (payload.y !== undefined) transform.positionY=Number(payload.y);
+        if (payload.scale_x !== undefined) transform.scaleX=Number(payload.scale_x);
+        if (payload.scale_y !== undefined) transform.scaleY=Number(payload.scale_y);
+        if (payload.rotation !== undefined) transform.rotation=Number(payload.rotation);
+        if (payload.crop_left !== undefined) transform.cropLeft=Number(payload.crop_left);
+        if (payload.crop_top !== undefined) transform.cropTop=Number(payload.crop_top);
+        if (payload.crop_right !== undefined) transform.cropRight=Number(payload.crop_right);
+        if (payload.crop_bottom !== undefined) transform.cropBottom=Number(payload.crop_bottom);
+        await request("SetSceneItemTransform",{sceneName:scene,sceneItemId:id,sceneItemTransform:transform});
+      } else {
+        const items = await request("GetSceneItemList",{sceneName:scene});
+        const found = (items.sceneItems || []).find(item => Number(item.sceneItemId) === id);
+        const count = (items.sceneItems || []).length;
+        const current = Number(found?.sceneItemIndex || 0);
+        const delta = commandType === "move_source_up" ? 1 : -1;
+        const next = Math.max(0,Math.min(Math.max(0,count-1),current+delta));
+        await request("SetSceneItemIndex",{sceneName:scene,sceneItemId:id,sceneItemIndex:next});
+      }
+    } else if (commandType === "show_lower_third") {
+      await ensureOverlay(true,payload.title || "",payload.subtitle || "",payload.label || "CREAPD LIVE",payload.position || "bottom_left");
+    } else if (commandType === "clear_overlay") {
+      await ensureOverlay(false,"","","",state.overlay_position || "bottom_left");
+    } else if (commandType === "set_direct_edit_mode") {
+      return {direct_edit_mode:Boolean(payload.enabled)};
+    } else {
+      throw new Error("Unsupported OBS command: " + commandType);
+    }
+
+    await new Promise(resolve=>setTimeout(resolve,120));
+    await refreshState(commandType === "create_scene");
+    return {
+      current_scene:state.current_scene,
+      recording_active:state.recording_active,
+      recording_paused:state.recording_paused,
+      overlay_visible:state.overlay_visible
+    };
+  }
+
+  window.addEventListener("message", async event => {
+    if (!studioWindow || event.source !== studioWindow) return;
+    if (event.origin !== CREAPD_ORIGIN) return;
+    const message = event.data || {};
+    if (message.nonce !== nonce) return;
+
+    if (message.type === "CREAPD_STUDIO_READY") {
+      log("CREAPD Studio connected to browser bridge.");
+      postState();
+      return;
+    }
+
+    if (message.type === "CREAPD_OBS_COMMAND") {
+      const requestId = message.requestId;
+      try {
+        const result = await executeCommand(message.commandType,message.payload || {});
+        studioWindow.postMessage({type:"CREAPD_OBS_COMMAND_RESULT",nonce,requestId,success:true,result,state:publicState()},CREAPD_ORIGIN);
+      } catch (error) {
+        const text = error && error.message ? error.message : String(error);
+        log("Command failed: " + message.commandType + " · " + text);
+        studioWindow.postMessage({type:"CREAPD_OBS_COMMAND_RESULT",nonce,requestId,success:false,error:text,state:publicState()},CREAPD_ORIGIN);
+      }
+    }
+  });
+
+  connectButton.addEventListener("click",connectObs);
+  openStudioButton.addEventListener("click",openStudio);
+
+  log("Browser bridge ready. No Windows app installation required.");
+  if (passwordInput.value) {
+    setTimeout(connectObs,250);
+  }
+})();
+</script>
+</body>
+</html>
