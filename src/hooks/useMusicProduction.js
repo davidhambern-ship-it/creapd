@@ -3,6 +3,30 @@ import { base44 } from '@/api/base44Client';
 import { useBuildStatusRecovery } from '@/hooks/useBuildStatusRecovery';
 
 const metadataRepairStarted = new Set();
+const productionCompletionStarted = new Set();
+
+const DEFAULT_MUSIC_AUTOMATION = [
+  'Auto Research',
+  'Auto Build Playlist',
+  'Auto Develop',
+  'Auto Assemble Packet',
+];
+
+function parseArray(value, fallback = []) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : fallback;
+    } catch {}
+  }
+  return fallback;
+}
+
+function effectiveAutomation(value) {
+  const parsed = parseArray(value, []);
+  return parsed.length ? parsed : [...DEFAULT_MUSIC_AUTOMATION];
+}
 
 function parseSourcePayload(value) {
   if (value && typeof value === 'object') return value;
@@ -40,6 +64,7 @@ export function useMusicProduction(configId) {
   const [contentLoading, setContentLoading] = useState(true);
   const [error, setError] = useState(null);
   const [metadataRepairing, setMetadataRepairing] = useState(false);
+  const [productionRepairing, setProductionRepairing] = useState(false);
 
   const clearProduction = useCallback(() => {
     setConfig(null);
@@ -151,6 +176,78 @@ export function useMusicProduction(configId) {
   useEffect(() => {
     const configurationId = config?.id;
     if (!configurationId || contentLoading || !playlist.length) return undefined;
+    if (productionCompletionStarted.has(configurationId)) return undefined;
+    if (['planning', 'building', 'refreshing'].includes(String(config?.status || '').toLowerCase())) return undefined;
+
+    const automation = effectiveAutomation(config?.ai_automation);
+    const configuredTopics = parseArray(config?.music_topics, []);
+
+    const missingSections = [];
+    if (automation.includes('Auto Research') && research.length === 0) {
+      missingSections.push('research');
+    }
+    if (automation.includes('Auto Develop') && configuredTopics.length > 0 && topics.length === 0) {
+      missingSections.push('topics');
+    }
+    if (automation.includes('Auto Develop') && assets.length === 0) {
+      missingSections.push('assets');
+    }
+    if (automation.includes('Auto Assemble Packet') && rundown.length === 0) {
+      missingSections.push('rundown');
+    }
+
+    if (!missingSections.length) return undefined;
+
+    let cancelled = false;
+    productionCompletionStarted.add(configurationId);
+    setProductionRepairing(true);
+
+    const completeMissingProduction = async () => {
+      try {
+        for (const section of missingSections) {
+          if (cancelled) return;
+          await base44.functions.invoke('regenerateMusicSection', {
+            configuration_id: configurationId,
+            section,
+          });
+        }
+        if (!cancelled) await loadAll();
+      } catch (repairError) {
+        productionCompletionStarted.delete(configurationId);
+        if (!cancelled) {
+          console.error('Radio production completion repair failed:', repairError);
+          setError(new Error(
+            repairError?.message
+            || 'CREAPD could not finish the missing Radio production materials. Refresh to retry.',
+          ));
+        }
+      } finally {
+        if (!cancelled) setProductionRepairing(false);
+      }
+    };
+
+    completeMissingProduction();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    config?.id,
+    config?.status,
+    config?.ai_automation,
+    config?.music_topics,
+    playlist.length,
+    research.length,
+    topics.length,
+    assets.length,
+    rundown.length,
+    contentLoading,
+    loadAll,
+  ]);
+
+  useEffect(() => {
+    const configurationId = config?.id;
+    if (!configurationId || contentLoading || !playlist.length) return undefined;
     if (metadataRepairStarted.has(configurationId)) return undefined;
     if (!playlist.some(track => !hasVerifiedRadioMetadata(track))) return undefined;
 
@@ -199,5 +296,18 @@ export function useMusicProduction(configId) {
     };
   }, [config?.id, playlist, contentLoading]);
 
-  return { config, playlist, topics, research, rundown, assets, loading, contentLoading, error, metadataRepairing, refresh: loadAll };
+  return {
+    config,
+    playlist,
+    topics,
+    research,
+    rundown,
+    assets,
+    loading,
+    contentLoading,
+    error,
+    metadataRepairing,
+    productionRepairing,
+    refresh: loadAll,
+  };
 }
