@@ -462,24 +462,58 @@ function youtubeText(node) {
 function extractYoutubeSearchCandidates(html) {
   const data =
     extractBalancedJson(html, 'var ytInitialData =') ||
-    extractBalancedJson(html, 'ytInitialData =');
+    extractBalancedJson(html, 'ytInitialData =') ||
+    extractBalancedJson(html, 'window["ytInitialData"] =') ||
+    extractBalancedJson(html, 'window.ytInitialData =');
   if (!data) return [];
 
   const results = [];
+  const seen = new Set();
   const stack = [data];
-  while (stack.length && results.length < 40) {
+
+  const pushRenderer = renderer => {
+    const videoId =
+      renderer?.videoId ||
+      renderer?.navigationEndpoint?.watchEndpoint?.videoId ||
+      renderer?.endpoint?.watchEndpoint?.videoId ||
+      renderer?.onTap?.innertubeCommand?.watchEndpoint?.videoId ||
+      '';
+    if (!videoId || seen.has(videoId)) return;
+    seen.add(videoId);
+
+    const title =
+      youtubeText(renderer?.title) ||
+      youtubeText(renderer?.headline) ||
+      youtubeText(renderer?.accessibilityText) ||
+      text(renderer?.metadata?.lockupMetadataViewModel?.title?.content);
+    const channelName =
+      youtubeText(renderer?.ownerText) ||
+      youtubeText(renderer?.longBylineText) ||
+      youtubeText(renderer?.shortBylineText) ||
+      text(renderer?.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content);
+    const durationText =
+      youtubeText(renderer?.lengthText) ||
+      youtubeText(renderer?.thumbnailOverlays?.find?.(item => item?.thumbnailOverlayTimeStatusRenderer)?.thumbnailOverlayTimeStatusRenderer?.text) ||
+      text(renderer?.contentImage?.thumbnailViewModel?.overlays?.[0]?.thumbnailOverlayBadgeViewModel?.thumbnailBadges?.[0]?.thumbnailBadgeViewModel?.text);
+
+    results.push({
+      video_id: videoId,
+      title,
+      channel_name: channelName,
+      duration_seconds: parseYoutubeDurationText(durationText),
+    });
+  };
+
+  while (stack.length && results.length < 80) {
     const node = stack.pop();
     if (!node || typeof node !== 'object') continue;
 
-    if (node.videoRenderer?.videoId) {
-      const renderer = node.videoRenderer;
-      results.push({
-        video_id: renderer.videoId,
-        title: youtubeText(renderer.title),
-        channel_name: youtubeText(renderer.ownerText) || youtubeText(renderer.longBylineText),
-        duration_seconds: parseYoutubeDurationText(youtubeText(renderer.lengthText)),
-      });
-    }
+    if (node.videoRenderer) pushRenderer(node.videoRenderer);
+    if (node.gridVideoRenderer) pushRenderer(node.gridVideoRenderer);
+    if (node.playlistVideoRenderer) pushRenderer(node.playlistVideoRenderer);
+    if (node.compactVideoRenderer) pushRenderer(node.compactVideoRenderer);
+    if (node.richItemRenderer?.content?.videoRenderer) pushRenderer(node.richItemRenderer.content.videoRenderer);
+    if (node.lockupViewModel) pushRenderer(node.lockupViewModel);
 
     if (Array.isArray(node)) {
       for (let index = node.length - 1; index >= 0; index -= 1) stack.push(node[index]);
@@ -524,6 +558,8 @@ function extractYoutubeChannelId(html, channelUrl = '') {
     /<meta[^>]+content=["'](UC[A-Za-z0-9_-]{20,})["'][^>]+itemprop=["']channelId["']/i,
     /"channelId":"(UC[A-Za-z0-9_-]{20,})"/,
     /"externalId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /"browseId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /"browseEndpoint":\{"browseId":"(UC[A-Za-z0-9_-]{20,})"/,
     /\/channel\/(UC[A-Za-z0-9_-]{20,})/,
   ];
 
@@ -569,28 +605,64 @@ async function fetchYoutubeChannelFeed(channelId) {
 }
 
 async function resolveYoutubeChannelFeedCandidates(html, normalizedUrl) {
+  const baseUrl = normalizedUrl.replace(/\/videos\/?$/, '');
   let channelId = extractYoutubeChannelId(html, normalizedUrl);
 
   if (!channelId) {
+    for (const suffix of ['', '/about', '/featured']) {
+      try {
+        const response = await fetch(`${baseUrl}${suffix}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) continue;
+        const pageHtml = await response.text();
+        channelId = extractYoutubeChannelId(pageHtml, baseUrl);
+        if (channelId) break;
+      } catch {}
+    }
+  }
+
+  let videos = channelId ? await fetchYoutubeChannelFeed(channelId) : [];
+
+  if (channelId) {
+    const uploadsPlaylistId = `UU${channelId.slice(2)}`;
     try {
-      const baseUrl = normalizedUrl.replace(/\/videos\/?$/, '');
-      const response = await fetch(baseUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept-Language': 'en-US,en;q=0.9',
+      const response = await fetch(
+        `https://www.youtube.com/playlist?list=${encodeURIComponent(uploadsPlaylistId)}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          signal: AbortSignal.timeout(15000),
         },
-        signal: AbortSignal.timeout(12000),
-      });
+      );
       if (response.ok) {
-        const baseHtml = await response.text();
-        channelId = extractYoutubeChannelId(baseHtml, baseUrl);
+        const playlistHtml = await response.text();
+        const playlistCandidates = [
+          ...extractYoutubeSearchCandidates(playlistHtml),
+          ...extractYoutubeLooseCandidates(playlistHtml),
+        ];
+        videos = [...videos, ...playlistCandidates];
       }
     } catch {}
   }
 
+  const unique = [];
+  const seen = new Set();
+  for (const item of videos) {
+    if (!item?.video_id || seen.has(item.video_id)) continue;
+    seen.add(item.video_id);
+    unique.push(item);
+  }
+
   return {
     channel_id: channelId || null,
-    videos: channelId ? await fetchYoutubeChannelFeed(channelId) : [],
+    videos: unique,
   };
 }
 
@@ -623,7 +695,20 @@ async function searchYoutubeArtistFallback(channelUrl, artistName = '') {
       },
     );
     if (!response.ok) return [];
-    return extractYoutubeSearchCandidates(await response.text()).slice(0, 36);
+    const html = await response.text();
+    const candidates = [
+      ...extractYoutubeSearchCandidates(html),
+      ...extractYoutubeLooseCandidates(html),
+    ];
+    const unique = [];
+    const seen = new Set();
+    for (const item of candidates) {
+      if (!item?.video_id || seen.has(item.video_id)) continue;
+      seen.add(item.video_id);
+      unique.push(item);
+      if (unique.length >= 36) break;
+    }
+    return unique;
   } catch {
     return [];
   }
