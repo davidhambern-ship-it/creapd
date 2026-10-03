@@ -467,7 +467,7 @@ internal sealed class ObsClient : IAsyncDisposable
         ["overlay_input_name"] = OverlayInputName,
         ["protocol"] = "obs-websocket-v5",
         ["bridge"] = "windows-desktop",
-        ["bridge_version"] = "0.2.0",
+        ["bridge_version"] = "0.3.0",
     };
 
     private async Task RefreshSceneSourcesAsync(CancellationToken cancellationToken)
