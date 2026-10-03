@@ -371,8 +371,18 @@ function useDjFx() {
 export default function RadioLive() {
   const [searchParams] = useSearchParams();
   const configId = searchParams.get('config_id') || undefined;
-  const { config, playlist, rundown, loading, error } = useMusicProduction(configId);
-  const studioApproved = config?.status === 'approved';
+  const {
+    config,
+    playlist,
+    rundown,
+    loading,
+    error,
+    productionRepairing,
+  } = useMusicProduction(configId);
+
+  const hasRundown = rundown.length > 0;
+  const hasSpokenSegments = rundown.some(segment => String(segment?.segment_type || '').toLowerCase() !== 'song');
+  const studioApproved = config?.status === 'approved' && playlist.length > 0 && hasRundown && hasSpokenSegments;
 
   const rejectedTrackIds = useMemo(
     () => new Set(
@@ -630,16 +640,26 @@ export default function RadioLive() {
   }
 
   if (!studioApproved) {
+    const missingAssembly = playlist.length > 0 && (!hasRundown || !hasSpokenSegments);
+
     return (
       <div className="min-h-screen bg-[#07090d] grid place-items-center text-white p-6">
         <div className="max-w-lg text-center rounded-2xl border border-white/10 bg-white/[0.03] p-8">
-          <LockKeyhole className="w-12 h-12 text-fuchsia-300/70 mx-auto mb-4" />
-          <h1 className="text-xl font-heading font-bold mb-2">Radio Studio is locked</h1>
+          {productionRepairing || missingAssembly
+            ? <Loader2 className="w-12 h-12 text-cyan-300/80 mx-auto mb-4 animate-spin" />
+            : <LockKeyhole className="w-12 h-12 text-fuchsia-300/70 mx-auto mb-4" />}
+          <h1 className="text-xl font-heading font-bold mb-2">
+            {productionRepairing || missingAssembly ? 'CREAPD is finishing this Radio show' : 'Radio Studio is locked'}
+          </h1>
           <p className="text-sm text-white/50 mb-2">
-            This show is still in review. No playlist, rundown, or scripts are loaded into the Studio until the entire production is approved.
+            {productionRepairing || missingAssembly
+              ? 'The playlist exists, but the rundown and on-air segments were never fully assembled. CREAPD is generating the missing production material now.'
+              : 'This show is still in review. The complete playlist, rundown, and scripts must be approved before Studio opens.'}
           </p>
           <p className="text-xs text-white/30 mb-5">
-            Approve every track and spoken segment on the Radio Dashboard to unlock it.
+            {productionRepairing || missingAssembly
+              ? 'When it finishes, review the newly generated spoken segments on the Radio Dashboard. You will not need to rebuild the playlist.'
+              : 'Approve every track and spoken segment on the Radio Dashboard to unlock it.'}
           </p>
           <Button asChild><Link to="/music/dashboard">Back to Review Dashboard</Link></Button>
         </div>
