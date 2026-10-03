@@ -974,6 +974,197 @@ async function fetchMusicNews(config) {
   }
 }
 
+function artistShowMetadata(config) {
+  const payload = object(config?.source_payload, {});
+  return {
+    enabled: String(payload.show_mode || '').toLowerCase() === 'artist',
+    artist_profile_id: text(payload.artist_profile_id),
+    artist_interview_session_id: text(payload.artist_interview_session_id),
+  };
+}
+
+async function buildArtistPlaylist({ sql, ownerUserId, config }) {
+  const ownerId = String(ownerUserId);
+  const artistMeta = artistShowMetadata(config);
+  if (!artistMeta.enabled || !artistMeta.artist_profile_id) return [];
+
+  const catalog = await sql`
+    SELECT *
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${artistMeta.artist_profile_id}
+      AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
+
+  if (!catalog.length) {
+    const error = new Error('Artist Show cannot build without at least one Artist Catalogue track');
+    error.code = 'ARTIST_SHOW_CATALOG_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const rows = [];
+  for (let index = 0; index < catalog.length; index += 1) {
+    const track = catalog[index];
+    const metadata = object(track.metadata, {});
+    const youtubeVideoId = extractYoutubeId(track.source_url);
+    const duration = Math.max(30, num(metadata.duration_seconds, 180));
+    const source = track.audio_url
+      ? 'artist_catalog_upload'
+      : youtubeVideoId
+        ? 'artist_catalog_youtube'
+        : 'artist_catalog_link';
+
+    const [row] = await sql`
+      INSERT INTO creapd.music_playlist_items (
+        id, configuration_id, owner_user_id, order_index, song_title, artist,
+        length_seconds, genre, mood, era_year, album, release_year,
+        reason_selected, status, source, youtube_video_id, thumbnail_url,
+        channel_name, source_payload
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId}, ${index},
+        ${text(track.title, `Artist Track ${index + 1}`)},
+        ${text(track.artist, config.host_name || 'Artist')},
+        ${duration}, ${text(metadata.genre) || null}, ${text(metadata.mood) || null},
+        ${text(track.release_year) || null}, ${text(track.album) || null},
+        ${text(track.release_year) || null},
+        'Artist-supplied catalogue track', 'suggested', ${source},
+        ${youtubeVideoId || null}, ${text(track.artwork_url) || null},
+        ${text(track.artist, config.host_name || 'Artist')},
+        ${safeJson({
+          artist_show: true,
+          catalog_track_id: track.id,
+          audio_url: track.audio_url || null,
+          source_url: track.source_url || null,
+          description: track.description || null,
+          lyrics: track.lyrics || null,
+          source_type: track.source_type || 'manual',
+          artist_profile_id: artistMeta.artist_profile_id,
+        })}::jsonb
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+async function buildArtistResearch({ sql, ownerUserId, config }) {
+  const ownerId = String(ownerUserId);
+  const artistMeta = artistShowMetadata(config);
+  if (!artistMeta.enabled || !artistMeta.artist_profile_id) return [];
+
+  const [profile] = await sql`
+    SELECT *
+    FROM creapd.artist_profiles
+    WHERE id=${artistMeta.artist_profile_id} AND owner_user_id=${ownerId}
+    LIMIT 1
+  `;
+
+  const catalog = await sql`
+    SELECT *
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${artistMeta.artist_profile_id} AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
+
+  let turns = [];
+  if (artistMeta.artist_interview_session_id) {
+    turns = await sql`
+      SELECT *
+      FROM creapd.artist_interview_turns
+      WHERE session_id=${artistMeta.artist_interview_session_id}
+        AND owner_user_id=${ownerId}
+      ORDER BY sequence ASC, created_at ASC
+    `;
+  } else {
+    const [latestSession] = await sql`
+      SELECT *
+      FROM creapd.artist_interview_sessions
+      WHERE profile_id=${artistMeta.artist_profile_id}
+        AND owner_user_id=${ownerId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (latestSession) {
+      turns = await sql`
+        SELECT *
+        FROM creapd.artist_interview_turns
+        WHERE session_id=${latestSession.id} AND owner_user_id=${ownerId}
+        ORDER BY sequence ASC, created_at ASC
+      `;
+    }
+  }
+
+  const rows = [];
+  let index = 0;
+
+  if (profile?.bio_summary || profile?.artistic_message) {
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId}, 'Artist Profile',
+        'Artist-supplied profile', 'artist_profile',
+        ${[
+          profile?.bio_summary ? `Background: ${profile.bio_summary}` : '',
+          profile?.artistic_message ? `Artist message: ${profile.artistic_message}` : '',
+        ].filter(Boolean).join('\n')},
+        null, 'Use as artist-approved background; do not invent beyond the supplied statements.',
+        ${new Date().toISOString().slice(0,10)}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+    index += 1;
+  }
+
+  for (const turn of turns.slice(0, 30)) {
+    if (!text(turn.answer_text)) continue;
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`Artist Interview ${index + 1}: ${text(turn.question).slice(0, 120)}`},
+        'Recorded CREAPr Artist Interview', 'artist_interview',
+        ${text(turn.answer_text)}, ${turn.audio_url || null},
+        ${`Use this as first-person artist testimony responding to: ${text(turn.question)}`},
+        ${new Date(turn.created_at || Date.now()).toISOString().slice(0,10)}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+    index += 1;
+  }
+
+  for (const track of catalog.slice(0, 30)) {
+    const supplied = [track.description, track.lyrics ? `Lyrics excerpt: ${String(track.lyrics).slice(0, 1800)}` : '']
+      .filter(Boolean)
+      .join('\n');
+    if (!supplied) continue;
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`Catalogue Note: ${track.title}`}, 'Artist-supplied catalogue',
+        'artist_catalog', ${supplied}, ${track.source_url || track.audio_url || null},
+        'Use only as supplied catalogue evidence. Treat interpretation as a question unless the artist explicitly explained the meaning.',
+        ${new Date().toISOString().slice(0,10)}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 async function buildPlaylist({ sql, ownerUserId, config, targetCount }) {
   const year = new Date().getUTCFullYear();
   const genres = array(config.genres, []);
@@ -1187,7 +1378,7 @@ ${playlistText}
 TOPICS:
 ${topicsText || 'None'}
 
-VERIFIED RSS RESEARCH SUMMARIES:
+VERIFIED / ARTIST-SUPPLIED RESEARCH:
 ${researchText || 'None'}
 
 Create a useful mix of these asset types: song_intro, song_outro, artist_fact, host_banter, music_trivia, station_id, sponsor_read, social_caption, hashtag, video_prompt, production_notes.
@@ -1200,7 +1391,7 @@ SOURCE RULES:
 ${radioProductionTools(config).quality.require_station_name && config.station_name ? `- Every station_id asset must also say the exact station name "${config.station_name}".` : ''}
 - Never substitute "your host", "with your host", "our host", or "the host" for the configured host name.
 - sponsor_read is placeholder copy unless sponsor information is explicitly present in the show instructions.
-- topic/current-event copy must stay grounded in TOPICS and VERIFIED RSS RESEARCH SUMMARIES.
+- topic/current-event/artist-story copy must stay grounded in TOPICS and VERIFIED / ARTIST-SUPPLIED RESEARCH.
 
 Aim for 12-20 concise assets total.`;
   const result = await structured(prompt, ASSETS_SCHEMA, 'creapd_music_assets_v1', 7000);
@@ -1547,11 +1738,14 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       WHERE id=${config.id} AND owner_user_id=${String(ownerUserId)}
     `;
 
+    const artistMeta = artistShowMetadata(config);
     const total = Math.max(30, Math.min(180, num(config.total_show_runtime, 90)));
     const musicMinutes = Math.max(15, Math.round(num(config.required_music_runtime, total * 0.5)));
     const targetCount = Math.max(8, Math.min(15, Math.ceil(musicMinutes / 3.5)));
     const plan = {
       production_format: config.production_format || 'radio',
+      show_mode: artistMeta.enabled ? 'artist' : 'standard',
+      artist_profile_id: artistMeta.artist_profile_id || null,
       total_show_runtime: total,
       required_music_runtime: musicMinutes,
       estimated_song_count: targetCount,
@@ -1582,7 +1776,9 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
         await appendStage(sql, ownerUserId, config.id, buildLog, 'playlist', 'skipped', { count: playlist.length });
       } else {
         await sql`DELETE FROM creapd.music_playlist_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        playlist = await buildPlaylist({ sql, ownerUserId, config, targetCount });
+        playlist = artistMeta.enabled
+          ? await buildArtistPlaylist({ sql, ownerUserId, config })
+          : await buildPlaylist({ sql, ownerUserId, config, targetCount });
         await appendStage(sql, ownerUserId, config.id, buildLog, 'playlist', 'complete', { count: playlist.length, youtube_resolved: playlist.filter(x => x.youtube_video_id).length });
       }
     }
@@ -1592,7 +1788,9 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
         await appendStage(sql, ownerUserId, config.id, buildLog, 'research', 'skipped', { count: research.length });
       } else {
         await sql`DELETE FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        research = await buildResearch({ sql, ownerUserId, config });
+        research = artistMeta.enabled
+          ? await buildArtistResearch({ sql, ownerUserId, config })
+          : await buildResearch({ sql, ownerUserId, config });
         await appendStage(sql, ownerUserId, config.id, buildLog, 'research', research.length ? 'complete' : 'skipped', { count: research.length, source: 'google_news_rss' });
       }
     }
