@@ -234,11 +234,11 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
 
   useEffect(() => {
     loadDeck('A', deckATrack, activeDeck === 'A');
-  }, [deckATrack?.id, deckATrack?.youtube_video_id, trackAudioUrl(deckATrack), activeDeck, loadDeck]);
+  }, [deckATrack?.id, deckATrack?.youtube_video_id, trackAudioUrl(deckATrack), loadDeck]);
 
   useEffect(() => {
     loadDeck('B', deckBTrack, activeDeck === 'B');
-  }, [deckBTrack?.id, deckBTrack?.youtube_video_id, trackAudioUrl(deckBTrack), activeDeck, loadDeck]);
+  }, [deckBTrack?.id, deckBTrack?.youtube_video_id, trackAudioUrl(deckBTrack), loadDeck]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
