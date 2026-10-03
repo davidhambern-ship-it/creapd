@@ -491,6 +491,109 @@ function extractYoutubeSearchCandidates(html) {
   return results;
 }
 
+function extractYoutubeLooseCandidates(html) {
+  const source = String(html || '');
+  const seen = new Set();
+  const results = [];
+  const patterns = [
+    /"videoId":"([A-Za-z0-9_-]{11})"/g,
+    /"videoId":\s*"([A-Za-z0-9_-]{11})"/g,
+    /watch\?v=([A-Za-z0-9_-]{11})/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const videoId = match?.[1];
+      if (!videoId || seen.has(videoId)) continue;
+      seen.add(videoId);
+      results.push({ video_id: videoId, title: '', channel_name: '', duration_seconds: 0 });
+      if (results.length >= 40) return results;
+    }
+  }
+
+  return results;
+}
+
+function extractYoutubeChannelId(html, channelUrl = '') {
+  const urlMatch = String(channelUrl || '').match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{20,})/i);
+  if (urlMatch?.[1]) return urlMatch[1];
+
+  const source = String(html || '');
+  const patterns = [
+    /<meta[^>]+itemprop=["']channelId["'][^>]+content=["'](UC[A-Za-z0-9_-]{20,})["']/i,
+    /<meta[^>]+content=["'](UC[A-Za-z0-9_-]{20,})["'][^>]+itemprop=["']channelId["']/i,
+    /"channelId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /"externalId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /\/channel\/(UC[A-Za-z0-9_-]{20,})/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = source.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return '';
+}
+
+function youtubeFeedTag(entry, tag) {
+  const escaped = tag.replace(':', '\\:');
+  const match = String(entry || '').match(new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, 'i'));
+  return match?.[1] ? decodeYoutubeEntities(match[1].replace(/<!\[CDATA\[|\]\]>/g, '')).trim() : '';
+}
+
+async function fetchYoutubeChannelFeed(channelId) {
+  if (!channelId) return [];
+  try {
+    const response = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) return [];
+    const xml = await response.text();
+    const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)].map(match => match[1]);
+    return entries.map(entry => {
+      const videoId = youtubeFeedTag(entry, 'yt:videoId');
+      return {
+        video_id: videoId,
+        title: youtubeFeedTag(entry, 'title'),
+        channel_name: youtubeFeedTag(entry, 'name'),
+        duration_seconds: 0,
+        published_at: youtubeFeedTag(entry, 'published'),
+      };
+    }).filter(item => item.video_id);
+  } catch {
+    return [];
+  }
+}
+
+async function resolveYoutubeChannelFeedCandidates(html, normalizedUrl) {
+  let channelId = extractYoutubeChannelId(html, normalizedUrl);
+
+  if (!channelId) {
+    try {
+      const baseUrl = normalizedUrl.replace(/\/videos\/?$/, '');
+      const response = await fetch(baseUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (response.ok) {
+        const baseHtml = await response.text();
+        channelId = extractYoutubeChannelId(baseHtml, baseUrl);
+      }
+    } catch {}
+  }
+
+  return {
+    channel_id: channelId || null,
+    videos: channelId ? await fetchYoutubeChannelFeed(channelId) : [],
+  };
+}
+
 function decodeYoutubeEntities(value) {
   return String(value || '')
     .replace(/&amp;/gi, '&')
@@ -677,7 +780,18 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     throw wrapped;
   }
 
-  const discovered = extractYoutubeSearchCandidates(html);
+  const initialCandidates = extractYoutubeSearchCandidates(html);
+  const feedResult = await resolveYoutubeChannelFeedCandidates(html, normalized);
+  const looseCandidates = initialCandidates.length || feedResult.videos.length
+    ? []
+    : extractYoutubeLooseCandidates(html);
+
+  const discovered = [
+    ...initialCandidates,
+    ...feedResult.videos,
+    ...looseCandidates,
+  ];
+
   const unique = [];
   const seen = new Set();
   for (const item of discovered) {
@@ -688,7 +802,9 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
   }
 
   if (!unique.length) {
-    const error = new Error('No public videos were found on that YouTube channel page.');
+    const error = new Error(
+      'CREAPD reached the YouTube channel, but YouTube did not expose any public uploads to the scanner. Try the channel home URL or @handle URL instead of a playlist/video URL.'
+    );
     error.code = 'ARTIST_YOUTUBE_NO_VIDEOS';
     error.status = 404;
     throw error;
@@ -698,8 +814,23 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     unique.map(item => fetchArtistYoutubeVideoDetails(item.video_id, item))
   )).filter(Boolean);
 
+  if (!details.length) {
+    const error = new Error(
+      'CREAPD found YouTube upload IDs, but YouTube did not return readable metadata for them. Please retry in a moment.'
+    );
+    error.code = 'ARTIST_YOUTUBE_METADATA_UNAVAILABLE';
+    error.status = 502;
+    throw error;
+  }
+
   return {
     channel_url: normalized.replace(/\/videos\/?$/, ''),
+    channel_id: feedResult.channel_id,
+    discovery_mode: initialCandidates.length
+      ? 'channel_page'
+      : feedResult.videos.length
+        ? 'youtube_feed'
+        : 'html_fallback',
     scanned_count: details.length,
     videos: details.map(video => ({
       ...video,
