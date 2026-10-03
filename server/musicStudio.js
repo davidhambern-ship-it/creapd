@@ -8,6 +8,7 @@ import {
   refreshMusicPlaylistYoutubeMetadata,
   generateMusicStructured,
   generateArtistInterviewQuestion,
+  scanArtistYoutubeChannel,
 } from './musicEngine.js';
 
 function clean(value, fallback = '') {
@@ -922,6 +923,67 @@ async function deleteArtistCatalogTrack(sql, ownerUserId, trackId) {
   return { id: clean(trackId), deleted: true };
 }
 
+async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+  const videos = Array.isArray(body.videos) ? body.videos.slice(0, 50) : [];
+  if (!videos.length) throw fail('Choose at least one YouTube video to import', 'ARTIST_YOUTUBE_IMPORT_EMPTY');
+
+  const existing = await sql`
+    SELECT id, source_url, metadata
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+  `;
+  const existingIds = new Set();
+  for (const row of existing || []) {
+    const metadata = parseObject(row.metadata, {});
+    if (metadata.youtube_video_id) existingIds.add(String(metadata.youtube_video_id));
+    const match = String(row.source_url || '').match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    if (match) existingIds.add(match[1]);
+  }
+
+  const imported = [];
+  const skipped = [];
+  for (const video of videos) {
+    const videoId = clean(video.video_id);
+    if (!videoId || existingIds.has(videoId)) {
+      skipped.push(videoId || clean(video.title));
+      continue;
+    }
+
+    const [created] = await sql`
+      INSERT INTO creapd.artist_catalog_tracks (
+        id, profile_id, owner_user_id, title, artist, album, release_year,
+        description, lyrics, source_type, source_url, audio_url, artwork_url, metadata
+      ) VALUES (
+        ${randomUUID()}, ${profile.id}, ${ownerId},
+        ${clean(video.title, 'YouTube Track')},
+        ${clean(video.channel_name, profile.public_name || profile.artist_name)},
+        null,
+        ${clean(video.published_at).slice(0,4) || null},
+        ${nullable(video.description)},
+        ${nullable(video.lyrics)},
+        'youtube',
+        ${clean(video.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
+        null,
+        ${nullable(video.thumbnail_url)},
+        ${JSON.stringify({
+          youtube_video_id: videoId,
+          duration_seconds: number(video.duration_seconds, 0) || null,
+          published_at: nullable(video.published_at),
+          lyrics_source: nullable(video.lyrics_source),
+          imported_from_channel: true,
+        })}::jsonb
+      )
+      RETURNING *
+    `;
+    existingIds.add(videoId);
+    imported.push(withDates(created));
+  }
+
+  return { imported, skipped };
+}
+
 async function startArtistInterview(sql, ownerUserId, body = {}) {
   const ownerId = String(ownerUserId);
   const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
@@ -1095,6 +1157,10 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return { track: await addArtistCatalogTrack(sql, ownerUserId, body.track || body) };
     case 'music_artist_catalog_delete':
       return await deleteArtistCatalogTrack(sql, ownerUserId, body.track_id);
+    case 'music_artist_youtube_scan':
+      return await scanArtistYoutubeChannel(body.channel_url, { limit: body.limit || 24 });
+    case 'music_artist_youtube_import':
+      return await importArtistYoutubeVideos(sql, ownerUserId, body);
     case 'music_artist_interview_start':
       return await startArtistInterview(sql, ownerUserId, body);
     case 'music_artist_interview_answer':
