@@ -17,7 +17,7 @@ import {
   Loader2, Music, Clock, Smile, Mic, ListChecks,
   Bot, CheckCircle2, ChevronDown, ChevronUp,
   Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic,
-  LayoutDashboard, Search, Package, Sparkles, Save
+  LayoutDashboard, Search, Package, Sparkles, Save, ArrowRight
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
@@ -238,7 +238,7 @@ export default function MusicConfigure() {
     setRouletteOpen(false);
     triggerBuild(mergedConfig);
   };
-  const handleArtistShowUseProfile = ({ profile, catalog = [] }) => {
+  const handleArtistShowUseProfile = ({ profile, catalog = [], interview = null }) => {
     const artistName = String(profile?.public_name || profile?.artist_name || '').trim();
     const currentTopics = safeParse(config.music_topics, []);
     const artistTopics = ['Artist Interviews', 'Behind the Music'];
