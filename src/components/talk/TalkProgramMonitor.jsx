@@ -540,13 +540,9 @@ function TalkProgramMonitorLive() {
                 {editMode ? 'Done Editing' : 'Edit Layout'}
               </button>
             ) : (
-              <a
-                href="/creapd-obs-bridge.ps1"
-                download
-                className="h-8 rounded-md border border-amber-400/30 bg-black/70 px-2.5 text-[11px] font-semibold text-amber-100 backdrop-blur-sm flex items-center"
-              >
-                Update Bridge for Drag Editing
-              </a>
+              <div className="h-8 rounded-md border border-amber-400/30 bg-black/70 px-2.5 text-[11px] font-semibold text-amber-100 backdrop-blur-sm flex items-center">
+                Reconnect with the latest CREAPD Bridge
+              </div>
             )}
             <div className="flex items-center gap-2 text-[11px] text-emerald-200 rounded-md bg-black/65 border border-emerald-500/25 px-2.5 py-1.5 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
