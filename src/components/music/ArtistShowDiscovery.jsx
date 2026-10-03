@@ -253,7 +253,6 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setInterview(result?.interview || null);
       setTurns(result?.turns || []);
       setQuestion(result?.interview?.current_question || '');
-      if (result?.interview?.status === 'active') setStage('interview');
     } catch (err) {
       setError(apiErrorMessage(err, 'CREAPD could not open Artist Show Discovery.'));
     } finally {
@@ -667,13 +666,13 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
               </div>
               <div className="min-w-0">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-fuchsia-300">Radio Discovery Room</p>
-                <h1 className="truncate font-heading text-lg font-bold">Artist Show</h1>
+                <h1 className="truncate font-heading text-lg font-bold">My Music Catalogue</h1>
               </div>
             </div>
 
             <div className="hidden items-center gap-2 text-[10px] text-white/35 sm:flex">
               <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
-              Catalogue-aware CREAPr interview
+              Catalogue-only Radio source
             </div>
           </div>
         </header>
@@ -681,7 +680,6 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
         <div className="mb-5 flex flex-wrap gap-2">
           <StageButton active={stage === 'identity'} complete={profileComplete} icon={UserRound} label="Artist Identity" onClick={() => setStage('identity')} />
           <StageButton active={stage === 'catalog'} complete={catalogComplete} icon={Music2} label="Catalogue" onClick={() => setStage('catalog')} />
-          <StageButton active={stage === 'interview'} complete={interview?.status === 'complete'} icon={Mic2} label="CREAPr Interview" onClick={() => setStage('interview')} />
         </div>
 
         {error && (
@@ -707,7 +705,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
           <div className="grid min-h-[440px] place-items-center">
             <div className="text-center text-white/45">
               <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-fuchsia-300" />
-              Opening Artist Show Discovery…
+              Opening your music catalogue…
             </div>
           </div>
         ) : (
@@ -715,10 +713,10 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
             {stage === 'identity' && (
               <section className="rounded-2xl border border-fuchsia-400/15 bg-white/[0.025] p-5 md:p-6">
                 <div className="mb-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Reusable Artist Profile</p>
-                  <h2 className="mt-1 font-heading text-2xl font-bold">Who is CREAPr interviewing?</h2>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Reusable Music Source</p>
+                  <h2 className="mt-1 font-heading text-2xl font-bold">Whose catalogue is this?</h2>
                   <p className="mt-2 max-w-3xl text-sm text-white/45">
-                    This profile belongs to the artist, not one episode. CREAPD will reuse artist-approved information and catalogue knowledge across future Artist Shows.
+                    Save the artist identity once, then reuse the same catalogue across regular Radio productions whenever you want a show to use only this music.
                   </p>
                 </div>
 
@@ -737,7 +735,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                     <Input
                       value={profile.public_name || ''}
                       onChange={event => setProfile(current => ({ ...current, public_name: event.target.value }))}
-                      placeholder="How CREAPr should refer to you on-air"
+                      placeholder="How the artist should be identified on-air"
                       className="border-white/10 bg-black/35 text-white"
                     />
                   </div>
@@ -745,11 +743,11 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-white/55">What should CREAPr already know about the artist?</Label>
+                    <Label className="text-xs text-white/55">Artist background</Label>
                     <Textarea
                       value={profile.bio_summary || ''}
                       onChange={event => setProfile(current => ({ ...current, bio_summary: event.target.value }))}
-                      placeholder="Short background. CREAPr will learn the rest through the interview."
+                      placeholder="Optional background CREAPD may use when writing the show."
                       className="min-h-[120px] border-white/10 bg-black/35 text-white"
                     />
                   </div>
@@ -758,7 +756,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                     <Textarea
                       value={profile.artistic_message || ''}
                       onChange={event => setProfile(current => ({ ...current, artistic_message: event.target.value }))}
-                      placeholder="Optional. This gives CREAPr a starting claim it can explore or challenge against the catalogue."
+                      placeholder="Optional creative point of view CREAPD may use when writing host copy."
                       className="min-h-[120px] border-white/10 bg-black/35 text-white"
                     />
                   </div>
@@ -769,7 +767,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                     <Link2 className="h-4 w-4 text-cyan-300" />
                     <div>
                       <p className="text-sm font-semibold">Share catalogue locations</p>
-                      <p className="text-[10px] text-white/35">These give CREAPr context now and establish the sources we can expand into full catalogue connections.</p>
+                      <p className="text-[10px] text-white/35">Connect the places where your music already lives. YouTube channels can be scanned automatically; other sources can be added as track links.</p>
                     </div>
                   </div>
                   <SourceLinksEditor
@@ -792,7 +790,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                 <section className="rounded-2xl border border-fuchsia-400/15 bg-white/[0.025] p-5">
                   <div className="mb-4">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Artist Catalogue</p>
-                    <h2 className="mt-1 font-heading text-xl font-bold">Give CREAPr music to investigate.</h2>
+                    <h2 className="mt-1 font-heading text-xl font-bold">Give CREAPD the music it can use.</h2>
                     <p className="mt-2 text-xs leading-relaxed text-white/40">
                       Connect YouTube once and let CREAPD pull what is already there. Manual upload stays available for anything the channel does not contain.
                     </p>
@@ -875,8 +873,8 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                       <Input value={trackForm.release_year} onChange={event => setTrackForm(current => ({ ...current, release_year: event.target.value }))} placeholder="Release year" className="border-white/10 bg-black/35 text-white" />
                     </div>
                     <Input value={trackForm.source_url} onChange={event => setTrackForm(current => ({ ...current, source_url: event.target.value }))} placeholder="YouTube / SoundCloud / Spotify / other track link" className="border-white/10 bg-black/35 text-white" />
-                    <Textarea value={trackForm.description} onChange={event => setTrackForm(current => ({ ...current, description: event.target.value }))} placeholder="Artist note: what CREAPr is allowed to know about this track (optional)" className="min-h-[90px] border-white/10 bg-black/35 text-white" />
-                    <Textarea value={trackForm.lyrics} onChange={event => setTrackForm(current => ({ ...current, lyrics: event.target.value }))} placeholder="Lyrics (optional, but this lets CREAPr notice themes, contrasts and lyrical outliers)" className="min-h-[120px] border-white/10 bg-black/35 text-white" />
+                    <Textarea value={trackForm.description} onChange={event => setTrackForm(current => ({ ...current, description: event.target.value }))} placeholder="Track note CREAPD may use when writing the show (optional)" className="min-h-[90px] border-white/10 bg-black/35 text-white" />
+                    <Textarea value={trackForm.lyrics} onChange={event => setTrackForm(current => ({ ...current, lyrics: event.target.value }))} placeholder="Lyrics (optional; CREAPD can use them as source material for host copy)" className="min-h-[120px] border-white/10 bg-black/35 text-white" />
 
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-cyan-400/20 bg-cyan-500/[0.035] p-3 hover:bg-cyan-500/[0.06]">
                       <Upload className="h-4 w-4 text-cyan-300" />
@@ -904,11 +902,17 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                 <section className="rounded-2xl border border-cyan-400/15 bg-white/[0.025] p-5">
                   <div className="mb-4 flex items-end justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">CREAPr Evidence Shelf</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">Catalogue Library</p>
                       <h2 className="mt-1 font-heading text-xl font-bold">{catalogSummary}</h2>
                     </div>
-                    <Button variant="outline" size="sm" onClick={startInterview} disabled={!profile?.id || !catalog.length}>
-                      <Mic2 className="mr-1.5 h-3.5 w-3.5" /> Interview Me
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onUseProfile?.({ profile, catalog })}
+                      disabled={!profile?.id || !catalog.length}
+                      className="border-cyan-400/25 text-cyan-100 hover:bg-cyan-500/10"
+                    >
+                      <Radio className="mr-1.5 h-3.5 w-3.5" /> Use This Catalogue
                     </Button>
                   </div>
 
@@ -947,7 +951,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                         <div className="max-w-xs px-6">
                           <Headphones className="mx-auto mb-3 h-8 w-8 text-white/15" />
                           <p className="text-sm font-semibold text-white/60">No tracks yet</p>
-                          <p className="mt-1 text-xs text-white/30">The interview gets much smarter when CREAPr has actual catalogue evidence to work from.</p>
+                          <p className="mt-1 text-xs text-white/30">Import from YouTube or upload tracks here. CREAPD will use this library as the exclusive music pool when you select it for a show.</p>
                         </div>
                       </div>
                     )}
