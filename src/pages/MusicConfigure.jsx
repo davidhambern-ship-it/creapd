@@ -238,30 +238,19 @@ export default function MusicConfigure() {
     setRouletteOpen(false);
     triggerBuild(mergedConfig);
   };
-  const handleArtistShowUseProfile = ({ profile, catalog = [], interview = null }) => {
+  const handleArtistShowUseProfile = ({ profile, catalog = [] }) => {
     const artistName = String(profile?.public_name || profile?.artist_name || '').trim();
-    const currentTopics = safeParse(config.music_topics, []);
-    const artistTopics = ['Artist Interviews', 'Behind the Music'];
-    const nextTopics = [...new Set([...currentTopics, ...artistTopics])];
-    const catalogTitles = catalog.map(track => track?.title).filter(Boolean);
 
     setConfig(prev => ({
       ...prev,
-      production_name: prev.production_name || (artistName ? `${artistName} Artist Show` : 'Artist Show'),
-      host_name: prev.host_name || artistName,
-      show_description: prev.show_description || (artistName
-        ? `An artist-led radio show centered on ${artistName}'s catalogue, stories, and creative journey.`
-        : 'An artist-led radio show built from the artist catalogue and CREAPr interview.'),
-      music_topics: JSON.stringify(nextTopics),
-      must_play_songs: catalogTitles.length
-        ? catalogTitles.join('\n')
-        : prev.must_play_songs,
       production_format: 'radio',
       source_payload: {
         ...(prev.source_payload && typeof prev.source_payload === 'object' ? prev.source_payload : {}),
-        show_mode: 'artist',
+        show_mode: 'catalog',
+        catalog_only: true,
         artist_profile_id: profile?.id || null,
-        artist_interview_session_id: interview?.id || null,
+        catalog_track_count: catalog.length,
+        catalog_artist_name: artistName || null,
       },
     }));
     setArtistShowOpen(false);
@@ -472,16 +461,16 @@ export default function MusicConfigure() {
               >
                 <div className="flex items-center gap-4">
                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-fuchsia-400/25 bg-black/30 shadow-[0_0_24px_rgba(217,70,239,.10)]">
-                    <Mic className="h-5 w-5 text-fuchsia-300" />
+                    <ListMusic className="h-5 w-5 text-fuchsia-300" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-fuchsia-300">New Discovery Path</p>
-                      <span className="rounded-full border border-cyan-400/20 bg-cyan-500/[0.06] px-2 py-0.5 text-[8px] font-bold tracking-wider text-cyan-200">ARTIST SHOW</span>
+                      <span className="rounded-full border border-cyan-400/20 bg-cyan-500/[0.06] px-2 py-0.5 text-[8px] font-bold tracking-wider text-cyan-200">MY MUSIC</span>
                     </div>
-                    <h2 className="mt-1 font-heading text-base font-bold text-white">Build a radio show from your own music.</h2>
+                    <h2 className="mt-1 font-heading text-base font-bold text-white">Use your own music in a normal Radio production.</h2>
                     <p className="mt-1 text-xs leading-relaxed text-white/40">
-                      Create your Artist Profile, share or upload your catalogue, then sit down for a real recorded CREAPr interview that uses your music to decide what to ask next.
+                      Import a catalogue from YouTube or upload your tracks, then let CREAPD build the regular show workflow using only music from that catalogue.
                     </p>
                   </div>
                   <ArrowRight className="h-5 w-5 shrink-0 text-white/25 transition group-hover:translate-x-1 group-hover:text-fuchsia-200" />
