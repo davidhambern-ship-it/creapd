@@ -2407,9 +2407,60 @@ async function regenerateRejectedTracks({ sql, ownerUserId, config, playlist, re
     .map(item => `${item.song_title} — ${item.artist}`)
     .filter(Boolean);
 
-  const candidateCount = Math.min(24, Math.max(8, rejected.length * 5));
-  const year = new Date().getUTCFullYear();
-  const prompt = `You are replacing REJECTED playlist tracks for a CREAPD radio show. Return ${candidateCount} REAL commercially released replacement candidates.
+  const artistMeta = artistShowMetadata(config);
+  let replacements = [];
+
+  if (artistMeta.enabled && artistMeta.artist_profile_id) {
+    const catalog = await sql`
+      SELECT *
+      FROM creapd.artist_catalog_tracks
+      WHERE profile_id=${artistMeta.artist_profile_id}
+        AND owner_user_id=${ownerId}
+      ORDER BY created_at ASC
+    `;
+
+    const usedCatalogIds = new Set(
+      active
+        .map(item => text(object(item.source_payload, {}).catalog_track_id))
+        .filter(Boolean)
+    );
+
+    const available = catalog.filter(track => !usedCatalogIds.has(String(track.id)));
+    replacements = available.slice(0, rejected.length).map(track => {
+      const trackMetadata = object(track.metadata, {});
+      const videoId = extractYoutubeId(track.source_url);
+      const duration = Math.max(30, num(trackMetadata.duration_seconds, 180));
+      const source = track.audio_url
+        ? 'artist_catalog_upload'
+        : videoId
+          ? 'artist_catalog_youtube'
+          : 'artist_catalog_link';
+
+      return {
+        song: {
+          song_title: text(track.title),
+          artist: text(track.artist, config.host_name || 'Artist'),
+          genre: text(trackMetadata.genre),
+          mood: text(trackMetadata.mood),
+          era_year: text(track.release_year),
+          reason_selected: 'Replacement from the selected music catalogue',
+        },
+        metadata: {
+          video_id: videoId || null,
+          title: text(track.title),
+          duration_seconds: duration,
+          thumbnail_url: text(track.artwork_url) || null,
+          channel_name: text(track.artist, config.host_name || 'Artist'),
+        },
+        duration,
+        catalogTrack: track,
+        source,
+      };
+    });
+  } else {
+    const candidateCount = Math.min(24, Math.max(8, rejected.length * 5));
+    const year = new Date().getUTCFullYear();
+    const prompt = `You are replacing REJECTED playlist tracks for a CREAPD radio show. Return ${candidateCount} REAL commercially released replacement candidates.
 
 SHOW: ${config.production_name}
 Description / premise: ${config.show_description || 'Not supplied'}
@@ -2427,38 +2478,39 @@ ${rejected.map((item, i) => `${i + 1}. ${item.song_title} — ${item.artist}`).j
 DO NOT RETURN ANY EXISTING OR REJECTED TRACK:
 ${exclusions.join('\n') || 'None'}
 
-Return real song_title + artist pairs only. Do not invent titles, artists, collaborations, or remixes. Prefer releases from ${year - 2}-${year} unless the configured eras/throwback rules call for older music. Each replacement must fit the show and playlist tone. Include a realistic length_seconds, genre, mood, era_year, and a short reason_selected.`;
+Return real song_title + artist pairs only. Do not invent titles, artists, collaborations, or remixes. Prefer ${year - 2}-${year} releases unless the configured eras/throwback rules call for older music. Each replacement must fit the show and playlist tone. Include a realistic length_seconds, genre, mood, era_year, and a short reason_selected.`;
 
-  const result = await structured(prompt, PLAYLIST_SCHEMA, 'creapd_music_rejected_playlist_v1', 5000);
-  const candidates = array(result?.data?.playlist, []).slice(0, candidateCount);
-  const usedIds = new Set(active.map(item => item.youtube_video_id).filter(Boolean));
-  const usedTitles = new Set(
-    [...active, ...rejected].map(item => `${text(item.song_title).toLowerCase()}::${text(item.artist).toLowerCase()}`)
-  );
+    const result = await structured(prompt, PLAYLIST_SCHEMA, 'creapd_music_rejected_playlist_v1', 5000);
+    const candidates = array(result?.data?.playlist, []).slice(0, candidateCount);
+    const usedIds = new Set(active.map(item => item.youtube_video_id).filter(Boolean));
+    const usedTitles = new Set(
+      [...active, ...rejected].map(item => `${text(item.song_title).toLowerCase()}::${text(item.artist).toLowerCase()}`)
+    );
 
-  const resolved = await Promise.all(candidates.map(async song => {
-    const key = `${text(song.song_title).toLowerCase()}::${text(song.artist).toLowerCase()}`;
-    if (usedTitles.has(key)) return { song, metadata: null };
-    return {
-      song,
-      metadata: await searchYoutubeVideo(
-        text(song.song_title),
-        text(song.artist),
-        usedIds,
-        num(song.length_seconds, 180),
-      ),
-    };
-  }));
+    const resolved = await Promise.all(candidates.map(async song => {
+      const key = `${text(song.song_title).toLowerCase()}::${text(song.artist).toLowerCase()}`;
+      if (usedTitles.has(key)) return { song, metadata: null };
+      return {
+        song,
+        metadata: await searchYoutubeVideo(
+          text(song.song_title),
+          text(song.artist),
+          usedIds,
+          num(song.length_seconds, 180),
+        ),
+      };
+    }));
 
-  const replacements = [];
-  for (const entry of resolved) {
-    const duration = num(entry.metadata?.duration_seconds, 0);
-    const key = `${text(entry.song?.song_title).toLowerCase()}::${text(entry.song?.artist).toLowerCase()}`;
-    if (!entry.metadata || duration < 75 || usedIds.has(entry.metadata.video_id) || usedTitles.has(key)) continue;
-    usedIds.add(entry.metadata.video_id);
-    usedTitles.add(key);
-    replacements.push({ ...entry, duration });
-    if (replacements.length >= rejected.length) break;
+    replacements = [];
+    for (const entry of resolved) {
+      const duration = num(entry.metadata?.duration_seconds, 0);
+      const key = `${text(entry.song?.song_title).toLowerCase()}::${text(entry.song?.artist).toLowerCase()}`;
+      if (!entry.metadata || duration < 75 || usedIds.has(entry.metadata.video_id) || usedTitles.has(key)) continue;
+      usedIds.add(entry.metadata.video_id);
+      usedTitles.add(key);
+      replacements.push({ ...entry, duration, source: 'youtube_radio_verified', catalogTrack: null });
+      if (replacements.length >= rejected.length) break;
+    }
   }
 
   const changed = [];
@@ -2471,20 +2523,36 @@ Return real song_title + artist pairs only. Do not invent titles, artists, colla
       continue;
     }
 
-    const { song, metadata, duration } = replacement;
+    const { song, metadata, duration, catalogTrack, source } = replacement;
     const oldTitle = old.song_title;
-    const sourcePayload = {
-      youtube_title: metadata.title,
-      youtube_duration_seconds: duration,
-      youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
-      requested_title: text(song.song_title),
-      requested_artist: text(song.artist),
-      regenerated_from_rejected_track: {
-        song_title: old.song_title,
-        artist: old.artist,
-      },
-      regenerated_at: new Date().toISOString(),
-    };
+    const sourcePayload = catalogTrack
+      ? {
+          catalog_only: true,
+          catalog_track_id: catalogTrack.id,
+          audio_url: catalogTrack.audio_url || null,
+          source_url: catalogTrack.source_url || null,
+          description: catalogTrack.description || null,
+          lyrics: catalogTrack.lyrics || null,
+          source_type: catalogTrack.source_type || 'manual',
+          artist_profile_id: artistMeta.artist_profile_id,
+          regenerated_from_rejected_track: {
+            song_title: old.song_title,
+            artist: old.artist,
+          },
+          regenerated_at: new Date().toISOString(),
+        }
+      : {
+          youtube_title: metadata.title,
+          youtube_duration_seconds: duration,
+          youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
+          requested_title: text(song.song_title),
+          requested_artist: text(song.artist),
+          regenerated_from_rejected_track: {
+            song_title: old.song_title,
+            artist: old.artist,
+          },
+          regenerated_at: new Date().toISOString(),
+        };
 
     const [updated] = await sql`
       UPDATE creapd.music_playlist_items
@@ -2498,10 +2566,10 @@ Return real song_title + artist pairs only. Do not invent titles, artists, colla
         reason_selected=${text(song.reason_selected) || 'Replacement for rejected track'},
         status='suggested',
         note=${'Regenerated replacement for rejected track: ' + old.song_title + ' — ' + old.artist},
-        source='youtube_radio_verified',
-        youtube_video_id=${metadata.video_id},
-        thumbnail_url=${metadata.thumbnail_url},
-        channel_name=${metadata.channel_name},
+        source=${source},
+        youtube_video_id=${metadata.video_id || null},
+        thumbnail_url=${metadata.thumbnail_url || null},
+        channel_name=${metadata.channel_name || null},
         source_payload=${safeJson(sourcePayload)}::jsonb,
         updated_at=now()
       WHERE id=${old.id} AND owner_user_id=${ownerId}
