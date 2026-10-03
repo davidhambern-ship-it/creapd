@@ -42,6 +42,12 @@ function parseSourcePayload(value) {
 function hasVerifiedRadioMetadata(track) {
   const duration = Number(track?.length_seconds || 0);
   const payload = parseSourcePayload(track?.source_payload);
+  if (
+    ['artist_catalog_upload', 'artist_catalog_youtube'].includes(String(track?.source || '')) &&
+    (payload.audio_url || track?.youtube_video_id)
+  ) {
+    return true;
+  }
   const youtubeTitle = String(payload.youtube_title || '');
   const sourceType = String(payload.youtube_source_type || '');
   const radioSafeSource =
