@@ -51,7 +51,7 @@ function TalkProfileDock({ pathname, onOpenNav }) {
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           className="flex h-8 items-center gap-1.5 rounded-lg border border-fuchsia-300/30 bg-gradient-to-r from-violet-500/30 via-fuchsia-500/25 to-orange-400/20 px-3 text-[10px] font-semibold text-white shadow-[0_0_20px_rgba(217,70,239,.16)] backdrop-blur-md transition hover:brightness-110"
-          title="Production Profiles"
+          title="Production Formats"
         >
           <Mic2 className="h-3.5 w-3.5" />
           Profiles
@@ -73,8 +73,8 @@ function TalkProfileDock({ pathname, onOpenNav }) {
 
           {PP_NAV_ITEMS.map((item, index) => {
             const Icon = item.icon;
-            const profileRoot = '/' + item.path.split('/').filter(Boolean)[0];
-            const isActive = pathname.startsWith(profileRoot);
+            const roots = Array.isArray(item.roots) && item.roots.length ? item.roots : [item.path];
+            const isActive = roots.some(root => pathname === root || pathname.startsWith(root + '/'));
             const tone = TALK_NAV_TONES[index % TALK_NAV_TONES.length];
 
             return (
