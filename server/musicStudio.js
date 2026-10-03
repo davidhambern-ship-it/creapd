@@ -7,6 +7,7 @@ import {
   fetchYoutubeMetadata,
   refreshMusicPlaylistYoutubeMetadata,
   generateMusicStructured,
+  generateArtistInterviewQuestion,
 } from './musicEngine.js';
 
 function clean(value, fallback = '') {
@@ -768,6 +769,286 @@ function pipelineFromConfig(config) {
   return pipeline;
 }
 
+
+async function getArtistProfile(sql, ownerUserId) {
+  const [profile] = await sql`
+    SELECT * FROM creapd.artist_profiles
+    WHERE owner_user_id=${String(ownerUserId)}
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `;
+  return profile || null;
+}
+
+async function requireArtistProfile(sql, ownerUserId, profileId = null) {
+  const ownerId = String(ownerUserId);
+  const requested = clean(profileId);
+  const [profile] = requested
+    ? await sql`
+        SELECT * FROM creapd.artist_profiles
+        WHERE id=${requested} AND owner_user_id=${ownerId}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT * FROM creapd.artist_profiles
+        WHERE owner_user_id=${ownerId}
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `;
+  if (!profile) throw fail('Artist profile not found', 'ARTIST_PROFILE_NOT_FOUND', 404);
+  return profile;
+}
+
+async function readArtistShow(sql, ownerUserId) {
+  const ownerId = String(ownerUserId);
+  const profile = await getArtistProfile(sql, ownerUserId);
+  if (!profile) {
+    return { profile: null, catalog: [], interview: null, turns: [] };
+  }
+
+  const [catalog, sessions] = await Promise.all([
+    sql`
+      SELECT * FROM creapd.artist_catalog_tracks
+      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+      ORDER BY created_at ASC
+    `,
+    sql`
+      SELECT * FROM creapd.artist_interview_sessions
+      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+  ]);
+
+  const interview = sessions?.[0] || null;
+  const turns = interview
+    ? await sql`
+        SELECT * FROM creapd.artist_interview_turns
+        WHERE session_id=${interview.id} AND owner_user_id=${ownerId}
+        ORDER BY sequence ASC, created_at ASC
+      `
+    : [];
+
+  return {
+    profile: withDates(profile),
+    catalog: (catalog || []).map(withDates),
+    interview: withDates(interview),
+    turns: (turns || []).map(withDates),
+  };
+}
+
+async function saveArtistProfile(sql, ownerUserId, input = {}) {
+  const ownerId = String(ownerUserId);
+  const existing = await getArtistProfile(sql, ownerUserId);
+  const artistName = clean(input.artist_name || input.public_name || existing?.artist_name);
+  if (!artistName) throw fail('Artist name is required', 'ARTIST_PROFILE_NAME_REQUIRED');
+
+  const sourceLinks = parseArray(
+    input.source_links !== undefined ? input.source_links : existing?.source_links,
+    [],
+  );
+  const knowledge = parseObject(
+    input.knowledge !== undefined ? input.knowledge : existing?.knowledge,
+    {},
+  );
+
+  if (existing) {
+    const [updated] = await sql`
+      UPDATE creapd.artist_profiles
+      SET
+        artist_name=${artistName},
+        public_name=${nullable(input.public_name !== undefined ? input.public_name : existing.public_name)},
+        bio_summary=${nullable(input.bio_summary !== undefined ? input.bio_summary : existing.bio_summary)},
+        artistic_message=${nullable(input.artistic_message !== undefined ? input.artistic_message : existing.artistic_message)},
+        interview_style=${clean(input.interview_style !== undefined ? input.interview_style : existing.interview_style, 'conversational')},
+        source_links=${JSON.stringify(sourceLinks)}::jsonb,
+        knowledge=${JSON.stringify(knowledge)}::jsonb,
+        status='active',
+        updated_at=now()
+      WHERE id=${existing.id} AND owner_user_id=${ownerId}
+      RETURNING *
+    `;
+    return withDates(updated);
+  }
+
+  const [created] = await sql`
+    INSERT INTO creapd.artist_profiles (
+      id, owner_user_id, artist_name, public_name, bio_summary, artistic_message,
+      interview_style, source_links, knowledge, status
+    ) VALUES (
+      ${randomUUID()}, ${ownerId}, ${artistName}, ${nullable(input.public_name)},
+      ${nullable(input.bio_summary)}, ${nullable(input.artistic_message)},
+      ${clean(input.interview_style, 'conversational')},
+      ${JSON.stringify(sourceLinks)}::jsonb, ${JSON.stringify(knowledge)}::jsonb, 'active'
+    )
+    RETURNING *
+  `;
+  return withDates(created);
+}
+
+async function addArtistCatalogTrack(sql, ownerUserId, input = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, input.profile_id);
+  const title = clean(input.title);
+  if (!title) throw fail('Track title is required', 'ARTIST_TRACK_TITLE_REQUIRED');
+
+  const [created] = await sql`
+    INSERT INTO creapd.artist_catalog_tracks (
+      id, profile_id, owner_user_id, title, artist, album, release_year,
+      description, lyrics, source_type, source_url, audio_url, artwork_url, metadata
+    ) VALUES (
+      ${randomUUID()}, ${profile.id}, ${ownerId}, ${title},
+      ${nullable(input.artist || profile.public_name || profile.artist_name)},
+      ${nullable(input.album)}, ${nullable(input.release_year)},
+      ${nullable(input.description)}, ${nullable(input.lyrics)},
+      ${clean(input.source_type, input.audio_url ? 'upload' : 'manual')},
+      ${nullable(input.source_url)}, ${nullable(input.audio_url)},
+      ${nullable(input.artwork_url)}, ${JSON.stringify(parseObject(input.metadata, {}))}::jsonb
+    )
+    RETURNING *
+  `;
+  return withDates(created);
+}
+
+async function deleteArtistCatalogTrack(sql, ownerUserId, trackId) {
+  const rows = await sql`
+    DELETE FROM creapd.artist_catalog_tracks
+    WHERE id=${clean(trackId)} AND owner_user_id=${String(ownerUserId)}
+    RETURNING id
+  `;
+  if (!rows?.length) throw fail('Artist catalog track not found', 'ARTIST_TRACK_NOT_FOUND', 404);
+  return { id: clean(trackId), deleted: true };
+}
+
+async function startArtistInterview(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+  const catalog = await sql`
+    SELECT * FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
+
+  if (body.resume !== false) {
+    const [active] = await sql`
+      SELECT * FROM creapd.artist_interview_sessions
+      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId} AND status='active'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    if (active) {
+      const turns = await sql`
+        SELECT * FROM creapd.artist_interview_turns
+        WHERE session_id=${active.id} AND owner_user_id=${ownerId}
+        ORDER BY sequence ASC, created_at ASC
+      `;
+      return {
+        interview: withDates(active),
+        turns: turns.map(withDates),
+        question: active.current_question || null,
+      };
+    }
+  }
+
+  const next = await generateArtistInterviewQuestion({ profile, catalog, turns: [] });
+  const [session] = await sql`
+    INSERT INTO creapd.artist_interview_sessions (
+      id, profile_id, owner_user_id, configuration_id, status, current_question,
+      question_count
+    ) VALUES (
+      ${randomUUID()}, ${profile.id}, ${ownerId}, ${nullable(body.configuration_id)},
+      'active', ${next.question}, 0
+    )
+    RETURNING *
+  `;
+
+  return {
+    interview: withDates(session),
+    turns: [],
+    question: next.question,
+    question_meta: next,
+  };
+}
+
+async function answerArtistInterview(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const sessionId = clean(body.session_id);
+  if (!sessionId) throw fail('Interview session is required', 'ARTIST_INTERVIEW_SESSION_REQUIRED');
+
+  const [session] = await sql`
+    SELECT * FROM creapd.artist_interview_sessions
+    WHERE id=${sessionId} AND owner_user_id=${ownerId}
+    LIMIT 1
+  `;
+  if (!session) throw fail('Artist interview session not found', 'ARTIST_INTERVIEW_NOT_FOUND', 404);
+  if (session.status !== 'active') throw fail('Artist interview is not active', 'ARTIST_INTERVIEW_NOT_ACTIVE', 409);
+
+  const profile = await requireArtistProfile(sql, ownerUserId, session.profile_id);
+  const question = clean(body.question || session.current_question);
+  const answerText = clean(body.answer_text);
+  const audioUrl = nullable(body.audio_url);
+
+  if (!question) throw fail('Interview question is missing', 'ARTIST_INTERVIEW_QUESTION_REQUIRED');
+  if (!answerText && !audioUrl) throw fail('Speak an answer or provide a transcript before continuing', 'ARTIST_INTERVIEW_ANSWER_REQUIRED');
+
+  const sequence = Number(session.question_count || 0) + 1;
+  const [turn] = await sql`
+    INSERT INTO creapd.artist_interview_turns (
+      id, session_id, owner_user_id, sequence, question, answer_text, audio_url, source_refs
+    ) VALUES (
+      ${randomUUID()}, ${session.id}, ${ownerId}, ${sequence}, ${question},
+      ${nullable(answerText)}, ${audioUrl}, ${JSON.stringify(parseArray(body.source_refs, []))}::jsonb
+    )
+    RETURNING *
+  `;
+
+  const [catalog, previousTurns] = await Promise.all([
+    sql`
+      SELECT * FROM creapd.artist_catalog_tracks
+      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+      ORDER BY created_at ASC
+    `,
+    sql`
+      SELECT * FROM creapd.artist_interview_turns
+      WHERE session_id=${session.id} AND owner_user_id=${ownerId}
+      ORDER BY sequence ASC, created_at ASC
+    `,
+  ]);
+
+  const next = await generateArtistInterviewQuestion({
+    profile,
+    catalog,
+    turns: previousTurns,
+  });
+
+  const [updatedSession] = await sql`
+    UPDATE creapd.artist_interview_sessions
+    SET current_question=${next.question}, question_count=${sequence}, updated_at=now()
+    WHERE id=${session.id} AND owner_user_id=${ownerId}
+    RETURNING *
+  `;
+
+  return {
+    interview: withDates(updatedSession),
+    turn: withDates(turn),
+    question: next.question,
+    question_meta: next,
+  };
+}
+
+async function finishArtistInterview(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const sessionId = clean(body.session_id);
+  const [updated] = await sql`
+    UPDATE creapd.artist_interview_sessions
+    SET status='complete', current_question=null, updated_at=now()
+    WHERE id=${sessionId} AND owner_user_id=${ownerId}
+    RETURNING *
+  `;
+  if (!updated) throw fail('Artist interview session not found', 'ARTIST_INTERVIEW_NOT_FOUND', 404);
+  return { interview: withDates(updated) };
+}
+
 export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, action, body = {} }) {
   switch (action) {
     case 'music_save_configuration':
@@ -799,6 +1080,20 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       }) };
     case 'music_generate_structured':
       return { result: await generateMusicStructured({ prompt: body.prompt, schema: body.schema, schemaName: body.schema_name, maxOutputTokens: body.max_output_tokens }) };
+    case 'music_artist_show_get':
+      return await readArtistShow(sql, ownerUserId);
+    case 'music_artist_profile_save':
+      return { profile: await saveArtistProfile(sql, ownerUserId, body.profile || body) };
+    case 'music_artist_catalog_add':
+      return { track: await addArtistCatalogTrack(sql, ownerUserId, body.track || body) };
+    case 'music_artist_catalog_delete':
+      return await deleteArtistCatalogTrack(sql, ownerUserId, body.track_id);
+    case 'music_artist_interview_start':
+      return await startArtistInterview(sql, ownerUserId, body);
+    case 'music_artist_interview_answer':
+      return await answerArtistInterview(sql, ownerUserId, body);
+    case 'music_artist_interview_finish':
+      return await finishArtistInterview(sql, ownerUserId, body);
     case 'music_entity_get':
       return { item: await entityGet(sql, ownerUserId, body.entity, body.id) };
     case 'music_entity_create':
