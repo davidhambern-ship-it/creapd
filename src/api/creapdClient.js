@@ -194,9 +194,23 @@ async function request(path, options = {}, authRetry = false) {
       return request(path, options, true);
     }
 
-    const error = new Error(data?.error || `CREAPD API request failed (${response.status})`);
+    const payloadError = data?.error;
+    const payloadMessage =
+      data?.diagnostic?.message ||
+      data?.message ||
+      (typeof payloadError === 'string' ? payloadError : null) ||
+      (payloadError && typeof payloadError === 'object'
+        ? payloadError.message || payloadError.code || null
+        : null) ||
+      `CREAPD API request failed (${response.status})`;
+
+    const error = new Error(String(payloadMessage));
     error.status = response.status;
     error.data = data;
+    error.code =
+      data?.diagnostic?.code ||
+      (typeof payloadError === 'string' ? payloadError : payloadError?.code) ||
+      null;
     throw error;
   }
 
