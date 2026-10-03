@@ -532,6 +532,13 @@ async function getMusicProductionBundle(sql, ownerUserId, configurationId) {
     `,
   ]);
 
+  if (!['planning', 'building', 'refreshing'].includes(String(config.status || '').toLowerCase())) {
+    const reconciledStatus = await syncMusicReviewStatus(sql, ownerUserId, configId);
+    if (reconciledStatus && reconciledStatus !== config.status) {
+      config = { ...config, status: reconciledStatus };
+    }
+  }
+
   return {
     configuration: withConfigAliases(config),
     playlist: playlist.map(withOrder),
