@@ -1,5 +1,6 @@
 import { appParams } from '@/lib/app-params';
 import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { getDirectObsBridge, isDirectObsBridgeSession, sendDirectObsCommand } from '@/lib/obsDirectBridge';
 
 const liveReadCache = new Map();
 const liveReadInFlight = new Map();
@@ -272,6 +273,25 @@ function mutationChangesStaticTalkData(action) {
 
 async function postNormalized(path, body) {
   const normalized = normalizePost(path, body ?? {});
+
+  if (
+    normalized.path === '/production/core'
+    && normalized.body?.action === 'obs_bridge_get'
+    && isDirectObsBridgeSession()
+  ) {
+    return { bridge: getDirectObsBridge() };
+  }
+
+  if (
+    normalized.path === '/production/core'
+    && normalized.body?.action === 'obs_command_enqueue'
+    && isDirectObsBridgeSession()
+  ) {
+    return sendDirectObsCommand(
+      normalized.body?.command_type,
+      normalized.body?.payload || {},
+    );
+  }
   const isBridgeRead = (
     isTalkLivePage()
     && normalized.path === '/production/core'
