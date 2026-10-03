@@ -6,6 +6,7 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
 import Asteroids from '@/components/games/Asteroids';
 import BuildStageTracker from '@/components/music/BuildStageTracker';
+import FormatSwitcher from '@/components/layout/FormatSwitcher';
 
 const STATUS_MESSAGES = {
   planning: 'Planning production requirements...',
@@ -76,6 +77,9 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
   return (
     <div className="relative h-full min-h-full overflow-hidden bg-black flex items-center justify-center">
       <CyberpunkMusicBg variant="eq" />
+      <div className="absolute right-3 top-3 z-[300]">
+        <FormatSwitcher format="radio" compact />
+      </div>
       <div className="relative z-10 max-w-2xl w-full px-6 py-4 max-h-full overflow-y-auto">
         {/* Header */}
         <div className="text-center mb-6">
