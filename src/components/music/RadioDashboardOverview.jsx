@@ -634,7 +634,19 @@ export default function RadioDashboardOverview({
     playlist.filter(item => reviewState(item.status) === 'approved').length +
     spokenReviewItems.filter(item => reviewState(item.status) === 'approved').length;
   const rejectedCount = rejectedTracks.length + rejectedSegments.length;
+  const pendingTrackCount = playlist.filter(item => !['approved', 'locked', 'rejected'].includes(reviewState(item.status))).length;
+  const pendingSegmentCount = spokenReviewItems.filter(item => !['approved', 'locked', 'rejected'].includes(reviewState(item.status))).length;
   const pendingCount = Math.max(0, reviewableCount - approvedCount - rejectedCount);
+
+  const studioLockReason = rejectedCount > 0
+    ? `${rejectedCount} rejected item${rejectedCount === 1 ? '' : 's'} must be restored or regenerated`
+    : pendingTrackCount > 0
+      ? `${pendingTrackCount} playlist track${pendingTrackCount === 1 ? '' : 's'} still need approval`
+      : pendingSegmentCount > 0
+        ? `${pendingSegmentCount} spoken segment${pendingSegmentCount === 1 ? '' : 's'} still need approval`
+        : !rundown.length
+          ? 'The show rundown has not been generated yet'
+          : 'CREAPD is syncing the final approval state';
 
   const progress = Number.isFinite(Number(pipeline?.pipeline_progress))
     ? Number(pipeline.pipeline_progress)
@@ -687,14 +699,19 @@ export default function RadioDashboardOverview({
                   </Link>
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  disabled
-                  title="Approve every track and spoken segment to unlock Radio Studio"
-                  className="border border-white/10 bg-white/[0.04] text-white/35"
-                >
-                  <LockKeyhole className="w-4 h-4 mr-1.5" /> Studio Locked
-                </Button>
+                <div className="text-right">
+                  <Button
+                    size="sm"
+                    disabled
+                    title={studioLockReason}
+                    className="border border-white/10 bg-white/[0.04] text-white/35"
+                  >
+                    <LockKeyhole className="w-4 h-4 mr-1.5" /> Studio Locked
+                  </Button>
+                  <p className="mt-1 max-w-[260px] text-[9px] leading-tight text-white/30">
+                    {studioLockReason}
+                  </p>
+                </div>
               )}
             </div>
           </div>
