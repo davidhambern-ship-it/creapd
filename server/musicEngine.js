@@ -1522,14 +1522,15 @@ async function fetchMusicNews(config) {
 
 function artistShowMetadata(config) {
   const payload = object(config?.source_payload, {});
+  const showMode = String(payload.show_mode || '').toLowerCase();
   return {
-    enabled: String(payload.show_mode || '').toLowerCase() === 'artist',
+    enabled: showMode === 'catalog' || showMode === 'artist',
+    catalog_only: payload.catalog_only === true || showMode === 'catalog' || showMode === 'artist',
     artist_profile_id: text(payload.artist_profile_id),
-    artist_interview_session_id: text(payload.artist_interview_session_id),
   };
 }
 
-async function buildArtistPlaylist({ sql, ownerUserId, config }) {
+async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
   const ownerId = String(ownerUserId);
   const artistMeta = artistShowMetadata(config);
   if (!artistMeta.enabled || !artistMeta.artist_profile_id) return [];
@@ -1543,15 +1544,16 @@ async function buildArtistPlaylist({ sql, ownerUserId, config }) {
   `;
 
   if (!catalog.length) {
-    const error = new Error('Artist Show cannot build without at least one Artist Catalogue track');
-    error.code = 'ARTIST_SHOW_CATALOG_REQUIRED';
+    const error = new Error('Catalogue-only Radio cannot build without at least one catalogue track');
+    error.code = 'CATALOG_ONLY_TRACK_REQUIRED';
     error.status = 409;
     throw error;
   }
 
   const rows = [];
-  for (let index = 0; index < catalog.length; index += 1) {
-    const track = catalog[index];
+  const selectedCatalog = catalog.slice(0, Math.max(1, Math.min(catalog.length, Number(targetCount) || 10)));
+  for (let index = 0; index < selectedCatalog.length; index += 1) {
+    const track = selectedCatalog[index];
     const metadata = object(track.metadata, {});
     const youtubeVideoId = extractYoutubeId(track.source_url);
     const duration = Math.max(30, num(metadata.duration_seconds, 180));
@@ -1578,7 +1580,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config }) {
         ${youtubeVideoId || null}, ${text(track.artwork_url) || null},
         ${text(track.artist, config.host_name || 'Artist')},
         ${safeJson({
-          artist_show: true,
+          catalog_only: true,
           catalog_track_id: track.id,
           audio_url: track.audio_url || null,
           source_url: track.source_url || null,
@@ -1615,34 +1617,6 @@ async function buildArtistResearch({ sql, ownerUserId, config }) {
     ORDER BY created_at ASC
   `;
 
-  let turns = [];
-  if (artistMeta.artist_interview_session_id) {
-    turns = await sql`
-      SELECT *
-      FROM creapd.artist_interview_turns
-      WHERE session_id=${artistMeta.artist_interview_session_id}
-        AND owner_user_id=${ownerId}
-      ORDER BY sequence ASC, created_at ASC
-    `;
-  } else {
-    const [latestSession] = await sql`
-      SELECT *
-      FROM creapd.artist_interview_sessions
-      WHERE profile_id=${artistMeta.artist_profile_id}
-        AND owner_user_id=${ownerId}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    if (latestSession) {
-      turns = await sql`
-        SELECT *
-        FROM creapd.artist_interview_turns
-        WHERE session_id=${latestSession.id} AND owner_user_id=${ownerId}
-        ORDER BY sequence ASC, created_at ASC
-      `;
-    }
-  }
-
   const rows = [];
   let index = 0;
 
@@ -1660,26 +1634,6 @@ async function buildArtistResearch({ sql, ownerUserId, config }) {
         ].filter(Boolean).join('\n')},
         null, 'Use as artist-approved background; do not invent beyond the supplied statements.',
         ${new Date().toISOString().slice(0,10)}, 'high'
-      )
-      RETURNING *
-    `;
-    rows.push(row);
-    index += 1;
-  }
-
-  for (const turn of turns.slice(0, 30)) {
-    if (!text(turn.answer_text)) continue;
-    const [row] = await sql`
-      INSERT INTO creapd.music_research_items (
-        id, configuration_id, owner_user_id, title, source, category, summary,
-        url, suggested_angle, research_date, relevance
-      ) VALUES (
-        ${randomUUID()}, ${config.id}, ${ownerId},
-        ${`Artist Interview ${index + 1}: ${text(turn.question).slice(0, 120)}`},
-        'Recorded CREAPr Artist Interview', 'artist_interview',
-        ${text(turn.answer_text)}, ${turn.audio_url || null},
-        ${`Use this as first-person artist testimony responding to: ${text(turn.question)}`},
-        ${new Date(turn.created_at || Date.now()).toISOString().slice(0,10)}, 'high'
       )
       RETURNING *
     `;
@@ -2290,7 +2244,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
     const targetCount = Math.max(8, Math.min(15, Math.ceil(musicMinutes / 3.5)));
     const plan = {
       production_format: config.production_format || 'radio',
-      show_mode: artistMeta.enabled ? 'artist' : 'standard',
+      show_mode: artistMeta.enabled ? 'catalog' : 'standard',
       artist_profile_id: artistMeta.artist_profile_id || null,
       total_show_runtime: total,
       required_music_runtime: musicMinutes,
@@ -2323,7 +2277,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       } else {
         await sql`DELETE FROM creapd.music_playlist_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
         playlist = artistMeta.enabled
-          ? await buildArtistPlaylist({ sql, ownerUserId, config })
+          ? await buildArtistPlaylist({ sql, ownerUserId, config, targetCount })
           : await buildPlaylist({ sql, ownerUserId, config, targetCount });
         await appendStage(sql, ownerUserId, config.id, buildLog, 'playlist', 'complete', { count: playlist.length, youtube_resolved: playlist.filter(x => x.youtube_video_id).length });
       }
@@ -2334,9 +2288,13 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
         await appendStage(sql, ownerUserId, config.id, buildLog, 'research', 'skipped', { count: research.length });
       } else {
         await sql`DELETE FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        research = artistMeta.enabled
-          ? await buildArtistResearch({ sql, ownerUserId, config })
-          : await buildResearch({ sql, ownerUserId, config });
+        if (artistMeta.enabled) {
+          const standardResearch = await buildResearch({ sql, ownerUserId, config });
+          const catalogResearch = await buildArtistResearch({ sql, ownerUserId, config });
+          research = [...catalogResearch, ...standardResearch];
+        } else {
+          research = await buildResearch({ sql, ownerUserId, config });
+        }
         await appendStage(sql, ownerUserId, config.id, buildLog, 'research', research.length ? 'complete' : 'skipped', { count: research.length, source: 'google_news_rss' });
       }
     }
