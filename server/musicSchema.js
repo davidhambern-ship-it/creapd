@@ -88,6 +88,79 @@ export async function ensureMusicSchema(sql) {
     await sql`CREATE INDEX IF NOT EXISTS music_config_status_idx ON creapd.music_production_configurations (owner_user_id, status)`;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS creapd.artist_profiles (
+        id text PRIMARY KEY,
+        owner_user_id text NOT NULL REFERENCES creapd.users(id) ON DELETE CASCADE,
+        artist_name text NOT NULL,
+        public_name text,
+        bio_summary text,
+        artistic_message text,
+        interview_style text NOT NULL DEFAULT 'conversational',
+        source_links jsonb NOT NULL DEFAULT '[]'::jsonb,
+        knowledge jsonb NOT NULL DEFAULT '{}'::jsonb,
+        status text NOT NULL DEFAULT 'active',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS artist_profiles_owner_unique ON creapd.artist_profiles (owner_user_id)`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS creapd.artist_catalog_tracks (
+        id text PRIMARY KEY,
+        profile_id text NOT NULL REFERENCES creapd.artist_profiles(id) ON DELETE CASCADE,
+        owner_user_id text NOT NULL REFERENCES creapd.users(id) ON DELETE CASCADE,
+        title text NOT NULL,
+        artist text,
+        album text,
+        release_year text,
+        description text,
+        lyrics text,
+        source_type text NOT NULL DEFAULT 'manual',
+        source_url text,
+        audio_url text,
+        artwork_url text,
+        metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS artist_catalog_owner_idx ON creapd.artist_catalog_tracks (owner_user_id, created_at DESC)`;
+    await sql`CREATE INDEX IF NOT EXISTS artist_catalog_profile_idx ON creapd.artist_catalog_tracks (profile_id, created_at DESC)`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS creapd.artist_interview_sessions (
+        id text PRIMARY KEY,
+        profile_id text NOT NULL REFERENCES creapd.artist_profiles(id) ON DELETE CASCADE,
+        owner_user_id text NOT NULL REFERENCES creapd.users(id) ON DELETE CASCADE,
+        configuration_id text REFERENCES creapd.music_production_configurations(id) ON DELETE SET NULL,
+        status text NOT NULL DEFAULT 'active',
+        current_question text,
+        summary text,
+        question_count integer NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS artist_interview_sessions_owner_idx ON creapd.artist_interview_sessions (owner_user_id, created_at DESC)`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS creapd.artist_interview_turns (
+        id text PRIMARY KEY,
+        session_id text NOT NULL REFERENCES creapd.artist_interview_sessions(id) ON DELETE CASCADE,
+        owner_user_id text NOT NULL REFERENCES creapd.users(id) ON DELETE CASCADE,
+        sequence integer NOT NULL DEFAULT 0,
+        question text NOT NULL,
+        answer_text text,
+        audio_url text,
+        source_refs jsonb NOT NULL DEFAULT '[]'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS artist_interview_turns_session_idx ON creapd.artist_interview_turns (session_id, sequence ASC)`;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS creapd.music_playlist_items (
         id text PRIMARY KEY,
         configuration_id text NOT NULL REFERENCES creapd.music_production_configurations(id) ON DELETE CASCADE,
@@ -239,6 +312,12 @@ export async function ensureMusicSchema(sql) {
     await sql`
       INSERT INTO creapd.schema_migrations (version, description)
       VALUES ('007', 'Owned Music Studio persistence on provider-neutral Postgres')
+      ON CONFLICT (version) DO NOTHING
+    `;
+
+    await sql`
+      INSERT INTO creapd.schema_migrations (version, description)
+      VALUES ('008', 'Artist Show profiles, catalog, and recorded CREAPr interviews')
       ON CONFLICT (version) DO NOTHING
     `;
 
