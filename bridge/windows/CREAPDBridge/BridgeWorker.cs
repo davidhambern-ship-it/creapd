@@ -28,7 +28,7 @@ internal sealed class BridgeWorker : IAsyncDisposable
     {
         _creapd.Configure(settings.CreapdUrl, settings.BridgeToken, settings.PreviewBypassSecret);
         _status("Starting…");
-        _log("CREAPD Bridge 0.2.0 starting.");
+        _log("CREAPD Bridge 0.3.0 starting.");
         _log($"CREAPD: {settings.CreapdUrl}");
         _log($"OBS: {settings.ObsUrl}");
 
