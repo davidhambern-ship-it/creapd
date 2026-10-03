@@ -15,6 +15,7 @@ import {
   Plus,
   Radio,
   Save,
+  Search,
   Send,
   Sparkles,
   Trash2,
@@ -187,6 +188,10 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
   });
   const [trackAudio, setTrackAudio] = useState(null);
   const [addingTrack, setAddingTrack] = useState(false);
+  const [youtubeScan, setYoutubeScan] = useState([]);
+  const [youtubeSelected, setYoutubeSelected] = useState(new Set());
+  const [youtubeScanning, setYoutubeScanning] = useState(false);
+  const [youtubeImporting, setYoutubeImporting] = useState(false);
 
   const [recording, setRecording] = useState(false);
   const [recordingBusy, setRecordingBusy] = useState(false);
@@ -316,6 +321,79 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     } catch (err) {
       setError(err?.message || 'CREAPD could not remove this track.');
     }
+  };
+
+  const youtubeChannelUrl = useMemo(
+    () => (Array.isArray(profile?.source_links)
+      ? profile.source_links.find(item => item?.type === 'youtube')?.url || ''
+      : ''),
+    [profile?.source_links],
+  );
+
+  const scanYoutube = async () => {
+    if (!youtubeChannelUrl || youtubeScanning) return;
+    setYoutubeScanning(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await creapdApi.post('/production/core', {
+        action: 'music_artist_youtube_scan',
+        channel_url: youtubeChannelUrl,
+        limit: 30,
+      });
+      const videos = result?.videos || [];
+      setYoutubeScan(videos);
+      setYoutubeSelected(new Set(
+        videos.filter(video => video.likely_music).map(video => video.video_id),
+      ));
+      setNotice(
+        videos.length
+          ? `CREAPD found ${videos.length} public YouTube uploads. Review the list and import the tracks that belong in the artist catalogue.`
+          : 'CREAPD did not find public uploads on that YouTube page.'
+      );
+    } catch (err) {
+      setError(err?.message || 'CREAPD could not scan that YouTube channel.');
+    } finally {
+      setYoutubeScanning(false);
+    }
+  };
+
+  const importYoutube = async () => {
+    if (!profile?.id || youtubeImporting || !youtubeSelected.size) return;
+    setYoutubeImporting(true);
+    setError('');
+    setNotice('');
+    try {
+      const selected = youtubeScan.filter(video => youtubeSelected.has(video.video_id));
+      const result = await creapdApi.post('/production/core', {
+        action: 'music_artist_youtube_import',
+        profile_id: profile.id,
+        videos: selected,
+      });
+      const imported = result?.imported || [];
+      setCatalog(current => {
+        const ids = new Set(current.map(track => track.id));
+        return [...current, ...imported.filter(track => !ids.has(track.id))];
+      });
+      setNotice(
+        `Imported ${imported.length} YouTube track${imported.length === 1 ? '' : 's'} with available descriptions, duration, artwork and lyrics/captions.`
+      );
+      setYoutubeScan([]);
+      setYoutubeSelected(new Set());
+    } catch (err) {
+      setError(err?.message || 'CREAPD could not import the selected YouTube tracks.');
+    } finally {
+      setYoutubeImporting(false);
+    }
+  };
+
+  const toggleYoutubeSelection = videoId => {
+    setYoutubeSelected(current => {
+      const next = new Set(current);
+      if (next.has(videoId)) next.delete(videoId);
+      else next.add(videoId);
+      return next;
+    });
   };
 
   const speakQuestion = useCallback((textValue = question) => {
@@ -646,8 +724,78 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                     <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Artist Catalogue</p>
                     <h2 className="mt-1 font-heading text-xl font-bold">Give CREAPr music to investigate.</h2>
                     <p className="mt-2 text-xs leading-relaxed text-white/40">
-                      Add a track by upload or source link. Notes and lyrics help CREAPr recognize themes, contrasts and outliers without inventing what a song means.
+                      Connect YouTube once and let CREAPD pull what is already there. Manual upload stays available for anything the channel does not contain.
                     </p>
+                  </div>
+
+                  {youtubeChannelUrl && (
+                    <div className="mb-4 rounded-xl border border-red-400/15 bg-red-500/[0.035] p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-red-400/20 bg-red-500/10">
+                          <Play className="h-4 w-4 text-red-300" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-white">YouTube catalogue source</p>
+                          <p className="mt-0.5 truncate text-[10px] text-white/35">{youtubeChannelUrl}</p>
+                          <p className="mt-1 text-[10px] leading-relaxed text-white/30">
+                            CREAPD will scan the public channel uploads and pull title, description, artwork, duration, publication info, and lyrics/caption text when YouTube exposes it.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={scanYoutube}
+                        disabled={youtubeScanning}
+                        className="mt-3 w-full border-red-400/20 text-red-100 hover:bg-red-500/10"
+                      >
+                        {youtubeScanning ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Search className="mr-2 h-3.5 w-3.5" />}
+                        {youtubeScanning ? 'Scanning YouTube…' : 'Scan My YouTube Channel'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {youtubeScan.length > 0 && (
+                    <div className="mb-4 rounded-xl border border-cyan-400/15 bg-cyan-500/[0.025] p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-cyan-100">Choose what belongs in the Artist Catalogue</p>
+                          <p className="text-[10px] text-white/30">{youtubeSelected.size}/{youtubeScan.length} selected · likely music uploads are preselected</p>
+                        </div>
+                        <Button size="sm" onClick={importYoutube} disabled={!youtubeSelected.size || youtubeImporting} className="bg-cyan-600 hover:bg-cyan-500">
+                          {youtubeImporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1.5 h-3.5 w-3.5" />}
+                          Import Selected
+                        </Button>
+                      </div>
+                      <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                        {youtubeScan.map(video => (
+                          <label key={video.video_id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/[0.07] bg-black/25 p-2.5 hover:bg-white/[0.035]">
+                            <input
+                              type="checkbox"
+                              checked={youtubeSelected.has(video.video_id)}
+                              onChange={() => toggleYoutubeSelection(video.video_id)}
+                              className="mt-1 accent-cyan-400"
+                            />
+                            {video.thumbnail_url && <img src={video.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-white">{video.title}</p>
+                              <p className="mt-0.5 text-[9px] text-white/30">
+                                {video.duration_seconds ? `${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, '0')}` : 'Unknown length'}
+                                {video.published_at ? ` · ${video.published_at}` : ''}
+                                {video.lyrics ? ` · lyrics/captions found` : ''}
+                              </p>
+                              {video.description && <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-white/35">{video.description}</p>}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="h-px flex-1 bg-white/[0.07]" />
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-white/25">or add one manually</span>
+                    <div className="h-px flex-1 bg-white/[0.07]" />
                   </div>
 
                   <div className="space-y-3">
