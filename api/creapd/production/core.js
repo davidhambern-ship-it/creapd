@@ -191,7 +191,7 @@ function verifyObsMediaTicket(ticket) {
   }
 
   if (
-    !['creapd_obs_media', 'creapd_asset_media', 'creapd_artist_interview_audio', 'creapd_artist_catalog_audio'].includes(payload?.purpose) ||
+    !['creapd_obs_media', 'creapd_asset_media', 'creapd_artist_catalog_audio'].includes(payload?.purpose) ||
     !payload?.ownerUserId ||
     !payload?.pathname ||
     !payload?.contentType ||
@@ -938,14 +938,6 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         purpose: 'creapd_asset_media',
         folder: 'assets',
         action: 'asset_media_upload_authorize',
-      });
-    }
-
-    if (action === 'artist_interview_audio_upload_authorize') {
-      return authorizeObsMediaUpload(response, ownerUserId, body, {
-        purpose: 'creapd_artist_interview_audio',
-        folder: 'artist-interviews',
-        action: 'artist_interview_audio_upload_authorize',
       });
     }
 
