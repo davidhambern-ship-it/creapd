@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import FormatSwitcher from '@/components/layout/FormatSwitcher';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Archive,
@@ -160,6 +161,8 @@ export default function MusicDiscoveryNav({
         }}
       >
         <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-2">
+          <FormatSwitcher format="radio" compact align="left" />
+          <div className="hidden md:block h-6 w-px bg-white/10 flex-shrink-0" />
           <NavButton
             icon={Compass}
             label="Discovery Room"
