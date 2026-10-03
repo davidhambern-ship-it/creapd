@@ -474,6 +474,9 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     }
   };
 
+  const speechRecognitionAvailable = typeof window !== 'undefined'
+    && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+
   const catalogSummary = useMemo(() => {
     const uploads = catalog.filter(track => track.audio_url).length;
     const links = catalog.filter(track => track.source_url).length;
@@ -786,6 +789,12 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                             )}
                           </div>
 
+                          {!speechRecognitionAvailable && (
+                            <div className="mb-3 rounded-lg border border-amber-400/20 bg-amber-500/[0.05] px-3 py-2 text-[10px] leading-relaxed text-amber-100/75">
+                              Your browser can record the interview, but it is not exposing live speech transcription. After you speak, type or paste a quick transcript below so CREAPr can understand the answer and choose the next question.
+                            </div>
+                          )}
+
                           <Textarea
                             value={answerText + (interimText ? `${answerText ? ' ' : ''}${interimText}` : '')}
                             onChange={event => {
@@ -820,7 +829,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
 
                             <Button
                               onClick={submitAnswer}
-                              disabled={recording || submittingAnswer || (!recordedBlob && !answerText.trim())}
+                              disabled={recording || submittingAnswer || !answerText.trim()}
                               className="bg-fuchsia-600 hover:bg-fuchsia-500"
                             >
                               {submittingAnswer ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
