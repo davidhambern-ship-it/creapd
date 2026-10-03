@@ -331,11 +331,17 @@ export default function MusicDashboard() {
   const verifiedTrackCount = playlist.filter(track => {
     const payload = safeParse(track.source_payload, {});
     const sourceType = String(payload?.youtube_source_type || '');
+    const artistMediaVerified =
+      ['artist_catalog_upload', 'artist_catalog_youtube'].includes(String(track.source || '')) &&
+      Boolean(payload?.audio_url || track.youtube_video_id);
+
     const sourceVerified =
+      artistMediaVerified ||
       track.source === 'youtube_radio_verified' ||
       track.source === 'youtube_lyric_verified' ||
       ['lyric_video', 'visualizer', 'audio_track'].includes(sourceType);
-    return Boolean(track.youtube_video_id) && Number(track.length_seconds || 0) >= 75 && sourceVerified;
+
+    return Number(track.length_seconds || 0) >= 30 && sourceVerified && Boolean(payload?.audio_url || track.youtube_video_id);
   }).length;
 
   const approvedTrackCount = playlist.filter(approvedStatus).length;
