@@ -237,14 +237,14 @@ function TalkObsBridgeControlLive() {
             ) : (
               <>
                 <div className="rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
-                  <p className="text-sm font-semibold">No Windows app installation required</p>
-                  <p className="text-xs text-muted-foreground mt-1">CREAPD now uses a small HTML bridge that your browser opens locally and connects straight to OBS.</p>
+                  <p className="text-sm font-semibold">One small bridge file. No installation.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Download it once, open it whenever you want to use CREAPD with OBS, and it connects straight to OBS on this computer.</p>
                 </div>
 
                 <div className="space-y-3 text-sm">
                   <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">1</span><p><span className="font-medium">Open OBS → Tools → WebSocket Server Settings.</span><br /><span className="text-xs text-muted-foreground">Enable the server. Keep authentication on.</span></p></div>
-                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">2</span><p><span className="font-medium">Download the CREAPD OBS Bridge below.</span><br /><span className="text-xs text-muted-foreground">It is an HTML file, not an installer or unsigned Windows executable.</span></p></div>
-                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">3</span><p><span className="font-medium">Double-click it and enter the OBS password once.</span><br /><span className="text-xs text-muted-foreground">The bridge opens CREAPD Studio already connected. There is no CREAPD token to copy.</span></p></div>
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">2</span><p><span className="font-medium">Download the CREAPD OBS Bridge once.</span><br /><span className="text-xs text-muted-foreground">Keep the file somewhere easy to find, like Downloads or your Desktop.</span></p></div>
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">3</span><p><span className="font-medium">Open it and enter your OBS password.</span><br /><span className="text-xs text-muted-foreground">It opens CREAPD Studio for you, remembers the OBS connection if you choose, and automatically reconnects if OBS restarts. No CREAPD token.</span></p></div>
                 </div>
 
                 <Button onClick={getBridge} disabled={Boolean(busy)}>
@@ -255,7 +255,7 @@ function TalkObsBridgeControlLive() {
                 {downloaded && (
                   <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] p-3 text-xs">
                     <p className="font-medium text-cyan-100">Downloaded: CREAPD-OBS-Bridge.html</p>
-                    <p className="text-muted-foreground mt-1">Open that file while OBS is running. Keep its small bridge window open while you use CREAPD Studio.</p>
+                    <p className="text-muted-foreground mt-1">Open that file. It will connect to OBS and open CREAPD Studio. Keep the small bridge window open; you can minimize it.</p>
                   </div>
                 )}
 
@@ -265,11 +265,6 @@ function TalkObsBridgeControlLive() {
                     <div className="text-xs"><p className="text-amber-200 font-medium">The bridge is open, but OBS is not connected yet.</p><p className="text-muted-foreground mt-1">{bridge.last_error || 'Check the OBS WebSocket setting and password.'}</p></div>
                   </div>
                 )}
-
-                <details className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-muted-foreground">
-                  <summary className="cursor-pointer text-white/70">Developer fallback</summary>
-                  <a href="/creapd-obs-bridge.ps1" download className="mt-2 inline-flex text-primary hover:underline">Download legacy PowerShell bridge</a>
-                </details>
               </>
             )}
 
