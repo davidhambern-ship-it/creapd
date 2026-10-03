@@ -8,12 +8,10 @@ import { SEGMENT_TYPE_LABELS, formatRuntime } from '@/lib/musicConstants';
 import {
   ArrowLeft,
   Disc3,
-  Gauge,
   Headphones,
   ListMusic,
   Loader2,
   LockKeyhole,
-  Mic2,
   MonitorPlay,
   Pause,
   Play,
@@ -23,7 +21,6 @@ import {
   SkipForward,
   SlidersHorizontal,
   Sparkles,
-  Volume2,
   WandSparkles,
 } from 'lucide-react';
 
@@ -374,7 +371,7 @@ function useDjFx() {
 export default function RadioLive() {
   const [searchParams] = useSearchParams();
   const configId = searchParams.get('config_id') || undefined;
-  const { config, playlist, rundown, loading, error, metadataRepairing } = useMusicProduction(configId);
+  const { config, playlist, rundown, loading, error } = useMusicProduction(configId);
   const studioApproved = config?.status === 'approved';
 
   const rejectedTrackIds = useMemo(
