@@ -117,7 +117,7 @@ export function getDirectObsBridge() {
     scenes: [],
     capabilities: {
       bridge: 'browser-direct',
-      bridge_version: '0.4.0-browser',
+      bridge_version: '0.4.1-browser',
     },
     last_seen_at: null,
     last_error: null,
