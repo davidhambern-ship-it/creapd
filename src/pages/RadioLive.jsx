@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
 import { Button } from '@/components/ui/button';
+import FormatSwitcher from '@/components/layout/FormatSwitcher';
 import { SEGMENT_TYPE_LABELS, formatRuntime } from '@/lib/musicConstants';
 import {
   ArrowLeft,
@@ -612,6 +613,7 @@ export default function RadioLive() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <FormatSwitcher format="radio" compact />
           <span className={`hidden sm:inline-flex text-[10px] px-2.5 py-1 rounded-full border ${showRunning ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-white/10 bg-white/5 text-white/45'}`}>
             {showRunning ? '● ON AIR' : 'READY'}
           </span>
