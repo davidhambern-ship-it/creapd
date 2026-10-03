@@ -1,37 +1,33 @@
 import React from 'react';
 
-// Newsroom Command Center — amber studio lights, command grid, scan lines, data panel silhouettes
+// CREAPD News — immersive broadcast studio environment.
+// The generated newsroom asset establishes the physical set; CSS overlays keep
+// page content readable without flattening the environment back into a generic app.
 export default function NewsroomAtmosphere() {
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0" style={{
-        background: `radial-gradient(ellipse 80% 50% at 50% 0%, hsl(25 80% 25% / 0.18) 0%, transparent 60%),
-                     radial-gradient(ellipse at 15% 80%, hsl(210 60% 20% / 0.12) 0%, transparent 50%),
-                     radial-gradient(ellipse at 85% 70%, hsl(25 70% 20% / 0.08) 0%, transparent 50%),
-                     hsl(var(--env-bg))`
-      }} />
-      <div className="absolute inset-0" style={{
-        backgroundImage: `linear-gradient(hsl(25 50% 40% / 0.03) 1px, transparent 1px),
-                          linear-gradient(90deg, hsl(25 50% 40% / 0.03) 1px, transparent 1px)`,
-        backgroundSize: '50px 50px',
-        animation: 'cc-grid-floor-pan 30s linear infinite'
-      }} />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] rounded-full" style={{
-        background: `radial-gradient(ellipse, hsl(25 90% 50% / 0.08) 0%, transparent 70%)`,
-        filter: 'blur(60px)'
-      }} />
-      <div className="absolute top-1/4 left-10 w-64 h-64 rounded-full animate-orb-1" style={{
-        background: `radial-gradient(circle, hsl(25 80% 40% / 0.05) 0%, transparent 70%)`,
-        filter: 'blur(40px)'
-      }} />
-      <div className="absolute bottom-1/4 right-10 w-72 h-72 rounded-full animate-orb-2" style={{
-        background: `radial-gradient(circle, hsl(210 70% 40% / 0.05) 0%, transparent 70%)`,
-        filter: 'blur(40px)'
-      }} />
-      <div className="cc-scan-line" />
-      <div className="absolute bottom-0 left-0 right-0 h-px" style={{
-        background: `linear-gradient(90deg, transparent, hsl(25 90% 50% / 0.2), transparent)`
-      }} />
+    <div className="absolute inset-0 overflow-hidden bg-black">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-[1.015]"
+        style={{ backgroundImage: "url('/assets/news/NewsPP_Backdrop_01.png')" }}
+      />
+
+      {/* Darken the lower work surface and extreme edges while preserving the set. */}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.16)_0%,rgba(0,0,0,.30)_42%,rgba(0,0,0,.72)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_32%,rgba(0,0,0,.54)_100%)]" />
+
+      {/* Broadcast-light sweeps echo the CREAPD palette. */}
+      <div className="absolute -top-24 left-[8%] h-72 w-72 rounded-full bg-orange-500/[0.09] blur-[90px] animate-orb-1" />
+      <div className="absolute top-[8%] right-[7%] h-80 w-80 rounded-full bg-cyan-400/[0.07] blur-[100px] animate-orb-2" />
+      <div className="absolute bottom-[4%] left-1/2 h-40 w-[62%] -translate-x-1/2 rounded-full bg-purple-600/[0.08] blur-[80px]" />
+
+      {/* Fine broadcast scan texture. */}
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage: 'repeating-linear-gradient(180deg, rgba(255,255,255,.24) 0, rgba(255,255,255,.24) 1px, transparent 1px, transparent 4px)',
+        }}
+      />
+      <div className="cc-scan-line opacity-30" />
     </div>
   );
 }

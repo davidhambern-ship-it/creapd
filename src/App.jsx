@@ -1,3 +1,4 @@
+import React, { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -10,133 +11,112 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import CREAPModeLayout from '@/components/creap/CREAPModeLayout';
 import ScrollToTop from './components/ScrollToTop';
 
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import Dashboard from '@/pages/Dashboard';
-import WeeklyPlanner from '@/pages/WeeklyPlanner';
-import TodaysBrief from '@/pages/TodaysBrief';
-import StoryQueue from '@/pages/StoryQueue';
-import StoryIntelligenceReview from '@/pages/StoryIntelligenceReview';
-import StoryDetail from '@/pages/StoryDetail';
-import StoryLibrary from '@/pages/StoryLibrary';
-import StoryManager from '@/pages/StoryManager';
-import ProductionPackages from '@/pages/ProductionPackages';
-import BrandProfiles from '@/pages/BrandProfiles';
-import ShowProfiles from '@/pages/ShowProfiles';
-import ExportCenter from '@/pages/ExportCenter';
-import ImageLibrary from '@/pages/ImageLibrary';
-import ResearchDesk from '@/pages/ResearchDesk';
-import Sources from '@/pages/Sources';
-import ManualImport from '@/pages/ManualImport';
-import ArchivePage from '@/pages/ArchivePage';
-import AutomationCenter from '@/pages/AutomationCenter';
-import SecurityCenter from '@/pages/SecurityCenter';
-import AcceptanceChecklist from '@/pages/AcceptanceChecklist';
-import SettingsPage from '@/pages/SettingsPage';
-import UserProfile from '@/pages/UserProfile';
-import Organizations from '@/pages/Organizations';
-import ActivityCenter from '@/pages/ActivityCenter';
-import TemplateLibrary from '@/pages/TemplateLibrary';
-import ProductionTemplates from '@/pages/ProductionTemplates';
-import PromptTemplates from '@/pages/PromptTemplates';
-import ProducerLayout from '@/components/layout/ProducerLayout';
-import MusicLayout from '@/components/layout/MusicLayout';
+const Login = lazy(() => import('@/pages/Login'));
+const AuthDebug = lazy(() => import('@/pages/AuthDebug'));
+const Register = lazy(() => import('@/pages/Register'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const PodcastDashboard = lazy(() => import('@/pages/PodcastDashboard'));
+const WeeklyPlanner = lazy(() => import('@/pages/WeeklyPlanner'));
+const TodaysBrief = lazy(() => import('@/pages/TodaysBrief'));
+const EpisodeAssembly = lazy(() => import('@/pages/EpisodeAssembly'));
+const StoryQueue = lazy(() => import('@/pages/StoryQueue'));
+const StoryIntelligenceReview = lazy(() => import('@/pages/StoryIntelligenceReview'));
+const StoryDetail = lazy(() => import('@/pages/StoryDetail'));
+const StoryLibrary = lazy(() => import('@/pages/StoryLibrary'));
+const StoryManager = lazy(() => import('@/pages/StoryManager'));
+const ProductionPackages = lazy(() => import('@/pages/ProductionPackages'));
+const PodcastProduction = lazy(() => import('@/pages/PodcastProduction'));
+const BrandProfiles = lazy(() => import('@/pages/BrandProfiles'));
+const ShowProfiles = lazy(() => import('@/pages/ShowProfiles'));
+const ExportCenter = lazy(() => import('@/pages/ExportCenter'));
+const ImageLibrary = lazy(() => import('@/pages/ImageLibrary'));
+const ResearchDesk = lazy(() => import('@/pages/ResearchDesk'));
+const Sources = lazy(() => import('@/pages/Sources'));
+const ManualImport = lazy(() => import('@/pages/ManualImport'));
+const ArchivePage = lazy(() => import('@/pages/ArchivePage'));
+const AutomationCenter = lazy(() => import('@/pages/AutomationCenter'));
+const SecurityCenter = lazy(() => import('@/pages/SecurityCenter'));
+const AcceptanceChecklist = lazy(() => import('@/pages/AcceptanceChecklist'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const UserProfile = lazy(() => import('@/pages/UserProfile'));
+const Organizations = lazy(() => import('@/pages/Organizations'));
+const ActivityCenter = lazy(() => import('@/pages/ActivityCenter'));
+const TemplateLibrary = lazy(() => import('@/pages/TemplateLibrary'));
+const ProductionTemplates = lazy(() => import('@/pages/ProductionTemplates'));
+const PromptTemplates = lazy(() => import('@/pages/PromptTemplates'));
+const ProducerLayout = lazy(() => import('@/components/layout/ProducerLayout'));
+const MusicLayout = lazy(() => import('@/components/layout/MusicLayout'));
 import DashboardRouter from '@/components/DashboardRouter';
-import Onboarding from '@/pages/Onboarding';
-import ProductionTypes from '@/pages/ProductionTypes';
-import CreapdHome from '@/pages/CreapdHome';
-import MusicConfigure from '@/pages/MusicConfigure';
-import MusicDashboard from '@/pages/MusicDashboard';
-import EmbedDemo from '@/pages/EmbedDemo';
-import MusicResearch from '@/pages/MusicResearch';
-import MusicPlaylist from '@/pages/MusicPlaylist';
-import MusicTop10 from '@/pages/MusicTop10';
-import MusicTopics from '@/pages/MusicTopics';
-import MusicRundown from '@/pages/MusicRundown';
-import MusicAssets from '@/pages/MusicAssets';
-import TalkConfigure from '@/pages/TalkConfigure';
-import TalkDashboard from '@/pages/TalkDashboard';
-import TalkResearch from '@/pages/TalkResearch';
-import TalkTopics from '@/pages/TalkTopics';
-import TalkGuests from '@/pages/TalkGuests';
-import TalkRundown from '@/pages/TalkRundown';
-import TalkAssets from '@/pages/TalkAssets';
-import TalkExport from '@/pages/TalkExport';
-import CookingConfigure from '@/pages/CookingConfigure';
-import CookingDashboard from '@/pages/CookingDashboard';
-import CookingResearch from '@/pages/CookingResearch';
-import CookingRecipes from '@/pages/CookingRecipes';
-import CookingIngredients from '@/pages/CookingIngredients';
-import CookingRundown from '@/pages/CookingRundown';
-import CookingAssets from '@/pages/CookingAssets';
-import CookingExport from '@/pages/CookingExport';
-import SportsConfigure from '@/pages/SportsConfigure';
-import SportsDashboard from '@/pages/SportsDashboard';
-import SportsResearch from '@/pages/SportsResearch';
-import SportsGames from '@/pages/SportsGames';
-import SportsAthletes from '@/pages/SportsAthletes';
-import SportsRundown from '@/pages/SportsRundown';
-import SportsAssets from '@/pages/SportsAssets';
-import SportsExport from '@/pages/SportsExport';
-import CosmoConfigure from '@/pages/CosmoConfigure';
-import CosmoDashboard from '@/pages/CosmoDashboard';
-import CosmoResearch from '@/pages/CosmoResearch';
-import CosmoTopics from '@/pages/CosmoTopics';
-import CosmoGuests from '@/pages/CosmoGuests';
-import CosmoRundown from '@/pages/CosmoRundown';
-import CosmoAssets from '@/pages/CosmoAssets';
-import CosmoExport from '@/pages/CosmoExport';
-import ResearchConfigure from '@/pages/ResearchConfigure';
-import ResearchDashboard from '@/pages/ResearchDashboard';
-import ResearchTopics from '@/pages/ResearchTopics';
-import ResearchManager from '@/pages/ResearchManager';
-import ResearchDossier from '@/pages/ResearchDossier';
-import ResearchAssets from '@/pages/ResearchAssets';
-import ResearchExport from '@/pages/ResearchExport';
-import ResearchArchive from '@/pages/ResearchArchive';
-import DefaultProductionSettings from '@/pages/DefaultProductionSettings';
-import Presentations from '@/pages/Presentations';
-import PresentationEditor from '@/pages/PresentationEditor';
-
+const Onboarding = lazy(() => import('@/pages/Onboarding'));
+const ProductionTypes = lazy(() => import('@/pages/ProductionTypes'));
+const CreapdHome = lazy(() => import('@/pages/CreapdHome'));
+const MusicConfigure = lazy(() => import('@/pages/MusicConfigure'));
+const MusicDashboard = lazy(() => import('@/pages/MusicDashboard'));
+const RadioLive = lazy(() => import('@/pages/RadioLive'));
+const EmbedDemo = lazy(() => import('@/pages/EmbedDemo'));
+const MusicResearch = lazy(() => import('@/pages/MusicResearch'));
+const MusicPlaylist = lazy(() => import('@/pages/MusicPlaylist'));
+const MusicTop10 = lazy(() => import('@/pages/MusicTop10'));
+const MusicTopics = lazy(() => import('@/pages/MusicTopics'));
+const MusicRundown = lazy(() => import('@/pages/MusicRundown'));
+const MusicAssets = lazy(() => import('@/pages/MusicAssets'));
+const RadioProductionTools = lazy(() => import('@/pages/RadioProductionTools'));
+const TalkConfigure = lazy(() => import('@/pages/TalkConfigure'));
+const TalkDashboard = lazy(() => import('@/pages/TalkDashboard'));
+const TalkResearch = lazy(() => import('@/pages/TalkResearch'));
+const TalkTopics = lazy(() => import('@/pages/TalkTopics'));
+const TalkGuests = lazy(() => import('@/pages/TalkGuests'));
+const TalkRundown = lazy(() => import('@/pages/TalkRundown'));
+const TalkAssets = lazy(() => import('@/pages/TalkAssets'));
+const TalkExport = lazy(() => import('@/pages/TalkExport'));
+const TalkLive = lazy(() => import('@/pages/TalkLive'));
+const ResearchConfigure = lazy(() => import('@/pages/ResearchConfigure'));
+const ResearchDashboard = lazy(() => import('@/pages/ResearchDashboard'));
+const ResearchTopics = lazy(() => import('@/pages/ResearchTopics'));
+const ResearchManager = lazy(() => import('@/pages/ResearchManager'));
+const ResearchDossier = lazy(() => import('@/pages/ResearchDossier'));
+const ResearchAssets = lazy(() => import('@/pages/ResearchAssets'));
+const ResearchExport = lazy(() => import('@/pages/ResearchExport'));
+const ResearchArchive = lazy(() => import('@/pages/ResearchArchive'));
+const DefaultProductionSettings = lazy(() => import('@/pages/DefaultProductionSettings'));
+const Presentations = lazy(() => import('@/pages/Presentations'));
+const PresentationEditor = lazy(() => import('@/pages/PresentationEditor'));
 // Redirects /news/presentations/:id → /editor/:id (Navigate doesn't interpolate route params)
 const RedirectToEditor = () => {
   const { id } = useParams();
   return <Navigate to={`/editor/${id}`} replace />;
 };
-import TalkLayout from '@/components/layout/TalkLayout';
-import CookingLayout from '@/components/layout/CookingLayout';
-import SportsLayout from '@/components/layout/SportsLayout';
-import CosmoLayout from '@/components/layout/CosmoLayout';
-import RPPLobby from '@/pages/RPPLobby';
-import ResearchLayout from '@/components/rpp/ResearchLayout';
-import SpiritualLayout from '@/components/layout/SpiritualLayout';
-import SpiritualConfigure from '@/pages/SpiritualConfigure';
-import SpiritualDashboard from '@/pages/SpiritualDashboard';
-import SpiritualResearch from '@/pages/SpiritualResearch';
-import SpiritualResearchDetail from '@/pages/SpiritualResearchDetail';
-import SpiritualLibrary from '@/pages/SpiritualLibrary';
-import LibraryReader from '@/pages/LibraryReader';
-import LibraryWordStudy from '@/pages/LibraryWordStudy';
-import LibraryCompare from '@/pages/LibraryCompare';
-import LibraryLanguages from '@/pages/LibraryLanguages';
-import SpiritualStudy from '@/pages/SpiritualStudy';
-import SpiritualStudySession from '@/pages/SpiritualStudySession';
-import SpiritualMessage from '@/pages/SpiritualMessage';
-import SpiritualAssets from '@/pages/SpiritualAssets';
-import SpiritualPackage from '@/pages/SpiritualPackage';
-import SpiritualExport from '@/pages/SpiritualExport';
-import WorldScriptureRegistry from '@/pages/admin/WorldScriptureRegistry';
-import WorldScriptureRegistryDetail from '@/pages/admin/WorldScriptureRegistryDetail';
-import ContentAcquisitionEngine from '@/pages/admin/ContentAcquisitionEngine';
-import FoundationSeeder from '@/pages/admin/FoundationSeeder';
-import SourceManagementCenter from '@/pages/admin/SourceManagementCenter';
-import HandlerRegistry from '@/pages/admin/HandlerRegistry';
-import CreapSettings from '@/pages/admin/CreapSettings';
+const TalkLayout = lazy(() => import('@/components/layout/TalkLayout'));
+const RPPLobby = lazy(() => import('@/pages/RPPLobby'));
+const ResearchLayout = lazy(() => import('@/components/rpp/ResearchLayout'));
+const SpiritualLayout = lazy(() => import('@/components/layout/SpiritualLayout'));
+const SpiritualConfigure = lazy(() => import('@/pages/SpiritualConfigure'));
+const SpiritualDashboard = lazy(() => import('@/pages/SpiritualDashboard'));
+const SpiritualResearch = lazy(() => import('@/pages/SpiritualResearch'));
+const SpiritualResearchDetail = lazy(() => import('@/pages/SpiritualResearchDetail'));
+const SpiritualLibrary = lazy(() => import('@/pages/SpiritualLibrary'));
+const LibraryReader = lazy(() => import('@/pages/LibraryReader'));
+const LibraryWordStudy = lazy(() => import('@/pages/LibraryWordStudy'));
+const LibraryCompare = lazy(() => import('@/pages/LibraryCompare'));
+const LibraryLanguages = lazy(() => import('@/pages/LibraryLanguages'));
+const SpiritualStudy = lazy(() => import('@/pages/SpiritualStudy'));
+const SpiritualStudySession = lazy(() => import('@/pages/SpiritualStudySession'));
+const SpiritualMessage = lazy(() => import('@/pages/SpiritualMessage'));
+const SpiritualAssets = lazy(() => import('@/pages/SpiritualAssets'));
+const SpiritualPackage = lazy(() => import('@/pages/SpiritualPackage'));
+const SpiritualExport = lazy(() => import('@/pages/SpiritualExport'));
+const WorldScriptureRegistry = lazy(() => import('@/pages/admin/WorldScriptureRegistry'));
+const WorldScriptureRegistryDetail = lazy(() => import('@/pages/admin/WorldScriptureRegistryDetail'));
+const ContentAcquisitionEngine = lazy(() => import('@/pages/admin/ContentAcquisitionEngine'));
+const FoundationSeeder = lazy(() => import('@/pages/admin/FoundationSeeder'));
+const SourceManagementCenter = lazy(() => import('@/pages/admin/SourceManagementCenter'));
+const HandlerRegistry = lazy(() => import('@/pages/admin/HandlerRegistry'));
+const CreapSettings = lazy(() => import('@/pages/admin/CreapSettings'));
 import ControllerDashboard from '@/components/creapd/ControllerDashboard';
-import AssetLibrary from '@/pages/admin/AssetLibrary';
-
+import StudioAvailabilityGate from '@/components/shared/StudioAvailabilityGate';
+const AssetLibrary = lazy(() => import('@/pages/admin/AssetLibrary'));
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -158,17 +138,49 @@ const AuthenticatedApp = () => {
   }
 
   return (
+    <Suspense
+      fallback={
+        <div className="fixed inset-0 flex items-center justify-center bg-background">
+          <CreapdLoading size="lg" />
+        </div>
+      }
+    >
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route path="/auth-debug" element={<AuthDebug />} />
         <Route element={<CREAPModeLayout />}>
         <Route path="/" element={<CreapdHome />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route element={<ProducerLayout />}>
-          <Route path="/news/dashboard" element={<DashboardRouter />} />
+          {/* Podcast Production — user-facing routes. Legacy /news and /talk routes remain below during migration. */}
+          <Route path="/podcast" element={<PodcastDashboard />} />
+          <Route path="/podcast/dashboard" element={<Navigate to="/podcast" replace />} />
+          <Route path="/podcast/setup" element={<TalkConfigure />} />
+          <Route path="/podcast/planner" element={<WeeklyPlanner />} />
+          <Route path="/podcast/research" element={<ResearchDesk />} />
+          <Route path="/podcast/sources" element={<Sources />} />
+          <Route path="/podcast/import" element={<ManualImport />} />
+          <Route path="/podcast/assembly" element={<EpisodeAssembly />} />
+          <Route path="/podcast/brief" element={<Navigate to="/podcast/assembly" replace />} />
+          <Route path="/podcast/queue" element={<StoryQueue />} />
+          <Route path="/podcast/review" element={<StoryIntelligenceReview />} />
+          <Route path="/podcast/story/:id" element={<StoryDetail />} />
+          <Route path="/podcast/library" element={<StoryLibrary />} />
+          <Route path="/podcast/workspace" element={<StoryManager />} />
+          <Route path="/podcast/production" element={<PodcastProduction />} />
+          <Route path="/podcast/guests" element={<TalkGuests />} />
+          <Route path="/podcast/rundown" element={<TalkRundown />} />
+          <Route path="/podcast/assets" element={<TalkAssets />} />
+          <Route path="/podcast/archive" element={<ArchivePage />} />
+          <Route path="/podcast/export" element={<ExportCenter />} />
+          <Route path="/podcast/profile" element={<UserProfile />} />
+          <Route path="/podcast/presentations" element={<Presentations />} />
+
+          <Route path="/news/dashboard" element={<PodcastDashboard />} />
           <Route path="/news/planner" element={<WeeklyPlanner />} />
           <Route path="/news/brief" element={<TodaysBrief />} />
           <Route path="/news/queue" element={<StoryQueue />} />
@@ -211,6 +223,13 @@ const AuthenticatedApp = () => {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/production-types" element={<Navigate to="/" replace />} />
 
+        {/* Podcast Studio — standalone execution cockpit */}
+        <Route path="/podcast/studio" element={<TalkLive />} />
+        <Route path="/talk/live" element={<TalkLive />} />
+
+        {/* Radio Studio — full-screen live production workspace */}
+        <Route path="/music/live" element={<RadioLive />} />
+
         {/* Music Production */}
         <Route element={<MusicLayout />}>
           <Route path="/music/configure" element={<MusicConfigure />} />
@@ -222,55 +241,20 @@ const AuthenticatedApp = () => {
           <Route path="/music/topics" element={<MusicTopics />} />
           <Route path="/music/rundown" element={<MusicRundown />} />
           <Route path="/music/assets" element={<MusicAssets />} />
+          <Route path="/music/production-tools" element={<RadioProductionTools />} />
           <Route path="/settings/default-production" element={<DefaultProductionSettings />} />
         </Route>
 
         {/* Talk Production */}
         <Route element={<TalkLayout />}>
           <Route path="/talk/configure" element={<TalkConfigure />} />
-          <Route path="/talk/dashboard" element={<TalkDashboard />} />
+          <Route path="/talk/dashboard" element={<Navigate to="/podcast" replace />} />
           <Route path="/talk/research" element={<TalkResearch />} />
           <Route path="/talk/topics" element={<TalkTopics />} />
           <Route path="/talk/guests" element={<TalkGuests />} />
           <Route path="/talk/rundown" element={<TalkRundown />} />
           <Route path="/talk/assets" element={<TalkAssets />} />
           <Route path="/talk/export" element={<TalkExport />} />
-        </Route>
-
-        {/* Cooking Production */}
-        <Route element={<CookingLayout />}>
-          <Route path="/cooking/configure" element={<CookingConfigure />} />
-          <Route path="/cooking/dashboard" element={<CookingDashboard />} />
-          <Route path="/cooking/research" element={<CookingResearch />} />
-          <Route path="/cooking/recipes" element={<CookingRecipes />} />
-          <Route path="/cooking/ingredients" element={<CookingIngredients />} />
-          <Route path="/cooking/rundown" element={<CookingRundown />} />
-          <Route path="/cooking/assets" element={<CookingAssets />} />
-          <Route path="/cooking/export" element={<CookingExport />} />
-        </Route>
-
-        {/* Sports Production */}
-        <Route element={<SportsLayout />}>
-          <Route path="/sports/configure" element={<SportsConfigure />} />
-          <Route path="/sports/dashboard" element={<SportsDashboard />} />
-          <Route path="/sports/research" element={<SportsResearch />} />
-          <Route path="/sports/games" element={<SportsGames />} />
-          <Route path="/sports/athletes" element={<SportsAthletes />} />
-          <Route path="/sports/rundown" element={<SportsRundown />} />
-          <Route path="/sports/assets" element={<SportsAssets />} />
-          <Route path="/sports/export" element={<SportsExport />} />
-        </Route>
-
-        {/* Cosmo Production */}
-        <Route element={<CosmoLayout />}>
-          <Route path="/cosmo/configure" element={<CosmoConfigure />} />
-          <Route path="/cosmo/dashboard" element={<CosmoDashboard />} />
-          <Route path="/cosmo/research" element={<CosmoResearch />} />
-          <Route path="/cosmo/topics" element={<CosmoTopics />} />
-          <Route path="/cosmo/guests" element={<CosmoGuests />} />
-          <Route path="/cosmo/rundown" element={<CosmoRundown />} />
-          <Route path="/cosmo/assets" element={<CosmoAssets />} />
-          <Route path="/cosmo/export" element={<CosmoExport />} />
         </Route>
 
         {/* Research Production Profile */}
@@ -287,6 +271,7 @@ const AuthenticatedApp = () => {
         </Route>
 
         {/* Spiritual Production */}
+        <Route element={<StudioAvailabilityGate studioKey="spiritual" />}>
         <Route element={<SpiritualLayout />}>
           <Route path="/spiritual/configure" element={<SpiritualConfigure />} />
           <Route path="/spiritual/dashboard" element={<SpiritualDashboard />} />
@@ -305,6 +290,7 @@ const AuthenticatedApp = () => {
           <Route path="/spiritual/package" element={<SpiritualPackage />} />
           <Route path="/spiritual/export" element={<SpiritualExport />} />
         </Route>
+        </Route>
 
         {/* Admin */}
         <Route path="/admin/world-scripture-registry" element={<WorldScriptureRegistry />} />
@@ -320,6 +306,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 

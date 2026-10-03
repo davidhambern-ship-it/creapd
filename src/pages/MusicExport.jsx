@@ -6,7 +6,6 @@ import { Loader2, Download, FileText, Music, ClipboardList, Image, Archive, Disc
 import { ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS, formatRuntime } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 
 export default function MusicExport() {
   const { config, playlist, topics, research, rundown, assets, loading } = useMusicProduction();
@@ -107,7 +106,7 @@ export default function MusicExport() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
         {/* Terminal-style header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -196,7 +195,6 @@ export default function MusicExport() {
           <Archive className="w-4 h-4 shrink-0" style={{ color: '#8B00FF' }} />
           <span className="font-mono text-xs">[pending] ZIP package export will be available in a future update.</span>
         </div>
-        <PPNavBar />
       </div>
     </div>
   );

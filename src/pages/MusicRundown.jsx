@@ -7,7 +7,6 @@ import { ClipboardList, Disc3, Plus, Volume2 } from 'lucide-react';
 import { formatRuntime, SEGMENT_COLORS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 import RundownDragList from '@/components/music/RundownDragList';
 import AddSegmentModal from '@/components/music/AddSegmentModal';
 
@@ -51,7 +50,7 @@ export default function MusicRundown() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
 
         {/* Header */}
         <motion.div
@@ -149,8 +148,6 @@ export default function MusicRundown() {
             </button>
           </div>
         )}
-
-        <PPNavBar />
       </div>
 
       {/* Add Segment Modal */}

@@ -6,27 +6,30 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import WordSearch from '@/components/games/WordSearch';
 import Asteroids from '@/components/games/Asteroids';
 import BuildStageTracker from '@/components/music/BuildStageTracker';
+import FormatSwitcher from '@/components/layout/FormatSwitcher';
 
 const STATUS_MESSAGES = {
   planning: 'Planning production requirements...',
   building: 'Generating playlist & content...',
   refreshing: 'Refreshing assets...',
   configuring: 'Preparing configuration...',
-  ready: 'Production ready!',
+  ready: 'Production ready for review!',
+  in_review: 'Production built — review required.',
+  approved: 'Production approved!',
   failed: 'Build failed.',
 };
 
 const MODE_CONFIG = {
   discovery: {
     title: 'Discovery Complete',
-    readyTitle: 'Production Ready!',
-    readyText: 'Taking you to your dashboard...',
+    readyTitle: 'Ready for Review!',
+    readyText: 'Taking you to the review dashboard...',
     failedTitle: 'Build Failed',
   },
   production: {
     title: 'Rebuilding Production',
-    readyTitle: 'Production Ready!',
-    readyText: 'Loading your dashboard...',
+    readyTitle: 'Ready for Review!',
+    readyText: 'Loading the review dashboard...',
     failedTitle: 'Rebuild Failed',
   },
 };
@@ -46,7 +49,7 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
       if (event.type === 'update' && event.data?.id === configId) {
         const updated = event.data;
         if (updated.status) setBuildStatus(updated.status);
-        if (updated.status === 'ready' && onCompleteRef.current) {
+        if (['ready', 'in_review', 'approved'].includes(updated.status) && onCompleteRef.current) {
           setTimeout(() => onCompleteRef.current?.(), 1500);
         }
       }
@@ -67,13 +70,16 @@ export default function DiscoveryBreakRoom({ buildError, configId, onComplete, m
   };
 
   const statusText = STATUS_MESSAGES[buildStatus] || STATUS_MESSAGES.building;
-  const isReady = buildStatus === 'ready';
+  const isReady = ['ready', 'in_review', 'approved'].includes(buildStatus);
   const isFailed = buildStatus === 'failed' || buildError;
   const mc = MODE_CONFIG[mode] || MODE_CONFIG.discovery;
 
   return (
     <div className="relative h-full min-h-full overflow-hidden bg-black flex items-center justify-center">
       <CyberpunkMusicBg variant="eq" />
+      <div className="absolute right-3 top-3 z-[300]">
+        <FormatSwitcher format="radio" compact />
+      </div>
       <div className="relative z-10 max-w-2xl w-full px-6 py-4 max-h-full overflow-y-auto">
         {/* Header */}
         <div className="text-center mb-6">

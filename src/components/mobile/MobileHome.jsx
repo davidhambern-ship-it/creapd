@@ -2,25 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Sparkles, ArrowRight, Info, Play, Clock, User, Eye, Heart, Film,
-  Clapperboard, Layers, Newspaper, Church, Lightbulb, Package,
-  Volume2, Presentation, Share2,
+  Clapperboard, Radio, FlaskConical, Lightbulb, Package,
+  Volume2, Presentation, Share2, Mic2, Construction,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CreapdLogo from '@/components/brand/CreapdLogo';
-import { ACTIVE_PROFILES, getProfileByKey } from '@/lib/productionProfiles';
+import { PRODUCTION_PROFILES, ACTIVE_PROFILES, getProfileByKey } from '@/lib/productionProfiles';
 
 const QUICK_ACTIONS = [
+  { icon: Radio, label: 'Radio', path: '/music/configure', color: 'text-purple-400', bg: 'bg-purple-500/10' },
+  { icon: Mic2, label: 'Podcast', path: '/news/dashboard', color: 'text-orange-300', bg: 'bg-orange-500/10' },
+  { icon: FlaskConical, label: 'Research', path: '/research', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
   { icon: Clapperboard, label: 'Editor', path: '/editor', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
   { icon: Clock, label: 'Last Prod', path: '/news/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
-  { icon: Newspaper, label: 'News', path: '/news/dashboard', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-  { icon: Church, label: 'Message', path: '/spiritual/message', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  { icon: Layers, label: 'Stories', path: '/news/workspace', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10' },
   { icon: Sparkles, label: 'Build', path: null, color: 'text-berna-purple', bg: 'bg-berna-purple/10', action: 'build' },
 ];
 
 const PIPELINE_STEPS = [
   { icon: Lightbulb, label: 'Idea', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
-  { icon: Clapperboard, label: 'Profile', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
+  { icon: Clapperboard, label: 'Format', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
   { icon: Package, label: 'Package', color: 'text-berna-emerald', bg: 'bg-berna-emerald/10' },
   { icon: Volume2, label: 'Voice', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
   { icon: Presentation, label: 'Present', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
@@ -72,14 +72,14 @@ export default function MobileHome({ onGetStarted, onShowDetails, onBuildWithCRE
         </div>
       </section>
 
-      {/* ── Production Profiles Carousel ── */}
+      {/* ── Production Formats Carousel ── */}
       <section className="pt-5">
         <div className="px-3 mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-heading font-bold text-white neon-underline">Production Profiles</h2>
+          <h2 className="text-sm font-heading font-bold text-white neon-underline">Production Formats</h2>
           <span className="text-[9px] text-muted-foreground">{ACTIVE_PROFILES.length} active</span>
         </div>
         <div className="m-carousel px-3">
-          {ACTIVE_PROFILES.map((profile, i) => {
+          {PRODUCTION_PROFILES.map((profile, i) => {
             const Icon = profile.icon;
             return (
               <div key={profile.key} className="w-60 m-dept-card m-animate-enter" style={{ animationDelay: `${i * 0.05}s` }}>
@@ -97,9 +97,13 @@ export default function MobileHome({ onGetStarted, onShowDetails, onBuildWithCRE
                   <div className="flex gap-2">
                     <button
                       onClick={() => onGetStarted(profile)}
-                      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-heading font-semibold bg-gradient-to-r ${profile.gradient} ${profile.accent} border ${profile.accentBorder} transition-all active:scale-95`}
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-heading font-semibold border transition-all active:scale-95 ${profile.available ? `bg-gradient-to-r ${profile.gradient} ${profile.accent} ${profile.accentBorder}` : 'bg-amber-400/[0.08] text-amber-200 border-amber-400/25'}`}
                     >
-                      Start <ArrowRight className="w-3 h-3" />
+                      {profile.available ? (
+                        <>Start <ArrowRight className="w-3 h-3" /></>
+                      ) : (
+                        <><Construction className="w-3 h-3" />Under Construction</>
+                      )}
                     </button>
                     <button
                       onClick={() => onShowDetails(profile)}

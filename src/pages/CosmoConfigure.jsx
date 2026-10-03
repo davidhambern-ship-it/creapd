@@ -108,7 +108,7 @@ export default function CosmoConfigure() {
 
       await base44.functions.invoke('buildCosmoProduction', { configuration_id: savedConfig.id });
 
-      navigate('/cosmo/dashboard');
+      navigate('/beauty/dashboard');
     } catch (err) {
       setBuildError(err.message || 'Failed to build production. Please try again.');
       setBuilding(false);
@@ -195,7 +195,7 @@ export default function CosmoConfigure() {
             </div>
             <div className="space-y-2">
               <Label>Short Show Description</Label>
-              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your health & beauty show..." rows={3} />
+              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your cosmetology and beauty show..." rows={3} />
             </div>
           </div>
         );
@@ -229,7 +229,7 @@ export default function CosmoConfigure() {
           </div>
         );
       case 3:
-        return <div className="space-y-3"><p className="text-sm text-muted-foreground mb-4">Choose which health & beauty topics Producer should research and prepare.</p>{renderTagSelection('topics', TOPIC_OPTIONS)}</div>;
+        return <div className="space-y-3"><p className="text-sm text-muted-foreground mb-4">Choose which cosmetology and beauty topics Producer should research and prepare.</p>{renderTagSelection('topics', TOPIC_OPTIONS)}</div>;
       case 4:
         return <div className="space-y-3"><p className="text-sm text-muted-foreground mb-4">All sources are enabled by default. Disable any you don't want.</p>{renderTagSelection('research_sources', RESEARCH_SOURCE_OPTIONS)}</div>;
       case 5:
@@ -291,7 +291,7 @@ export default function CosmoConfigure() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
-          <h2 className="text-xl font-heading font-bold mb-3">Building Your Cosmo Production</h2>
+          <h2 className="text-xl font-heading font-bold mb-3">Building Your Beauty Production</h2>
           <p className="text-muted-foreground mb-8">Producer is generating research, topics, tutorials, rundown, and AI assets. This takes about 30-60 seconds.</p>
           <div className="space-y-3 text-left">
             {['Researching beauty & wellness topics', 'Generating topic summaries', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
@@ -314,7 +314,7 @@ export default function CosmoConfigure() {
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-heading font-bold">Cosmo Production Configuration</h1>
+            <h1 className="text-2xl font-heading font-bold">Beauty Production Configuration</h1>
             <p className="text-sm text-muted-foreground">Step {step + 1} of {STEPS.length}: {STEPS[step].label}</p>
           </div>
         </div>

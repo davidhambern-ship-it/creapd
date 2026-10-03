@@ -186,7 +186,7 @@ export default function StoryQueue() {
         entity_name: `${readyIds.length} story${readyIds.length > 1 ? 'ies' : ''}`,
         details: `Sent ${readyIds.length} story${readyIds.length > 1 ? 'ies' : ''} to Story Manager`,
       });
-      navigate('/news/workspace');
+      navigate('/podcast/workspace');
     } catch (e) {
       console.error('Failed to send stories to manager:', e);
     } finally {
@@ -280,15 +280,15 @@ export default function StoryQueue() {
     <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Story Queue</h1>
-          <p className="text-xs text-muted-foreground mt-1">Assignment desk — review and manage incoming stories</p>
+          <h1 className="text-xl font-bold text-white">Content Queue</h1>
+          <p className="text-xs text-muted-foreground mt-1">Review and organize material CREAPD gathered for this episode</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
             <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />Refresh
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to="/news/review" className="border-berna-purple/20 text-berna-purple text-xs hover:bg-berna-purple/10 inline-flex items-center justify-center gap-2 h-8 rounded-md px-3">
+            <Link to="/podcast/review" className="border-berna-purple/20 text-berna-purple text-xs hover:bg-berna-purple/10 inline-flex items-center justify-center gap-2 h-8 rounded-md px-3">
               <Sparkles className="w-3 h-3" />Intelligence Review
             </Link>
           </Button>
@@ -471,7 +471,7 @@ export default function StoryQueue() {
               <div className="ml-8 px-3 py-1.5 rounded-lg bg-yellow-400/[0.04] border border-yellow-400/10 flex items-center gap-2">
                 <Copy className="w-3 h-3 text-yellow-400" />
                 <span className="text-[10px] text-yellow-400">{duplicates.length} additional source{duplicates.length > 1 ? 's' : ''} reporting same story</span>
-                <Link to={`/news/story/${primary.id}`} className="text-[10px] text-berna-purple hover:underline ml-auto">
+                <Link to={`/podcast/story/${primary.id}`} className="text-[10px] text-berna-purple hover:underline ml-auto">
                   View all sources →
                 </Link>
               </div>

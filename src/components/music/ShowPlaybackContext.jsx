@@ -30,6 +30,7 @@ export function ShowPlaybackProvider({ children }) {
   const [isYtPlaying, setIsYtPlaying] = useState(false);
   const [isYtReady, setIsYtReady] = useState(false);
   const [activeVideoId, setActiveVideoId] = useState(null);
+  const [youtubeRequested, setYoutubeRequested] = useState(false);
 
   // ── Refs for latest values (used in callbacks) ──
   const autoplayIndexRef = useRef(autoplayIndex);
@@ -147,22 +148,33 @@ export function ShowPlaybackProvider({ children }) {
   handleSongEndedRef.current = handleSongEnded;
 
   // ── YT API + Player initialization ──
+  // Performance rule: do not download/initialize YouTube on ordinary Radio pages.
+  // The player wakes up only after the user actually starts playback.
   useEffect(() => {
+    if (!youtubeRequested) return undefined;
+
+    let cancelled = false;
+    let retryTimer = null;
+
     if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.body.appendChild(tag);
+      const existing = document.querySelector('script[data-creapd-youtube-api="true"]');
+      if (!existing) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        tag.async = true;
+        tag.dataset.creapdYoutubeApi = 'true';
+        document.body.appendChild(tag);
+      }
     }
 
     const initPlayer = () => {
+      if (cancelled) return;
       if (!window.YT || !window.YT.Player) {
-        setTimeout(initPlayer, 200);
+        retryTimer = window.setTimeout(initPlayer, 200);
         return;
       }
       if (ytPlayerRef.current || !ytWrapperRef.current) return;
 
-      // Create the player container imperatively so React never tries to
-      // manage or remove the node that YouTube replaces with an <iframe>.
       const playerDiv = document.createElement('div');
       ytWrapperRef.current.appendChild(playerDiv);
 
@@ -187,6 +199,8 @@ export function ShowPlaybackProvider({ children }) {
     initPlayer();
 
     return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
       if (ytPlayerRef.current) {
         try { ytPlayerRef.current.destroy(); } catch {}
         ytPlayerRef.current = null;
@@ -195,7 +209,12 @@ export function ShowPlaybackProvider({ children }) {
         ytWrapperRef.current.innerHTML = '';
       }
     };
-  }, []);
+  }, [youtubeRequested]);
+
+  useEffect(() => {
+    if (!activeVideoId || !isYtReady || !ytPlayerRef.current) return;
+    try { ytPlayerRef.current.loadVideoById(activeVideoId); } catch {}
+  }, [activeVideoId, isYtReady]);
 
   // ── Autoplay state machine ──
   useEffect(() => {
@@ -232,6 +251,7 @@ export function ShowPlaybackProvider({ children }) {
 
   // ── Public actions ──
   const startAutoplay = useCallback((index) => {
+    setYoutubeRequested(true);
     stop();
     setSongPhase(null);
     setAutoplayIndex(index);
@@ -262,6 +282,7 @@ export function ShowPlaybackProvider({ children }) {
   }, [speakingId, stopAutoplay, startAutoplay, speak, getScriptForItem]);
 
   const playSong = useCallback((videoId, itemIndex) => {
+    setYoutubeRequested(true);
     if (autoplayIndexRef.current !== null) {
       setAutoplayIndex(itemIndex);
       setSongPhase('song');
