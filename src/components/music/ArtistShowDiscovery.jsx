@@ -59,7 +59,30 @@ function pickRecorderMime() {
 
 function uploadContentType(blob) {
   const raw = String(blob?.type || '').split(';')[0].trim();
-  return raw || 'audio/webm';
+  if (raw) return raw;
+  const name = String(blob?.name || '').toLowerCase();
+  if (name.endsWith('.mp3')) return 'audio/mpeg';
+  if (name.endsWith('.wav')) return 'audio/wav';
+  if (name.endsWith('.m4a') || name.endsWith('.mp4')) return 'audio/mp4';
+  if (name.endsWith('.ogg')) return 'audio/ogg';
+  if (name.endsWith('.flac')) return 'audio/flac';
+  return 'audio/webm';
+}
+
+function audioDuration(file) {
+  if (!file) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio();
+    const finish = value => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(value) && value > 0 ? Math.round(value) : null);
+    };
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => finish(Number(audio.duration));
+    audio.onerror = () => finish(null);
+    audio.src = url;
+  });
 }
 
 async function uploadAudioBlob(blob, action, filename) {
@@ -159,6 +182,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     album: '',
     release_year: '',
     description: '',
+    lyrics: '',
     source_url: '',
   });
   const [trackAudio, setTrackAudio] = useState(null);
@@ -247,7 +271,9 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     setNotice('');
     try {
       let audioUrl = '';
+      let durationSeconds = null;
       if (trackAudio) {
+        durationSeconds = await audioDuration(trackAudio);
         audioUrl = await uploadAudioBlob(
           trackAudio,
           'artist_catalog_audio_upload_authorize',
@@ -263,11 +289,12 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
           artist: profile.public_name || profile.artist_name,
           source_type: audioUrl ? 'upload' : sourceTypeFromUrl(trackForm.source_url),
           audio_url: audioUrl || null,
+          metadata: durationSeconds ? { duration_seconds: durationSeconds } : {},
         },
       });
 
       setCatalog(current => [...current, result.track]);
-      setTrackForm({ title: '', album: '', release_year: '', description: '', source_url: '' });
+      setTrackForm({ title: '', album: '', release_year: '', description: '', lyrics: '', source_url: '' });
       setTrackAudio(null);
       setNotice('Track added to the Artist Catalogue.');
     } catch (err) {
@@ -630,7 +657,8 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                       <Input value={trackForm.release_year} onChange={event => setTrackForm(current => ({ ...current, release_year: event.target.value }))} placeholder="Release year" className="border-white/10 bg-black/35 text-white" />
                     </div>
                     <Input value={trackForm.source_url} onChange={event => setTrackForm(current => ({ ...current, source_url: event.target.value }))} placeholder="YouTube / SoundCloud / Spotify / other track link" className="border-white/10 bg-black/35 text-white" />
-                    <Textarea value={trackForm.description} onChange={event => setTrackForm(current => ({ ...current, description: event.target.value }))} placeholder="Artist note: what CREAPr is allowed to know about this track (optional)" className="min-h-[100px] border-white/10 bg-black/35 text-white" />
+                    <Textarea value={trackForm.description} onChange={event => setTrackForm(current => ({ ...current, description: event.target.value }))} placeholder="Artist note: what CREAPr is allowed to know about this track (optional)" className="min-h-[90px] border-white/10 bg-black/35 text-white" />
+                    <Textarea value={trackForm.lyrics} onChange={event => setTrackForm(current => ({ ...current, lyrics: event.target.value }))} placeholder="Lyrics (optional, but this lets CREAPr notice themes, contrasts and lyrical outliers)" className="min-h-[120px] border-white/10 bg-black/35 text-white" />
 
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-cyan-400/20 bg-cyan-500/[0.035] p-3 hover:bg-cyan-500/[0.06]">
                       <Upload className="h-4 w-4 text-cyan-300" />
