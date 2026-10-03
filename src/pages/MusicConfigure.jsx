@@ -257,6 +257,12 @@ export default function MusicConfigure() {
         ? catalogTitles.join('\n')
         : prev.must_play_songs,
       production_format: 'radio',
+      source_payload: {
+        ...(prev.source_payload && typeof prev.source_payload === 'object' ? prev.source_payload : {}),
+        show_mode: 'artist',
+        artist_profile_id: profile?.id || null,
+        artist_interview_session_id: interview?.id || null,
+      },
     }));
     setArtistShowOpen(false);
     setOpenRoom('identity');
