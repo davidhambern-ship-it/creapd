@@ -1939,6 +1939,30 @@ export async function generateMusicTop10({ sql, ownerUserId, configurationId, pr
     WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}
     ORDER BY order_index ASC
   `;
+  const artistMeta = artistShowMetadata(config);
+  if (artistMeta.enabled) {
+    await sql`DELETE FROM creapd.music_top10_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
+    const catalogVideoTracks = playlist.filter(item => item.youtube_video_id).slice(0, 10);
+    const rows = [];
+    for (let index = 0; index < catalogVideoTracks.length; index += 1) {
+      const item = catalogVideoTracks[index];
+      const [row] = await sql`
+        INSERT INTO creapd.music_top10_items (
+          id, configuration_id, owner_user_id, order_index, title, youtube_video_id,
+          thumbnail_url, channel_name, locked, note
+        ) VALUES (
+          ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${index},
+          ${`${item.song_title} — ${item.artist}`}, ${item.youtube_video_id},
+          ${item.thumbnail_url || null}, ${item.channel_name || item.artist || null},
+          false, 'Selected from the active music catalogue'
+        )
+        RETURNING *
+      `;
+      rows.push(row);
+    }
+    return rows;
+  }
+
   const locked = preserveLocked ? existing.filter(row => row.locked) : [];
   if (preserveLocked) {
     await sql`DELETE FROM creapd.music_top10_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} AND locked=false`;
