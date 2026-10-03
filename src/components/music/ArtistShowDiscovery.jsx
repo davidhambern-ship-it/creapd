@@ -39,6 +39,17 @@ const EMPTY_PROFILE = {
   source_links: [],
 };
 
+function normalizeSourceLinks(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {}
+  }
+  return [];
+}
+
 function apiErrorMessage(err, fallback) {
   const diagnostic = err?.data?.diagnostic;
   const raw =
@@ -236,7 +247,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setProfile(result?.profile ? {
         ...EMPTY_PROFILE,
         ...result.profile,
-        source_links: Array.isArray(result.profile.source_links) ? result.profile.source_links : [],
+        source_links: normalizeSourceLinks(result.profile.source_links),
       } : EMPTY_PROFILE);
       setCatalog(result?.catalog || []);
       setInterview(result?.interview || null);
@@ -273,13 +284,37 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     setError('');
     setNotice('');
     try {
+      const submittedLinks = normalizeSourceLinks(profile.source_links);
       const result = await creapdApi.post('/production/core', {
         action: 'music_artist_profile_save',
-        profile,
+        profile: {
+          ...profile,
+          source_links: submittedLinks,
+        },
       });
-      setProfile(current => ({ ...current, ...(result?.profile || {}) }));
-      setNotice('Artist Profile saved. CREAPr can reuse this information for future Artist Shows.');
+
+      const savedProfile = {
+        ...profile,
+        ...(result?.profile || {}),
+        source_links: normalizeSourceLinks(result?.profile?.source_links ?? submittedLinks),
+      };
+
+      setProfile(savedProfile);
       setStage('catalog');
+
+      const youtubeUrl = savedProfile.source_links.find(item => item?.type === 'youtube')?.url || '';
+      if (youtubeUrl) {
+        setNotice('Artist Profile saved. CREAPD is scanning the connected YouTube catalogue now…');
+        window.setTimeout(() => {
+          scanYoutube({
+            profileId: savedProfile.id,
+            channelUrl: youtubeUrl,
+            automatic: true,
+          });
+        }, 0);
+      } else {
+        setNotice('Artist Profile saved. Add a YouTube channel URL if you want CREAPD to build the catalogue automatically.');
+      }
     } catch (err) {
       setError(apiErrorMessage(err, 'CREAPD could not save the Artist Profile.'));
     } finally {
@@ -342,24 +377,25 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
   };
 
   const youtubeChannelUrl = useMemo(
-    () => (Array.isArray(profile?.source_links)
-      ? profile.source_links.find(item => item?.type === 'youtube')?.url || ''
-      : ''),
+    () => normalizeSourceLinks(profile?.source_links)
+      .find(item => item?.type === 'youtube')?.url || '',
     [profile?.source_links],
   );
 
-  const scanYoutube = async () => {
-    if (!youtubeChannelUrl || youtubeScanning) return;
+  const scanYoutube = async (options = {}) => {
+    const channelUrl = options.channelUrl || youtubeChannelUrl;
+    const profileId = options.profileId || profile?.id;
+    if (!channelUrl || !profileId || youtubeScanning) return;
     setYoutubeScanning(true);
     setError('');
-    setNotice('');
+    setNotice(options.automatic ? 'Scanning your connected YouTube catalogue…' : '');
     setYoutubeDiagnostics(null);
     try {
       const result = await creapdApi.post('/production/core', {
         action: 'music_artist_youtube_scan',
-        profile_id: profile?.id,
-        channel_url: youtubeChannelUrl,
-        limit: 30,
+        profile_id: profileId,
+        channel_url: channelUrl,
+        limit: 60,
       });
       const videos = result?.videos || [];
       setYoutubeScan(videos);
