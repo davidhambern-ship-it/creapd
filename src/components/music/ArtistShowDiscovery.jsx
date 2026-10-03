@@ -39,6 +39,15 @@ const EMPTY_PROFILE = {
   source_links: [],
 };
 
+function apiErrorMessage(err, fallback) {
+  const diagnostic = err?.data?.diagnostic;
+  const message =
+    diagnostic?.message ||
+    err?.data?.message ||
+    (typeof err?.message === 'string' && !/^[A-Z0-9_]+$/.test(err.message) ? err.message : '');
+  return message || fallback;
+}
+
 function sourceTypeFromUrl(value) {
   const url = String(value || '').toLowerCase();
   if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
@@ -352,7 +361,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
           : 'CREAPD did not find public uploads on that YouTube page.'
       );
     } catch (err) {
-      setError(err?.message || 'CREAPD could not scan that YouTube channel.');
+      setError(apiErrorMessage(err, 'CREAPD could not scan that YouTube channel.'));
     } finally {
       setYoutubeScanning(false);
     }
@@ -381,7 +390,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setYoutubeScan([]);
       setYoutubeSelected(new Set());
     } catch (err) {
-      setError(err?.message || 'CREAPD could not import the selected YouTube tracks.');
+      setError(apiErrorMessage(err, 'CREAPD could not import the selected YouTube tracks.'));
     } finally {
       setYoutubeImporting(false);
     }
