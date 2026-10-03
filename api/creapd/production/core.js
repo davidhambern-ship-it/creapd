@@ -60,6 +60,7 @@ export const config = {
 const OBS_MEDIA_TICKET_TTL_MS = 15 * 60 * 1000;
 const OBS_IMAGE_MAX_BYTES = 40 * 1024 * 1024;
 const OBS_VIDEO_MAX_BYTES = 1024 * 1024 * 1024;
+const OBS_AUDIO_MAX_BYTES = 128 * 1024 * 1024;
 const OBS_IMAGE_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -74,6 +75,16 @@ const OBS_VIDEO_TYPES = new Set([
   'video/quicktime',
   'video/x-m4v',
   'video/mpeg',
+]);
+const OBS_AUDIO_TYPES = new Set([
+  'audio/webm',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/aac',
+  'audio/flac',
 ]);
 
 function safeObsUploadText(value, max = 300) {
@@ -103,6 +114,9 @@ function obsAllowedMediaType(contentType) {
   if (OBS_VIDEO_TYPES.has(contentType)) {
     return { kind: 'video', maxBytes: OBS_VIDEO_MAX_BYTES };
   }
+  if (OBS_AUDIO_TYPES.has(contentType)) {
+    return { kind: 'audio', maxBytes: OBS_AUDIO_MAX_BYTES };
+  }
   return null;
 }
 
@@ -122,6 +136,14 @@ function obsMediaExtension(filename, contentType) {
     'video/quicktime': 'mov',
     'video/x-m4v': 'm4v',
     'video/mpeg': 'mpeg',
+    'audio/webm': 'webm',
+    'audio/mp4': 'm4a',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/aac': 'aac',
+    'audio/flac': 'flac',
   };
 
   return map[contentType] || 'bin';
@@ -165,7 +187,7 @@ function verifyObsMediaTicket(ticket) {
   }
 
   if (
-    !['creapd_obs_media', 'creapd_asset_media'].includes(payload?.purpose) ||
+    !['creapd_obs_media', 'creapd_asset_media', 'creapd_artist_interview_audio', 'creapd_artist_catalog_audio'].includes(payload?.purpose) ||
     !payload?.ownerUserId ||
     !payload?.pathname ||
     !payload?.contentType ||
@@ -912,6 +934,22 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         purpose: 'creapd_asset_media',
         folder: 'assets',
         action: 'asset_media_upload_authorize',
+      });
+    }
+
+    if (action === 'artist_interview_audio_upload_authorize') {
+      return authorizeObsMediaUpload(response, ownerUserId, body, {
+        purpose: 'creapd_artist_interview_audio',
+        folder: 'artist-interviews',
+        action: 'artist_interview_audio_upload_authorize',
+      });
+    }
+
+    if (action === 'artist_catalog_audio_upload_authorize') {
+      return authorizeObsMediaUpload(response, ownerUserId, body, {
+        purpose: 'creapd_artist_catalog_audio',
+        folder: 'artist-catalog',
+        action: 'artist_catalog_audio_upload_authorize',
       });
     }
 
