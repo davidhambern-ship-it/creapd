@@ -57,6 +57,18 @@ function parseArray(value, fallback = []) {
   return fallback;
 }
 
+const DEFAULT_MUSIC_AUTOMATION = [
+  'Auto Research',
+  'Auto Build Playlist',
+  'Auto Develop',
+  'Auto Assemble Packet',
+];
+
+function normalizeAutomation(value) {
+  const parsed = parseArray(value, []);
+  return parsed.length ? parsed : [...DEFAULT_MUSIC_AUTOMATION];
+}
+
 function parseObject(value, fallback = {}) {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
   if (typeof value === 'string' && value.trim()) {
@@ -83,7 +95,7 @@ function withConfigAliases(row) {
     music_topics: JSON.stringify(parseArray(row.music_topics, [])),
     research_sources: JSON.stringify(parseArray(row.research_sources, [])),
     pacing_rules: JSON.stringify(parseObject(row.pacing_rules, {})),
-    ai_automation: JSON.stringify(parseArray(row.ai_automation, [])),
+    ai_automation: JSON.stringify(normalizeAutomation(row.ai_automation)),
     vo_requirements: JSON.stringify(parseObject(row.vo_requirements, {})),
     production_plan: JSON.stringify(parseObject(row.production_plan, {})),
     build_log: JSON.stringify(parseArray(row.build_log, [])),
@@ -252,7 +264,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
     preferred_eras: nullable(merged.preferred_eras),
     playlist_energy_flow: clean(merged.playlist_energy_flow, 'Build Energy Gradually'),
     pacing_rules: parseObject(merged.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 }),
-    ai_automation: parseArray(merged.ai_automation, ['Auto Research','Auto Build Playlist','Auto Develop','Auto Assemble Packet']),
+    ai_automation: normalizeAutomation(merged.ai_automation),
     vo_requirements: parseObject(merged.vo_requirements, {}),
     production_plan: parseObject(merged.production_plan, {}),
     build_log: parseArray(merged.build_log, []),
@@ -634,17 +646,33 @@ async function syncMusicReviewStatus(sql, ownerUserId, configurationId) {
 
   const [segmentCounts] = await sql`
     SELECT
-      count(*)::int AS total,
-      count(*) FILTER (WHERE lower(status) IN ('approved','locked'))::int AS approved
+      count(*)::int AS rundown_total,
+      count(*) FILTER (WHERE lower(segment_type) <> 'song')::int AS spoken_total,
+      count(*) FILTER (
+        WHERE lower(segment_type) <> 'song'
+          AND lower(status) IN ('approved','locked')
+      )::int AS spoken_approved
     FROM creapd.music_rundown_items
     WHERE configuration_id=${configId}
       AND owner_user_id=${ownerId}
-      AND lower(segment_type) <> 'song'
   `;
 
-  const total = number(playlistCounts?.total, 0) + number(segmentCounts?.total, 0);
-  const approved = number(playlistCounts?.approved, 0) + number(segmentCounts?.approved, 0);
-  const nextStatus = total > 0 && approved === total ? 'approved' : 'in_review';
+  const playlistTotal = number(playlistCounts?.total, 0);
+  const playlistApproved = number(playlistCounts?.approved, 0);
+  const rundownTotal = number(segmentCounts?.rundown_total, 0);
+  const spokenTotal = number(segmentCounts?.spoken_total, 0);
+  const spokenApproved = number(segmentCounts?.spoken_approved, 0);
+
+  const structurallyComplete =
+    playlistTotal > 0 &&
+    rundownTotal > 0 &&
+    spokenTotal > 0;
+
+  const allReviewableApproved =
+    playlistApproved === playlistTotal &&
+    spokenApproved === spokenTotal;
+
+  const nextStatus = structurallyComplete && allReviewableApproved ? 'approved' : 'in_review';
 
   await sql`
     UPDATE creapd.music_production_configurations
