@@ -491,6 +491,223 @@ function extractYoutubeSearchCandidates(html) {
   return results;
 }
 
+function decodeYoutubeEntities(value) {
+  return String(value || '')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, code) => {
+      const parsed = Number(code);
+      return Number.isFinite(parsed) ? String.fromCodePoint(parsed) : _;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+      const parsed = Number.parseInt(code, 16);
+      return Number.isFinite(parsed) ? String.fromCodePoint(parsed) : _;
+    });
+}
+
+function normalizeYoutubeChannelUrl(value) {
+  const raw = text(value);
+  if (!raw) return '';
+  let url;
+  try {
+    url = new URL(raw.startsWith('http') ? raw : `https://www.youtube.com/${raw.replace(/^\/+/, '')}`);
+  } catch {
+    return '';
+  }
+  if (!/(^|\.)youtube\.com$/i.test(url.hostname)) return '';
+  url.hostname = 'www.youtube.com';
+  url.search = '';
+  url.hash = '';
+  url.pathname = url.pathname.replace(/\/+$/, '');
+  if (!url.pathname || url.pathname === '/') return '';
+  if (!url.pathname.endsWith('/videos')) url.pathname = `${url.pathname}/videos`;
+  return url.toString();
+}
+
+function cleanYoutubeDescription(value) {
+  return decodeYoutubeEntities(value)
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
+
+function extractDescriptionLyrics(description) {
+  const source = cleanYoutubeDescription(description);
+  if (!source) return '';
+
+  const explicit = source.match(/(?:^|\n)\s*(?:lyrics?|song lyrics?)\s*[:\-]?\s*\n([\s\S]{80,})/i);
+  if (explicit?.[1]) {
+    return explicit[1]
+      .split(/\n\s*(?:follow|stream|listen|subscribe|social|credits?|produced by|written by|copyright|©|http)/i)[0]
+      .trim()
+      .slice(0, 12000);
+  }
+
+  const lines = source.split('\n').map(line => line.trim()).filter(Boolean);
+  const lyricLike = lines.filter(line =>
+    line.length >= 2 &&
+    line.length <= 140 &&
+    !/^https?:\/\//i.test(line) &&
+    !/^(follow|stream|listen|subscribe|available|produced|written|mixed|mastered|copyright|©|#)/i.test(line)
+  );
+  if (lyricLike.length >= 8 && lyricLike.join(' ').length >= 180) {
+    return lyricLike.join('\n').slice(0, 12000);
+  }
+  return '';
+}
+
+function youtubeCaptionTextFromXml(xml) {
+  return decodeYoutubeEntities(
+    [...String(xml || '').matchAll(/<text[^>]*>([\s\S]*?)<\/text>/gi)]
+      .map(match => match[1].replace(/<[^>]+>/g, ' '))
+      .join(' ')
+  ).replace(/\s+/g, ' ').trim();
+}
+
+async function fetchYoutubeCaptionTranscript(playerResponse) {
+  const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!Array.isArray(tracks) || !tracks.length) return '';
+
+  const preferred =
+    tracks.find(track => /^en(?:-|$)/i.test(String(track?.languageCode || ''))) ||
+    tracks[0];
+  const baseUrl = text(preferred?.baseUrl);
+  if (!baseUrl) return '';
+
+  try {
+    const response = await fetch(baseUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return '';
+    const transcript = youtubeCaptionTextFromXml(await response.text());
+    return transcript.slice(0, 12000);
+  } catch {
+    return '';
+  }
+}
+
+async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
+  try {
+    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const player =
+      extractBalancedJson(html, 'var ytInitialPlayerResponse =') ||
+      extractBalancedJson(html, 'ytInitialPlayerResponse =');
+
+    const details = player?.videoDetails || {};
+    const micro = player?.microformat?.playerMicroformatRenderer || {};
+    const description = cleanYoutubeDescription(details.shortDescription || '');
+    const descriptionLyrics = extractDescriptionLyrics(description);
+    const captionTranscript = descriptionLyrics ? '' : await fetchYoutubeCaptionTranscript(player);
+
+    return {
+      video_id: videoId,
+      title: text(details.title, hint.title || ''),
+      channel_name: text(details.author, hint.channel_name || ''),
+      channel_id: text(details.channelId),
+      duration_seconds: num(details.lengthSeconds, hint.duration_seconds || 0),
+      description,
+      lyrics: descriptionLyrics || captionTranscript,
+      lyrics_source: descriptionLyrics ? 'youtube_description' : captionTranscript ? 'youtube_captions' : null,
+      published_at: text(micro.publishDate || micro.uploadDate),
+      thumbnail_url: text(
+        details?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url,
+        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      ),
+      source_url: `https://www.youtube.com/watch?v=${videoId}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function likelyArtistMusicUpload(video = {}) {
+  const title = String(video.title || '').toLowerCase();
+  const duration = num(video.duration_seconds, 0);
+  if (duration > 0 && (duration < 60 || duration > 1200)) return false;
+  if (/\b(shorts?|trailer|teaser|behind the scenes|interview|podcast|reaction|vlog|live stream|livestream)\b/i.test(title)) return false;
+  return true;
+}
+
+export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
+  const normalized = normalizeYoutubeChannelUrl(channelUrl);
+  if (!normalized) {
+    const error = new Error('Enter a valid YouTube channel URL or @handle URL.');
+    error.code = 'ARTIST_YOUTUBE_CHANNEL_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  let html = '';
+  try {
+    const response = await fetch(normalized, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) {
+      const error = new Error(`YouTube returned HTTP ${response.status} for this channel.`);
+      error.code = 'ARTIST_YOUTUBE_CHANNEL_UNAVAILABLE';
+      error.status = response.status === 404 ? 404 : 502;
+      throw error;
+    }
+    html = await response.text();
+  } catch (error) {
+    if (error?.code) throw error;
+    const wrapped = new Error('CREAPD could not reach this YouTube channel.');
+    wrapped.code = 'ARTIST_YOUTUBE_CHANNEL_UNAVAILABLE';
+    wrapped.status = 502;
+    throw wrapped;
+  }
+
+  const discovered = extractYoutubeSearchCandidates(html);
+  const unique = [];
+  const seen = new Set();
+  for (const item of discovered) {
+    if (!item?.video_id || seen.has(item.video_id)) continue;
+    seen.add(item.video_id);
+    unique.push(item);
+    if (unique.length >= Math.max(1, Math.min(36, num(options.limit, 24)))) break;
+  }
+
+  if (!unique.length) {
+    const error = new Error('No public videos were found on that YouTube channel page.');
+    error.code = 'ARTIST_YOUTUBE_NO_VIDEOS';
+    error.status = 404;
+    throw error;
+  }
+
+  const details = (await Promise.all(
+    unique.map(item => fetchArtistYoutubeVideoDetails(item.video_id, item))
+  )).filter(Boolean);
+
+  return {
+    channel_url: normalized.replace(/\/videos\/?$/, ''),
+    scanned_count: details.length,
+    videos: details.map(video => ({
+      ...video,
+      likely_music: likelyArtistMusicUpload(video),
+    })),
+  };
+}
+
 function classifyRadioSafeYoutubeSource(metadata = {}) {
   const title = String(metadata?.title || '').toLowerCase();
   const channel = String(metadata?.channel_name || '').toLowerCase();
