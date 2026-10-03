@@ -7,7 +7,6 @@ import {
   fetchYoutubeMetadata,
   refreshMusicPlaylistYoutubeMetadata,
   generateMusicStructured,
-  generateArtistInterviewQuestion,
   scanArtistYoutubeChannel,
 } from './musicEngine.js';
 
@@ -815,37 +814,18 @@ async function readArtistShow(sql, ownerUserId) {
   const ownerId = String(ownerUserId);
   const profile = await getArtistProfile(sql, ownerUserId);
   if (!profile) {
-    return { profile: null, catalog: [], interview: null, turns: [] };
+    return { profile: null, catalog: [] };
   }
 
-  const [catalog, sessions] = await Promise.all([
-    sql`
-      SELECT * FROM creapd.artist_catalog_tracks
-      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
-      ORDER BY created_at ASC
-    `,
-    sql`
-      SELECT * FROM creapd.artist_interview_sessions
-      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `,
-  ]);
-
-  const interview = sessions?.[0] || null;
-  const turns = interview
-    ? await sql`
-        SELECT * FROM creapd.artist_interview_turns
-        WHERE session_id=${interview.id} AND owner_user_id=${ownerId}
-        ORDER BY sequence ASC, created_at ASC
-      `
-    : [];
+  const catalog = await sql`
+    SELECT * FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
 
   return {
     profile: withArtistProfile(profile),
     catalog: (catalog || []).map(withDates),
-    interview: withDates(interview),
-    turns: (turns || []).map(withDates),
   };
 }
 
@@ -872,7 +852,6 @@ async function saveArtistProfile(sql, ownerUserId, input = {}) {
         public_name=${nullable(input.public_name !== undefined ? input.public_name : existing.public_name)},
         bio_summary=${nullable(input.bio_summary !== undefined ? input.bio_summary : existing.bio_summary)},
         artistic_message=${nullable(input.artistic_message !== undefined ? input.artistic_message : existing.artistic_message)},
-        interview_style=${clean(input.interview_style !== undefined ? input.interview_style : existing.interview_style, 'conversational')},
         source_links=${JSON.stringify(sourceLinks)}::jsonb,
         knowledge=${JSON.stringify(knowledge)}::jsonb,
         status='active',
@@ -886,11 +865,10 @@ async function saveArtistProfile(sql, ownerUserId, input = {}) {
   const [created] = await sql`
     INSERT INTO creapd.artist_profiles (
       id, owner_user_id, artist_name, public_name, bio_summary, artistic_message,
-      interview_style, source_links, knowledge, status
+      source_links, knowledge, status
     ) VALUES (
       ${randomUUID()}, ${ownerId}, ${artistName}, ${nullable(input.public_name)},
       ${nullable(input.bio_summary)}, ${nullable(input.artistic_message)},
-      ${clean(input.interview_style, 'conversational')},
       ${JSON.stringify(sourceLinks)}::jsonb, ${JSON.stringify(knowledge)}::jsonb, 'active'
     )
     RETURNING *
@@ -993,140 +971,6 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
   return { imported, skipped };
 }
 
-async function startArtistInterview(sql, ownerUserId, body = {}) {
-  const ownerId = String(ownerUserId);
-  const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
-  const catalog = await sql`
-    SELECT * FROM creapd.artist_catalog_tracks
-    WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
-    ORDER BY created_at ASC
-  `;
-
-  if (body.resume !== false) {
-    const [active] = await sql`
-      SELECT * FROM creapd.artist_interview_sessions
-      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId} AND status='active'
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    if (active) {
-      const turns = await sql`
-        SELECT * FROM creapd.artist_interview_turns
-        WHERE session_id=${active.id} AND owner_user_id=${ownerId}
-        ORDER BY sequence ASC, created_at ASC
-      `;
-      return {
-        interview: withDates(active),
-        turns: turns.map(withDates),
-        question: active.current_question || null,
-      };
-    }
-  }
-
-  const next = await generateArtistInterviewQuestion({ profile, catalog, turns: [] });
-  const [session] = await sql`
-    INSERT INTO creapd.artist_interview_sessions (
-      id, profile_id, owner_user_id, configuration_id, status, current_question,
-      question_count
-    ) VALUES (
-      ${randomUUID()}, ${profile.id}, ${ownerId}, ${nullable(body.configuration_id)},
-      'active', ${next.question}, 0
-    )
-    RETURNING *
-  `;
-
-  return {
-    interview: withDates(session),
-    turns: [],
-    question: next.question,
-    question_meta: next,
-  };
-}
-
-async function answerArtistInterview(sql, ownerUserId, body = {}) {
-  const ownerId = String(ownerUserId);
-  const sessionId = clean(body.session_id);
-  if (!sessionId) throw fail('Interview session is required', 'ARTIST_INTERVIEW_SESSION_REQUIRED');
-
-  const [session] = await sql`
-    SELECT * FROM creapd.artist_interview_sessions
-    WHERE id=${sessionId} AND owner_user_id=${ownerId}
-    LIMIT 1
-  `;
-  if (!session) throw fail('Artist interview session not found', 'ARTIST_INTERVIEW_NOT_FOUND', 404);
-  if (session.status !== 'active') throw fail('Artist interview is not active', 'ARTIST_INTERVIEW_NOT_ACTIVE', 409);
-
-  const profile = await requireArtistProfile(sql, ownerUserId, session.profile_id);
-  const question = clean(body.question || session.current_question);
-  const answerText = clean(body.answer_text);
-  const audioUrl = nullable(body.audio_url);
-
-  if (!question) throw fail('Interview question is missing', 'ARTIST_INTERVIEW_QUESTION_REQUIRED');
-  if (!answerText) {
-    throw fail(
-      'CREAPr needs a transcript of the answer before it can choose an intelligent follow-up.',
-      'ARTIST_INTERVIEW_TRANSCRIPT_REQUIRED'
-    );
-  }
-
-  const sequence = Number(session.question_count || 0) + 1;
-  const [turn] = await sql`
-    INSERT INTO creapd.artist_interview_turns (
-      id, session_id, owner_user_id, sequence, question, answer_text, audio_url, source_refs
-    ) VALUES (
-      ${randomUUID()}, ${session.id}, ${ownerId}, ${sequence}, ${question},
-      ${nullable(answerText)}, ${audioUrl}, ${JSON.stringify(parseArray(body.source_refs, []))}::jsonb
-    )
-    RETURNING *
-  `;
-
-  const [catalog, previousTurns] = await Promise.all([
-    sql`
-      SELECT * FROM creapd.artist_catalog_tracks
-      WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
-      ORDER BY created_at ASC
-    `,
-    sql`
-      SELECT * FROM creapd.artist_interview_turns
-      WHERE session_id=${session.id} AND owner_user_id=${ownerId}
-      ORDER BY sequence ASC, created_at ASC
-    `,
-  ]);
-
-  const next = await generateArtistInterviewQuestion({
-    profile,
-    catalog,
-    turns: previousTurns,
-  });
-
-  const [updatedSession] = await sql`
-    UPDATE creapd.artist_interview_sessions
-    SET current_question=${next.question}, question_count=${sequence}, updated_at=now()
-    WHERE id=${session.id} AND owner_user_id=${ownerId}
-    RETURNING *
-  `;
-
-  return {
-    interview: withDates(updatedSession),
-    turn: withDates(turn),
-    question: next.question,
-    question_meta: next,
-  };
-}
-
-async function finishArtistInterview(sql, ownerUserId, body = {}) {
-  const ownerId = String(ownerUserId);
-  const sessionId = clean(body.session_id);
-  const [updated] = await sql`
-    UPDATE creapd.artist_interview_sessions
-    SET status='complete', current_question=null, updated_at=now()
-    WHERE id=${sessionId} AND owner_user_id=${ownerId}
-    RETURNING *
-  `;
-  if (!updated) throw fail('Artist interview session not found', 'ARTIST_INTERVIEW_NOT_FOUND', 404);
-  return { interview: withDates(updated) };
-}
-
 export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, action, body = {} }) {
   switch (action) {
     case 'music_save_configuration':
@@ -1176,12 +1020,6 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
     }
     case 'music_artist_youtube_import':
       return await importArtistYoutubeVideos(sql, ownerUserId, body);
-    case 'music_artist_interview_start':
-      return await startArtistInterview(sql, ownerUserId, body);
-    case 'music_artist_interview_answer':
-      return await answerArtistInterview(sql, ownerUserId, body);
-    case 'music_artist_interview_finish':
-      return await finishArtistInterview(sql, ownerUserId, body);
     case 'music_entity_get':
       return { item: await entityGet(sql, ownerUserId, body.entity, body.id) };
     case 'music_entity_create':
