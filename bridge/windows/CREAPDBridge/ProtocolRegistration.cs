@@ -18,10 +18,10 @@ internal static class ProtocolRegistration
             key?.SetValue("URL Protocol", "");
 
             using var icon = key?.CreateSubKey("DefaultIcon");
-            icon?.SetValue("", $"\\\"{exe}\\\",0");
+            icon?.SetValue("", $"\"{exe}\",0");
 
             using var command = key?.CreateSubKey(@"shell\open\command");
-            command?.SetValue("", $"\\\"{exe}\\\" \\\"%1\\\"");
+            command?.SetValue("", $"\"{exe}\" \"%1\"");
         }
         catch
         {
