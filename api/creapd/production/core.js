@@ -79,6 +79,8 @@ const OBS_VIDEO_TYPES = new Set([
 const OBS_AUDIO_TYPES = new Set([
   'audio/webm',
   'audio/mp4',
+  'audio/x-m4a',
+  'audio/m4a',
   'audio/mpeg',
   'audio/wav',
   'audio/x-wav',
@@ -138,6 +140,8 @@ function obsMediaExtension(filename, contentType) {
     'video/mpeg': 'mpeg',
     'audio/webm': 'webm',
     'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/m4a': 'm4a',
     'audio/mpeg': 'mp3',
     'audio/wav': 'wav',
     'audio/x-wav': 'wav',
