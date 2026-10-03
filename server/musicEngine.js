@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { generateStructuredGatewayResponse, configuredProvider } from './aiGateway.js';
 
+const DEFAULT_MUSIC_AUTOMATION = [
+  'Auto Research',
+  'Auto Build Playlist',
+  'Auto Develop',
+  'Auto Assemble Packet',
+];
+
 const PLAYLIST_SCHEMA = {
   type: 'object',
   required: ['playlist'],
@@ -146,6 +153,11 @@ function array(value, fallback = []) {
     } catch {}
   }
   return fallback;
+}
+
+function automationPreferences(value) {
+  const parsed = array(value, []);
+  return parsed.length ? parsed : [...DEFAULT_MUSIC_AUTOMATION];
 }
 
 function object(value, fallback = {}) {
@@ -1543,7 +1555,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       total_show_runtime: total,
       required_music_runtime: musicMinutes,
       estimated_song_count: targetCount,
-      automation_preferences: array(config.ai_automation, []),
+      automation_preferences: automationPreferences(config.ai_automation),
       provider: configuredProvider(),
       generated_at: new Date().toISOString(),
     };
@@ -1556,7 +1568,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       await appendStage(sql, ownerUserId, config.id, buildLog, 'planning', 'complete', { requirements_count: 7 });
     }
 
-    const automation = array(config.ai_automation, ['Auto Research','Auto Build Playlist','Auto Develop','Auto Assemble Packet']);
+    const automation = automationPreferences(config.ai_automation);
     const runStage = (name) => !section || section === name;
     let playlist = await sql`SELECT * FROM creapd.music_playlist_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY order_index ASC`;
     let research = await sql`SELECT * FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY created_at ASC`;
