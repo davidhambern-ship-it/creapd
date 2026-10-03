@@ -594,6 +594,41 @@ async function resolveYoutubeChannelFeedCandidates(html, normalizedUrl) {
   };
 }
 
+function youtubeChannelHint(channelUrl) {
+  try {
+    const url = new URL(channelUrl);
+    const path = url.pathname.replace(/^\/+|\/+$/g, '');
+    const parts = path.split('/').filter(Boolean);
+    const handle = parts.find(part => part.startsWith('@')) || '';
+    return handle || parts[parts.length - 1] || '';
+  } catch {
+    return '';
+  }
+}
+
+async function searchYoutubeArtistFallback(channelUrl, artistName = '') {
+  const hint = youtubeChannelHint(channelUrl);
+  const queryText = [hint, artistName, 'music'].filter(Boolean).join(' ');
+  if (!queryText) return [];
+
+  try {
+    const response = await fetch(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(queryText)}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(12000),
+      },
+    );
+    if (!response.ok) return [];
+    return extractYoutubeSearchCandidates(await response.text()).slice(0, 36);
+  } catch {
+    return [];
+  }
+}
+
 function decodeYoutubeEntities(value) {
   return String(value || '')
     .replace(/&amp;/gi, '&')
@@ -785,11 +820,18 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
   const looseCandidates = initialCandidates.length || feedResult.videos.length
     ? []
     : extractYoutubeLooseCandidates(html);
+  const searchFallback = initialCandidates.length || feedResult.videos.length || looseCandidates.length
+    ? []
+    : await searchYoutubeArtistFallback(
+        normalized,
+        text(options.artist_name || options.public_name),
+      );
 
   const discovered = [
     ...initialCandidates,
     ...feedResult.videos,
     ...looseCandidates,
+    ...searchFallback,
   ];
 
   const unique = [];
@@ -830,7 +872,9 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
       ? 'channel_page'
       : feedResult.videos.length
         ? 'youtube_feed'
-        : 'html_fallback',
+        : looseCandidates.length
+          ? 'html_fallback'
+          : 'search_fallback',
     scanned_count: details.length,
     videos: details.map(video => ({
       ...video,
