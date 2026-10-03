@@ -9,6 +9,7 @@ import ModeToggle from '@/components/creap/ModeToggle';
 import { useCREAPMode } from '@/context/CREAPModeContext';
 import { PRODUCTION_MODES, getActiveProductionMode } from '@/lib/producerNav';
 import PodcastEpisodeFlow from './PodcastEpisodeFlow';
+import FormatSwitcher from './FormatSwitcher';
 
 function currentPodcastStage(pathname) {
   if (pathname.startsWith('/podcast/setup') || pathname.startsWith('/talk/configure')) return 'Setup';
@@ -119,6 +120,7 @@ export default function ProducerHeader({ onOpenNav, variant = 'default' }) {
         </div>
 
         <div className="flex items-center gap-1.5 lg:gap-2">
+          <FormatSwitcher format="podcast" compact />
           <ModeToggle />
           <NotificationDropdown />
           <Link to="/podcast/profile">
