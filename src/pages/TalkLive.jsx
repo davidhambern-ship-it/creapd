@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { creapdApi } from '@/api/creapdClient';
 import { Button } from '@/components/ui/button';
+import FormatSwitcher from '@/components/layout/FormatSwitcher';
 import { SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import {
   ArrowLeft,
@@ -431,6 +432,7 @@ export default function TalkLive() {
           </div>
 
           <div id="talk-live-header-controls" className="flex flex-wrap items-center justify-end gap-1.5">
+            <FormatSwitcher format="podcast" compact />
             <span className={`text-xs px-2.5 py-1 rounded-full border ${
               isRunning ? 'border-red-500/40 bg-red-500/15 text-red-300' :
               isPaused ? 'border-amber-500/40 bg-amber-500/15 text-amber-300' :
