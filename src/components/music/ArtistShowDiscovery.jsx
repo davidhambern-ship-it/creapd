@@ -209,6 +209,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
   const [youtubeSelected, setYoutubeSelected] = useState(new Set());
   const [youtubeScanning, setYoutubeScanning] = useState(false);
   const [youtubeImporting, setYoutubeImporting] = useState(false);
+  const [youtubeDiagnostics, setYoutubeDiagnostics] = useState(null);
 
   const [recording, setRecording] = useState(false);
   const [recordingBusy, setRecordingBusy] = useState(false);
@@ -352,6 +353,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     setYoutubeScanning(true);
     setError('');
     setNotice('');
+    setYoutubeDiagnostics(null);
     try {
       const result = await creapdApi.post('/production/core', {
         action: 'music_artist_youtube_scan',
@@ -361,6 +363,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       });
       const videos = result?.videos || [];
       setYoutubeScan(videos);
+      setYoutubeDiagnostics(result?.diagnostics || null);
       setYoutubeSelected(new Set(
         videos.filter(video => video.likely_music).map(video => video.video_id),
       ));
@@ -370,6 +373,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
           : 'CREAPD did not find public uploads on that YouTube page.'
       );
     } catch (err) {
+      setYoutubeDiagnostics(err?.data?.diagnostic?.details || null);
       setError(apiErrorMessage(err, 'CREAPD could not scan that YouTube channel.'));
     } finally {
       setYoutubeScanning(false);
@@ -649,6 +653,18 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
         )}
         {notice && (
           <div className="mb-4 rounded-xl border border-cyan-400/20 bg-cyan-500/[0.06] px-4 py-3 text-sm text-cyan-100">{notice}</div>
+        )}
+        {youtubeDiagnostics && (
+          <div className="mb-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">YouTube scan diagnostics</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-white/45">
+              Channel ID: {youtubeDiagnostics.channel_id || 'not resolved'} ·
+              Feed: {youtubeDiagnostics.feed_candidates || 0} ·
+              Release playlists: {youtubeDiagnostics.release_playlist_candidates || 0} ·
+              Release videos: {youtubeDiagnostics.release_playlist_video_candidates || 0} ·
+              Search fallback: {youtubeDiagnostics.search_candidates || 0}
+            </p>
+          </div>
         )}
 
         {loading ? (
