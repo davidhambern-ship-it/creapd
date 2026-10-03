@@ -87,6 +87,15 @@ function withDates(row) {
   return { ...row, created_date: row.created_at || null, updated_date: row.updated_at || null };
 }
 
+function withArtistProfile(row) {
+  if (!row) return row;
+  return withDates({
+    ...row,
+    source_links: parseArray(row.source_links, []),
+    knowledge: parseObject(row.knowledge, {}),
+  });
+}
+
 function withConfigAliases(row) {
   if (!row) return row;
   return withDates({
@@ -833,7 +842,7 @@ async function readArtistShow(sql, ownerUserId) {
     : [];
 
   return {
-    profile: withDates(profile),
+    profile: withArtistProfile(profile),
     catalog: (catalog || []).map(withDates),
     interview: withDates(interview),
     turns: (turns || []).map(withDates),
@@ -871,7 +880,7 @@ async function saveArtistProfile(sql, ownerUserId, input = {}) {
       WHERE id=${existing.id} AND owner_user_id=${ownerId}
       RETURNING *
     `;
-    return withDates(updated);
+    return withArtistProfile(updated);
   }
 
   const [created] = await sql`
@@ -886,7 +895,7 @@ async function saveArtistProfile(sql, ownerUserId, input = {}) {
     )
     RETURNING *
   `;
-  return withDates(created);
+  return withArtistProfile(created);
 }
 
 async function addArtistCatalogTrack(sql, ownerUserId, input = {}) {
