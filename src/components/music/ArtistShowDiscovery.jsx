@@ -41,11 +41,19 @@ const EMPTY_PROFILE = {
 
 function apiErrorMessage(err, fallback) {
   const diagnostic = err?.data?.diagnostic;
-  const message =
+  const raw =
     diagnostic?.message ||
     err?.data?.message ||
-    (typeof err?.message === 'string' && !/^[A-Z0-9_]+$/.test(err.message) ? err.message : '');
-  return message || fallback;
+    (typeof err?.data?.error === 'object'
+      ? err.data.error?.message || err.data.error?.code
+      : err?.data?.error) ||
+    err?.message;
+
+  const message = typeof raw === 'string' ? raw.trim() : '';
+  if (!message || message === '[object Object]' || /^[A-Z0-9_]+$/.test(message)) {
+    return fallback;
+  }
+  return message;
 }
 
 function sourceTypeFromUrl(value) {
@@ -235,7 +243,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setQuestion(result?.interview?.current_question || '');
       if (result?.interview?.status === 'active') setStage('interview');
     } catch (err) {
-      setError(err?.message || 'CREAPD could not open Artist Show Discovery.');
+      setError(apiErrorMessage(err, 'CREAPD could not open Artist Show Discovery.'));
     } finally {
       setLoading(false);
     }
@@ -272,7 +280,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setNotice('Artist Profile saved. CREAPr can reuse this information for future Artist Shows.');
       setStage('catalog');
     } catch (err) {
-      setError(err?.message || 'CREAPD could not save the Artist Profile.');
+      setError(apiErrorMessage(err, 'CREAPD could not save the Artist Profile.'));
     } finally {
       setSavingProfile(false);
     }
@@ -312,7 +320,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setTrackAudio(null);
       setNotice('Track added to the Artist Catalogue.');
     } catch (err) {
-      setError(err?.message || 'CREAPD could not add this track.');
+      setError(apiErrorMessage(err, 'CREAPD could not add this track.'));
     } finally {
       setAddingTrack(false);
     }
@@ -328,7 +336,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       });
       setCatalog(current => current.filter(item => item.id !== track.id));
     } catch (err) {
-      setError(err?.message || 'CREAPD could not remove this track.');
+      setError(apiErrorMessage(err, 'CREAPD could not remove this track.'));
     }
   };
 
@@ -435,7 +443,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setStage('interview');
       window.setTimeout(() => speakQuestion(result.question || result.interview?.current_question || ''), 120);
     } catch (err) {
-      setError(err?.message || 'CREAPr could not start the interview.');
+      setError(apiErrorMessage(err, 'CREAPr could not start the interview.'));
     } finally {
       setLoading(false);
     }
@@ -566,7 +574,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setNotice('Answer saved. CREAPr used your interview and catalogue to choose the next question.');
       window.setTimeout(() => speakQuestion(result.question || ''), 120);
     } catch (err) {
-      setError(err?.message || 'CREAPD could not save this interview answer.');
+      setError(apiErrorMessage(err, 'CREAPD could not save this interview answer.'));
     } finally {
       setSubmittingAnswer(false);
     }
@@ -584,7 +592,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       setQuestion('');
       setNotice('Interview saved. The recording and transcript are now part of your Artist Show source material.');
     } catch (err) {
-      setError(err?.message || 'CREAPD could not finish the interview.');
+      setError(apiErrorMessage(err, 'CREAPD could not finish the interview.'));
     }
   };
 
