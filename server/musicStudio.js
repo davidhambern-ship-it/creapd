@@ -989,7 +989,12 @@ async function answerArtistInterview(sql, ownerUserId, body = {}) {
   const audioUrl = nullable(body.audio_url);
 
   if (!question) throw fail('Interview question is missing', 'ARTIST_INTERVIEW_QUESTION_REQUIRED');
-  if (!answerText && !audioUrl) throw fail('Speak an answer or provide a transcript before continuing', 'ARTIST_INTERVIEW_ANSWER_REQUIRED');
+  if (!answerText) {
+    throw fail(
+      'CREAPr needs a transcript of the answer before it can choose an intelligent follow-up.',
+      'ARTIST_INTERVIEW_TRANSCRIPT_REQUIRED'
+    );
+  }
 
   const sequence = Number(session.question_count || 0) + 1;
   const [turn] = await sql`
