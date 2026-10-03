@@ -22,7 +22,7 @@ internal sealed class BridgeForm : Form
     private Task? _workerTask;
     private bool _exitRequested;
 
-    public BridgeForm()
+    public BridgeForm(string? pairingUri = null)
     {
         Text = "CREAPD OBS Bridge";
         Width = 720;
@@ -44,6 +44,22 @@ internal sealed class BridgeForm : Form
         _tray.DoubleClick += (_, _) => RestoreFromTray();
 
         BuildUi();
+        LoadPersistedSettings();
+        var pairing = ProtocolRegistration.ParsePairingUri(pairingUri);
+        if (pairing is not null)
+        {
+            ApplyPairing(pairing);
+        }
+
+        Shown += async (_, _) =>
+        {
+            if (pairing is not null && !string.IsNullOrWhiteSpace(_obsPassword.Text) && _workerTask is not { IsCompleted: false })
+            {
+                AppendLog("Pairing received from CREAPD. Connecting automatically…");
+                await StartBridgeAsync();
+            }
+        };
+
         Resize += (_, _) =>
         {
             if (WindowState == FormWindowState.Minimized)
@@ -108,7 +124,7 @@ internal sealed class BridgeForm : Form
 
         var hint = new Label
         {
-            Text = "For this first native test, the token and OBS password are entered here instead of PowerShell. They are kept in memory only and are not written to disk.",
+            Text = "Pair from CREAPD to fill the bridge token automatically. OBS credentials are encrypted for this Windows user so reconnects do not require re-entry.",
             AutoSize = false,
             Width = 630,
             Height = 40,
@@ -193,7 +209,45 @@ internal sealed class BridgeForm : Form
         _log.Font = new Font("Consolas", 9F);
         stack.Controls.Add(_log);
 
-        AppendLog("Ready. Open OBS, enable its WebSocket server, then enter the CREAPD token and OBS password.");
+        AppendLog("Ready. Open OBS and pair this bridge from CREAPD Studio, or use the manual fields as a fallback.");
+    }
+
+    private void LoadPersistedSettings()
+    {
+        var saved = SecureSettingsStore.Load();
+        if (saved is null) return;
+
+        if (!string.IsNullOrWhiteSpace(saved.CreapdUrl)) _creapdUrl.Text = saved.CreapdUrl;
+        if (!string.IsNullOrWhiteSpace(saved.ObsUrl)) _obsUrl.Text = saved.ObsUrl;
+        if (!string.IsNullOrWhiteSpace(saved.BridgeToken)) _bridgeToken.Text = saved.BridgeToken;
+        _obsPassword.Text = saved.ObsPassword ?? "";
+        _previewBypass.Text = saved.PreviewBypassSecret ?? "";
+        AppendLog("Loaded encrypted bridge settings for this Windows user.");
+    }
+
+    private void ApplyPairing(PairingPayload pairing)
+    {
+        _creapdUrl.Text = pairing.CreapdUrl;
+        _bridgeToken.Text = pairing.BridgeToken;
+        AppendLog("CREAPD pairing link received. Bridge token loaded automatically.");
+    }
+
+    private void SaveSettings(BridgeSettings settings)
+    {
+        try
+        {
+            SecureSettingsStore.Save(new PersistedBridgeSettings(
+                settings.CreapdUrl,
+                settings.ObsUrl,
+                settings.BridgeToken,
+                settings.ObsPassword,
+                settings.PreviewBypassSecret));
+            AppendLog("Connection settings encrypted with Windows DPAPI.");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Could not save encrypted settings: {ex.Message}");
+        }
     }
 
     private static void AddField(
@@ -255,6 +309,8 @@ internal sealed class BridgeForm : Form
             MessageBox.Show(this, "Generate a Bridge Token in CREAPD Studio and paste it here.", "CREAPD Bridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+
+        SaveSettings(settings);
 
         SetInputsEnabled(false);
         _start.Enabled = false;
