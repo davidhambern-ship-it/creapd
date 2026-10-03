@@ -40,7 +40,10 @@ async function downloadBrowserBridge() {
   if (!response.ok) throw new Error('CREAPD could not prepare the OBS bridge download.');
 
   const template = await response.text();
-  const configured = template.replaceAll('__CREAPD_ORIGIN__', window.location.origin);
+  const studioPath = window.location.pathname === '/music/live' ? '/music/live' : '/podcast/studio';
+  const configured = template
+    .replaceAll('__CREAPD_ORIGIN__', window.location.origin)
+    .replaceAll('__CREAPD_STUDIO_PATH__', studioPath);
   const blob = new Blob([configured], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 
@@ -279,6 +282,6 @@ function TalkObsBridgeControlLive() {
 
 export default function TalkObsBridgeControl() {
   const location = useLocation();
-  if (!['/talk/live', '/podcast/studio'].includes(location.pathname)) return null;
+  if (!['/talk/live', '/podcast/studio', '/music/live'].includes(location.pathname)) return null;
   return <TalkObsBridgeControlLive />;
 }
