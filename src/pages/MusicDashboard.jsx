@@ -172,7 +172,17 @@ function ReadinessRing({ percent, done, total }) {
 
 export default function MusicDashboard() {
   const location = useLocation();
-  const { config, playlist, topics, research, rundown, assets, loading, refresh } = useMusicProduction();
+  const {
+    config,
+    playlist,
+    topics,
+    research,
+    rundown,
+    assets,
+    loading,
+    productionRepairing,
+    refresh,
+  } = useMusicProduction();
   const [detailDept, setDetailDept] = useState(null);
   const [reviewingId, setReviewingId] = useState(null);
   const [regeneratingRejected, setRegeneratingRejected] = useState(false);
@@ -396,6 +406,18 @@ export default function MusicDashboard() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
+        {productionRepairing && (
+          <div className="rounded-xl border border-cyan-400/25 bg-cyan-500/[0.08] px-4 py-3 flex items-start gap-3">
+            <Loader2 className="w-4 h-4 text-cyan-300 animate-spin mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-cyan-100">Finishing missing Radio production material</p>
+              <p className="text-xs text-cyan-100/60 mt-0.5">
+                CREAPD found an older/incomplete show with a playlist but missing production stages. It is preserving the playlist and generating the missing research, assets, and rundown needed for Studio.
+              </p>
+            </div>
+          </div>
+        )}
+
         <MusicDiscoveryNav
           config={config}
           rejectedCount={rejectedCount}
