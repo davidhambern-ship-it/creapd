@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
-import TalkProgramMonitor from '@/components/talk/TalkProgramMonitor';
 import { Button } from '@/components/ui/button';
 import FormatSwitcher from '@/components/layout/FormatSwitcher';
+import RadioObsDirectorControl from '@/components/music/RadioObsDirectorControl';
 import { SEGMENT_TYPE_LABELS, formatRuntime } from '@/lib/musicConstants';
 import {
   ArrowLeft,
@@ -421,29 +421,41 @@ export default function RadioLive() {
   const [teleprompterSize, setTeleprompterSize] = useState(24);
   const [showRunning, setShowRunning] = useState(false);
   const [showSeconds, setShowSeconds] = useState(0);
+  const [segmentSeconds, setSegmentSeconds] = useState(0);
   const [deckAId, setDeckAId] = useState(null);
   const [deckBId, setDeckBId] = useState(null);
   const [activeDeck, setActiveDeck] = useState('A');
   const [crossfader, setCrossfader] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
-  const [autoDuck, setAutoDuck] = useState(false);
   const initializedForRef = useRef(null);
   const activeDeckRef = useRef(activeDeck);
   const playlistRef = useRef(sortedPlaylist);
   const deckAIdRef = useRef(deckAId);
   const deckBIdRef = useRef(deckBId);
   const transitionRef = useRef(false);
+  const activeEndedRef = useRef(() => {});
+  const rundownRef = useRef(sortedRundown);
+  const segmentIndexRef = useRef(segmentIndex);
 
   activeDeckRef.current = activeDeck;
   playlistRef.current = sortedPlaylist;
+  rundownRef.current = sortedRundown;
+  segmentIndexRef.current = segmentIndex;
   deckAIdRef.current = deckAId;
   deckBIdRef.current = deckBId;
 
   useEffect(() => {
     if (!showRunning) return undefined;
-    const timer = window.setInterval(() => setShowSeconds(value => value + 1), 1000);
+    const timer = window.setInterval(() => {
+      setShowSeconds(value => value + 1);
+      setSegmentSeconds(value => value + 1);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, [showRunning]);
+
+  useEffect(() => {
+    setSegmentSeconds(0);
+  }, [segmentIndex]);
 
   useEffect(() => {
     const key = config?.id || configId || 'latest';
@@ -487,7 +499,7 @@ export default function RadioLive() {
     deckATrack,
     deckBTrack,
     activeDeck,
-    onActiveEnded: () => transitionDeckRef.current?.(0),
+    onActiveEnded: () => activeEndedRef.current?.(),
   });
 
   const applyCrossfader = useCallback(value => {
@@ -545,6 +557,52 @@ export default function RadioLive() {
     else setDeckBId(trackKey(track));
   }, []);
 
+  const trackForSegment = useCallback(segment => {
+    if (!segment || segment.segment_type !== 'song') return null;
+    const id = segment.associated_song_id;
+    if (id) {
+      const exact = playlistRef.current.find(track => track.id === id);
+      if (exact) return exact;
+    }
+    const title = String(segment.associated_song_title || segment.title || '').trim().toLowerCase();
+    if (!title) return null;
+    return playlistRef.current.find(track => String(track.song_title || '').trim().toLowerCase() === title) || null;
+  }, []);
+
+  const selectSegment = useCallback(index => {
+    const safe = Math.max(0, Math.min(rundownRef.current.length - 1, Number(index || 0)));
+    const segment = rundownRef.current[safe];
+    if (!segment) return;
+
+    setSegmentIndex(safe);
+    const track = trackForSegment(segment);
+    if (track) {
+      const activeId = activeDeckRef.current === 'A' ? deckAIdRef.current : deckBIdRef.current;
+      if (trackKey(track) !== activeId) loadNext(track);
+    }
+  }, [loadNext, trackForSegment]);
+
+  const advanceSegment = useCallback(() => {
+    if (segmentIndexRef.current >= rundownRef.current.length - 1) return;
+    selectSegment(segmentIndexRef.current + 1);
+  }, [selectSegment]);
+
+  activeEndedRef.current = () => {
+    const index = segmentIndexRef.current;
+    const current = rundownRef.current[index];
+    const next = rundownRef.current[index + 1] || null;
+    if (!current || current.segment_type !== 'song') return;
+
+    if (next) {
+      setSegmentIndex(index + 1);
+      if (next.segment_type === 'song') {
+        const nextTrack = trackForSegment(next);
+        if (nextTrack) loadNext(nextTrack);
+        window.setTimeout(() => transitionDeckRef.current?.(0), 60);
+      }
+    }
+  };
+
   const toggleDeck = deck => {
     if (decks.playing[deck]) decks.pause(deck);
     else decks.play(deck);
@@ -594,6 +652,11 @@ export default function RadioLive() {
 
   const activeTrack = activeDeck === 'A' ? deckATrack : deckBTrack;
   const nextTrack = activeDeck === 'A' ? deckBTrack : deckATrack;
+  const showPaused = !showRunning && showSeconds > 0;
+  const plannedSegmentSeconds = Math.max(0, Number(currentSegment?.duration_seconds || 0));
+  const segmentRemaining = plannedSegmentSeconds > 0
+    ? Math.max(0, plannedSegmentSeconds - segmentSeconds)
+    : 0;
 
   return (
     <div className="min-h-screen bg-[#07090d] text-white">
@@ -614,22 +677,47 @@ export default function RadioLive() {
 
         <div className="flex items-center gap-2 shrink-0">
           <FormatSwitcher format="radio" compact />
-          <span className={`hidden sm:inline-flex text-[10px] px-2.5 py-1 rounded-full border ${showRunning ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-white/10 bg-white/5 text-white/45'}`}>
-            {showRunning ? '● ON AIR' : 'READY'}
+          <RadioObsDirectorControl
+            config={config}
+            currentSegment={currentSegment}
+            activeTrack={activeTrack}
+          />
+          <span className={`hidden sm:inline-flex text-[10px] px-2.5 py-1 rounded-full border ${
+            showRunning
+              ? 'border-red-500/30 bg-red-500/10 text-red-300'
+              : showPaused
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                : 'border-white/10 bg-white/5 text-white/45'
+          }`}>
+            {showRunning ? '● ON AIR' : showPaused ? 'PAUSED' : 'READY'}
           </span>
           <span className="font-mono text-lg min-w-[64px] text-right">{formatClock(showSeconds)}</span>
           <Button size="sm" onClick={() => setShowRunning(value => !value)} className="bg-fuchsia-600 hover:bg-fuchsia-500">
             {showRunning ? <Pause className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
-            {showRunning ? 'Pause Show' : 'Start Show'}
+            {showRunning ? 'Pause Show' : showPaused ? 'Resume Show' : 'Start Show'}
           </Button>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setSegmentIndex(index => Math.min(sortedRundown.length - 1, index + 1))}
+            onClick={advanceSegment}
             disabled={!nextSegment}
             className="hidden md:inline-flex"
           >
             <SkipForward className="w-4 h-4 mr-1.5" /> Next Segment
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="hidden lg:inline-flex h-8 w-8 p-0 text-white/45 hover:text-white"
+            onClick={() => {
+              setShowRunning(false);
+              setShowSeconds(0);
+              setSegmentIndex(0);
+              setSegmentSeconds(0);
+            }}
+            title="Reset show clock and return to the first segment"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
           </Button>
         </div>
       </header>
@@ -642,6 +730,13 @@ export default function RadioLive() {
               <div className="flex items-center gap-2 mt-1 min-w-0">
                 <span className="text-[10px] rounded bg-fuchsia-500/15 text-fuchsia-200 px-2 py-0.5 shrink-0">{segmentLabel(currentSegment)}</span>
                 <h2 className="font-heading font-semibold truncate">{currentSegment?.title || 'No segment selected'}</h2>
+                {currentSegment && (
+                  <span className="shrink-0 font-mono text-[10px] text-white/35">
+                    {plannedSegmentSeconds > 0
+                      ? `${formatClock(segmentSeconds)} / ${formatClock(plannedSegmentSeconds)} · -${formatClock(segmentRemaining)}`
+                      : formatClock(segmentSeconds)}
+                  </span>
+                )}
               </div>
             </div>
             <SkipForward className="w-4 h-4 text-white/20" />
@@ -661,6 +756,7 @@ export default function RadioLive() {
               <div className="absolute top-3 left-3 z-10 flex items-center gap-2 rounded-md border border-white/10 bg-black/50 px-2.5 py-1.5 text-[11px] text-white/60">
                 <MonitorPlay className="w-4 h-4" /> PROGRAM MONITOR
               </div>
+              <div id="talk-program-monitor-obs-control" className="absolute top-3 right-3 z-30" />
               <div className="absolute inset-0 grid place-items-center text-center px-6">
                 <div>
                   <MonitorPlay className="w-12 h-12 text-white/15 mx-auto mb-3" />
@@ -778,9 +874,9 @@ export default function RadioLive() {
               <div className="rounded-xl border border-white/10 bg-gradient-to-r from-white/[0.035] to-fuchsia-500/[0.04] p-2.5">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2"><WandSparkles className="w-4 h-4 text-amber-300" /><h3 className="text-xs font-semibold">DJ Booth</h3></div>
-                  <button type="button" onClick={() => setAutoDuck(value => !value)} className={`h-6 px-2 rounded border text-[9px] font-semibold ${autoDuck ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300' : 'border-white/10 bg-white/[0.03] text-white/45'}`}>
-                    <Mic2 className="w-3 h-3 inline mr-1" /> AUTO DUCK {autoDuck ? 'ON' : 'OFF'}
-                  </button>
+                  <span className="h-6 px-2 inline-flex items-center rounded border border-white/10 bg-white/[0.03] text-[9px] font-semibold text-white/40">
+                    LIVE FX
+                  </span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {djPads.map(name => (
@@ -811,7 +907,7 @@ export default function RadioLive() {
                 <button
                   key={segment.id || index}
                   type="button"
-                  onClick={() => setSegmentIndex(index)}
+                  onClick={() => selectSegment(index)}
                   className={`shrink-0 w-[230px] min-h-[82px] rounded-lg border px-3 py-2.5 text-left transition-colors ${selected ? 'border-fuchsia-400/35 bg-fuchsia-500/[0.09]' : 'border-white/[0.06] bg-black/25 hover:bg-white/[0.04]'}`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -828,7 +924,6 @@ export default function RadioLive() {
 
       <div ref={decks.wrapperARef} className="absolute w-px h-px opacity-0 pointer-events-none -left-[9999px]" />
       <div ref={decks.wrapperBRef} className="absolute w-px h-px opacity-0 pointer-events-none -left-[9999px]" />
-      <TalkProgramMonitor />
     </div>
   );
 }
