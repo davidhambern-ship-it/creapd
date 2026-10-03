@@ -269,6 +269,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
     vo_requirements: parseObject(merged.vo_requirements, {}),
     production_plan: parseObject(merged.production_plan, {}),
     build_log: parseArray(merged.build_log, []),
+    source_payload: parseObject(merged.source_payload, {}),
     status: clean(merged.status, 'configuring'),
     is_default: boolean(merged.is_default, false),
   };
@@ -295,7 +296,8 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
         explicit_allowed=${values.explicit_allowed}, preferred_eras=${values.preferred_eras}, playlist_energy_flow=${values.playlist_energy_flow},
         pacing_rules=${JSON.stringify(values.pacing_rules)}::jsonb, ai_automation=${JSON.stringify(values.ai_automation)}::jsonb,
         vo_requirements=${JSON.stringify(values.vo_requirements)}::jsonb, production_plan=${JSON.stringify(values.production_plan)}::jsonb,
-        build_log=${JSON.stringify(values.build_log)}::jsonb, status=${values.status}, is_default=${values.is_default}, updated_at=now()
+        build_log=${JSON.stringify(values.build_log)}::jsonb, source_payload=${JSON.stringify(values.source_payload)}::jsonb,
+        status=${values.status}, is_default=${values.is_default}, updated_at=now()
       WHERE id=${id} AND owner_user_id=${ownerId}
       RETURNING *
     `;
@@ -308,7 +310,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
         must_play_songs, blocked_songs, blocked_artists, recently_played_songs, max_songs_per_artist,
         min_artist_variety, include_indie, include_local, include_new_releases, include_throwbacks, clean_only, explicit_allowed,
         preferred_eras, playlist_energy_flow, pacing_rules, ai_automation, vo_requirements, production_plan, build_log,
-        status, is_default, created_by_email
+        status, is_default, created_by_email, source_payload
       ) VALUES (
         ${id}, ${ownerId}, ${values.production_name}, ${values.host_name}, ${values.co_host_name}, ${values.show_date},
         ${values.show_start_time}, ${values.production_format}, ${values.station_name}, ${values.show_description},
@@ -321,7 +323,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
         ${values.preferred_eras}, ${values.playlist_energy_flow}, ${JSON.stringify(values.pacing_rules)}::jsonb,
         ${JSON.stringify(values.ai_automation)}::jsonb, ${JSON.stringify(values.vo_requirements)}::jsonb,
         ${JSON.stringify(values.production_plan)}::jsonb, ${JSON.stringify(values.build_log)}::jsonb,
-        ${values.status}, ${values.is_default}, ${ownerEmail || null}
+        ${values.status}, ${values.is_default}, ${ownerEmail || null}, ${JSON.stringify(values.source_payload)}::jsonb
       ) RETURNING *
     `;
   }
