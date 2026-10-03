@@ -1,4 +1,5 @@
 const PARAM = 'creapd_obs_bridge';
+const SESSION_KEY = 'creapd.obsBridgeNonce';
 
 const listeners = new Set();
 const pending = new Map();
@@ -11,8 +12,16 @@ let helloTimer = null;
 function currentNonce() {
   if (typeof window === 'undefined') return '';
   if (nonce) return nonce;
-  nonce = new URLSearchParams(window.location.search).get(PARAM) || '';
-  bridgeWindow = nonce ? window.opener : null;
+
+  const fromUrl = new URLSearchParams(window.location.search).get(PARAM) || '';
+  if (fromUrl) {
+    nonce = fromUrl;
+    try { window.sessionStorage.setItem(SESSION_KEY, nonce); } catch {}
+  } else if (window.opener) {
+    try { nonce = window.sessionStorage.getItem(SESSION_KEY) || ''; } catch { nonce = ''; }
+  }
+
+  bridgeWindow = nonce && window.opener ? window.opener : null;
   return nonce;
 }
 
@@ -117,7 +126,7 @@ export function getDirectObsBridge() {
     scenes: [],
     capabilities: {
       bridge: 'browser-direct',
-      bridge_version: '0.4.1-browser',
+      bridge_version: '0.5.0-browser',
     },
     last_seen_at: null,
     last_error: null,
