@@ -1,28 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { upload } from '@vercel/blob/client';
 import {
   ArrowLeft,
   CheckCircle2,
-  CircleStop,
   Disc3,
   Headphones,
   Link2,
   Loader2,
-  Mic2,
   Music2,
-  Pause,
   Play,
   Plus,
   Radio,
   Save,
   Search,
-  Send,
   Sparkles,
   Trash2,
   Upload,
   UserRound,
-  Volume2,
-  X,
 } from 'lucide-react';
 import { creapdApi } from '@/api/creapdClient';
 import { Button } from '@/components/ui/button';
@@ -35,7 +29,6 @@ const EMPTY_PROFILE = {
   public_name: '',
   bio_summary: '',
   artistic_message: '',
-  interview_style: 'conversational',
   source_links: [],
 };
 
@@ -73,17 +66,6 @@ function sourceTypeFromUrl(value) {
   if (url.includes('soundcloud.com')) return 'soundcloud';
   if (url.includes('spotify.com')) return 'spotify';
   return url ? 'link' : 'manual';
-}
-
-function pickRecorderMime() {
-  if (typeof MediaRecorder === 'undefined') return '';
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/mp4',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-  ];
-  return candidates.find(type => MediaRecorder.isTypeSupported?.(type)) || '';
 }
 
 function uploadContentType(blob) {
@@ -157,7 +139,7 @@ function StageButton({ active, complete, icon: Icon, label, onClick }) {
           {complete ? <CheckCircle2 className="h-4 w-4 text-emerald-300" /> : <Icon className="h-4 w-4" />}
         </div>
         <div>
-          <p className="text-[9px] uppercase tracking-[0.18em] text-white/30">Artist Show</p>
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/30">Music Catalogue</p>
           <p className="text-xs font-semibold text-white">{label}</p>
         </div>
       </div>
@@ -199,9 +181,6 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [catalog, setCatalog] = useState([]);
-  const [interview, setInterview] = useState(null);
-  const [turns, setTurns] = useState([]);
-  const [question, setQuestion] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -222,19 +201,6 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
   const [youtubeImporting, setYoutubeImporting] = useState(false);
   const [youtubeDiagnostics, setYoutubeDiagnostics] = useState(null);
 
-  const [recording, setRecording] = useState(false);
-  const [recordingBusy, setRecordingBusy] = useState(false);
-  const [answerText, setAnswerText] = useState('');
-  const [interimText, setInterimText] = useState('');
-  const [recordedBlob, setRecordedBlob] = useState(null);
-  const [recordedUrl, setRecordedUrl] = useState('');
-  const [submittingAnswer, setSubmittingAnswer] = useState(false);
-
-  const recorderRef = useRef(null);
-  const streamRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const chunksRef = useRef([]);
-  const finalTranscriptRef = useRef('');
 
   const load = useCallback(async () => {
     if (!open) return;
@@ -250,11 +216,8 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
         source_links: normalizeSourceLinks(result.profile.source_links),
       } : EMPTY_PROFILE);
       setCatalog(result?.catalog || []);
-      setInterview(result?.interview || null);
-      setTurns(result?.turns || []);
-      setQuestion(result?.interview?.current_question || '');
     } catch (err) {
-      setError(apiErrorMessage(err, 'CREAPD could not open Artist Show Discovery.'));
+      setError(apiErrorMessage(err, 'CREAPD could not open your music catalogue.'));
     } finally {
       setLoading(false);
     }
@@ -264,18 +227,8 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     load();
   }, [load]);
 
-  useEffect(() => () => {
-    try { recognitionRef.current?.stop?.(); } catch {}
-    if (recorderRef.current?.state === 'recording') {
-      try { recorderRef.current.stop(); } catch {}
-    }
-    streamRef.current?.getTracks?.().forEach(track => track.stop());
-    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-  }, [recordedUrl]);
-
   const profileComplete = Boolean(profile?.artist_name?.trim());
   const catalogComplete = catalog.length > 0;
-  const interviewStarted = Boolean(interview?.id);
 
   const saveProfile = async () => {
     if (!profile.artist_name?.trim() || savingProfile) return;
@@ -452,192 +405,6 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       return next;
     });
   };
-
-  const speakQuestion = useCallback((textValue = question) => {
-    const text = String(textValue || '').trim();
-    if (!text || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.96;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
-  }, [question]);
-
-  const startInterview = async () => {
-    if (!profile?.id) {
-      setError('Save your Artist Profile first.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    setNotice('');
-    try {
-      const result = await creapdApi.post('/production/core', {
-        action: 'music_artist_interview_start',
-        profile_id: profile.id,
-        resume: true,
-      });
-      setInterview(result.interview);
-      setTurns(result.turns || []);
-      setQuestion(result.question || result.interview?.current_question || '');
-      setStage('interview');
-      window.setTimeout(() => speakQuestion(result.question || result.interview?.current_question || ''), 120);
-    } catch (err) {
-      setError(apiErrorMessage(err, 'CREAPr could not start the interview.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const stopRecording = useCallback(() => {
-    setRecording(false);
-    try { recognitionRef.current?.stop?.(); } catch {}
-    recognitionRef.current = null;
-    if (recorderRef.current?.state === 'recording') {
-      try { recorderRef.current.stop(); } catch {}
-    } else {
-      streamRef.current?.getTracks?.().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  }, []);
-
-  const beginRecording = async () => {
-    if (recording || recordingBusy) return;
-    setRecordingBusy(true);
-    setError('');
-    setNotice('');
-    setRecordedBlob(null);
-    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-    setRecordedUrl('');
-    setAnswerText('');
-    setInterimText('');
-    finalTranscriptRef.current = '';
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const mimeType = pickRecorderMime();
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-      recorderRef.current = recorder;
-      chunksRef.current = [];
-
-      recorder.ondataavailable = event => {
-        if (event.data?.size) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType || 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        setRecordedBlob(blob);
-        setRecordedUrl(url);
-        setAnswerText(current => current.trim() || finalTranscriptRef.current.trim());
-        stream.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-        setRecordingBusy(false);
-      };
-
-      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (Recognition) {
-        const recognition = new Recognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognition.onresult = event => {
-          let finalChunk = '';
-          let interimChunk = '';
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            const transcript = event.results[i][0]?.transcript || '';
-            if (event.results[i].isFinal) finalChunk += transcript + ' ';
-            else interimChunk += transcript;
-          }
-          if (finalChunk) {
-            finalTranscriptRef.current = `${finalTranscriptRef.current} ${finalChunk}`.trim();
-            setAnswerText(finalTranscriptRef.current);
-          }
-          setInterimText(interimChunk.trim());
-        };
-        recognition.onerror = () => {
-          // Recording continues even when browser speech recognition is unavailable.
-        };
-        try {
-          recognition.start();
-          recognitionRef.current = recognition;
-        } catch {}
-      }
-
-      recorder.start(500);
-      setRecording(true);
-      setRecordingBusy(false);
-    } catch (err) {
-      streamRef.current?.getTracks?.().forEach(track => track.stop());
-      streamRef.current = null;
-      setRecordingBusy(false);
-      setError(err?.name === 'NotAllowedError'
-        ? 'Microphone permission is required for the CREAPr interview.'
-        : err?.message || 'CREAPD could not start your microphone.');
-    }
-  };
-
-  const submitAnswer = async () => {
-    if (!interview?.id || (!recordedBlob && !answerText.trim()) || submittingAnswer) return;
-    setSubmittingAnswer(true);
-    setError('');
-    setNotice('');
-    try {
-      let audioUrl = '';
-      if (recordedBlob) {
-        const ext = uploadContentType(recordedBlob).includes('mp4') ? 'm4a' : uploadContentType(recordedBlob).includes('ogg') ? 'ogg' : 'webm';
-        audioUrl = await uploadAudioBlob(
-          recordedBlob,
-          'artist_interview_audio_upload_authorize',
-          `artist-interview-${Date.now()}.${ext}`,
-        );
-      }
-
-      const result = await creapdApi.post('/production/core', {
-        action: 'music_artist_interview_answer',
-        session_id: interview.id,
-        question,
-        answer_text: answerText.trim(),
-        audio_url: audioUrl || null,
-      });
-
-      setTurns(current => [...current, result.turn]);
-      setInterview(result.interview);
-      setQuestion(result.question || '');
-      setAnswerText('');
-      setInterimText('');
-      setRecordedBlob(null);
-      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-      setRecordedUrl('');
-      setNotice('Answer saved. CREAPr used your interview and catalogue to choose the next question.');
-      window.setTimeout(() => speakQuestion(result.question || ''), 120);
-    } catch (err) {
-      setError(apiErrorMessage(err, 'CREAPD could not save this interview answer.'));
-    } finally {
-      setSubmittingAnswer(false);
-    }
-  };
-
-  const finishInterview = async () => {
-    if (!interview?.id) return;
-    setError('');
-    try {
-      const result = await creapdApi.post('/production/core', {
-        action: 'music_artist_interview_finish',
-        session_id: interview.id,
-      });
-      setInterview(result.interview);
-      setQuestion('');
-      setNotice('Interview saved. The recording and transcript are now part of your Artist Show source material.');
-    } catch (err) {
-      setError(apiErrorMessage(err, 'CREAPD could not finish the interview.'));
-    }
-  };
-
-  const speechRecognitionAvailable = typeof window !== 'undefined'
-    && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   const catalogSummary = useMemo(() => {
     const uploads = catalog.filter(track => track.audio_url).length;
@@ -960,167 +727,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
               </div>
             )}
 
-            {stage === 'interview' && (
-              <section className="overflow-hidden rounded-2xl border border-fuchsia-400/20 bg-[#080910]">
-                <div className="grid min-h-[620px] lg:grid-cols-[minmax(0,1.25fr)_minmax(330px,.75fr)]">
-                  <div className="relative flex flex-col border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(217,70,239,.12),transparent_40%),radial-gradient(circle_at_70%_70%,rgba(34,211,238,.08),transparent_45%)]" />
-                    <div className="relative z-10 flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">CREAPr Interview Room</p>
-                        <p className="mt-1 text-xs text-white/35">{profile.public_name || profile.artist_name || 'Artist'} · {catalog.length} catalogue tracks available</p>
-                      </div>
-                      {interview?.status === 'active' && (
-                        <Button variant="outline" size="sm" onClick={finishInterview}>
-                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Finish Interview
-                        </Button>
-                      )}
-                    </div>
 
-                    {!interviewStarted ? (
-                      <div className="relative z-10 flex flex-1 items-center justify-center">
-                        <div className="max-w-lg text-center">
-                          <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 shadow-[0_0_40px_rgba(217,70,239,.12)]">
-                            <Mic2 className="h-9 w-9 text-fuchsia-200" />
-                          </div>
-                          <h2 className="font-heading text-2xl font-bold">This is an actual interview.</h2>
-                          <p className="mt-3 text-sm leading-relaxed text-white/45">
-                            CREAPr asks aloud. You answer through your microphone. CREAPD records your original audio, keeps an editable transcript, and uses your answers plus your catalogue to decide what to ask next.
-                          </p>
-                          <Button onClick={startInterview} disabled={!profile?.id} className="mt-5 bg-fuchsia-600 hover:bg-fuchsia-500">
-                            <Mic2 className="mr-2 h-4 w-4" /> Start CREAPr Interview
-                          </Button>
-                        </div>
-                      </div>
-                    ) : interview?.status === 'complete' ? (
-                      <div className="relative z-10 flex flex-1 items-center justify-center">
-                        <div className="max-w-lg text-center">
-                          <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-emerald-300" />
-                          <h2 className="font-heading text-2xl font-bold">Interview saved.</h2>
-                          <p className="mt-2 text-sm text-white/45">
-                            {turns.length} recorded answer{turns.length === 1 ? '' : 's'} are now reusable Artist Show source material.
-                          </p>
-                          <Button
-                            variant="outline"
-                            className="mt-5"
-                            onClick={() => onUseProfile?.({ profile, catalog, interview, turns })}
-                          >
-                            <Radio className="mr-2 h-4 w-4" /> Use for an Artist Show
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="relative z-10 mt-8 rounded-2xl border border-white/10 bg-black/35 p-5 md:p-7">
-                          <div className="flex items-start gap-4">
-                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-cyan-400/25 bg-cyan-500/10">
-                              <Sparkles className="h-5 w-5 text-cyan-300" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-cyan-300">CREAPr asks</p>
-                              <p className="mt-2 font-heading text-xl font-semibold leading-relaxed md:text-2xl">{question || 'Preparing the next question…'}</p>
-                              <button type="button" onClick={() => speakQuestion()} className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-semibold text-white/40 hover:text-white">
-                                <Volume2 className="h-3.5 w-3.5" /> Replay question aloud
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="relative z-10 mt-5 flex-1 rounded-2xl border border-white/[0.07] bg-black/25 p-5">
-                          <div className="mb-3 flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-fuchsia-300">Your answer</p>
-                              <p className="mt-1 text-[10px] text-white/30">Your original recording is preserved. The transcript can be corrected before you send it.</p>
-                            </div>
-                            {recording && (
-                              <div className="flex items-center gap-2 text-[10px] font-semibold text-red-300">
-                                <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" /> RECORDING
-                              </div>
-                            )}
-                          </div>
-
-                          {!speechRecognitionAvailable && (
-                            <div className="mb-3 rounded-lg border border-amber-400/20 bg-amber-500/[0.05] px-3 py-2 text-[10px] leading-relaxed text-amber-100/75">
-                              Your browser can record the interview, but it is not exposing live speech transcription. After you speak, type or paste a quick transcript below so CREAPr can understand the answer and choose the next question.
-                            </div>
-                          )}
-
-                          <Textarea
-                            value={answerText + (interimText ? `${answerText ? ' ' : ''}${interimText}` : '')}
-                            onChange={event => {
-                              setAnswerText(event.target.value);
-                              finalTranscriptRef.current = event.target.value;
-                              setInterimText('');
-                            }}
-                            placeholder={recording ? 'Speak naturally. CREAPD will capture what your browser can transcribe here…' : 'Record your answer or type/correct the transcript here.'}
-                            className="min-h-[150px] border-white/10 bg-black/45 text-base leading-relaxed text-white"
-                          />
-
-                          {recordedUrl && (
-                            <div className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-500/[0.035] p-3">
-                              <p className="mb-2 text-[10px] font-semibold text-emerald-200">Recorded answer</p>
-                              <audio src={recordedUrl} controls className="h-9 w-full" />
-                            </div>
-                          )}
-
-                          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex gap-2">
-                              {!recording ? (
-                                <Button onClick={beginRecording} disabled={recordingBusy || submittingAnswer} className="bg-red-600 hover:bg-red-500">
-                                  {recordingBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic2 className="mr-2 h-4 w-4" />}
-                                  Record Answer
-                                </Button>
-                              ) : (
-                                <Button onClick={stopRecording} variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-500/10">
-                                  <CircleStop className="mr-2 h-4 w-4" /> Stop Recording
-                                </Button>
-                              )}
-                            </div>
-
-                            <Button
-                              onClick={submitAnswer}
-                              disabled={recording || submittingAnswer || !answerText.trim()}
-                              className="bg-fuchsia-600 hover:bg-fuchsia-500"
-                            >
-                              {submittingAnswer ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                              Save Answer & Ask Next
-                            </Button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <aside className="bg-black/20 p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <Headphones className="h-4 w-4 text-cyan-300" />
-                      <div>
-                        <p className="text-xs font-semibold">Interview Tape</p>
-                        <p className="text-[9px] text-white/30">{turns.length} answer{turns.length === 1 ? '' : 's'} recorded</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {[...turns].reverse().map(turn => (
-                        <div key={turn.id} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
-                          <p className="text-[9px] font-semibold uppercase tracking-wider text-cyan-300">CREAPr</p>
-                          <p className="mt-1 text-xs leading-relaxed text-white/65">{turn.question}</p>
-                          <p className="mt-3 text-[9px] font-semibold uppercase tracking-wider text-fuchsia-300">{profile.public_name || profile.artist_name || 'Artist'}</p>
-                          <p className="mt-1 line-clamp-4 text-xs leading-relaxed text-white/45">{turn.answer_text || 'Recorded audio answer'}</p>
-                          {turn.audio_url && <audio src={turn.audio_url} controls preload="none" className="mt-2 h-8 w-full" />}
-                        </div>
-                      ))}
-
-                      {!turns.length && interviewStarted && (
-                        <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-xs text-white/25">
-                          Your recorded answers will collect here.
-                        </div>
-                      )}
-                    </div>
-                  </aside>
-                </div>
-              </section>
-            )}
           </>
         )}
       </div>
