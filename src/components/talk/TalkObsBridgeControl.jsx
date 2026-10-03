@@ -41,6 +41,7 @@ function TalkObsBridgeControlLive() {
   const [bridge, setBridge] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [pairToken, setPairToken] = useState('');
+  const [pairLaunchUrl, setPairLaunchUrl] = useState('');
   const [selectedScene, setSelectedScene] = useState('');
   const [pendingScene, setPendingScene] = useState('');
   const [busy, setBusy] = useState('');
@@ -103,14 +104,25 @@ function TalkObsBridgeControlLive() {
     setBusy('pair');
     setError('');
     setCopied(false);
+    setPairLaunchUrl('');
     try {
       const result = await creapdApi.post('/production/core', {
         action: 'obs_bridge_create',
         name: 'CREAPD Live OBS',
       });
       setBridge(result?.bridge || null);
-      setPairToken(result?.bridge_token || '');
+      const token = result?.bridge_token || '';
+      setPairToken(token);
+      const launchUrl = token
+        ? `creapd-obs://pair?creapd_url=${encodeURIComponent(window.location.origin)}&bridge_token=${encodeURIComponent(token)}`
+        : '';
+      setPairLaunchUrl(launchUrl);
       setPanelOpen(true);
+      if (launchUrl) {
+        window.setTimeout(() => {
+          try { window.location.href = launchUrl; } catch {}
+        }, 50);
+      }
     } catch (err) {
       setError(err?.data?.diagnostic?.message || err?.data?.error || err?.message || 'CREAPD could not create an OBS bridge token.');
     } finally {
@@ -242,19 +254,27 @@ function TalkObsBridgeControlLive() {
 
                 <div className="space-y-3 text-sm">
                   <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">1</span><p><span className="font-medium">Open OBS → Tools → WebSocket Server Settings.</span><br /><span className="text-xs text-muted-foreground">Enable the server, keep authentication on, and note the password. Default port is 4455.</span></p></div>
-                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">2</span><p><span className="font-medium">Download and run the CREAPD OBS Bridge.</span><br /><span className="text-xs text-muted-foreground">The PowerShell helper is temporary Preview plumbing.</span></p></div>
-                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">3</span><p><span className="font-medium">Paste the Bridge Token when prompted.</span><br /><span className="text-xs text-muted-foreground">Then enter the OBS WebSocket password.</span></p></div>
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">2</span><p><span className="font-medium">Run the native CREAPD OBS Bridge once.</span><br /><span className="text-xs text-muted-foreground">Windows registers the CREAPD pairing link on this computer.</span></p></div>
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">3</span><p><span className="font-medium">Pair CREAPD to the bridge.</span><br /><span className="text-xs text-muted-foreground">The token is handed to the bridge automatically. After the first connection, your OBS credentials are encrypted for your Windows user.</span></p></div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" asChild><a href="/creapd-obs-bridge.ps1" download><Download className="w-4 h-4 mr-2" /> Download Bridge</a></Button>
-                  <Button onClick={pairBridge} disabled={Boolean(busy)}>{busy === 'pair' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}{bridge ? 'Generate New Token' : 'Generate Bridge Token'}</Button>
+                  <Button variant="outline" asChild><a href="/creapd-obs-bridge.ps1" download><Download className="w-4 h-4 mr-2" /> Legacy PowerShell Fallback</a></Button>
+                  <Button onClick={pairBridge} disabled={Boolean(busy)}>{busy === 'pair' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}{bridge ? 'Pair / Re-pair CREAPD Bridge' : 'Pair CREAPD Bridge'}</Button>
                 </div>
+
+                {pairLaunchUrl && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
+                    <p className="text-xs font-medium">CREAPD tried to open the native bridge.</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">If Windows or the browser blocked the handoff, use the button below.</p>
+                    <Button size="sm" className="mt-2" asChild><a href={pairLaunchUrl}>Open CREAPD Bridge</a></Button>
+                  </div>
+                )}
 
                 {pairToken && (
                   <div className="rounded-xl border border-white/10 bg-black/50 p-3">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Bridge Token · shown once</p>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Manual fallback token · shown once</p>
                       <button type="button" onClick={copyToken} className="text-xs flex items-center gap-1 text-primary hover:text-primary/80"><Copy className="w-3.5 h-3.5" /> {copied ? 'Copied' : 'Copy'}</button>
                     </div>
                     <code className="block text-xs break-all select-all text-white/90">{pairToken}</code>
