@@ -12,9 +12,12 @@
     .brand{font-weight:900;letter-spacing:.08em;color:#ec4899;font-size:26px}
     h1{font-size:24px;margin:12px 0 8px}
     p{color:#b8bdca;line-height:1.5;margin:6px 0}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin:20px 0}
     label{font-size:12px;color:#b8bdca}
     input{width:100%;height:44px;margin-top:6px;border-radius:10px;border:1px solid #ffffff1a;background:#06080d;color:#fff;padding:0 12px}
+    details{margin-top:14px;border:1px solid #ffffff12;border-radius:12px;background:#0b0e14;padding:10px 12px}
+    summary{cursor:pointer;color:#d8deea;font-size:12px;font-weight:700}
+    .privacy{font-size:11px;color:#8f98aa;margin-top:8px}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
     button{height:42px;padding:0 16px;border:0;border-radius:10px;background:#9333ea;color:white;font-weight:700;cursor:pointer}
     button.secondary{background:#202531}
@@ -30,23 +33,30 @@
   <main class="card">
     <div class="brand">CREAPD</div>
     <h1>OBS Bridge</h1>
-    <p>This tiny browser bridge connects CREAPD directly to OBS on this computer. No installer, no PowerShell, no bridge token.</p>
+    <p>Keep this small window open while you use CREAPD Studio. It talks directly to OBS on this computer—no installer, PowerShell, or CREAPD token.</p>
 
     <div class="grid">
-      <label>OBS WebSocket
-        <input id="endpoint" value="ws://127.0.0.1:4455" />
-      </label>
       <label>OBS WebSocket Password
-        <input id="password" type="password" placeholder="Enter once" />
+        <input id="password" type="password" placeholder="Paste your OBS password" autocomplete="current-password" />
       </label>
     </div>
 
-    <label class="small"><input id="remember" type="checkbox" checked style="width:auto;height:auto;margin-right:8px">Remember OBS connection on this browser</label>
+    <label class="small"><input id="remember" type="checkbox" checked style="width:auto;height:auto;margin-right:8px">Remember this OBS password on this computer</label>
+    <p class="privacy">Your OBS password stays in this local bridge file's browser storage and is never sent to CREAPD.</p>
 
     <div class="actions">
       <button id="connect">Connect OBS</button>
-      <button id="openStudio" class="secondary" disabled>Open CREAPD Studio</button>
+      <button id="openStudio" class="secondary" disabled>Open / Focus CREAPD Studio</button>
+      <button id="forget" class="secondary" type="button">Forget Saved Password</button>
     </div>
+
+    <details>
+      <summary>Advanced connection settings</summary>
+      <label style="display:block;margin-top:10px">OBS WebSocket
+        <input id="endpoint" value="ws://127.0.0.1:4455" />
+      </label>
+      <p class="small">Most people should leave this at <strong>ws://127.0.0.1:4455</strong>.</p>
+    </details>
 
     <div class="status">
       <strong id="statusText" class="warn">Not connected</strong>
@@ -71,6 +81,7 @@
   const rememberInput = document.getElementById("remember");
   const connectButton = document.getElementById("connect");
   const openStudioButton = document.getElementById("openStudio");
+  const forgetButton = document.getElementById("forget");
   const statusText = document.getElementById("statusText");
   const statusDetail = document.getElementById("statusDetail");
   const logBox = document.getElementById("log");
@@ -83,6 +94,11 @@
   let studioWindow = null;
   let nonce = "";
   let requestCounter = 0;
+  let reconnectTimer = null;
+  let syncTimer = null;
+  let shouldReconnect = false;
+  let reconnectDelay = 1500;
+  let refreshInFlight = false;
   const pending = new Map();
 
   const state = {
@@ -118,6 +134,44 @@
     statusText.textContent = label;
     statusText.className = cls || "warn";
     statusDetail.textContent = detail || "";
+    document.title = (cls === "ok" ? "CONNECTED • " : "") + "CREAPD OBS Bridge";
+  }
+
+  function clearReconnectTimer(){
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  }
+
+  function scheduleReconnect(){
+    if (!shouldReconnect || reconnectTimer) return;
+    const delay = reconnectDelay;
+    setStatus("Waiting for OBS…","CREAPD will reconnect automatically when OBS is available.","warn");
+    reconnectTimer = setTimeout(()=>{
+      reconnectTimer = null;
+      connectObs(true);
+    },delay);
+    reconnectDelay = Math.min(10000, Math.round(reconnectDelay * 1.6));
+  }
+
+  function startStateSync(){
+    if (syncTimer) clearInterval(syncTimer);
+    syncTimer = setInterval(async ()=>{
+      if (!state.connected || refreshInFlight) return;
+      refreshInFlight = true;
+      try { await refreshState(false); }
+      catch (error) { log("OBS state refresh paused: " + (error?.message || error)); }
+      finally { refreshInFlight = false; }
+    },2500);
+  }
+
+  function rejectPending(reason){
+    for (const [id,slot] of pending.entries()) {
+      clearTimeout(slot.timeout);
+      slot.reject(new Error(reason));
+      pending.delete(id);
+    }
   }
 
   function randomNonce(){
@@ -180,7 +234,10 @@
         storage.remove("creapd_obs_password");
       }
       await refreshState(true);
-      setStatus("Connected to OBS", state.current_scene ? "Current scene: " + state.current_scene : "OBS is under CREAPD control.", "ok");
+      clearReconnectTimer();
+      reconnectDelay = 1500;
+      startStateSync();
+      setStatus("Connected to OBS", state.current_scene ? "Current scene: " + state.current_scene + " · You can minimize this bridge window." : "OBS is under CREAPD control. You can minimize this bridge window.", "ok");
       connectButton.textContent = "Reconnect OBS";
       openStudioButton.disabled = false;
       log("OBS connected · " + (state.obs_studio_version || "unknown version"));
@@ -204,30 +261,52 @@
     }
   }
 
-  async function connectObs(){
-    if (socket) {
-      try { socket.close(); } catch {}
-      socket = null;
+  async function connectObs(isRetry = false){
+    shouldReconnect = true;
+    clearReconnectTimer();
+
+    const previous = socket;
+    socket = null;
+    if (previous) {
+      try { previous.close(); } catch {}
     }
+
     identified = false;
     state.connected = false;
     state.obs_endpoint = endpointInput.value.trim() || "ws://127.0.0.1:4455";
-    setStatus("Connecting…","Trying " + state.obs_endpoint,"warn");
-    log("Connecting to OBS at " + state.obs_endpoint + "…");
+    setStatus(isRetry ? "Looking for OBS…" : "Connecting…",isRetry ? "OBS is not available yet. CREAPD will keep trying." : "Trying " + state.obs_endpoint,"warn");
+    if (!isRetry) log("Connecting to OBS at " + state.obs_endpoint + "…");
 
     try {
-      socket = new WebSocket(state.obs_endpoint, "obswebsocket.json");
-      socket.onmessage = event => handleSocketMessage(event).catch(error => fail(error));
-      socket.onerror = () => fail(new Error("Could not connect to OBS. Make sure OBS is open and WebSocket Server is enabled."));
-      socket.onclose = () => {
-        if (state.connected) log("OBS connection closed.");
+      const ws = new WebSocket(state.obs_endpoint, "obswebsocket.json");
+      socket = ws;
+
+      ws.onmessage = event => {
+        if (socket !== ws) return;
+        handleSocketMessage(event).catch(error => fail(error));
+      };
+      ws.onerror = () => {
+        if (socket !== ws) return;
+        state.last_error = "Could not connect to OBS. Make sure OBS is open and WebSocket Server is enabled.";
+      };
+      ws.onclose = () => {
+        if (socket !== ws) return;
+        socket = null;
+        const wasConnected = state.connected;
         state.connected = false;
         identified = false;
+        if (syncTimer) {
+          clearInterval(syncTimer);
+          syncTimer = null;
+        }
+        rejectPending("OBS disconnected.");
         postState();
-        setStatus("OBS disconnected","Open OBS and click Connect OBS.","warn");
+        if (wasConnected) log("OBS connection closed. Waiting to reconnect…");
+        scheduleReconnect();
       };
     } catch (error) {
       fail(error);
+      scheduleReconnect();
     }
   }
 
@@ -235,6 +314,7 @@
     state.last_error = error && error.message ? error.message : String(error);
     log("ERROR: " + state.last_error);
     setStatus("Connection error",state.last_error,"bad");
+    if (!state.connected) scheduleReconnect();
   }
 
   async function refreshSceneSources(){
@@ -445,7 +525,7 @@
     if (type === "image") {
       return '<!doctype html><html><body style="margin:0;overflow:hidden;background:transparent;width:100vw;height:100vh"><img src="'+safeUrl+'" style="width:100%;height:100%;object-fit:contain"></body></html>';
     }
-    return '<!doctype html><html><body style="margin:0;overflow:hidden;background:transparent;width:100vw;height:100vh"><video src="'+safeUrl+'" autoplay muted playsinline '+(loop?"loop":"")+' style="width:100%;height:100%;object-fit:contain"></video></body></html>';
+    return '<!doctype html><html><body style="margin:0;overflow:hidden;background:transparent;width:100vw;height:100vh"><video src="'+safeUrl+'" autoplay playsinline '+(loop?"loop":"")+' style="width:100%;height:100%;object-fit:contain"></video></body></html>';
   }
 
   async function createSource(payload){
@@ -462,6 +542,7 @@
       settings.height = state.video_height;
       settings.shutdown = false;
       settings.restart_when_active = false;
+      settings.reroute_audio = type === "media";
     } else if (type === "text") {
       inputKind = "text_gdiplus_v2"; settings.text = payload.text || "";
     } else if (type === "browser") {
@@ -575,12 +656,26 @@
     }
   });
 
-  connectButton.addEventListener("click",connectObs);
+  connectButton.addEventListener("click",()=>connectObs(false));
   openStudioButton.addEventListener("click",openStudio);
+  forgetButton.addEventListener("click",()=>{
+    storage.remove("creapd_obs_password");
+    passwordInput.value = "";
+    rememberInput.checked = false;
+    log("Saved OBS password cleared.");
+    setStatus(state.connected ? "Connected to OBS" : "Saved password cleared",state.connected ? "The current OBS session stays connected until it closes." : "Enter the OBS password to connect again.",state.connected ? "ok" : "warn");
+  });
+
+  window.addEventListener("beforeunload",()=>{
+    shouldReconnect = false;
+    clearReconnectTimer();
+    if (syncTimer) clearInterval(syncTimer);
+  });
 
   log("Browser bridge ready. No Windows app installation required.");
   if (passwordInput.value) {
-    setTimeout(connectObs,250);
+    setStatus("Reconnecting automatically…","Using the OBS connection saved on this computer.","warn");
+    setTimeout(()=>connectObs(true),250);
   }
 })();
 </script>
