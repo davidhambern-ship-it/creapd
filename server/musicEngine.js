@@ -525,6 +525,53 @@ function extractYoutubeSearchCandidates(html) {
   return results;
 }
 
+function extractYoutubePlaylistIds(html) {
+  const source = String(html || '');
+  const ids = new Set();
+  const patterns = [
+    /[?&]list=([A-Za-z0-9_-]{10,})/g,
+    /"playlistId":"([A-Za-z0-9_-]{10,})"/g,
+    /"browseId":"VL([A-Za-z0-9_-]{10,})"/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const id = match?.[1];
+      if (id) ids.add(id);
+      if (ids.size >= 40) return [...ids];
+    }
+  }
+  return [...ids];
+}
+
+async function fetchYoutubeDiscoveryPage(url) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return { ok: false, status: response.status, html: '', videos: [], playlists: [] };
+    const html = await response.text();
+    const videos = [
+      ...extractYoutubeSearchCandidates(html),
+      ...extractYoutubeLooseCandidates(html),
+    ];
+    return {
+      ok: true,
+      status: response.status,
+      html,
+      videos,
+      playlists: extractYoutubePlaylistIds(html),
+    };
+  } catch {
+    return { ok: false, status: 0, html: '', videos: [], playlists: [] };
+  }
+}
+
 function extractYoutubeLooseCandidates(html) {
   const source = String(html || '');
   const seen = new Set();
@@ -876,46 +923,45 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     throw error;
   }
 
-  let html = '';
-  try {
-    const response = await fetch(normalized, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) {
-      const error = new Error(`YouTube returned HTTP ${response.status} for this channel.`);
-      error.code = 'ARTIST_YOUTUBE_CHANNEL_UNAVAILABLE';
-      error.status = response.status === 404 ? 404 : 502;
-      throw error;
-    }
-    html = await response.text();
-  } catch (error) {
-    if (error?.code) throw error;
-    const wrapped = new Error('CREAPD could not reach this YouTube channel.');
-    wrapped.code = 'ARTIST_YOUTUBE_CHANNEL_UNAVAILABLE';
-    wrapped.status = 502;
-    throw wrapped;
+  const baseUrl = normalized.replace(/\/videos\/?$/, '');
+  const pageUrls = [
+    baseUrl,
+    `${baseUrl}/releases`,
+    `${baseUrl}/videos`,
+    `${baseUrl}/playlists`,
+  ];
+
+  const pageResults = [];
+  for (const url of pageUrls) {
+    pageResults.push({ url, ...(await fetchYoutubeDiscoveryPage(url)) });
   }
 
-  const initialCandidates = extractYoutubeSearchCandidates(html);
-  const feedResult = await resolveYoutubeChannelFeedCandidates(html, normalized);
-  const looseCandidates = initialCandidates.length || feedResult.videos.length
-    ? []
-    : extractYoutubeLooseCandidates(html);
-  const searchFallback = initialCandidates.length || feedResult.videos.length || looseCandidates.length
-    ? []
-    : await searchYoutubeArtistFallback(
-        normalized,
-        text(options.artist_name || options.public_name),
-      );
+  const primary = pageResults[2]?.html || pageResults[0]?.html || '';
+  const feedResult = await resolveYoutubeChannelFeedCandidates(primary, normalized);
+
+  const pageVideos = pageResults.flatMap(result => result.videos || []);
+  const pagePlaylistIds = [...new Set(pageResults.flatMap(result => result.playlists || []))];
+
+  const playlistVideos = [];
+  for (const playlistId of pagePlaylistIds.slice(0, 24)) {
+    const result = await fetchYoutubeDiscoveryPage(
+      `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`,
+    );
+    playlistVideos.push(...(result.videos || []));
+  }
+
+  const searchFallback =
+    pageVideos.length || feedResult.videos.length || playlistVideos.length
+      ? []
+      : await searchYoutubeArtistFallback(
+          normalized,
+          text(options.artist_name || options.public_name),
+        );
 
   const discovered = [
-    ...initialCandidates,
+    ...pageVideos,
     ...feedResult.videos,
-    ...looseCandidates,
+    ...playlistVideos,
     ...searchFallback,
   ];
 
@@ -925,15 +971,33 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     if (!item?.video_id || seen.has(item.video_id)) continue;
     seen.add(item.video_id);
     unique.push(item);
-    if (unique.length >= Math.max(1, Math.min(36, num(options.limit, 24)))) break;
+    if (unique.length >= Math.max(1, Math.min(80, num(options.limit, 50)))) break;
   }
+
+  const diagnostics = {
+    requested_url: channelUrl,
+    normalized_url: baseUrl,
+    channel_id: feedResult.channel_id || null,
+    pages: pageResults.map(result => ({
+      path: result.url.replace(baseUrl, '') || '/',
+      ok: result.ok,
+      status: result.status,
+      video_candidates: result.videos?.length || 0,
+      playlist_candidates: result.playlists?.length || 0,
+    })),
+    feed_candidates: feedResult.videos?.length || 0,
+    release_playlist_candidates: pagePlaylistIds.length,
+    release_playlist_video_candidates: playlistVideos.length,
+    search_candidates: searchFallback.length,
+  };
 
   if (!unique.length) {
     const error = new Error(
-      'CREAPD reached the YouTube channel, but YouTube did not expose any public uploads to the scanner. Try the channel home URL or @handle URL instead of a playlist/video URL.'
+      'That YouTube URL is valid, but YouTube did not expose any catalogue videos to CREAPD. If this is an Official Artist Channel, the music may live in the auto-generated Releases shelf instead of the channel uploads feed.'
     );
-    error.code = 'ARTIST_YOUTUBE_NO_VIDEOS';
+    error.code = 'ARTIST_YOUTUBE_CATALOG_NOT_EXPOSED';
     error.status = 404;
+    error.details = diagnostics;
     throw error;
   }
 
@@ -943,24 +1007,29 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
 
   if (!details.length) {
     const error = new Error(
-      'CREAPD found YouTube upload IDs, but YouTube did not return readable metadata for them. Please retry in a moment.'
+      'CREAPD found YouTube catalogue IDs, but YouTube did not return readable metadata for them.'
     );
     error.code = 'ARTIST_YOUTUBE_METADATA_UNAVAILABLE';
     error.status = 502;
+    error.details = diagnostics;
     throw error;
   }
 
   return {
-    channel_url: normalized.replace(/\/videos\/?$/, ''),
+    channel_url: baseUrl,
     channel_id: feedResult.channel_id,
-    discovery_mode: initialCandidates.length
-      ? 'channel_page'
-      : feedResult.videos.length
-        ? 'youtube_feed'
-        : looseCandidates.length
-          ? 'html_fallback'
-          : 'search_fallback',
+    discovery_mode:
+      pageResults[1]?.videos?.length || pagePlaylistIds.length
+        ? 'artist_releases'
+        : pageVideos.length
+          ? 'channel_pages'
+          : feedResult.videos.length
+            ? 'youtube_feed'
+            : playlistVideos.length
+              ? 'release_playlists'
+              : 'search_fallback',
     scanned_count: details.length,
+    diagnostics,
     videos: details.map(video => ({
       ...video,
       likely_music: likelyArtistMusicUpload(video),
