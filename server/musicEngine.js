@@ -1555,7 +1555,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
   for (let index = 0; index < selectedCatalog.length; index += 1) {
     const track = selectedCatalog[index];
     const metadata = object(track.metadata, {});
-    const youtubeVideoId = extractYoutubeId(track.source_url);
+    const youtubeVideoId = extractVideoId(track.source_url);
     const duration = Math.max(30, num(metadata.duration_seconds, 180));
     const source = track.audio_url
       ? 'artist_catalog_upload'
@@ -2459,7 +2459,7 @@ async function regenerateRejectedTracks({ sql, ownerUserId, config, playlist, re
     const available = catalog.filter(track => !usedCatalogIds.has(String(track.id)));
     replacements = available.slice(0, rejected.length).map(track => {
       const trackMetadata = object(track.metadata, {});
-      const videoId = extractYoutubeId(track.source_url);
+      const videoId = extractVideoId(track.source_url);
       const duration = Math.max(30, num(trackMetadata.duration_seconds, 180));
       const source = track.audio_url
         ? 'artist_catalog_upload'
