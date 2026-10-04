@@ -73,6 +73,7 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
   const activeDeckRef = useRef(activeDeck);
   const endedRef = useRef(onActiveEnded);
   const tracksRef = useRef({ A: deckATrack, B: deckBTrack });
+  const pendingPlayRef = useRef({ A: false, B: false });
   const [ytReady, setYtReady] = useState({ A: false, B: false });
   const [audioReady, setAudioReady] = useState({ A: false, B: false });
   const [playing, setPlaying] = useState({ A: false, B: false });
@@ -158,9 +159,22 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
           modestbranding: 1,
         },
         events: {
-          onReady: () => {
+          onReady: event => {
             if (cancelled) return;
             setYtReady(value => ({ ...value, [deck]: true }));
+
+            const track = tracksRef.current[deck];
+            const videoId = track?.youtube_video_id;
+            if (videoId && !trackAudioUrl(track)) {
+              try {
+                event.target.cueVideoById(videoId);
+                event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
+                if (pendingPlayRef.current[deck]) {
+                  pendingPlayRef.current[deck] = false;
+                  event.target.playVideo();
+                }
+              } catch {}
+            }
           },
           onStateChange: event => {
             if (cancelled || trackAudioUrl(tracksRef.current[deck])) return;
@@ -234,11 +248,11 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
 
   useEffect(() => {
     loadDeck('A', deckATrack, activeDeck === 'A');
-  }, [deckATrack?.id, deckATrack?.youtube_video_id, trackAudioUrl(deckATrack), loadDeck]);
+  }, [deckATrack?.id, deckATrack?.youtube_video_id, trackAudioUrl(deckATrack), activeDeck, ytReady.A, loadDeck]);
 
   useEffect(() => {
     loadDeck('B', deckBTrack, activeDeck === 'B');
-  }, [deckBTrack?.id, deckBTrack?.youtube_video_id, trackAudioUrl(deckBTrack), loadDeck]);
+  }, [deckBTrack?.id, deckBTrack?.youtube_video_id, trackAudioUrl(deckBTrack), activeDeck, ytReady.B, loadDeck]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -296,12 +310,21 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
     const source = sourceFor(deck);
     if (source.audioUrl && source.audio) {
       source.audio.play().catch(() => {});
-    } else {
-      try { source.player?.playVideo?.(); } catch {}
+      return;
     }
-  }, [sourceFor]);
+
+    const readyForYoutube = deck === 'A' ? ytReady.A : ytReady.B;
+    if (!source.player || !readyForYoutube) {
+      pendingPlayRef.current[deck] = true;
+      return;
+    }
+
+    pendingPlayRef.current[deck] = false;
+    try { source.player.playVideo?.(); } catch {}
+  }, [sourceFor, ytReady.A, ytReady.B]);
 
   const pause = useCallback(deck => {
+    pendingPlayRef.current[deck] = false;
     const source = sourceFor(deck);
     if (source.audioUrl && source.audio) {
       try { source.audio.pause(); } catch {}
