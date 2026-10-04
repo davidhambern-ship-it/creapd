@@ -1651,6 +1651,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
   }
 
   const rows = [];
+  const metadataFailures = [];
   const selectedCatalog = catalog.slice(0, Math.max(1, Math.min(catalog.length, Number(targetCount) || 10)));
   for (let index = 0; index < selectedCatalog.length; index += 1) {
     let track = selectedCatalog[index];
@@ -1663,11 +1664,15 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
     const durationMissing = num(metadata.duration_seconds, 0) <= 0;
 
     if (youtubeVideoId && (titleIsPlaceholder || durationMissing)) {
-      const verified = await fetchArtistYoutubeVideoDetails(youtubeVideoId, {
-        title: track.title,
-        channel_name: track.artist,
-        duration_seconds: metadata.duration_seconds,
-      });
+      const verified = await fetchArtistYoutubeVideoDetails(
+        youtubeVideoId,
+        {
+          title: track.title,
+          channel_name: track.artist,
+          duration_seconds: metadata.duration_seconds,
+        },
+        { includeDiagnostics: true },
+      );
 
       if (verified?.title) {
         const resolvedMetadata = {
@@ -1703,7 +1708,13 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
       ['youtube track', 'untitled track'].includes(finalTitle.toLowerCase()) ||
       finalDuration <= 0
     )) {
-      console.warn('[MUSIC ENGINE] Skipping unresolved catalog YouTube track', track.id, track.source_url);
+      metadataFailures.push({
+        track_id: track.id,
+        source_url: track.source_url || null,
+        video_id: youtubeVideoId,
+        diagnostic: verified?.resolution_diagnostic || null,
+      });
+      console.warn('[MUSIC ENGINE] Skipping unresolved catalog YouTube track', track.id, track.source_url, verified?.resolution_diagnostic || null);
       continue;
     }
 
@@ -1751,9 +1762,27 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
   }
 
   if (!rows.length) {
-    const error = new Error('CREAPD could not resolve title and duration for any selected catalogue YouTube tracks.');
+    const diagnosticText = metadataFailures.slice(0, 3).map(item => {
+      const d = item.diagnostic || {};
+      return [
+        item.video_id || 'no-id',
+        `watch=${d.watch_status ?? 'ERR'}`,
+        `html=${d.html_bytes ?? 0}`,
+        `player=${d.player_found ? 'yes' : 'no'}`,
+        `consent=${d.consent_page ? 'yes' : 'no'}`,
+        `bot=${d.bot_challenge ? 'yes' : 'no'}`,
+        `oembed=${d.oembed_status ?? 'ERR'}`,
+        `oembedTitle=${d.oembed_title_found ? 'yes' : 'no'}`,
+        `duration=${d.resolved_duration_seconds ?? 0}`,
+      ].join(' ');
+    }).join(' | ');
+
+    const error = new Error(
+      `CREAPD could not resolve title and duration for any selected catalogue YouTube tracks.${diagnosticText ? ` YouTube diagnostics: ${diagnosticText}` : ''}`
+    );
     error.code = 'CATALOG_YOUTUBE_METADATA_REQUIRED';
     error.status = 409;
+    error.details = metadataFailures.slice(0, 5);
     throw error;
   }
 
