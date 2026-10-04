@@ -62,6 +62,20 @@ function formatTrackDuration(value) {
   return `${minutes}:${String(remaining).padStart(2, '0')}`;
 }
 
+function trackNeedsYoutubeMetadata(track) {
+  if (String(track?.source_type || '').toLowerCase() !== 'youtube') return false;
+  const metadata = normalizeMetadata(track?.metadata);
+  const title = String(track?.title || '').trim().toLowerCase();
+  return (
+    !title ||
+    title === 'youtube track' ||
+    !String(track?.artist || '').trim() ||
+    Number(metadata.duration_seconds || 0) <= 0
+  );
+}
+
+const catalogMetadataRepairRuns = new Set();
+
 function apiErrorMessage(err, fallback) {
   const diagnostic = err?.data?.diagnostic;
   const raw =
@@ -219,6 +233,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
   const [youtubeScanning, setYoutubeScanning] = useState(false);
   const [youtubeImporting, setYoutubeImporting] = useState(false);
   const [youtubeDiagnostics, setYoutubeDiagnostics] = useState(null);
+  const [catalogMetadataRepairing, setCatalogMetadataRepairing] = useState(false);
 
 
   const load = useCallback(async () => {
@@ -229,12 +244,58 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
       const result = await creapdApi.post('/production/core', {
         action: 'music_artist_show_get',
       });
-      setProfile(result?.profile ? {
+      const loadedProfile = result?.profile ? {
         ...EMPTY_PROFILE,
         ...result.profile,
         source_links: normalizeSourceLinks(result.profile.source_links),
-      } : EMPTY_PROFILE);
-      setCatalog(result?.catalog || []);
+      } : EMPTY_PROFILE;
+      const loadedCatalog = result?.catalog || [];
+
+      setProfile(loadedProfile);
+      setCatalog(loadedCatalog);
+
+      if (
+        loadedProfile?.id &&
+        loadedCatalog.some(trackNeedsYoutubeMetadata) &&
+        !catalogMetadataRepairRuns.has(loadedProfile.id)
+      ) {
+        catalogMetadataRepairRuns.add(loadedProfile.id);
+        setCatalogMetadataRepairing(true);
+        setNotice('Refreshing missing YouTube song details…');
+
+        Promise.resolve().then(async () => {
+          let remaining = 1;
+          let pass = 0;
+          while (remaining > 0 && pass < 6) {
+            const repairResult = await creapdApi.post('/production/core', {
+              action: 'music_artist_youtube_repair_metadata',
+              profile_id: loadedProfile.id,
+              limit: 12,
+            });
+            const repaired = repairResult?.repaired || [];
+            if (repaired.length) {
+              setCatalog(current => {
+                const updates = new Map(repaired.map(track => [track.id, track]));
+                return current.map(track => updates.get(track.id) || track);
+              });
+            }
+            remaining = Number(repairResult?.remaining_count || 0);
+            pass += 1;
+            if (!repaired.length && remaining > 0) break;
+          }
+
+          setNotice(current =>
+            current === 'Refreshing missing YouTube song details…'
+              ? 'YouTube song details refreshed.'
+              : current
+          );
+        }).catch(err => {
+          catalogMetadataRepairRuns.delete(loadedProfile.id);
+          console.error('Catalogue metadata repair failed:', err);
+        }).finally(() => {
+          setCatalogMetadataRepairing(false);
+        });
+      }
     } catch (err) {
       setError(apiErrorMessage(err, 'CREAPD could not open your music catalogue.'));
     } finally {
@@ -623,7 +684,7 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold text-cyan-100">Choose what belongs in the Artist Catalogue</p>
-                          <p className="text-[10px] text-white/30">{youtubeSelected.size}/{youtubeScan.length} selected · likely music uploads are preselected</p>
+                          <p className="text-[10px] text-white/30">{youtubeSelected.size}/{youtubeScan.length} selected · likely music uploads are preselected{catalogMetadataRepairing ? ' · refreshing saved metadata…' : ''}</p>
                         </div>
                         <Button size="sm" onClick={importYoutube} disabled={!youtubeSelected.size || youtubeImporting} className="bg-cyan-600 hover:bg-cyan-500">
                           {youtubeImporting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1.5 h-3.5 w-3.5" />}
