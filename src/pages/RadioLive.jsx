@@ -944,11 +944,17 @@ export default function RadioLive() {
       return;
     }
 
-    decks.unlock();
-    setShowRunning(true);
     const segment = rundownRef.current[segmentIndexRef.current];
+    setShowRunning(true);
+
     if (segment?.segment_type === 'song') {
+      // Direct user gesture: start the song immediately. Do not run the
+      // silent unlock routine because its cleanup pause would interrupt playback.
       startSongSegment(segment);
+    } else {
+      // Spoken/live-host segment: prime browser media permission now so the
+      // first later song can start automatically without an autoplay block.
+      decks.unlock();
     }
   }, [showRunning, decks.pause, decks.unlock, startSongSegment]);
 
