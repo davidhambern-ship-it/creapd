@@ -2030,6 +2030,33 @@ async function buildArtistResearch({ sql, ownerUserId, config, playlist = [] }) 
     rows.push(row);
   }
 
+  const channelLibrary = array(knowledge.youtube_channel_library, []);
+  if (channelLibrary.length) {
+    const librarySummary = channelLibrary.slice(0, 30).map((video, index) => [
+      `${index + 1}. ${text(video.title, 'Untitled video')}`,
+      video.published_at ? `uploaded ${video.published_at}` : '',
+      video.likely_music === true ? 'music upload' : 'channel upload',
+      video.description ? `description: ${String(video.description).slice(0, 500)}` : '',
+    ].filter(Boolean).join(' | ')).join('\n');
+
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} — YouTube Channel Snapshot`},
+        'Selected YouTube channel scan', 'artist_channel_library',
+        ${librarySummary},
+        ${channel.channel_url || null},
+        ${`Use the channel's actual upload history to understand what ${artistName} is putting out and how the selected songs fit the wider channel. Do not invent facts beyond titles, dates, and supplied descriptions.`},
+        ${today}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
   const catalogueMap = selectedCatalog.map((track, index) => {
     const metadata = object(track.metadata, {});
     return [
