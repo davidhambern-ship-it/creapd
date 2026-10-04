@@ -45,8 +45,13 @@ export default function BuildStageTracker({ configId }) {
     return { ...stage, complete, failed, error: errorEntry?.error };
   });
 
-  const currentIdx = stageStatuses.findIndex(s => !s.complete && !s.failed);
-  const activeIdx = currentIdx === -1 ? STAGES.length : currentIdx;
+  const failedIdx = stageStatuses.findIndex(s => s.failed);
+  const currentIdx = failedIdx >= 0 ? -1 : stageStatuses.findIndex(s => !s.complete && !s.failed);
+  const activeIdx = failedIdx >= 0
+    ? failedIdx + 1
+    : currentIdx === -1
+      ? STAGES.length
+      : currentIdx;
   const pipelineFailure = log.find(entry => entry?.stage === 'pipeline' && (entry?.status === 'failed' || entry?.success === false));
   const failedStages = stageStatuses.filter(s => s.failed);
   const isFailed = status === 'failed' || failedStages.length > 0 || Boolean(pipelineFailure);
