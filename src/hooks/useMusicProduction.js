@@ -81,9 +81,12 @@ export function useMusicProduction(configId) {
     setAssets([]);
   }, []);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    setContentLoading(true);
+  const loadAll = useCallback(async (options = {}) => {
+    const silent = options?.silent === true;
+    if (!silent) {
+      setLoading(true);
+      setContentLoading(true);
+    }
     setError(null);
 
     try {
