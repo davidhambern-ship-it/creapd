@@ -400,12 +400,21 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
         videos: selected,
       });
       const imported = result?.imported || [];
+      const refreshed = result?.refreshed || [];
       setCatalog(current => {
-        const ids = new Set(current.map(track => track.id));
-        return [...current, ...imported.filter(track => !ids.has(track.id))];
+        const updates = new Map(
+          [...imported, ...refreshed].map(track => [track.id, track])
+        );
+        const merged = current.map(track => updates.get(track.id) || track);
+        const existingIds = new Set(merged.map(track => track.id));
+        return [
+          ...merged,
+          ...imported.filter(track => !existingIds.has(track.id)),
+          ...refreshed.filter(track => !existingIds.has(track.id)),
+        ];
       });
       setNotice(
-        `Imported ${imported.length} YouTube track${imported.length === 1 ? '' : 's'} with available descriptions, duration, artwork and lyrics/captions.`
+        `${imported.length ? `Imported ${imported.length} new track${imported.length === 1 ? '' : 's'}` : 'No new tracks imported'}${refreshed.length ? ` · refreshed metadata for ${refreshed.length}` : ''}. Title, artist, duration, artwork and available descriptions/lyrics are now saved with the catalogue.`
       );
       setYoutubeScan([]);
       setYoutubeSelected(new Set());
