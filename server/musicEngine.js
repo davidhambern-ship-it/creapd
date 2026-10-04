@@ -1799,7 +1799,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
           UPDATE creapd.artist_catalog_tracks
           SET
             title=${text(verified.title, track.title || 'YouTube Track')},
-            artist=${text(track.artist, verified.channel_name || config.host_name || 'Artist')},
+            artist=${text(verified.channel_name, track.artist || config.host_name || 'Artist')},
             artwork_url=${text(verified.thumbnail_url, track.artwork_url || '') || null},
             metadata=${safeJson(resolvedMetadata)}::jsonb,
             updated_at=now()
