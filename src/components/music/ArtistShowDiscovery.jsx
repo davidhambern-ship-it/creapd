@@ -644,7 +644,23 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
     setError('');
     setNotice('');
     try {
-      const selected = youtubeScan.filter(video => youtubeSelected.has(video.video_id));
+      let selected = youtubeScan.filter(video => youtubeSelected.has(video.video_id));
+
+      if (selected.some(video => Number(video?.duration_seconds || 0) <= 0)) {
+        setNotice('Reading selected song lengths directly from YouTube…');
+        selected = await resolveMissingYoutubeDurations(selected, 6);
+
+        const durationUpdates = new Map(selected.map(video => [video.video_id, video]));
+        setYoutubeScan(current => current.map(video => durationUpdates.get(video.video_id) || video));
+      }
+
+      const unresolvedDurations = selected.filter(video => Number(video?.duration_seconds || 0) <= 0);
+      if (unresolvedDurations.length) {
+        throw new Error(
+          `YouTube did not load a duration for ${unresolvedDurations.length} selected track${unresolvedDurations.length === 1 ? '' : 's'}. CREAPD will not save fake 0-second lengths.`
+        );
+      }
+
       const result = await creapdApi.post('/production/core', {
         action: 'music_artist_youtube_import',
         profile_id: profile.id,
