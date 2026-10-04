@@ -1940,7 +1940,44 @@ async function buildArtistResearch({ sql, ownerUserId, config, playlist = [] }) 
   }
 
   const knowledge = object(profile?.knowledge, {});
-  const channel = object(knowledge.youtube_channel, {});
+  let channel = object(knowledge.youtube_channel, {});
+
+  if (!text(channel.description) || !text(channel.channel_name)) {
+    const sourceLinks = array(profile?.source_links, []);
+    const youtubeSource = sourceLinks
+      .map(item => typeof item === 'string' ? item : item?.url)
+      .map(value => text(value))
+      .find(value => /(?:^|\.)youtube\.com\//i.test(value) || /youtu\.be\//i.test(value));
+
+    if (youtubeSource) {
+      const normalized = normalizeYoutubeChannelUrl(youtubeSource);
+      const baseUrl = normalized ? normalized.replace(/\/videos\/?$/, '') : '';
+      if (baseUrl) {
+        const page = await fetchYoutubeDiscoveryPage(baseUrl);
+        if (page?.html) {
+          const fetchedChannel = extractYoutubeChannelContext(page.html, baseUrl);
+          channel = {
+            ...channel,
+            ...Object.fromEntries(
+              Object.entries(fetchedChannel).filter(([, value]) => value !== null && value !== undefined && value !== '')
+            ),
+          };
+          await sql`
+            UPDATE creapd.artist_profiles
+            SET knowledge=${safeJson({
+              ...knowledge,
+              youtube_channel: {
+                ...channel,
+                scanned_at: new Date().toISOString(),
+              },
+            })}::jsonb,
+            updated_at=now()
+            WHERE id=${profile.id} AND owner_user_id=${ownerId}
+          `;
+        }
+      }
+    }
+  }
 
   const artistCandidates = [
     ...playlist.map(item => text(item.artist)),
