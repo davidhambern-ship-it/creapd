@@ -930,7 +930,10 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}, options = {}) 
     ? await fetchYoutubeCaptionTranscript(player)
     : '';
 
-  const title = text(details.title, fallback?.title || hint.title || '');
+  const hintedTitle = ['youtube track', 'untitled track'].includes(
+    text(hint.title).toLowerCase()
+  ) ? '' : text(hint.title);
+  const title = text(details.title, fallback?.title || hintedTitle || '');
   const channelName = text(details.author, fallback?.author_name || hint.channel_name || '');
 
   const resolutionDiagnostic = {
@@ -945,7 +948,7 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}, options = {}) 
     oembed_status: oembedStatus || null,
     oembed_error: oembedError || null,
     oembed_title_found: Boolean(fallback?.title),
-    hint_title_found: Boolean(text(hint.title)),
+    hint_title_found: Boolean(hintedTitle),
     duration_from_html: durationFromHtml || 0,
     resolved_duration_seconds: durationSeconds || 0,
     resolved_title_found: Boolean(title),
