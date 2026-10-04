@@ -2527,11 +2527,29 @@ function buildRundownBlueprint(playlist, topics, config) {
       blueprint.push({ segment_type: 'song', title: song.song_title, associated_song_title: song.song_title, target_duration: Math.max(60, num(song.length_seconds, 180)) });
     }
     if (blockIndex < blocks.length - 1) {
+      const previousSong = blocks[blockIndex]?.[blocks[blockIndex].length - 1] || null;
+      const followingSong = blocks[blockIndex + 1]?.[0] || null;
+      const transitionContext = {
+        preceding_song_title: previousSong?.song_title || null,
+        following_song_title: followingSong?.song_title || null,
+      };
+
       if (topicIndex < topics.length) {
-        blueprint.push({ segment_type: 'topic_segment', title: topics[topicIndex].topic_name, associated_topic: topics[topicIndex].topic_name, target_duration: talkPer });
+        blueprint.push({
+          segment_type: 'topic_segment',
+          title: topics[topicIndex].topic_name,
+          associated_topic: topics[topicIndex].topic_name,
+          target_duration: talkPer,
+          ...transitionContext,
+        });
         topicIndex += 1;
       } else {
-        blueprint.push({ segment_type: 'talk_break', title: 'Host Banter', target_duration: talkPer });
+        blueprint.push({
+          segment_type: 'talk_break',
+          title: 'Host Banter',
+          target_duration: talkPer,
+          ...transitionContext,
+        });
       }
       if (sponsorPer && (blockIndex + 1) % 2 === 0) blueprint.push({ segment_type: 'sponsor_break', title: 'Sponsor Break', target_duration: sponsorPer });
       blueprint.push({ segment_type: 'station_id', title: 'Station ID', target_duration: 15 });
@@ -2573,7 +2591,7 @@ async function buildRundown({ sql, ownerUserId, config, playlist, topics, resear
       return `${index + 1}. [song] ${item.title} | song=${item.associated_song_title || item.title} | full track=${Math.round(item.target_duration)}s`;
     }
     const words = spokenWordRange(item.target_duration, item.segment_type, config);
-    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target}) | SCRIPT SOURCE=${rundownScriptSource(item, config)}`;
+    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''}${item.preceding_song_title ? ` | previous_song=${item.preceding_song_title}` : ''}${item.following_song_title ? ` | next_song=${item.following_song_title}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target}) | SCRIPT SOURCE=${rundownScriptSource(item, config)}`;
   }).join('\n');
 
   const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\nTalking points: ${t.talking_points || ''}\nSources: ${t.sources || 'evergreen/no external source'}`).join('\n\n');
