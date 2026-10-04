@@ -939,25 +939,52 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
       continue;
     }
 
+    let resolvedVideo = { ...video };
+    const criticalMetadataMissing =
+      !clean(resolvedVideo.title) ||
+      !clean(resolvedVideo.channel_name) ||
+      number(resolvedVideo.duration_seconds, 0) <= 0;
+
+    if (criticalMetadataMissing) {
+      try {
+        const verified = await fetchYoutubeMetadata(
+          clean(resolvedVideo.source_url, `https://www.youtube.com/watch?v=${videoId}`),
+          { requireRadioSafe: false },
+        );
+        resolvedVideo = {
+          ...resolvedVideo,
+          title: clean(verified?.title, resolvedVideo.title),
+          channel_name: clean(verified?.channel_name, resolvedVideo.channel_name),
+          duration_seconds: number(verified?.duration_seconds, resolvedVideo.duration_seconds),
+          thumbnail_url: clean(verified?.thumbnail_url, resolvedVideo.thumbnail_url),
+        };
+      } catch {}
+    }
+
+    if (!clean(resolvedVideo.title)) {
+      skipped.push(videoId);
+      continue;
+    }
+
     const existingTrack = existingByVideoId.get(videoId);
     if (existingTrack) {
       const [updated] = await sql`
         UPDATE creapd.artist_catalog_tracks
         SET
-          title=${clean(video.title, 'YouTube Track')},
-          artist=${clean(profile.public_name || profile.artist_name, video.channel_name || 'Artist')},
-          release_year=${clean(video.published_at).slice(0,4) || null},
-          description=${nullable(video.description)},
-          lyrics=${nullable(video.lyrics)},
+          title=${clean(resolvedVideo.title, 'YouTube Track')},
+          artist=${clean(profile.public_name || profile.artist_name, resolvedVideo.channel_name || 'Artist')},
+          release_year=${clean(resolvedVideo.published_at).slice(0,4) || null},
+          description=${nullable(resolvedVideo.description)},
+          lyrics=${nullable(resolvedVideo.lyrics)},
           source_type='youtube',
-          source_url=${clean(video.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
-          artwork_url=${nullable(video.thumbnail_url)},
+          source_url=${clean(resolvedVideo.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
+          artwork_url=${nullable(resolvedVideo.thumbnail_url)},
           metadata=${JSON.stringify({
             youtube_video_id: videoId,
-            youtube_channel_name: nullable(video.channel_name),
-            duration_seconds: number(video.duration_seconds, 0) || null,
-            published_at: nullable(video.published_at),
-            lyrics_source: nullable(video.lyrics_source),
+            youtube_channel_name: nullable(resolvedVideo.channel_name),
+            duration_seconds: number(resolvedVideo.duration_seconds, 0) || null,
+            published_at: nullable(resolvedVideo.published_at),
+            lyrics_source: nullable(resolvedVideo.lyrics_source),
             imported_from_channel: true,
           })}::jsonb,
           updated_at=now()
@@ -974,22 +1001,22 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
         description, lyrics, source_type, source_url, audio_url, artwork_url, metadata
       ) VALUES (
         ${randomUUID()}, ${profile.id}, ${ownerId},
-        ${clean(video.title, 'YouTube Track')},
-        ${clean(profile.public_name || profile.artist_name, video.channel_name || 'Artist')},
+        ${clean(resolvedVideo.title, 'YouTube Track')},
+        ${clean(profile.public_name || profile.artist_name, resolvedVideo.channel_name || 'Artist')},
         null,
-        ${clean(video.published_at).slice(0,4) || null},
-        ${nullable(video.description)},
-        ${nullable(video.lyrics)},
+        ${clean(resolvedVideo.published_at).slice(0,4) || null},
+        ${nullable(resolvedVideo.description)},
+        ${nullable(resolvedVideo.lyrics)},
         'youtube',
-        ${clean(video.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
+        ${clean(resolvedVideo.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
         null,
-        ${nullable(video.thumbnail_url)},
+        ${nullable(resolvedVideo.thumbnail_url)},
         ${JSON.stringify({
           youtube_video_id: videoId,
-          youtube_channel_name: nullable(video.channel_name),
-          duration_seconds: number(video.duration_seconds, 0) || null,
-          published_at: nullable(video.published_at),
-          lyrics_source: nullable(video.lyrics_source),
+          youtube_channel_name: nullable(resolvedVideo.channel_name),
+          duration_seconds: number(resolvedVideo.duration_seconds, 0) || null,
+          published_at: nullable(resolvedVideo.published_at),
+          lyrics_source: nullable(resolvedVideo.lyrics_source),
           imported_from_channel: true,
         })}::jsonb
       )
