@@ -3398,6 +3398,108 @@ export async function regenerateRejectedMusicMaterials({ sql, ownerUserId, confi
   };
 }
 
+export async function rebuildArtistStory({ sql, ownerUserId, configurationId }) {
+  const config = await requireConfig(sql, ownerUserId, configurationId);
+  const artistMeta = artistShowMetadata(config);
+  if (!artistMeta.enabled || !artistMeta.artist_profile_id) {
+    const error = new Error('Rebuild Artist Story is only available for catalogue/channel productions.');
+    error.code = 'ARTIST_STORY_MODE_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const ownerId = String(ownerUserId);
+  const playlist = await sql`
+    SELECT * FROM creapd.music_playlist_items
+    WHERE configuration_id=${config.id}
+      AND owner_user_id=${ownerId}
+      AND status <> 'rejected'
+    ORDER BY order_index ASC
+  `;
+
+  if (!playlist.length) {
+    const error = new Error('The artist story cannot be rebuilt without an active playlist.');
+    error.code = 'ARTIST_STORY_PLAYLIST_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const buildLog = array(config.build_log, []);
+  let currentStage = 'research';
+
+  try {
+    await sql`
+      UPDATE creapd.music_production_configurations
+      SET status='refreshing', updated_at=now()
+      WHERE id=${config.id} AND owner_user_id=${ownerId}
+    `;
+
+    await sql`DELETE FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const research = await buildArtistResearch({ sql, ownerUserId, config, playlist });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'research', research.length ? 'complete' : 'failed', {
+      count: research.length,
+      source: 'selected_artist_youtube_channel',
+      rebuilt_artist_story: true,
+    });
+
+    currentStage = 'topics';
+    await sql`DELETE FROM creapd.music_topics WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const topics = await buildArtistTopics({ sql, ownerUserId, config, research, playlist });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', topics.length ? 'complete' : 'failed', {
+      count: topics.length,
+      source: 'artist_channel_editorial',
+      rebuilt_artist_story: true,
+    });
+
+    currentStage = 'assets';
+    await sql`DELETE FROM creapd.music_assets WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const assets = await buildAssets({ sql, ownerUserId, config, playlist, topics, research });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'assets', assets.length ? 'complete' : 'failed', {
+      count: assets.length,
+      rebuilt_artist_story: true,
+    });
+
+    currentStage = 'rundown';
+    await sql`DELETE FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const rundown = await buildRundown({ sql, ownerUserId, config, playlist, topics, research, assets });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'rundown', rundown.length ? 'complete' : 'failed', {
+      count: rundown.length,
+      rebuilt_artist_story: true,
+    });
+
+    await sql`
+      UPDATE creapd.music_production_configurations
+      SET
+        status='in_review',
+        build_log=${safeJson(buildLog)}::jsonb,
+        build_metadata=${safeJson({
+          ...object(config.build_metadata, {}),
+          artist_story_rebuilt_at: new Date().toISOString(),
+          artist_story_source: 'selected_artist_youtube_channel',
+          research_count: research.length,
+          topic_count: topics.length,
+          asset_count: assets.length,
+          rundown_count: rundown.length,
+        })}::jsonb,
+        updated_at=now()
+      WHERE id=${config.id} AND owner_user_id=${ownerId}
+    `;
+
+    return {
+      success: true,
+      configuration_id: config.id,
+      playlist_preserved: playlist.length,
+      research_count: research.length,
+      topic_count: topics.length,
+      asset_count: assets.length,
+      rundown_count: rundown.length,
+    };
+  } catch (error) {
+    await updateBuildFailure(sql, ownerUserId, config.id, buildLog, error, currentStage).catch(() => {});
+    throw error;
+  }
+}
+
 export async function regenerateMusicSection(args) {
   const section = text(args?.section).toLowerCase();
   const valid = new Set(['playlist', 'research', 'topics', 'assets', 'top10', 'rundown']);
