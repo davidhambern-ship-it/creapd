@@ -1029,6 +1029,66 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
   return { imported, refreshed, skipped };
 }
 
+async function repairArtistYoutubeCatalogMetadata(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+  const catalog = await sql`
+    SELECT *
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id}
+      AND owner_user_id=${ownerId}
+      AND source_type='youtube'
+    ORDER BY created_at ASC
+  `;
+
+  const stale = (catalog || []).filter(track => {
+    const metadata = parseObject(track.metadata, {});
+    return (
+      !clean(track.title) ||
+      clean(track.title).toLowerCase() === 'youtube track' ||
+      !clean(track.artist) ||
+      number(metadata.duration_seconds, 0) <= 0
+    );
+  });
+
+  const limit = Math.max(1, Math.min(12, Math.round(number(body.limit, 12))));
+  const batch = stale.slice(0, limit);
+  const repaired = [];
+
+  for (const track of batch) {
+    if (!clean(track.source_url)) continue;
+    try {
+      const verified = await fetchYoutubeMetadata(track.source_url, { requireRadioSafe: false });
+      if (!verified?.title) continue;
+
+      const existingMetadata = parseObject(track.metadata, {});
+      const [updated] = await sql`
+        UPDATE creapd.artist_catalog_tracks
+        SET
+          title=${clean(verified.title, track.title || 'YouTube Track')},
+          artist=${clean(profile.public_name || profile.artist_name, verified.channel_name || track.artist || 'Artist')},
+          artwork_url=${nullable(verified.thumbnail_url) || track.artwork_url || null},
+          metadata=${JSON.stringify({
+            ...existingMetadata,
+            youtube_video_id: verified.video_id || existingMetadata.youtube_video_id || null,
+            youtube_channel_name: verified.channel_name || existingMetadata.youtube_channel_name || null,
+            duration_seconds: number(verified.duration_seconds, existingMetadata.duration_seconds) || null,
+            imported_from_channel: existingMetadata.imported_from_channel !== false,
+          })}::jsonb,
+          updated_at=now()
+        WHERE id=${track.id} AND owner_user_id=${ownerId}
+        RETURNING *
+      `;
+      if (updated) repaired.push(withDates(updated));
+    } catch {}
+  }
+
+  return {
+    repaired,
+    remaining_count: Math.max(0, stale.length - batch.length),
+  };
+}
+
 export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, action, body = {} }) {
   switch (action) {
     case 'music_save_configuration':
@@ -1078,6 +1138,8 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
     }
     case 'music_artist_youtube_import':
       return await importArtistYoutubeVideos(sql, ownerUserId, body);
+    case 'music_artist_youtube_repair_metadata':
+      return await repairArtistYoutubeCatalogMetadata(sql, ownerUserId, body);
     case 'music_entity_get':
       return { item: await entityGet(sql, ownerUserId, body.entity, body.id) };
     case 'music_entity_create':
