@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   runMusicBuild,
+  rebuildArtistStory,
   regenerateMusicSection,
   regenerateRejectedMusicMaterials,
   generateMusicTop10,
@@ -1124,6 +1125,8 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return await getMusicProductionBundle(sql, ownerUserId, body.configuration_id);
     case 'music_build':
       return { result: await runMusicBuild({ sql, ownerUserId, configurationId: body.configuration_id }) };
+    case 'music_rebuild_artist_story':
+      return { result: await rebuildArtistStory({ sql, ownerUserId, configurationId: body.configuration_id }) };
     case 'music_regenerate_section':
       return { result: await regenerateMusicSection({ sql, ownerUserId, configurationId: body.configuration_id, section: body.section }) };
     case 'music_regenerate_rejected':
