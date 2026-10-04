@@ -788,19 +788,89 @@ export default function RadioLive() {
     selectSegment(segmentIndexRef.current + 1);
   }, [selectSegment]);
 
+  const startSongSegment = useCallback(segment => {
+    const track = trackForSegment(segment);
+    if (!track || !trackPlayable(track)) return;
+
+    const id = trackKey(track);
+    const currentActiveDeck = activeDeckRef.current;
+    const activeId = currentActiveDeck === 'A' ? deckAIdRef.current : deckBIdRef.current;
+    const otherDeck = currentActiveDeck === 'A' ? 'B' : 'A';
+    const otherId = otherDeck === 'A' ? deckAIdRef.current : deckBIdRef.current;
+
+    if (id === activeId) {
+      decks.play(currentActiveDeck);
+      return;
+    }
+
+    if (id === otherId) {
+      transitionDeckRef.current?.(0);
+      return;
+    }
+
+    if (otherDeck === 'A') {
+      deckAIdRef.current = id;
+      setDeckAId(id);
+    } else {
+      deckBIdRef.current = id;
+      setDeckBId(id);
+    }
+
+    window.setTimeout(() => {
+      transitionDeckRef.current?.(0);
+    }, 120);
+  }, [decks.play, trackForSegment]);
+
+  const handleShowToggle = useCallback(() => {
+    if (showRunning) {
+      setShowRunning(false);
+      decks.pause(activeDeckRef.current);
+      return;
+    }
+
+    setShowRunning(true);
+    const segment = rundownRef.current[segmentIndexRef.current];
+    if (segment?.segment_type === 'song') {
+      startSongSegment(segment);
+    }
+  }, [showRunning, decks.pause, startSongSegment]);
+
+  useEffect(() => {
+    if (!showRunning || !currentSegment) return;
+
+    if (currentSegment.segment_type === 'song') {
+      startSongSegment(currentSegment);
+      return;
+    }
+
+    // Spoken segments are live-host/teleprompter segments. Keep music off while
+    // the host is on mic, then advance when the planned segment runtime expires.
+    decks.pause(activeDeckRef.current);
+  }, [showRunning, segmentIndex, currentSegment?.id, currentSegment?.segment_type, startSongSegment, decks.pause]);
+
+  useEffect(() => {
+    if (!showRunning || !currentSegment || currentSegment.segment_type === 'song') return;
+    const planned = Math.max(0, Number(currentSegment.duration_seconds || 0));
+    if (!planned || segmentSeconds < planned) return;
+    advanceSegment();
+  }, [showRunning, segmentSeconds, currentSegment?.id, currentSegment?.segment_type, currentSegment?.duration_seconds, advanceSegment]);
+
   activeEndedRef.current = () => {
     const index = segmentIndexRef.current;
     const current = rundownRef.current[index];
     const next = rundownRef.current[index + 1] || null;
     if (!current || current.segment_type !== 'song') return;
 
-    if (next) {
-      setSegmentIndex(index + 1);
-      if (next.segment_type === 'song') {
-        const nextTrack = trackForSegment(next);
-        if (nextTrack) loadNext(nextTrack);
-        window.setTimeout(() => transitionDeckRef.current?.(0), 60);
-      }
+    if (!next) {
+      setShowRunning(false);
+      return;
+    }
+
+    setSegmentIndex(index + 1);
+    if (next.segment_type === 'song') {
+      const nextTrack = trackForSegment(next);
+      if (nextTrack) loadNext(nextTrack);
+      if (showRunning) window.setTimeout(() => transitionDeckRef.current?.(0), 100);
     }
   };
 
@@ -903,7 +973,7 @@ export default function RadioLive() {
             {showRunning ? '● ON AIR' : showPaused ? 'PAUSED' : 'READY'}
           </span>
           <span className="font-mono text-lg min-w-[64px] text-right">{formatClock(showSeconds)}</span>
-          <Button size="sm" onClick={() => setShowRunning(value => !value)} className="bg-fuchsia-600 hover:bg-fuchsia-500">
+          <Button size="sm" onClick={handleShowToggle} className="bg-fuchsia-600 hover:bg-fuchsia-500">
             {showRunning ? <Pause className="w-4 h-4 mr-1.5" /> : <Play className="w-4 h-4 mr-1.5" />}
             {showRunning ? 'Pause Show' : showPaused ? 'Resume Show' : 'Start Show'}
           </Button>
@@ -922,6 +992,7 @@ export default function RadioLive() {
             className="hidden lg:inline-flex h-8 w-8 p-0 text-white/45 hover:text-white"
             onClick={() => {
               setShowRunning(false);
+              decks.pause(activeDeckRef.current);
               setShowSeconds(0);
               setSegmentIndex(0);
               setSegmentSeconds(0);
