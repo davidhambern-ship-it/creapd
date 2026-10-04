@@ -77,6 +77,7 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
   const [ytReady, setYtReady] = useState({ A: false, B: false });
   const [audioReady, setAudioReady] = useState({ A: false, B: false });
   const [playing, setPlaying] = useState({ A: false, B: false });
+  const [youtubeError, setYoutubeError] = useState({ A: null, B: null });
   const [timing, setTiming] = useState({
     A: { current: 0, duration: 0 },
     B: { current: 0, duration: 0 },
@@ -149,14 +150,16 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
       wrapper.innerHTML = '';
       wrapper.appendChild(host);
       ref.current = new window.YT.Player(host, {
-        width: '1',
-        height: '1',
+        width: '200',
+        height: '200',
         playerVars: {
           autoplay: 0,
           controls: 0,
           disablekb: 1,
           rel: 0,
           modestbranding: 1,
+          playsinline: 1,
+          origin: window.location.origin,
         },
         events: {
           onReady: event => {
@@ -182,9 +185,18 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
             if (event.data === 1 || event.data === 2 || event.data === 0) {
               setPlaying(value => ({ ...value, [deck]: isPlaying }));
             }
+            if (event.data === 1) {
+              setYoutubeError(value => ({ ...value, [deck]: null }));
+            }
             if (event.data === 0 && activeDeckRef.current === deck) {
               endedRef.current?.(deck);
             }
+          },
+          onError: event => {
+            if (cancelled) return;
+            pendingPlayRef.current[deck] = false;
+            setPlaying(value => ({ ...value, [deck]: false }));
+            setYoutubeError(value => ({ ...value, [deck]: Number(event?.data || 0) || 'unknown' }));
           },
         },
       });
@@ -212,6 +224,7 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
     const audioUrl = trackAudioUrl(track);
 
     setPlaying(value => ({ ...value, [deck]: false }));
+    setYoutubeError(value => ({ ...value, [deck]: null }));
 
     if (audioUrl) {
       setAudioReady(value => ({ ...value, [deck]: false }));
@@ -372,6 +385,7 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
     ready,
     playing,
     timing,
+    youtubeError,
     setVolume,
     play,
     pause,
@@ -387,6 +401,7 @@ function DeckCard({
   isPlaying,
   ready,
   timing,
+  youtubeError,
   onPlayPause,
   onRestart,
   onSeek,
@@ -411,8 +426,14 @@ function DeckCard({
             </p>
           </div>
         </div>
-        <span className={`text-[10px] px-2 py-1 rounded-full border ${ready ? 'border-emerald-400/20 text-emerald-300 bg-emerald-500/[0.06]' : 'border-white/10 text-white/35'}`}>
-          {ready ? 'READY' : playable ? 'LOADING' : 'NO MEDIA'}
+        <span className={`text-[10px] px-2 py-1 rounded-full border ${
+          youtubeError
+            ? 'border-red-400/25 text-red-300 bg-red-500/[0.07]'
+            : ready
+              ? 'border-emerald-400/20 text-emerald-300 bg-emerald-500/[0.06]'
+              : 'border-white/10 text-white/35'
+        }`}>
+          {youtubeError ? `YT ERROR ${youtubeError}` : ready ? 'READY' : playable ? 'LOADING' : 'NO MEDIA'}
         </span>
       </div>
 
@@ -990,6 +1011,7 @@ export default function RadioLive() {
                   isPlaying={decks.playing.A}
                   ready={decks.ready.A}
                   timing={decks.timing.A}
+                  youtubeError={decks.youtubeError.A}
                   onPlayPause={() => toggleDeck('A')}
                   onRestart={() => decks.restart('A')}
                   onSeek={seconds => decks.seek('A', seconds)}
@@ -1001,6 +1023,7 @@ export default function RadioLive() {
                   isPlaying={decks.playing.B}
                   ready={decks.ready.B}
                   timing={decks.timing.B}
+                  youtubeError={decks.youtubeError.B}
                   onPlayPause={() => toggleDeck('B')}
                   onRestart={() => decks.restart('B')}
                   onSeek={seconds => decks.seek('B', seconds)}
@@ -1112,8 +1135,8 @@ export default function RadioLive() {
         </section>
       </main>
 
-      <div ref={decks.wrapperARef} className="absolute w-px h-px opacity-0 pointer-events-none -left-[9999px]" />
-      <div ref={decks.wrapperBRef} className="absolute w-px h-px opacity-0 pointer-events-none -left-[9999px]" />
+      <div ref={decks.wrapperARef} style={{ position: 'fixed', width: 200, height: 200, left: -10000, top: -10000, opacity: 0, pointerEvents: 'none' }} />
+      <div ref={decks.wrapperBRef} style={{ position: 'fixed', width: 200, height: 200, left: -10000, top: -10000, opacity: 0, pointerEvents: 'none' }} />
     </div>
   );
 }
