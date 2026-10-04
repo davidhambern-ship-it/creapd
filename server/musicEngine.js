@@ -1902,7 +1902,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
   return rows;
 }
 
-async function buildArtistResearch({ sql, ownerUserId, config }) {
+async function buildArtistResearch({ sql, ownerUserId, config, playlist = [] }) {
   const ownerId = String(ownerUserId);
   const artistMeta = artistShowMetadata(config);
   if (!artistMeta.enabled || !artistMeta.artist_profile_id) return [];
@@ -1921,45 +1921,138 @@ async function buildArtistResearch({ sql, ownerUserId, config }) {
     ORDER BY created_at ASC
   `;
 
-  const rows = [];
-  let index = 0;
+  const catalogById = new Map(catalog.map(track => [String(track.id), track]));
+  const selectedCatalog = [];
+  const selectedIds = new Set();
 
-  if (profile?.bio_summary || profile?.artistic_message) {
-    const [row] = await sql`
-      INSERT INTO creapd.music_research_items (
-        id, configuration_id, owner_user_id, title, source, category, summary,
-        url, suggested_angle, research_date, relevance
-      ) VALUES (
-        ${randomUUID()}, ${config.id}, ${ownerId}, 'Artist Profile',
-        'Artist-supplied profile', 'artist_profile',
-        ${[
-          profile?.bio_summary ? `Background: ${profile.bio_summary}` : '',
-          profile?.artistic_message ? `Artist message: ${profile.artistic_message}` : '',
-        ].filter(Boolean).join('\n')},
-        null, 'Use as artist-approved background; do not invent beyond the supplied statements.',
-        ${new Date().toISOString().slice(0,10)}, 'high'
-      )
-      RETURNING *
-    `;
-    rows.push(row);
-    index += 1;
+  for (const item of playlist || []) {
+    const payload = object(item?.source_payload, {});
+    const trackId = text(payload.catalog_track_id);
+    const track = trackId ? catalogById.get(trackId) : null;
+    if (track && !selectedIds.has(String(track.id))) {
+      selectedIds.add(String(track.id));
+      selectedCatalog.push(track);
+    }
   }
 
-  for (const track of catalog.slice(0, 30)) {
-    const supplied = [track.description, track.lyrics ? `Lyrics excerpt: ${String(track.lyrics).slice(0, 1800)}` : '']
-      .filter(Boolean)
-      .join('\n');
-    if (!supplied) continue;
+  if (!selectedCatalog.length) {
+    selectedCatalog.push(...catalog.slice(0, 30));
+  }
+
+  const knowledge = object(profile?.knowledge, {});
+  const channel = object(knowledge.youtube_channel, {});
+
+  const artistCandidates = [
+    ...playlist.map(item => text(item.artist)),
+    ...selectedCatalog.map(track => text(track.artist)),
+    ...selectedCatalog.map(track => text(object(track.metadata, {}).youtube_channel_name)),
+    text(channel.channel_name),
+    text(profile?.public_name),
+    text(profile?.artist_name),
+  ].filter(Boolean);
+
+  const artistCounts = new Map();
+  for (const value of artistCandidates) {
+    const key = value.toLowerCase();
+    const current = artistCounts.get(key) || { value, count: 0 };
+    current.count += 1;
+    artistCounts.set(key, current);
+  }
+  const artistName = [...artistCounts.values()]
+    .sort((a, b) => b.count - a.count)[0]?.value
+    || text(profile?.public_name, profile?.artist_name || 'Artist');
+
+  const rows = [];
+  const today = new Date().toISOString().slice(0, 10);
+
+  const channelSummary = [
+    `Artist: ${artistName}`,
+    channel.channel_name ? `YouTube channel: ${channel.channel_name}` : '',
+    channel.handle ? `Handle: ${channel.handle}` : '',
+    channel.description ? `Channel description: ${channel.description}` : '',
+    profile?.bio_summary ? `Artist-approved background: ${profile.bio_summary}` : '',
+    profile?.artistic_message ? `Artist message: ${profile.artistic_message}` : '',
+  ].filter(Boolean).join('\n');
+
+  if (channelSummary) {
     const [row] = await sql`
       INSERT INTO creapd.music_research_items (
         id, configuration_id, owner_user_id, title, source, category, summary,
         url, suggested_angle, research_date, relevance
       ) VALUES (
         ${randomUUID()}, ${config.id}, ${ownerId},
-        ${`Catalogue Note: ${track.title}`}, 'Artist-supplied catalogue',
-        'artist_catalog', ${supplied}, ${track.source_url || track.audio_url || null},
-        'Use only as supplied catalogue evidence. Treat interpretation as a question unless the artist explicitly explained the meaning.',
-        ${new Date().toISOString().slice(0,10)}, 'high'
+        ${`${artistName} — Artist & YouTube Channel Context`},
+        'Selected YouTube channel + artist profile', 'artist_channel',
+        ${channelSummary},
+        ${channel.channel_url || null},
+        ${`This show is an artist-focused special about ${artistName}. Use this as the identity anchor for intros, talk breaks, topics, and the outro. Do not drift into unrelated generic music news.`},
+        ${today}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  const catalogueMap = selectedCatalog.map((track, index) => {
+    const metadata = object(track.metadata, {});
+    return [
+      `${index + 1}. ${track.title} — ${text(track.artist, artistName)}`,
+      metadata.published_at ? `published ${metadata.published_at}` : '',
+      metadata.youtube_channel_name ? `channel ${metadata.youtube_channel_name}` : '',
+    ].filter(Boolean).join(' | ');
+  }).join('\n');
+
+  if (catalogueMap) {
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} — Selected Show Catalogue`},
+        'Selected playlist from artist YouTube catalogue', 'artist_catalog_map',
+        ${catalogueMap},
+        ${channel.channel_url || null},
+        'Use the actual selected songs as the spine of the show. Spoken segments should connect back to these exact tracks, their release order, titles, descriptions, and supported lyrical material.',
+        ${today}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  for (const track of selectedCatalog.slice(0, 30)) {
+    const metadata = object(track.metadata, {});
+    const publishedAt = text(metadata.published_at);
+    const channelName = text(metadata.youtube_channel_name, channel.channel_name || artistName);
+    const evidence = [
+      `Artist: ${text(track.artist, artistName)}`,
+      `Track: ${track.title}`,
+      channelName ? `YouTube channel: ${channelName}` : '',
+      publishedAt ? `Published/uploaded: ${publishedAt}` : '',
+      track.album ? `Album/project: ${track.album}` : '',
+      track.release_year ? `Release year: ${track.release_year}` : '',
+      track.description ? `YouTube/artist description:\n${String(track.description).slice(0, 2400)}` : '',
+      track.lyrics ? `Lyrics/captions excerpt:\n${String(track.lyrics).slice(0, 2600)}` : '',
+    ].filter(Boolean).join('\n');
+
+    const parsedDate = publishedAt ? new Date(publishedAt) : null;
+    const researchDate = parsedDate && !Number.isNaN(parsedDate.valueOf())
+      ? parsedDate.toISOString().slice(0, 10)
+      : today;
+
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} Track: ${track.title}`},
+        'Selected artist YouTube catalogue', 'artist_track',
+        ${evidence},
+        ${track.source_url || track.audio_url || null},
+        ${`Build host copy around this exact ${artistName} track. You may discuss only observable/supplied evidence. If the song's meaning is not explicitly explained, frame interpretations as observations or questions, never as artist-stated fact.`},
+        ${researchDate}, 'high'
       )
       RETURNING *
     `;
