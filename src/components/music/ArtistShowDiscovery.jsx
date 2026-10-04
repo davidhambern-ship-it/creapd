@@ -43,6 +43,25 @@ function normalizeSourceLinks(value) {
   return [];
 }
 
+function normalizeMetadata(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {}
+  }
+  return {};
+}
+
+function formatTrackDuration(value) {
+  const seconds = Math.max(0, Math.round(Number(value) || 0));
+  if (!seconds) return 'Unknown length';
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${minutes}:${String(remaining).padStart(2, '0')}`;
+}
+
 function apiErrorMessage(err, fallback) {
   const diagnostic = err?.data?.diagnostic;
   const raw =
@@ -613,9 +632,12 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                             />
                             {video.thumbnail_url && <img src={video.thumbnail_url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />}
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-semibold text-white">{video.title}</p>
+                              <p className="truncate text-xs font-semibold text-white">{video.title || 'Untitled YouTube track'}</p>
+                              <p className="mt-0.5 truncate text-[10px] text-cyan-100/65">
+                                {video.channel_name || profile.public_name || profile.artist_name || 'Unknown artist'}
+                              </p>
                               <p className="mt-0.5 text-[9px] text-white/30">
-                                {video.duration_seconds ? `${Math.floor(video.duration_seconds / 60)}:${String(video.duration_seconds % 60).padStart(2, '0')}` : 'Unknown length'}
+                                {formatTrackDuration(video.duration_seconds)}
                                 {video.published_at ? ` · ${video.published_at}` : ''}
                                 {video.lyrics ? ` · lyrics/captions found` : ''}
                               </p>
@@ -693,11 +715,25 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-[9px] text-white/25">{String(index + 1).padStart(2, '0')}</span>
-                              <p className="truncate text-sm font-semibold">{track.title}</p>
+                              <p className="truncate text-sm font-semibold">{track.title || 'Untitled track'}</p>
                             </div>
-                            <p className="mt-0.5 truncate text-[10px] text-white/35">
-                              {[track.album, track.release_year, track.source_type].filter(Boolean).join(' · ') || 'Artist supplied'}
-                            </p>
+                            {(() => {
+                              const metadata = normalizeMetadata(track.metadata);
+                              const details = [
+                                track.artist || profile.public_name || profile.artist_name || 'Unknown artist',
+                                formatTrackDuration(metadata.duration_seconds),
+                                track.release_year || null,
+                                track.source_type ? String(track.source_type).replaceAll('_', ' ') : null,
+                              ].filter(Boolean);
+                              return (
+                                <p className="mt-0.5 truncate text-[10px] text-white/45">
+                                  {details.join(' · ')}
+                                </p>
+                              );
+                            })()}
+                            {track.album && (
+                              <p className="mt-0.5 truncate text-[9px] text-white/25">{track.album}</p>
+                            )}
                             {track.description && <p className="mt-2 line-clamp-2 text-[11px] text-white/45">{track.description}</p>}
                             <div className="mt-2 flex gap-2">
                               {track.audio_url && <audio src={track.audio_url} controls preload="none" className="h-8 max-w-[280px]" />}
