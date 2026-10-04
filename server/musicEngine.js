@@ -342,9 +342,9 @@ async function appendStage(sql, ownerUserId, configurationId, buildLog, stage, s
   return entry;
 }
 
-async function updateBuildFailure(sql, ownerUserId, configurationId, buildLog, error) {
+async function updateBuildFailure(sql, ownerUserId, configurationId, buildLog, error, stage = 'pipeline') {
   const failure = {
-    stage: 'pipeline',
+    stage,
     status: 'failed',
     success: false,
     error: text(error?.message, 'Music build failed').slice(0, 600),
@@ -2255,6 +2255,7 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
 export async function runMusicBuild({ sql, ownerUserId, configurationId, section = null }) {
   const config = await requireConfig(sql, ownerUserId, configurationId);
   const buildLog = section ? array(config.build_log, []) : [];
+  let currentStage = section || 'planning';
   try {
     await sql`
       UPDATE creapd.music_production_configurations
@@ -2295,6 +2296,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
     let rundown = await sql`SELECT * FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY order_index ASC`;
     let top10 = await sql`SELECT * FROM creapd.music_top10_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY order_index ASC`;
 
+    currentStage = 'playlist';
     if (runStage('playlist')) {
       if (!section && !automation.includes('Auto Build Playlist')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'playlist', 'skipped', { count: playlist.length });
@@ -2307,6 +2309,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       }
     }
 
+    currentStage = 'research';
     if (runStage('research')) {
       if (!section && !automation.includes('Auto Research')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'research', 'skipped', { count: research.length });
@@ -2323,6 +2326,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       }
     }
 
+    currentStage = 'topics';
     if (runStage('topics')) {
       if (!section && !automation.includes('Auto Develop')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', 'skipped', { count: topics.length });
@@ -2333,6 +2337,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       }
     }
 
+    currentStage = 'assets';
     if (runStage('assets')) {
       if (!section && !automation.includes('Auto Develop')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'assets', 'skipped', { count: assets.length });
@@ -2343,6 +2348,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       }
     }
 
+    currentStage = 'top10';
     if (runStage('top10')) {
       top10 = await generateMusicTop10({ sql, ownerUserId, configurationId: config.id, preserveLocked: Boolean(section) });
       await appendStage(sql, ownerUserId, config.id, buildLog, 'top10', top10.length ? 'complete' : 'failed', { count: top10.length });
@@ -2351,6 +2357,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       await appendStage(sql, ownerUserId, config.id, buildLog, 'top10', top10.length ? 'complete' : 'failed', { count: top10.length });
     }
 
+    currentStage = 'rundown';
     if (runStage('rundown')) {
       if (!section && !automation.includes('Auto Assemble Packet')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'rundown', 'skipped', { count: rundown.length });
@@ -2393,7 +2400,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       build_log: buildLog,
     };
   } catch (error) {
-    await updateBuildFailure(sql, ownerUserId, config.id, buildLog, error).catch(() => {});
+    await updateBuildFailure(sql, ownerUserId, config.id, buildLog, error, currentStage).catch(() => {});
     throw error;
   }
 }
