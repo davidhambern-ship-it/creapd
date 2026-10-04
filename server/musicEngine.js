@@ -1181,28 +1181,64 @@ function isRadioSafeYoutubeSource(metadata) {
   return Boolean(classifyRadioSafeYoutubeSource(metadata));
 }
 
-async function fetchYoutubeDuration(videoId) {
-  try {
-    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!response.ok) return null;
-    const html = await response.text();
-    const match =
-      html.match(/"lengthSeconds":"(\d+)"/) ||
-      html.match(/"approxDurationMs":"(\d+)"/) ||
-      html.match(/"lengthSeconds":(\d+)/);
-    if (!match) return null;
-    const raw = Number(match[1]);
-    if (!Number.isFinite(raw) || raw <= 0) return null;
-    return match[0].includes('approxDurationMs') ? Math.round(raw / 1000) : Math.round(raw);
-  } catch {
-    return null;
+function parseYoutubeDurationFromHtml(html) {
+  const source = String(html || '');
+  const numericMatch =
+    source.match(/"lengthSeconds":"(\d+)"/) ||
+    source.match(/"approxDurationMs":"(\d+)"/) ||
+    source.match(/"lengthSeconds":(\d+)/);
+
+  if (numericMatch) {
+    const raw = Number(numericMatch[1]);
+    if (Number.isFinite(raw) && raw > 0) {
+      return numericMatch[0].includes('approxDurationMs')
+        ? Math.round(raw / 1000)
+        : Math.round(raw);
+    }
   }
+
+  const isoMatch =
+    source.match(/"duration":"(PT[^"]+)"/i) ||
+    source.match(/itemprop=["']duration["'][^>]+content=["'](PT[^"']+)["']/i) ||
+    source.match(/content=["'](PT[^"']+)["'][^>]+itemprop=["']duration["']/i);
+
+  if (!isoMatch?.[1]) return null;
+
+  const duration = isoMatch[1];
+  const parts = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (!parts) return null;
+
+  const hours = Number(parts[1] || 0);
+  const minutes = Number(parts[2] || 0);
+  const seconds = Number(parts[3] || 0);
+  const total = hours * 3600 + minutes * 60 + seconds;
+  return total > 0 ? total : null;
+}
+
+async function fetchYoutubeDuration(videoId) {
+  const urls = [
+    `https://www.youtube.com/watch?v=${videoId}`,
+    `https://www.youtube.com/embed/${videoId}`,
+    `https://www.youtube-nocookie.com/embed/${videoId}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) continue;
+
+      const duration = parseYoutubeDurationFromHtml(await response.text());
+      if (duration) return duration;
+    } catch {}
+  }
+
+  return null;
 }
 
 function countWords(value) {
