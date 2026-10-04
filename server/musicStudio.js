@@ -990,7 +990,7 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
         UPDATE creapd.artist_catalog_tracks
         SET
           title=${clean(resolvedVideo.title, 'YouTube Track')},
-          artist=${clean(profile.public_name || profile.artist_name, resolvedVideo.channel_name || 'Artist')},
+          artist=${clean(resolvedVideo.channel_name, profile.public_name || profile.artist_name || 'Artist')},
           release_year=${clean(resolvedVideo.published_at).slice(0,4) || null},
           description=${nullable(resolvedVideo.description)},
           lyrics=${nullable(resolvedVideo.lyrics)},
@@ -1024,7 +1024,7 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
       ) VALUES (
         ${randomUUID()}, ${profile.id}, ${ownerId},
         ${clean(resolvedVideo.title, 'YouTube Track')},
-        ${clean(profile.public_name || profile.artist_name, resolvedVideo.channel_name || 'Artist')},
+        ${clean(resolvedVideo.channel_name, profile.public_name || profile.artist_name || 'Artist')},
         null,
         ${clean(resolvedVideo.published_at).slice(0,4) || null},
         ${nullable(resolvedVideo.description)},
@@ -1088,7 +1088,7 @@ async function repairArtistYoutubeCatalogMetadata(sql, ownerUserId, body = {}) {
         UPDATE creapd.artist_catalog_tracks
         SET
           title=${clean(verified.title, track.title || 'YouTube Track')},
-          artist=${clean(profile.public_name || profile.artist_name, verified.channel_name || track.artist || 'Artist')},
+          artist=${clean(verified.channel_name, track.artist || profile.public_name || profile.artist_name || 'Artist')},
           artwork_url=${nullable(verified.thumbnail_url) || track.artwork_url || null},
           metadata=${JSON.stringify({
             ...existingMetadata,
