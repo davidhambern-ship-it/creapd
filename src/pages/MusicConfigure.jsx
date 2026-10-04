@@ -347,7 +347,10 @@ export default function MusicConfigure() {
       setBuildConfigId(savedConfig.id);
       setBuilding(true);
       base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
-        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
+        .catch(err => {
+          console.error('Build HTTP error:', err?.message || err);
+          setBuildError(err?.message || 'CREAPD could not build this production.');
+        });
     } catch (err) {
       setBuildError(err.message || 'Failed to build production.');
       setBuilding(false);
@@ -377,7 +380,10 @@ export default function MusicConfigure() {
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
       base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
-        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
+        .catch(err => {
+          console.error('Build HTTP error:', err?.message || err);
+          setBuildError(err?.message || 'CREAPD could not build this production.');
+        });
     } catch (err) {
       setBuildError(err.message || 'Failed to build production. Please try again.');
       setBuilding(false);
