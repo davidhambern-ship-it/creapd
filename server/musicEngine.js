@@ -865,6 +865,9 @@ async function fetchYoutubeCaptionTranscript(playerResponse) {
 }
 
 async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
+  let html = '';
+  let player = null;
+
   try {
     const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
       headers: {
@@ -873,37 +876,72 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
       },
       signal: AbortSignal.timeout(12000),
     });
-    if (!response.ok) return null;
-    const html = await response.text();
-    const player =
-      extractBalancedJson(html, 'var ytInitialPlayerResponse =') ||
-      extractBalancedJson(html, 'ytInitialPlayerResponse =');
+    if (response.ok) {
+      html = await response.text();
+      player =
+        extractBalancedJson(html, 'var ytInitialPlayerResponse =') ||
+        extractBalancedJson(html, 'ytInitialPlayerResponse =');
+    }
+  } catch {}
 
-    const details = player?.videoDetails || {};
-    const micro = player?.microformat?.playerMicroformatRenderer || {};
-    const description = cleanYoutubeDescription(details.shortDescription || '');
-    const descriptionLyrics = extractDescriptionLyrics(description);
-    const captionTranscript = descriptionLyrics ? '' : await fetchYoutubeCaptionTranscript(player);
+  const details = player?.videoDetails || {};
+  const micro = player?.microformat?.playerMicroformatRenderer || {};
 
-    return {
-      video_id: videoId,
-      title: text(details.title, hint.title || ''),
-      channel_name: text(details.author, hint.channel_name || ''),
-      channel_id: text(details.channelId),
-      duration_seconds: num(details.lengthSeconds, hint.duration_seconds || 0),
-      description,
-      lyrics: descriptionLyrics || captionTranscript,
-      lyrics_source: descriptionLyrics ? 'youtube_description' : captionTranscript ? 'youtube_captions' : null,
-      published_at: text(micro.publishDate || micro.uploadDate),
-      thumbnail_url: text(
-        details?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url,
-        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      ),
-      source_url: `https://www.youtube.com/watch?v=${videoId}`,
-    };
-  } catch {
-    return null;
+  let fallback = null;
+  if (!text(details.title) || !text(details.author)) {
+    try {
+      const response = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+        { signal: AbortSignal.timeout(9000) },
+      );
+      if (response.ok) fallback = await response.json();
+    } catch {}
   }
+
+  const durationFromHtml = (() => {
+    const match =
+      html.match(/"lengthSeconds":"(\d+)"/) ||
+      html.match(/"approxDurationMs":"(\d+)"/) ||
+      html.match(/"lengthSeconds":(\d+)/);
+    if (!match) return 0;
+    const raw = Number(match[1]);
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    return match[0].includes('approxDurationMs') ? Math.round(raw / 1000) : Math.round(raw);
+  })();
+
+  let durationSeconds = num(details.lengthSeconds, hint.duration_seconds || durationFromHtml || 0);
+  if (!durationSeconds) {
+    durationSeconds = num(await fetchYoutubeDuration(videoId), 0);
+  }
+
+  const description = cleanYoutubeDescription(details.shortDescription || '');
+  const descriptionLyrics = extractDescriptionLyrics(description);
+  const captionTranscript = player && !descriptionLyrics
+    ? await fetchYoutubeCaptionTranscript(player)
+    : '';
+
+  const title = text(details.title, fallback?.title || hint.title || '');
+  const channelName = text(details.author, fallback?.author_name || hint.channel_name || '');
+
+  // A discovered ID without a readable title is not useful catalogue metadata.
+  if (!title) return null;
+
+  return {
+    video_id: videoId,
+    title,
+    channel_name: channelName,
+    channel_id: text(details.channelId),
+    duration_seconds: durationSeconds,
+    description,
+    lyrics: descriptionLyrics || captionTranscript,
+    lyrics_source: descriptionLyrics ? 'youtube_description' : captionTranscript ? 'youtube_captions' : null,
+    published_at: text(micro.publishDate || micro.uploadDate || hint.published_at),
+    thumbnail_url: text(
+      details?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url,
+      fallback?.thumbnail_url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    ),
+    source_url: `https://www.youtube.com/watch?v=${videoId}`,
+  };
 }
 
 function likelyArtistMusicUpload(video = {}) {
