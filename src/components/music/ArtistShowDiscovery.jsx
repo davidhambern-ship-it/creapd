@@ -62,6 +62,17 @@ function formatTrackDuration(value) {
   return `${minutes}:${String(remaining).padStart(2, '0')}`;
 }
 
+function catalogYoutubeVideoId(track) {
+  const metadata = normalizeMetadata(track?.metadata);
+  if (metadata.youtube_video_id) return String(metadata.youtube_video_id);
+  const source = String(track?.source_url || '');
+  const match =
+    source.match(/[?&]v=([A-Za-z0-9_-]{11})/) ||
+    source.match(/youtu\.be\/([A-Za-z0-9_-]{11})/) ||
+    source.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/);
+  return match?.[1] || '';
+}
+
 function trackNeedsYoutubeMetadata(track) {
   if (String(track?.source_type || '').toLowerCase() !== 'youtube') return false;
   const metadata = normalizeMetadata(track?.metadata);
@@ -563,14 +574,60 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
         limit: 60,
       });
       const videos = result?.videos || [];
-      setYoutubeScan(videos);
+      const likelyVideos = videos.filter(video => video.likely_music);
+      const likelyIds = new Set(likelyVideos.map(video => video.video_id));
+
+      setYoutubeSelected(new Set(likelyIds));
       setYoutubeDiagnostics(result?.diagnostics || null);
-      setYoutubeSelected(new Set(
-        videos.filter(video => video.likely_music).map(video => video.video_id),
-      ));
+
+      let enrichedVideos = videos;
+      if (likelyVideos.some(video => Number(video?.duration_seconds || 0) <= 0)) {
+        setNotice(`CREAPD found ${videos.length} YouTube candidate${videos.length === 1 ? '' : 's'}. Reading song lengths from YouTube…`);
+
+        const enrichedLikely = await resolveMissingYoutubeDurations(likelyVideos, 6);
+        const enrichedById = new Map(enrichedLikely.map(video => [video.video_id, video]));
+        enrichedVideos = videos.map(video => enrichedById.get(video.video_id) || video);
+
+        setYoutubeDiagnostics(current => {
+          if (!current || !Array.isArray(current.resolved_intake_sample)) return current;
+          const durationById = new Map(
+            enrichedVideos.map(video => [video.video_id, Number(video.duration_seconds || 0)])
+          );
+          return {
+            ...current,
+            resolved_intake_sample: current.resolved_intake_sample.map(item => ({
+              ...item,
+              resolved_duration_seconds:
+                durationById.get(item.video_id) || item.resolved_duration_seconds || 0,
+            })),
+          };
+        });
+
+        const existingIds = new Set(catalog.map(catalogYoutubeVideoId).filter(Boolean));
+        const existingResolved = enrichedVideos.filter(video =>
+          existingIds.has(video.video_id) && Number(video.duration_seconds || 0) > 0
+        );
+
+        if (existingResolved.length) {
+          const repairResult = await creapdApi.post('/production/core', {
+            action: 'music_artist_youtube_import',
+            profile_id: profileId,
+            videos: existingResolved,
+          });
+          const refreshed = repairResult?.refreshed || [];
+          if (refreshed.length) {
+            setCatalog(current => {
+              const updates = new Map(refreshed.map(track => [track.id, track]));
+              return current.map(track => updates.get(track.id) || track);
+            });
+          }
+        }
+      }
+
+      setYoutubeScan(enrichedVideos);
       setNotice(
-        videos.length
-          ? `CREAPD found ${videos.length} YouTube candidate${videos.length === 1 ? '' : 's'} using ${String(result?.discovery_mode || 'channel').replaceAll('_', ' ')} discovery. Review the list and import only the tracks that belong in the artist catalogue.`
+        enrichedVideos.length
+          ? `CREAPD found ${enrichedVideos.length} YouTube candidate${enrichedVideos.length === 1 ? '' : 's'} using ${String(result?.discovery_mode || 'channel').replaceAll('_', ' ')} discovery. Song lengths are loaded for ${enrichedVideos.filter(video => Number(video.duration_seconds || 0) > 0).length} track${enrichedVideos.filter(video => Number(video.duration_seconds || 0) > 0).length === 1 ? '' : 's'}.`
           : 'CREAPD did not find public uploads on that YouTube page.'
       );
     } catch (err) {
