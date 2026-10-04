@@ -1027,6 +1027,13 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     release_playlist_candidates: pagePlaylistIds.length,
     release_playlist_video_candidates: playlistVideos.length,
     search_candidates: searchFallback.length,
+    raw_intake_sample: unique.slice(0, 15).map(item => ({
+      video_id: item.video_id || null,
+      title: item.title || '',
+      channel_name: item.channel_name || '',
+      duration_seconds: num(item.duration_seconds, 0),
+      published_at: item.published_at || null,
+    })),
   };
 
   if (!unique.length) {
@@ -1052,6 +1059,21 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     error.details = diagnostics;
     throw error;
   }
+
+  const resolvedById = new Map(details.map(video => [video.video_id, video]));
+  diagnostics.resolved_intake_sample = diagnostics.raw_intake_sample.map(raw => {
+    const resolved = resolvedById.get(raw.video_id) || {};
+    return {
+      video_id: raw.video_id,
+      raw_title: raw.title || '',
+      raw_channel_name: raw.channel_name || '',
+      raw_duration_seconds: num(raw.duration_seconds, 0),
+      resolved_title: resolved.title || '',
+      resolved_channel_name: resolved.channel_name || '',
+      resolved_duration_seconds: num(resolved.duration_seconds, 0),
+      source_url: resolved.source_url || (raw.video_id ? `https://www.youtube.com/watch?v=${raw.video_id}` : null),
+    };
+  });
 
   return {
     channel_url: baseUrl,
