@@ -2218,6 +2218,72 @@ For each selected item, return its 1-based source_index, a short category, a fac
   return inserted;
 }
 
+async function buildArtistTopics({ sql, ownerUserId, config, research, playlist = [] }) {
+  const artistNames = playlist.map(item => text(item.artist)).filter(Boolean);
+  const artistName = artistNames[0] || 'the artist';
+  const playlistText = playlist
+    .slice(0, 20)
+    .map((item, index) => `${index + 1}. ${item.song_title} — ${item.artist || artistName}`)
+    .join('\n');
+  const researchText = research
+    .slice(0, 30)
+    .map((item, index) => `${index + 1}. [${item.category || 'artist_source'}] ${item.title}\n${item.summary}`)
+    .join('\n\n');
+
+  const prompt = `You are the editorial producer for a SINGLE-ARTIST radio special built from one selected YouTube channel and its selected songs.
+
+ARTIST: ${artistName}
+SHOW: ${config.production_name}
+SHOW PREMISE: ${config.show_description || `A focused show about ${artistName} and the music on the selected YouTube channel.`}
+TONE: ${config.show_tone || 'Professional'}
+
+SELECTED PLAYLIST:
+${playlistText || 'No playlist titles supplied.'}
+
+ARTIST/CHANNEL EVIDENCE:
+${researchText || 'No artist evidence supplied.'}
+
+Create 5-8 discussion topics for the spoken portions of this show.
+
+HARD EDITORIAL RULES:
+- EVERY topic must center on ${artistName}, this selected YouTube channel, or one/more exact songs in the playlist.
+- Do NOT create generic music-news, chart, celebrity, genre-history, or unrelated-artist topics.
+- Use the selected songs as the spine of the show: song themes, titles, descriptions, lyrics/captions, release/upload sequence, recurring ideas, contrasts between tracks, artistic presentation, and channel identity.
+- At least half of the topics must name one or more exact playlist songs.
+- Include one topic that establishes who ${artistName} is based ONLY on the supplied artist/channel evidence.
+- Include one topic that looks across multiple selected songs and identifies a supported pattern, contrast, evolution, or recurring idea.
+- If lyrics/description do NOT establish what a song means, do not claim the artist's intent. Phrase interpretation as an observation, reading, question, or possible theme.
+- Do not invent biography, awards, chart positions, collaborators, release facts, quotes, or motivations.
+- Talking points must be specific enough that a host can naturally transition into or out of the relevant playlist songs.
+- In sources, reference the supplied ARTIST/CHANNEL EVIDENCE item titles, not invented URLs.
+
+Return 5-8 strong topics with concise summaries, newline-separated talking points, source labels, and useful placement suggestions.`;
+
+  const result = await structured(prompt, TOPICS_SCHEMA, 'creapd_artist_channel_topics_v1', 6000);
+  const topics = array(result?.data?.topics, []).slice(0, 8);
+  const rows = [];
+
+  for (let index = 0; index < topics.length; index += 1) {
+    const topic = topics[index];
+    const [row] = await sql`
+      INSERT INTO creapd.music_topics (
+        id, configuration_id, owner_user_id, topic_name, generated_summary,
+        talking_points, sources, suggested_placement, status, display_order
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${String(ownerUserId)},
+        ${text(topic.topic_name, `${artistName} Topic ${index + 1}`)},
+        ${text(topic.generated_summary)}, ${text(topic.talking_points)},
+        ${text(topic.sources) || 'Selected artist YouTube channel/catalogue'},
+        ${text(topic.suggested_placement) || null}, 'ready', ${index}
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 async function buildTopics({ sql, ownerUserId, config, research }) {
   const requested = array(config.music_topics, []);
   const researchText = research.slice(0, 12).map((item, i) => `${i + 1}. ${item.title}: ${item.summary}`).join('\n');
