@@ -215,7 +215,7 @@ export default function MusicDashboard() {
     const nextStatus = allApproved ? 'approved' : 'in_review';
 
     base44.entities.MusicProductionConfiguration.update(config.id, { status: nextStatus })
-      .then(() => refresh())
+      .then(() => refresh({ silent: true }))
       .catch(error => console.error('Radio review-state migration failed:', error));
   }, [config?.id, config?.status, playlist, rundown, refresh]);
 
@@ -234,7 +234,7 @@ export default function MusicDashboard() {
     setReviewingId(track.id);
     try {
       await base44.entities.PlaylistItem.update(track.id, { status });
-      await refresh();
+      await refresh({ silent: true });
     } catch (err) {
       console.error('Track review update failed:', err);
     } finally {
@@ -247,7 +247,7 @@ export default function MusicDashboard() {
     setReviewingId(segment.id);
     try {
       await base44.entities.ShowRundownItem.update(segment.id, { status });
-      await refresh();
+      await refresh({ silent: true });
     } catch (err) {
       console.error('Segment review update failed:', err);
     } finally {
