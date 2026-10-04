@@ -2585,6 +2585,8 @@ function rundownScriptSource(item, config) {
 }
 
 async function buildRundown({ sql, ownerUserId, config, playlist, topics, research = [], assets = [] }) {
+  const artistMeta = artistShowMetadata(config);
+  const artistName = playlist.map(item => text(item.artist)).find(Boolean) || 'the artist';
   const blueprint = buildRundownBlueprint(playlist, topics, config);
   const blueprintText = blueprint.map((item, index) => {
     if (item.segment_type === 'song') {
@@ -2601,8 +2603,23 @@ async function buildRundown({ sql, ownerUserId, config, playlist, topics, resear
     .slice(0, 40)
     .map((a, i) => `${i + 1}. [${a.asset_type}] ${a.title || ''}${a.associated_song_title ? ` | song=${a.associated_song_title}` : ''}${a.associated_topic ? ` | topic=${a.associated_topic}` : ''}: ${a.content || ''}`)
     .join('\n');
-  const editorialFocus = array(config.music_topics, []).join(', ') || 'Music and artist conversation';
+  const editorialFocus = artistMeta.enabled
+    ? `${artistName}: selected YouTube channel, songs, lyrics/descriptions, release/upload context, and artist story`
+    : array(config.music_topics, []).join(', ') || 'Music and artist conversation';
   const producerOverrides = producerInstructionBlock(config, ['intro', 'station_id', 'topic_segment', 'talk_break', 'outro']);
+  const artistChannelRundownRules = artistMeta.enabled ? `
+
+ARTIST CHANNEL SHOW MODE:
+- This entire show is about ${artistName} and the exact selected playlist from that artist's YouTube channel.
+- Spoken segments must sound like an artist special, not a generic radio show.
+- The intro MUST establish ${artistName} as the featured artist and frame the show around the selected catalogue/channel.
+- Topic segments MUST use the supplied artist/channel evidence and should name exact playlist songs when relevant.
+- Every talk_break with previous_song / next_song context must connect those actual songs to ${artistName}. Use the previous track to reflect, the next track to set up what is coming, or both.
+- The outro MUST recap ${artistName} and several songs actually heard in this rundown.
+- Do NOT insert unrelated music news, other artists, chart chatter, genre history, or random trivia unless explicitly supported by the supplied evidence.
+- Song meaning/intent cannot be invented. If the artist did not explicitly state intent, present lyrical/theme observations as interpretation rather than fact.
+- Prefer specific references to titles, descriptions, lyrics/captions, upload/release dates, and recurring patterns over generic praise like "great music" or "incredible sound."
+` : '';
 
   const prompt = `You are the rundown/script writer for CREAPD Music Studio. The rundown structure below is LOCKED. Return exactly the same number of items in exactly the same order. Do not add, remove, merge, split, or reorder segments.
 
@@ -2615,6 +2632,7 @@ Co-host: ${config.co_host_name || 'None'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
 ${producerOverrides}
+${artistChannelRundownRules}
 The description/premise and editorial focus are PRIMARY instructions. The host script must sound like THIS show, not a generic music show.
 
 LOCKED BLUEPRINT:
@@ -2630,9 +2648,9 @@ PRE-GENERATED PRODUCTION ASSETS:
 ${assetText || 'No production assets supplied.'}
 
 SCRIPT SOURCE MAP:
-- intro: Discovery Room show identity and premise only.
+- intro: ${artistMeta.enabled ? `featured artist ${artistName} + selected YouTube channel/catalogue + show identity` : 'Discovery Room show identity and premise only'}.
 - topic_segment: matching TOPIC MATERIAL and its cited/verified research.
-- talk_break: show premise/editorial focus plus surrounding playlist context; do not invent current facts.
+- talk_break: ${artistMeta.enabled ? `featured artist ${artistName} + the exact previous_song / next_song named in the LOCKED BLUEPRINT` : 'show premise/editorial focus plus surrounding playlist context'}; do not invent current facts.
 - sponsor_break: sponsor/commercial settings; use placeholder copy unless sponsor information was explicitly supplied.
 - station_id: configured station name, show title, and host identity only.
 - outro: show identity plus a recap/close of the actual rundown.
@@ -2649,7 +2667,7 @@ SCRIPT RULES:
 - NEVER write "your host", "with your host", "our host", or "the host" as a substitute for the configured host name.
 ${radioProductionTools(config).quality.require_station_name && config.station_name ? `- EVERY station_id must also say the exact station name "${config.station_name}".` : ''}
 - If the rundown contains multiple Station IDs, vary the opening, sentence structure, and closing so they do not sound like copies of one another.
-- Intro/outro: establish and close the specific show premise, not generic filler.
+- Intro/outro: establish and close the specific show premise, not generic filler.${artistMeta.enabled ? ` The intro must name ${artistName}; the outro must recap ${artistName} and actual playlist songs.` : ''}
 - Song segments: script_content MUST be empty. The full song audio supplies the runtime; use song_intro/song_outro Production assets for host copy around songs.
 - Never change a song title or artist from the playlist.
 Return rundown array matching the blueprint exactly.`;
@@ -2687,6 +2705,7 @@ Description / premise: ${config.show_description || 'Not supplied'}
 Editorial focus: ${editorialFocus}
 Tone: ${config.show_tone || 'Professional'}
 ${producerOverrides}
+${artistChannelRundownRules}
 TOPIC MATERIAL:
 ${topicText || 'No generated topics'}
 
