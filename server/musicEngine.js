@@ -617,6 +617,76 @@ function extractYoutubeChannelId(html, channelUrl = '') {
   return '';
 }
 
+function extractYoutubeChannelContext(html, channelUrl = '') {
+  const source = String(html || '');
+  const initialData =
+    extractBalancedJson(source, 'var ytInitialData =') ||
+    extractBalancedJson(source, 'ytInitialData =') ||
+    extractBalancedJson(source, 'window["ytInitialData"] =') ||
+    extractBalancedJson(source, 'window.ytInitialData =');
+
+  let metadata = null;
+  if (initialData) {
+    const stack = [initialData];
+    while (stack.length && !metadata) {
+      const node = stack.pop();
+      if (!node || typeof node !== 'object') continue;
+      if (node.channelMetadataRenderer) {
+        metadata = node.channelMetadataRenderer;
+        break;
+      }
+      if (Array.isArray(node)) {
+        for (let index = node.length - 1; index >= 0; index -= 1) stack.push(node[index]);
+      } else {
+        for (const value of Object.values(node)) stack.push(value);
+      }
+    }
+  }
+
+  const metaMap = {};
+  for (const tag of source.match(/<meta\b[^>]*>/gi) || []) {
+    const keyMatch = tag.match(/(?:name|property)=["']([^"']+)["']/i);
+    const contentMatch = tag.match(/content=["']([^"']*)["']/i);
+    if (!keyMatch?.[1] || !contentMatch) continue;
+    metaMap[keyMatch[1].toLowerCase()] = decodeYoutubeEntities(contentMatch[1]).trim();
+  }
+
+  let handle = '';
+  try {
+    const parsed = new URL(channelUrl);
+    handle = parsed.pathname
+      .split('/')
+      .filter(Boolean)
+      .find(part => part.startsWith('@')) || '';
+  } catch {}
+
+  const channelName =
+    text(metadata?.title) ||
+    metaMap['og:title'] ||
+    metaMap['twitter:title'] ||
+    '';
+
+  const description = cleanYoutubeDescription(
+    text(metadata?.description) ||
+    metaMap.description ||
+    metaMap['og:description'] ||
+    '',
+  );
+
+  const canonicalMatch =
+    source.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i) ||
+    source.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i);
+
+  return {
+    channel_name: channelName,
+    channel_id: text(metadata?.externalId) || extractYoutubeChannelId(source, channelUrl) || null,
+    handle: handle || null,
+    description,
+    keywords: text(metadata?.keywords) || null,
+    channel_url: text(metadata?.channelUrl) || text(metadata?.vanityChannelUrl) || canonicalMatch?.[1] || channelUrl || null,
+  };
+}
+
 function youtubeFeedTag(entry, tag) {
   const escaped = tag.replace(':', '\\:');
   const match = String(entry || '').match(new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, 'i'));
@@ -1017,7 +1087,8 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
     pageResults.push({ url, ...(await fetchYoutubeDiscoveryPage(url)) });
   }
 
-  const primary = pageResults[2]?.html || pageResults[0]?.html || '';
+  const primary = pageResults[0]?.html || pageResults[2]?.html || '';
+  const channelContext = extractYoutubeChannelContext(primary, baseUrl);
   const feedResult = await resolveYoutubeChannelFeedCandidates(primary, normalized);
 
   const pageVideos = pageResults.flatMap(result => result.videos || []);
@@ -1121,6 +1192,11 @@ export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
   return {
     channel_url: baseUrl,
     channel_id: feedResult.channel_id,
+    channel_context: {
+      ...channelContext,
+      channel_id: channelContext.channel_id || feedResult.channel_id || null,
+      channel_url: channelContext.channel_url || baseUrl,
+    },
     discovery_mode:
       pageResults[1]?.videos?.length || pagePlaylistIds.length
         ? 'artist_releases'
