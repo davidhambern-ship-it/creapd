@@ -1155,11 +1155,37 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return await deleteArtistCatalogTrack(sql, ownerUserId, body.track_id);
     case 'music_artist_youtube_scan': {
       const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
-      return await scanArtistYoutubeChannel(body.channel_url, {
+      const result = await scanArtistYoutubeChannel(body.channel_url, {
         limit: body.limit || 24,
         artist_name: profile.artist_name,
         public_name: profile.public_name,
       });
+
+      if (result?.channel_context) {
+        const knowledge = parseObject(profile.knowledge, {});
+        const sourceLinks = parseArray(profile.source_links, []);
+        const channelUrl = clean(result.channel_context.channel_url || result.channel_url || body.channel_url);
+        const nextSourceLinks = channelUrl && !sourceLinks.some(item => clean(item?.url || item) === channelUrl)
+          ? [...sourceLinks, { type: 'youtube', url: channelUrl, label: result.channel_context.channel_name || 'YouTube' }]
+          : sourceLinks;
+
+        await sql`
+          UPDATE creapd.artist_profiles
+          SET
+            knowledge=${JSON.stringify({
+              ...knowledge,
+              youtube_channel: {
+                ...result.channel_context,
+                scanned_at: new Date().toISOString(),
+              },
+            })}::jsonb,
+            source_links=${JSON.stringify(nextSourceLinks)}::jsonb,
+            updated_at=now()
+          WHERE id=${profile.id} AND owner_user_id=${String(ownerUserId)}
+        `;
+      }
+
+      return result;
     }
     case 'music_artist_youtube_import':
       return await importArtistYoutubeVideos(sql, ownerUserId, body);
