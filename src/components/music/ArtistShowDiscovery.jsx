@@ -554,6 +554,20 @@ export default function ArtistShowDiscovery({ open, onClose, onUseProfile }) {
               Release videos: {youtubeDiagnostics.release_playlist_video_candidates || 0} ·
               Search fallback: {youtubeDiagnostics.search_candidates || 0}
             </p>
+            {Array.isArray(youtubeDiagnostics.resolved_intake_sample) && youtubeDiagnostics.resolved_intake_sample.length > 0 && (
+              <div className="mt-3 rounded-lg border border-cyan-400/10 bg-cyan-500/[0.025] p-2.5">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Raw YouTube intake → resolved metadata</p>
+                <div className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">
+                  {youtubeDiagnostics.resolved_intake_sample.map((item, index) => (
+                    <div key={item.video_id || index} className="rounded-md border border-white/[0.06] bg-black/30 px-2 py-1.5 font-mono text-[9px] leading-relaxed text-white/45">
+                      <div className="text-white/65">{item.video_id || 'no video id'}</div>
+                      <div>RAW: {item.raw_title || '∅'} | {item.raw_channel_name || '∅'} | {item.raw_duration_seconds || 0}s</div>
+                      <div className="text-cyan-200/70">RESOLVED: {item.resolved_title || '∅'} | {item.resolved_channel_name || '∅'} | {item.resolved_duration_seconds || 0}s</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
