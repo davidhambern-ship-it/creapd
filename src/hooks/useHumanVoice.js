@@ -133,17 +133,24 @@ export function useHumanVoice({ onEnd } = {}) {
         return;
       }
 
-      if (message.type === 'audio' || message.type === 'error') {
+      if (message.type === 'audio') {
         const request = requestsRef.current.get(message.id);
         if (!request) return;
         requestsRef.current.delete(message.id);
-        if (message.type === 'audio') request.resolve(message.blob);
-        else request.reject(new Error(message.error || 'Human voice generation failed.'));
+        request.resolve(message.blob);
         return;
       }
 
       if (message.type === 'error') {
         const err = new Error(message.error || 'Human voice failed.');
+        const request = message.id ? requestsRef.current.get(message.id) : null;
+        if (request) {
+          requestsRef.current.delete(message.id);
+          request.reject(err);
+          return;
+        }
+
+        readyRef.current = false;
         setError(err.message);
         setStatus('error');
         const waiters = readyWaitersRef.current.splice(0);
@@ -172,8 +179,9 @@ export function useHumanVoice({ onEnd } = {}) {
     setStatus('loading');
 
     await new Promise((resolve, reject) => {
+      const shouldStart = readyWaitersRef.current.length === 0;
       readyWaitersRef.current.push({ resolve, reject });
-      worker.postMessage({ type: 'init' });
+      if (shouldStart) worker.postMessage({ type: 'init' });
     });
   }, [ensureWorker]);
 
