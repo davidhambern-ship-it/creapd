@@ -1181,6 +1181,15 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
                 ...result.channel_context,
                 scanned_at: new Date().toISOString(),
               },
+              youtube_channel_library: (result.videos || []).slice(0, 40).map(video => ({
+                video_id: clean(video.video_id),
+                title: clean(video.title),
+                channel_name: clean(video.channel_name),
+                published_at: nullable(video.published_at),
+                description: clean(video.description).slice(0, 700),
+                likely_music: video.likely_music === true,
+                source_url: clean(video.source_url),
+              })),
             })}::jsonb,
             source_links=${JSON.stringify(nextSourceLinks)}::jsonb,
             updated_at=now()
