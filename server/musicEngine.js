@@ -1979,25 +1979,35 @@ async function buildArtistResearch({ sql, ownerUserId, config, playlist = [] }) 
     }
   }
 
-  const artistCandidates = [
-    ...playlist.map(item => text(item.artist)),
-    ...selectedCatalog.map(track => text(track.artist)),
-    ...selectedCatalog.map(track => text(object(track.metadata, {}).youtube_channel_name)),
+  const youtubeArtistNames = [
     text(channel.channel_name),
+    ...selectedCatalog.map(track => text(object(track.metadata, {}).youtube_channel_name)),
+    ...playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)),
+    ...playlist.map(item => text(item.channel_name)),
+  ].filter(Boolean);
+
+  const fallbackArtistNames = [
+    ...selectedCatalog.map(track => text(track.artist)),
+    ...playlist.map(item => text(item.artist)),
     text(profile?.public_name),
     text(profile?.artist_name),
   ].filter(Boolean);
 
-  const artistCounts = new Map();
-  for (const value of artistCandidates) {
-    const key = value.toLowerCase();
-    const current = artistCounts.get(key) || { value, count: 0 };
-    current.count += 1;
-    artistCounts.set(key, current);
-  }
-  const artistName = [...artistCounts.values()]
-    .sort((a, b) => b.count - a.count)[0]?.value
-    || text(profile?.public_name, profile?.artist_name || 'Artist');
+  const mostCommon = values => {
+    const counts = new Map();
+    for (const value of values) {
+      const key = value.toLowerCase();
+      const current = counts.get(key) || { value, count: 0 };
+      current.count += 1;
+      counts.set(key, current);
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count)[0]?.value || '';
+  };
+
+  const artistName =
+    mostCommon(youtubeArtistNames) ||
+    mostCommon(fallbackArtistNames) ||
+    'Artist';
 
   const rows = [];
   const today = new Date().toISOString().slice(0, 10);
@@ -2283,8 +2293,11 @@ For each selected item, return its 1-based source_index, a short category, a fac
 }
 
 async function buildArtistTopics({ sql, ownerUserId, config, research, playlist = [] }) {
-  const artistNames = playlist.map(item => text(item.artist)).filter(Boolean);
-  const artistName = artistNames[0] || 'the artist';
+  const artistName =
+    playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.artist)).find(Boolean) ||
+    'the artist';
   const playlistText = playlist
     .slice(0, 20)
     .map((item, index) => `${index + 1}. ${item.song_title} — ${item.artist || artistName}`)
@@ -2387,7 +2400,11 @@ Talking points should be newline-separated. When a topic comes from RSS research
 
 async function buildAssets({ sql, ownerUserId, config, playlist, topics, research }) {
   const artistMeta = artistShowMetadata(config);
-  const artistName = playlist.map(item => text(item.artist)).find(Boolean) || 'the artist';
+  const artistName =
+    playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.artist)).find(Boolean) ||
+    'the artist';
   const playlistText = playlist.slice(0, 20).map((s, i) => {
     const payload = object(s.source_payload, {});
     return [
@@ -2650,7 +2667,11 @@ function rundownScriptSource(item, config) {
 
 async function buildRundown({ sql, ownerUserId, config, playlist, topics, research = [], assets = [] }) {
   const artistMeta = artistShowMetadata(config);
-  const artistName = playlist.map(item => text(item.artist)).find(Boolean) || 'the artist';
+  const artistName =
+    playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.artist)).find(Boolean) ||
+    'the artist';
   const blueprint = buildRundownBlueprint(playlist, topics, config);
   const blueprintText = blueprint.map((item, index) => {
     if (item.segment_type === 'song') {
