@@ -578,11 +578,17 @@ export default function RadioDashboardOverview({
   readinessPercent = 0,
   reviewingId = null,
   regeneratingRejected = false,
+  rebuildingArtistStory = false,
   onReviewTrack,
   onReviewSegment,
   onRegenerateRejected,
+  onRebuildArtistStory,
 }) {
   const [scriptReviewId, setScriptReviewId] = useState(null);
+  const configSource = parseSourcePayload(config?.source_payload);
+  const artistStoryMode =
+    String(configSource?.show_mode || '').toLowerCase() === 'catalog' ||
+    configSource?.catalog_only === true;
 
   const rejectedTracks = useMemo(
     () => playlist.filter(track => reviewState(track.status) === 'rejected'),
@@ -740,6 +746,22 @@ export default function RadioDashboardOverview({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {artistStoryMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={rebuildingArtistStory}
+                  onClick={() => onRebuildArtistStory?.()}
+                  className="border-fuchsia-400/25 bg-fuchsia-500/[0.05] text-fuchsia-200 hover:bg-fuchsia-500/10"
+                  title="Keep the playlist and rebuild research, topics, production assets, and spoken scripts from the selected artist YouTube channel."
+                >
+                  {rebuildingArtistStory
+                    ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    : <RefreshCw className="w-4 h-4 mr-1.5" />}
+                  Rebuild Artist Story
+                </Button>
+              )}
               <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5">
                 <Link to={`/music/configure?config_id=${config?.id || ''}`}>
                   <Settings className="w-4 h-4 mr-1.5 text-cyan-300" /> Edit Show
