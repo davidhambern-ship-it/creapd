@@ -1591,10 +1591,63 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
   const rows = [];
   const selectedCatalog = catalog.slice(0, Math.max(1, Math.min(catalog.length, Number(targetCount) || 10)));
   for (let index = 0; index < selectedCatalog.length; index += 1) {
-    const track = selectedCatalog[index];
-    const metadata = object(track.metadata, {});
+    let track = selectedCatalog[index];
+    let metadata = object(track.metadata, {});
     const youtubeVideoId = extractVideoId(track.source_url);
-    const duration = Math.max(30, num(metadata.duration_seconds, 180));
+
+    const titleIsPlaceholder =
+      !text(track.title) ||
+      ['youtube track', 'untitled track'].includes(text(track.title).toLowerCase());
+    const durationMissing = num(metadata.duration_seconds, 0) <= 0;
+
+    if (youtubeVideoId && (titleIsPlaceholder || durationMissing)) {
+      const verified = await fetchArtistYoutubeVideoDetails(youtubeVideoId, {
+        title: track.title,
+        channel_name: track.artist,
+        duration_seconds: metadata.duration_seconds,
+      });
+
+      if (verified?.title) {
+        const resolvedMetadata = {
+          ...metadata,
+          youtube_video_id: youtubeVideoId,
+          youtube_channel_name: verified.channel_name || metadata.youtube_channel_name || null,
+          duration_seconds: num(verified.duration_seconds, metadata.duration_seconds || 0) || null,
+          published_at: verified.published_at || metadata.published_at || null,
+        };
+        const [updatedTrack] = await sql`
+          UPDATE creapd.artist_catalog_tracks
+          SET
+            title=${text(verified.title, track.title || 'YouTube Track')},
+            artist=${text(track.artist, verified.channel_name || config.host_name || 'Artist')},
+            artwork_url=${text(verified.thumbnail_url, track.artwork_url || '') || null},
+            metadata=${safeJson(resolvedMetadata)}::jsonb,
+            updated_at=now()
+          WHERE id=${track.id} AND owner_user_id=${ownerId}
+          RETURNING *
+        `;
+        if (updatedTrack) {
+          track = updatedTrack;
+          metadata = object(track.metadata, {});
+        }
+      }
+    }
+
+    const finalTitle = text(track.title);
+    const finalDuration = num(metadata.duration_seconds, 0);
+
+    if (youtubeVideoId && (
+      !finalTitle ||
+      ['youtube track', 'untitled track'].includes(finalTitle.toLowerCase()) ||
+      finalDuration <= 0
+    )) {
+      console.warn('[MUSIC ENGINE] Skipping unresolved catalog YouTube track', track.id, track.source_url);
+      continue;
+    }
+
+    const duration = track.audio_url
+      ? Math.max(30, num(metadata.duration_seconds, 180))
+      : Math.max(1, finalDuration);
     const source = track.audio_url
       ? 'artist_catalog_upload'
       : youtubeVideoId
@@ -1608,7 +1661,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
         reason_selected, status, source, youtube_video_id, thumbnail_url,
         channel_name, source_payload
       ) VALUES (
-        ${randomUUID()}, ${config.id}, ${ownerId}, ${index},
+        ${randomUUID()}, ${config.id}, ${ownerId}, ${rows.length},
         ${text(track.title, `Artist Track ${index + 1}`)},
         ${text(track.artist, config.host_name || 'Artist')},
         ${duration}, ${text(metadata.genre) || null}, ${text(metadata.mood) || null},
@@ -1616,7 +1669,7 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
         ${text(track.release_year) || null},
         'Artist-supplied catalogue track', 'suggested', ${source},
         ${youtubeVideoId || null}, ${text(track.artwork_url) || null},
-        ${text(track.artist, config.host_name || 'Artist')},
+        ${text(metadata.youtube_channel_name, track.artist || config.host_name || 'Artist')},
         ${safeJson({
           catalog_only: true,
           catalog_track_id: track.id,
@@ -1626,11 +1679,20 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
           lyrics: track.lyrics || null,
           source_type: track.source_type || 'manual',
           artist_profile_id: artistMeta.artist_profile_id,
+          youtube_channel_name: metadata.youtube_channel_name || null,
+          youtube_duration_seconds: finalDuration || null,
         })}::jsonb
       )
       RETURNING *
     `;
     rows.push(row);
+  }
+
+  if (!rows.length) {
+    const error = new Error('CREAPD could not resolve title and duration for any selected catalogue YouTube tracks.');
+    error.code = 'CATALOG_YOUTUBE_METADATA_REQUIRED';
+    error.status = 409;
+    throw error;
   }
 
   return rows;
