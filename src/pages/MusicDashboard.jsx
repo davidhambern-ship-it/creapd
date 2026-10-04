@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { useMusicProduction } from '@/hooks/useMusicProduction';
 import { useProductionDepartments } from '@/hooks/useProductionDepartments';
 import { Button } from '@/components/ui/button';
@@ -186,6 +187,7 @@ export default function MusicDashboard() {
   const [detailDept, setDetailDept] = useState(null);
   const [reviewingId, setReviewingId] = useState(null);
   const [regeneratingRejected, setRegeneratingRejected] = useState(false);
+  const [rebuildingArtistStory, setRebuildingArtistStory] = useState(false);
 
   const {
     pipeline, loading: pipelineLoading, actionLoading: deptActionLoading,
@@ -268,6 +270,23 @@ export default function MusicDashboard() {
       console.error('Rejected Radio material regeneration failed:', err);
     } finally {
       setRegeneratingRejected(false);
+    }
+  };
+
+  const handleRebuildArtistStory = async () => {
+    if (!config?.id || rebuildingArtistStory) return;
+    setRebuildingArtistStory(true);
+    try {
+      await creapdApi.post('/production/core', {
+        action: 'music_rebuild_artist_story',
+        configuration_id: config.id,
+      });
+      await refresh();
+      await refreshPipeline();
+    } catch (err) {
+      console.error('Artist Story rebuild failed:', err);
+    } finally {
+      setRebuildingArtistStory(false);
     }
   };
 
@@ -441,9 +460,11 @@ export default function MusicDashboard() {
           readinessPercent={readinessPercent}
           reviewingId={reviewingId}
           regeneratingRejected={regeneratingRejected}
+          rebuildingArtistStory={rebuildingArtistStory}
           onReviewTrack={handleReviewTrack}
           onReviewSegment={handleReviewSegment}
           onRegenerateRejected={handleRegenerateRejected}
+          onRebuildArtistStory={handleRebuildArtistStory}
         />
 
         {/* Production status / departments */}
