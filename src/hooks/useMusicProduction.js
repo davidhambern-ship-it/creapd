@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { useBuildStatusRecovery } from '@/hooks/useBuildStatusRecovery';
 
 const metadataRepairStarted = new Set();
+const catalogPlaceholderRepairStarted = new Set();
 const productionCompletionStarted = new Set();
 
 const DEFAULT_MUSIC_AUTOMATION = [
@@ -37,6 +39,21 @@ function parseSourcePayload(value) {
     } catch {}
   }
   return {};
+}
+
+function hasCatalogPlaceholderMetadata(track) {
+  const title = String(track?.song_title || '').trim().toLowerCase();
+  const duration = Number(track?.length_seconds || 0);
+  const payload = parseSourcePayload(track?.source_payload);
+  const catalogBacked = Boolean(payload?.catalog_track_id)
+    || ['artist_catalog_youtube', 'artist_catalog_upload', 'artist_catalog_link'].includes(String(track?.source || ''));
+
+  return catalogBacked && (
+    !title ||
+    title === 'youtube track' ||
+    title === 'untitled track' ||
+    duration <= 30
+  );
 }
 
 function hasVerifiedRadioMetadata(track) {
@@ -250,6 +267,67 @@ export function useMusicProduction(configId) {
     topics.length,
     assets.length,
     rundown.length,
+    contentLoading,
+    loadAll,
+  ]);
+
+  useEffect(() => {
+    const configurationId = config?.id;
+    if (!configurationId || contentLoading || !playlist.length) return undefined;
+
+    const sourcePayload = parseSourcePayload(config?.source_payload);
+    const profileId = sourcePayload?.artist_profile_id;
+    if (!profileId) return undefined;
+    if (!playlist.some(hasCatalogPlaceholderMetadata)) return undefined;
+    if (catalogPlaceholderRepairStarted.has(configurationId)) return undefined;
+
+    let cancelled = false;
+    catalogPlaceholderRepairStarted.add(configurationId);
+    setMetadataRepairing(true);
+
+    const repairCatalogPlaceholders = async () => {
+      try {
+        let remaining = 1;
+        let pass = 0;
+        let repairedTotal = 0;
+
+        while (!cancelled && remaining > 0 && pass < 8) {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_artist_youtube_repair_metadata',
+            profile_id: profileId,
+            limit: 12,
+          });
+
+          const repaired = Array.isArray(result?.repaired) ? result.repaired : [];
+          repairedTotal += repaired.length;
+          remaining = Number(result?.remaining_count || 0);
+          pass += 1;
+
+          if (!repaired.length && remaining > 0) break;
+        }
+
+        if (!cancelled && repairedTotal > 0) {
+          await loadAll({ silent: true });
+        }
+      } catch (repairError) {
+        catalogPlaceholderRepairStarted.delete(configurationId);
+        if (!cancelled) {
+          console.error('Radio catalog placeholder metadata repair failed:', repairError);
+        }
+      } finally {
+        if (!cancelled) setMetadataRepairing(false);
+      }
+    };
+
+    repairCatalogPlaceholders();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    config?.id,
+    config?.source_payload,
+    playlist,
     contentLoading,
     loadAll,
   ]);
