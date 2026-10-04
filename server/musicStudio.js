@@ -910,6 +910,23 @@ async function deleteArtistCatalogTrack(sql, ownerUserId, trackId) {
   return { id: clean(trackId), deleted: true };
 }
 
+async function syncCatalogTrackMetadataToPlaylists(sql, ownerUserId, track, channelName = null) {
+  if (!track?.id) return;
+  const metadata = parseObject(track.metadata, {});
+  await sql`
+    UPDATE creapd.music_playlist_items
+    SET
+      song_title=${clean(track.title, 'YouTube Track')},
+      artist=${clean(track.artist, 'Artist')},
+      length_seconds=${Math.max(30, number(metadata.duration_seconds, 180))},
+      thumbnail_url=${track.artwork_url || null},
+      channel_name=${nullable(channelName || metadata.youtube_channel_name || track.artist)},
+      updated_at=now()
+    WHERE owner_user_id=${String(ownerUserId)}
+      AND source_payload->>'catalog_track_id'=${String(track.id)}
+  `;
+}
+
 async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
   const ownerId = String(ownerUserId);
   const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
@@ -991,7 +1008,11 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
         WHERE id=${existingTrack.id} AND owner_user_id=${ownerId}
         RETURNING *
       `;
-      if (updated) refreshed.push(withDates(updated));
+      if (updated) {
+        const normalizedUpdated = withDates(updated);
+        refreshed.push(normalizedUpdated);
+        await syncCatalogTrackMetadataToPlaylists(sql, ownerUserId, normalizedUpdated, resolvedVideo.channel_name);
+      }
       continue;
     }
 
@@ -1079,7 +1100,11 @@ async function repairArtistYoutubeCatalogMetadata(sql, ownerUserId, body = {}) {
         WHERE id=${track.id} AND owner_user_id=${ownerId}
         RETURNING *
       `;
-      if (updated) repaired.push(withDates(updated));
+      if (updated) {
+        const normalizedUpdated = withDates(updated);
+        repaired.push(normalizedUpdated);
+        await syncCatalogTrackMetadataToPlaylists(sql, ownerUserId, normalizedUpdated, verified.channel_name);
+      }
     } catch {}
   }
 
