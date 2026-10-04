@@ -2840,13 +2840,19 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       } else {
         await sql`DELETE FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
         if (artistMeta.enabled) {
-          const standardResearch = await buildResearch({ sql, ownerUserId, config });
-          const catalogResearch = await buildArtistResearch({ sql, ownerUserId, config });
-          research = [...catalogResearch, ...standardResearch];
+          research = await buildArtistResearch({ sql, ownerUserId, config, playlist });
         } else {
           research = await buildResearch({ sql, ownerUserId, config });
         }
-        await appendStage(sql, ownerUserId, config.id, buildLog, 'research', research.length ? 'complete' : 'skipped', { count: research.length, source: 'google_news_rss' });
+        await appendStage(
+          sql,
+          ownerUserId,
+          config.id,
+          buildLog,
+          'research',
+          research.length ? 'complete' : 'skipped',
+          { count: research.length, source: artistMeta.enabled ? 'selected_artist_youtube_channel' : 'google_news_rss' },
+        );
       }
     }
 
@@ -2856,8 +2862,13 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
         await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', 'skipped', { count: topics.length });
       } else {
         await sql`DELETE FROM creapd.music_topics WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        topics = await buildTopics({ sql, ownerUserId, config, research });
-        await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', topics.length ? 'complete' : 'failed', { count: topics.length });
+        topics = artistMeta.enabled
+          ? await buildArtistTopics({ sql, ownerUserId, config, research, playlist })
+          : await buildTopics({ sql, ownerUserId, config, research });
+        await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', topics.length ? 'complete' : 'failed', {
+          count: topics.length,
+          source: artistMeta.enabled ? 'artist_channel_editorial' : 'standard_radio_editorial',
+        });
       }
     }
 
