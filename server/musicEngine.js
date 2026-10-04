@@ -864,9 +864,13 @@ async function fetchYoutubeCaptionTranscript(playerResponse) {
   }
 }
 
-async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
+async function fetchArtistYoutubeVideoDetails(videoId, hint = {}, options = {}) {
   let html = '';
   let player = null;
+  let watchStatus = 0;
+  let watchError = '';
+  let oembedStatus = 0;
+  let oembedError = '';
 
   try {
     const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
@@ -876,13 +880,16 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
       },
       signal: AbortSignal.timeout(12000),
     });
+    watchStatus = response.status;
     if (response.ok) {
       html = await response.text();
       player =
         extractBalancedJson(html, 'var ytInitialPlayerResponse =') ||
         extractBalancedJson(html, 'ytInitialPlayerResponse =');
     }
-  } catch {}
+  } catch (error) {
+    watchError = String(error?.name || error?.message || 'watch_fetch_failed').slice(0, 80);
+  }
 
   const details = player?.videoDetails || {};
   const micro = player?.microformat?.playerMicroformatRenderer || {};
@@ -894,8 +901,11 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
         `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
         { signal: AbortSignal.timeout(9000) },
       );
+      oembedStatus = response.status;
       if (response.ok) fallback = await response.json();
-    } catch {}
+    } catch (error) {
+      oembedError = String(error?.name || error?.message || 'oembed_fetch_failed').slice(0, 80);
+    }
   }
 
   const durationFromHtml = (() => {
@@ -923,8 +933,37 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
   const title = text(details.title, fallback?.title || hint.title || '');
   const channelName = text(details.author, fallback?.author_name || hint.channel_name || '');
 
-  // A discovered ID without a readable title is not useful catalogue metadata.
-  if (!title) return null;
+  const resolutionDiagnostic = {
+    video_id: videoId,
+    watch_status: watchStatus || null,
+    watch_error: watchError || null,
+    html_bytes: html.length,
+    player_found: Boolean(player),
+    video_details_found: Boolean(player?.videoDetails),
+    consent_page: /before you continue|consent\.youtube\.com/i.test(html),
+    bot_challenge: /unusual traffic|captcha|automated queries/i.test(html),
+    oembed_status: oembedStatus || null,
+    oembed_error: oembedError || null,
+    oembed_title_found: Boolean(fallback?.title),
+    hint_title_found: Boolean(text(hint.title)),
+    duration_from_html: durationFromHtml || 0,
+    resolved_duration_seconds: durationSeconds || 0,
+    resolved_title_found: Boolean(title),
+    resolved_channel_found: Boolean(channelName),
+  };
+
+  if (!title) {
+    return options.includeDiagnostics
+      ? {
+          video_id: videoId,
+          title: '',
+          channel_name: channelName,
+          duration_seconds: durationSeconds,
+          source_url: `https://www.youtube.com/watch?v=${videoId}`,
+          resolution_diagnostic: resolutionDiagnostic,
+        }
+      : null;
+  }
 
   return {
     video_id: videoId,
@@ -941,6 +980,7 @@ async function fetchArtistYoutubeVideoDetails(videoId, hint = {}) {
       fallback?.thumbnail_url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
     ),
     source_url: `https://www.youtube.com/watch?v=${videoId}`,
+    resolution_diagnostic: resolutionDiagnostic,
   };
 }
 
