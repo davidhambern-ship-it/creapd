@@ -2322,10 +2322,31 @@ Talking points should be newline-separated. When a topic comes from RSS research
 }
 
 async function buildAssets({ sql, ownerUserId, config, playlist, topics, research }) {
-  const playlistText = playlist.slice(0, 15).map((s, i) => `${i + 1}. ${s.song_title} — ${s.artist}`).join('\n');
+  const artistMeta = artistShowMetadata(config);
+  const artistName = playlist.map(item => text(item.artist)).find(Boolean) || 'the artist';
+  const playlistText = playlist.slice(0, 20).map((s, i) => {
+    const payload = object(s.source_payload, {});
+    return [
+      `${i + 1}. ${s.song_title} — ${s.artist}`,
+      payload.description ? `Description: ${String(payload.description).slice(0, 500)}` : '',
+      payload.lyrics ? `Lyrics/captions: ${String(payload.lyrics).slice(0, 700)}` : '',
+    ].filter(Boolean).join('\n');
+  }).join('\n\n');
   const topicsText = topics.slice(0, 8).map((t, i) => `${i + 1}. ${t.topic_name}: ${t.generated_summary}`).join('\n');
-  const researchText = research.slice(0, 8).map((r, i) => `${i + 1}. ${r.title}: ${r.summary}`).join('\n');
+  const researchText = research.slice(0, artistMeta.enabled ? 24 : 8).map((r, i) => `${i + 1}. ${r.title}: ${r.summary}`).join('\n\n');
   const producerOverrides = producerInstructionBlock(config, ['station_id', 'song_copy']);
+  const artistChannelRules = artistMeta.enabled ? `
+
+ARTIST CHANNEL SHOW MODE:
+- This is a focused show about ${artistName} and the selected music from that artist's YouTube channel.
+- The playlist is not background music. It is the subject matter and narrative spine of the show.
+- Every host_banter, artist_fact, music_trivia, song_intro, and song_outro must stay centered on ${artistName} or an exact selected playlist track.
+- Do NOT introduce generic music news, unrelated artists, chart chatter, or genre-history filler unless it is explicitly present in the supplied artist/channel evidence.
+- Generate at least one useful song_intro for EVERY playlist track so the host can introduce each actual song.
+- Song intros/outros should connect exact track titles to supported evidence from descriptions, lyrics/captions, upload/release context, or the surrounding artist-channel story.
+- If artist intent is not explicitly stated, do not invent it. Use phrasing such as "you can hear," "the lyrics suggest," "one way to read it," or ask a question.
+- Refer to the artist as ${artistName} when the evidence identifies that name.
+` : '';
   const prompt = `You are the production-assets writer for CREAPD Music Studio. Generate practical on-air material for this show.
 
 SHOW: ${config.production_name}
@@ -2335,6 +2356,7 @@ Host: ${config.host_name || 'Host'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
 ${producerOverrides}
+${artistChannelRules}
 PLAYLIST:
 ${playlistText}
 
@@ -2356,7 +2378,9 @@ ${radioProductionTools(config).quality.require_station_name && config.station_na
 - sponsor_read is placeholder copy unless sponsor information is explicitly present in the show instructions.
 - topic/current-event/artist-story copy must stay grounded in TOPICS and VERIFIED / ARTIST-SUPPLIED RESEARCH.
 
-Aim for 12-20 concise assets total.`;
+${artistMeta.enabled
+  ? `Aim for ${Math.min(24, Math.max(14, playlist.length + 6))} concise assets total, with playlist-specific song intros prioritized.`
+  : 'Aim for 12-20 concise assets total.'}`;
   const result = await structured(prompt, ASSETS_SCHEMA, 'creapd_music_assets_v1', 7000);
   const rawAssets = array(result?.data?.assets, []).slice(0, 24);
   const rows = [];
