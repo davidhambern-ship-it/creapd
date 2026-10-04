@@ -921,20 +921,50 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
     FROM creapd.artist_catalog_tracks
     WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
   `;
-  const existingIds = new Set();
+  const existingByVideoId = new Map();
   for (const row of existing || []) {
     const metadata = parseObject(row.metadata, {});
-    if (metadata.youtube_video_id) existingIds.add(String(metadata.youtube_video_id));
+    if (metadata.youtube_video_id) existingByVideoId.set(String(metadata.youtube_video_id), row);
     const match = String(row.source_url || '').match(/[?&]v=([A-Za-z0-9_-]{11})/);
-    if (match) existingIds.add(match[1]);
+    if (match) existingByVideoId.set(match[1], row);
   }
 
   const imported = [];
+  const refreshed = [];
   const skipped = [];
   for (const video of videos) {
     const videoId = clean(video.video_id);
-    if (!videoId || existingIds.has(videoId)) {
-      skipped.push(videoId || clean(video.title));
+    if (!videoId) {
+      skipped.push(clean(video.title));
+      continue;
+    }
+
+    const existingTrack = existingByVideoId.get(videoId);
+    if (existingTrack) {
+      const [updated] = await sql`
+        UPDATE creapd.artist_catalog_tracks
+        SET
+          title=${clean(video.title, 'YouTube Track')},
+          artist=${clean(profile.public_name || profile.artist_name, video.channel_name || 'Artist')},
+          release_year=${clean(video.published_at).slice(0,4) || null},
+          description=${nullable(video.description)},
+          lyrics=${nullable(video.lyrics)},
+          source_type='youtube',
+          source_url=${clean(video.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
+          artwork_url=${nullable(video.thumbnail_url)},
+          metadata=${JSON.stringify({
+            youtube_video_id: videoId,
+            youtube_channel_name: nullable(video.channel_name),
+            duration_seconds: number(video.duration_seconds, 0) || null,
+            published_at: nullable(video.published_at),
+            lyrics_source: nullable(video.lyrics_source),
+            imported_from_channel: true,
+          })}::jsonb,
+          updated_at=now()
+        WHERE id=${existingTrack.id} AND owner_user_id=${ownerId}
+        RETURNING *
+      `;
+      if (updated) refreshed.push(withDates(updated));
       continue;
     }
 
@@ -945,7 +975,7 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
       ) VALUES (
         ${randomUUID()}, ${profile.id}, ${ownerId},
         ${clean(video.title, 'YouTube Track')},
-        ${clean(video.channel_name, profile.public_name || profile.artist_name)},
+        ${clean(profile.public_name || profile.artist_name, video.channel_name || 'Artist')},
         null,
         ${clean(video.published_at).slice(0,4) || null},
         ${nullable(video.description)},
@@ -956,6 +986,7 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
         ${nullable(video.thumbnail_url)},
         ${JSON.stringify({
           youtube_video_id: videoId,
+          youtube_channel_name: nullable(video.channel_name),
           duration_seconds: number(video.duration_seconds, 0) || null,
           published_at: nullable(video.published_at),
           lyrics_source: nullable(video.lyrics_source),
@@ -964,11 +995,11 @@ async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
       )
       RETURNING *
     `;
-    existingIds.add(videoId);
+    existingByVideoId.set(videoId, created);
     imported.push(withDates(created));
   }
 
-  return { imported, skipped };
+  return { imported, refreshed, skipped };
 }
 
 export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, action, body = {} }) {
