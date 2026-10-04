@@ -74,10 +74,12 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
   const endedRef = useRef(onActiveEnded);
   const tracksRef = useRef({ A: deckATrack, B: deckBTrack });
   const pendingPlayRef = useRef({ A: false, B: false });
+  const pendingUnlockRef = useRef({ A: false, B: false });
   const [ytReady, setYtReady] = useState({ A: false, B: false });
   const [audioReady, setAudioReady] = useState({ A: false, B: false });
   const [playing, setPlaying] = useState({ A: false, B: false });
   const [youtubeError, setYoutubeError] = useState({ A: null, B: null });
+  const [playbackDiagnostic, setPlaybackDiagnostic] = useState({ A: '', B: '' });
   const [timing, setTiming] = useState({
     A: { current: 0, duration: 0 },
     B: { current: 0, duration: 0 },
@@ -117,6 +119,28 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
         ref.current = null;
       }
     };
+  }, []);
+
+  const captureYoutubeState = useCallback((deck, label = '') => {
+    const player = deck === 'A' ? playerARef.current : playerBRef.current;
+    const track = tracksRef.current[deck];
+    if (!player || trackAudioUrl(track)) return;
+
+    let state = 'NA';
+    let volume = 'NA';
+    let muted = 'NA';
+    let videoId = '';
+    let current = 0;
+    try { state = player.getPlayerState?.(); } catch {}
+    try { volume = player.getVolume?.(); } catch {}
+    try { muted = player.isMuted?.() ? 'yes' : 'no'; } catch {}
+    try { videoId = player.getVideoData?.()?.video_id || ''; } catch {}
+    try { current = Number(player.getCurrentTime?.() || 0).toFixed(1); } catch {}
+
+    setPlaybackDiagnostic(value => ({
+      ...value,
+      [deck]: `${label ? `${label} · ` : ''}state ${state} · vol ${volume} · muted ${muted} · t ${current}s · video ${videoId || 'none'}`,
+    }));
   }, []);
 
   useEffect(() => {
@@ -172,9 +196,31 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
               try {
                 event.target.cueVideoById(videoId);
                 event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
-                if (pendingPlayRef.current[deck]) {
+                if (pendingUnlockRef.current[deck]) {
+                  pendingUnlockRef.current[deck] = false;
+                  try {
+                    event.target.mute();
+                    event.target.loadVideoById(videoId);
+                    event.target.playVideo();
+                    window.setTimeout(() => {
+                      try {
+                        event.target.pauseVideo();
+                        event.target.seekTo(0, true);
+                        event.target.unMute();
+                        event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
+                        captureYoutubeState(deck, 'UNLOCKED');
+                      } catch {}
+                    }, 180);
+                  } catch {}
+                } else if (pendingPlayRef.current[deck]) {
                   pendingPlayRef.current[deck] = false;
-                  event.target.playVideo();
+                  try {
+                    event.target.unMute();
+                    event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
+                    event.target.loadVideoById(videoId);
+                    event.target.playVideo();
+                    window.setTimeout(() => captureYoutubeState(deck, 'PLAY'), 700);
+                  } catch {}
                 }
               } catch {}
             }
@@ -216,7 +262,7 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
       playerARef.current = null;
       playerBRef.current = null;
     };
-  }, []);
+  }, [captureYoutubeState]);
 
   const loadDeck = useCallback((deck, track, isActive) => {
     const audioRef = deck === 'A' ? audioARef : audioBRef;
@@ -322,19 +368,83 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
   const play = useCallback(deck => {
     const source = sourceFor(deck);
     if (source.audioUrl && source.audio) {
-      source.audio.play().catch(() => {});
+      if (activeDeckRef.current === deck) source.audio.volume = 1;
+      source.audio.play().catch(error => {
+        setPlaybackDiagnostic(value => ({ ...value, [deck]: `AUDIO ERROR · ${error?.name || error?.message || 'play failed'}` }));
+      });
       return;
     }
 
     const readyForYoutube = deck === 'A' ? ytReady.A : ytReady.B;
     if (!source.player || !readyForYoutube) {
       pendingPlayRef.current[deck] = true;
+      setPlaybackDiagnostic(value => ({ ...value, [deck]: 'PLAY QUEUED · waiting for YouTube player' }));
       return;
     }
 
     pendingPlayRef.current[deck] = false;
-    try { source.player.playVideo?.(); } catch {}
-  }, [sourceFor, ytReady.A, ytReady.B]);
+    const videoId = source.track?.youtube_video_id;
+    try {
+      source.player.unMute?.();
+      if (activeDeckRef.current === deck) source.player.setVolume?.(100);
+
+      const loadedId = source.player.getVideoData?.()?.video_id || '';
+      if (videoId && loadedId !== videoId) {
+        source.player.loadVideoById?.(videoId);
+      } else {
+        source.player.playVideo?.();
+      }
+
+      window.setTimeout(() => captureYoutubeState(deck, 'PLAY'), 700);
+    } catch (error) {
+      setPlaybackDiagnostic(value => ({ ...value, [deck]: `YT PLAY ERROR · ${error?.message || 'unknown'}` }));
+    }
+  }, [sourceFor, ytReady.A, ytReady.B, captureYoutubeState]);
+
+  const unlock = useCallback(() => {
+    for (const deck of ['A', 'B']) {
+      const source = sourceFor(deck);
+      if (source.audioUrl && source.audio) {
+        try {
+          source.audio.muted = true;
+          const promise = source.audio.play();
+          Promise.resolve(promise).catch(() => {}).finally(() => {
+            try {
+              source.audio.pause();
+              source.audio.currentTime = 0;
+              source.audio.muted = false;
+              source.audio.volume = activeDeckRef.current === deck ? 1 : 0;
+            } catch {}
+          });
+        } catch {}
+        continue;
+      }
+
+      const readyForYoutube = deck === 'A' ? ytReady.A : ytReady.B;
+      const videoId = source.track?.youtube_video_id;
+      if (!videoId) continue;
+
+      if (!source.player || !readyForYoutube) {
+        pendingUnlockRef.current[deck] = true;
+        continue;
+      }
+
+      try {
+        source.player.mute?.();
+        source.player.loadVideoById?.(videoId);
+        source.player.playVideo?.();
+        window.setTimeout(() => {
+          try {
+            source.player.pauseVideo?.();
+            source.player.seekTo?.(0, true);
+            source.player.unMute?.();
+            source.player.setVolume?.(activeDeckRef.current === deck ? 100 : 0);
+            captureYoutubeState(deck, 'UNLOCKED');
+          } catch {}
+        }, 180);
+      } catch {}
+    }
+  }, [sourceFor, ytReady.A, ytReady.B, captureYoutubeState]);
 
   const pause = useCallback(deck => {
     pendingPlayRef.current[deck] = false;
@@ -386,9 +496,11 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
     playing,
     timing,
     youtubeError,
+    playbackDiagnostic,
     setVolume,
     play,
     pause,
+    unlock,
     restart,
     seek,
   };
@@ -402,6 +514,7 @@ function DeckCard({
   ready,
   timing,
   youtubeError,
+  playbackDiagnostic,
   onPlayPause,
   onRestart,
   onSeek,
@@ -457,6 +570,9 @@ function DeckCard({
         <span>{formatClock(current)}</span>
         <span>{sourceLabel} · -{formatClock(Math.max(0, duration - current))}</span>
       </div>
+      {playbackDiagnostic && (
+        <p className="mt-1 text-[9px] font-mono leading-snug text-amber-200/70 break-all">{playbackDiagnostic}</p>
+      )}
 
       <div className="grid grid-cols-2 gap-2 mt-3">
         <Button
@@ -828,12 +944,13 @@ export default function RadioLive() {
       return;
     }
 
+    decks.unlock();
     setShowRunning(true);
     const segment = rundownRef.current[segmentIndexRef.current];
     if (segment?.segment_type === 'song') {
       startSongSegment(segment);
     }
-  }, [showRunning, decks.pause, startSongSegment]);
+  }, [showRunning, decks.pause, decks.unlock, startSongSegment]);
 
   useEffect(() => {
     if (!showRunning || !currentSegment) return;
@@ -1092,6 +1209,7 @@ export default function RadioLive() {
                   ready={decks.ready.A}
                   timing={decks.timing.A}
                   youtubeError={decks.youtubeError.A}
+                  playbackDiagnostic={decks.playbackDiagnostic.A}
                   onPlayPause={() => toggleDeck('A')}
                   onRestart={() => decks.restart('A')}
                   onSeek={seconds => decks.seek('A', seconds)}
@@ -1104,6 +1222,7 @@ export default function RadioLive() {
                   ready={decks.ready.B}
                   timing={decks.timing.B}
                   youtubeError={decks.youtubeError.B}
+                  playbackDiagnostic={decks.playbackDiagnostic.B}
                   onPlayPause={() => toggleDeck('B')}
                   onRestart={() => decks.restart('B')}
                   onSeek={seconds => decks.seek('B', seconds)}
