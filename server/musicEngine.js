@@ -1694,18 +1694,16 @@ async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
     let metadata = object(track.metadata, {});
     const youtubeVideoId = extractVideoId(track.source_url);
 
-    const titleIsPlaceholder =
-      !text(track.title) ||
-      ['youtube track', 'untitled track'].includes(text(track.title).toLowerCase());
-    const durationMissing = num(metadata.duration_seconds, 0) <= 0;
+    let verified = null;
 
-    if (youtubeVideoId && (titleIsPlaceholder || durationMissing)) {
-      const verified = await fetchArtistYoutubeVideoDetails(
+    if (youtubeVideoId) {
+      verified = await fetchArtistYoutubeVideoDetails(
         youtubeVideoId,
         {
           title: track.title,
           channel_name: track.artist,
           duration_seconds: metadata.duration_seconds,
+          published_at: metadata.published_at,
         },
         { includeDiagnostics: true },
       );
