@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { useNativeSpeech } from '@/hooks/useNativeSpeech';
+import { useHumanVoice } from '@/hooks/useHumanVoice';
 
 const ShowPlaybackContext = createContext(null);
 export const useShowPlayback = () => useContext(ShowPlaybackContext);
@@ -26,7 +26,6 @@ export function ShowPlaybackProvider({ children }) {
   // ── Playback state ──
   const [autoplayIndex, setAutoplayIndex] = useState(null);
   const [songPhase, setSongPhase] = useState(null); // 'intro' | 'song' | 'outro' | null
-  const [selectedVoiceURI, setSelectedVoiceURI] = useState(null);
   const [isYtPlaying, setIsYtPlaying] = useState(false);
   const [isYtReady, setIsYtReady] = useState(false);
   const [activeVideoId, setActiveVideoId] = useState(null);
@@ -127,9 +126,22 @@ export function ShowPlaybackProvider({ children }) {
     advanceAutoplay();
   }, [advanceAutoplay, showDataVersion]);
 
-  const { speak, stop, speakingId, isSupported, voices } = useNativeSpeech({
+  const {
+    speak,
+    stop,
+    speakingId,
+    isSupported,
+    voices,
+    enabled: voiceEnabled,
+    setEnabled: setVoiceEnabled,
+    selectedVoice: selectedVoiceURI,
+    setSelectedVoice: setSelectedVoiceURI,
+    status: voiceStatus,
+    progress: voiceProgress,
+    error: voiceError,
+    preview: previewVoice,
+  } = useHumanVoice({
     onEnd: handleSpeechEnd,
-    selectedVoiceURI,
   });
 
   const handleSongEnded = useCallback(() => {
@@ -138,7 +150,7 @@ export function ShowPlaybackProvider({ children }) {
     if (idx === null || !rundown[idx]) return;
     const item = rundown[idx];
     const outro = getSongOutroScript(item);
-    if (outro) {
+    if (outro && voiceEnabled) {
       setSongPhase('outro');
       speak(outro, item.id);
     } else {
@@ -226,7 +238,7 @@ export function ShowPlaybackProvider({ children }) {
     if (item.segment_type === 'song') {
       if (songPhase === null) {
         const intro = getSongIntroScript(item);
-        if (intro) {
+        if (intro && voiceEnabled) {
           setSongPhase('intro');
           if (speakingId !== item.id) speak(intro, item.id);
         } else {
@@ -242,12 +254,12 @@ export function ShowPlaybackProvider({ children }) {
         }
       }
     } else {
-      if (songPhase === null) {
+      if (songPhase === null && voiceEnabled) {
         const script = getScriptForItem(item);
         if (script && speakingId !== item.id) speak(script, item.id);
       }
     }
-  }, [autoplayIndex, songPhase, isYtReady, speakingId, speak, showDataVersion]);
+  }, [autoplayIndex, songPhase, isYtReady, speakingId, speak, showDataVersion, voiceEnabled]);
 
   // ── Public actions ──
   const startAutoplay = useCallback((index) => {
@@ -269,6 +281,7 @@ export function ShowPlaybackProvider({ children }) {
   }, [stop]);
 
   const handleNativePreview = useCallback((item, index) => {
+    if (!voiceEnabled) return;
     const script = getScriptForItem(item);
     if (speakingId === item.id) {
       stopAutoplay();
@@ -279,7 +292,7 @@ export function ShowPlaybackProvider({ children }) {
       return;
     }
     speak(script, item.id);
-  }, [speakingId, stopAutoplay, startAutoplay, speak, getScriptForItem]);
+  }, [voiceEnabled, speakingId, stopAutoplay, startAutoplay, speak, getScriptForItem]);
 
   const playSong = useCallback((videoId, itemIndex) => {
     setYoutubeRequested(true);
@@ -325,6 +338,12 @@ export function ShowPlaybackProvider({ children }) {
     setSelectedVoiceURI,
     voices,
     isSupported,
+    voiceEnabled,
+    setVoiceEnabled,
+    voiceStatus,
+    voiceProgress,
+    voiceError,
+    previewVoice,
 
     // Actions
     startAutoplay,
