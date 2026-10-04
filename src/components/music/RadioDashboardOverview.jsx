@@ -26,6 +26,15 @@ function reviewState(status) {
   return 'pending';
 }
 
+function nextPendingAfter(items = [], currentId) {
+  if (!Array.isArray(items) || !items.length) return null;
+  const index = items.findIndex(item => item?.id === currentId);
+  const ordered = index >= 0
+    ? [...items.slice(index + 1), ...items.slice(0, index)]
+    : [...items];
+  return ordered.find(item => reviewState(item?.status) === 'pending') || null;
+}
+
 function ReviewBadge({ status, compact = false }) {
   const state = reviewState(status);
   const styles = state === 'approved'
@@ -293,6 +302,7 @@ function SegmentRow({
 
   return (
     <motion.div
+      id={item?.id ? `segment-review-${item.id}` : undefined}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.025, 0.35) }}
@@ -379,7 +389,7 @@ function SegmentRow({
 
 function TrackRow({ track, index, reviewingId, onReviewTrack }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-black/35 px-3 py-3">
+    <div id={track?.id ? `playlist-review-${track.id}` : undefined} className="rounded-xl border border-white/[0.07] bg-black/35 px-3 py-3">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center bg-fuchsia-500/10 border border-fuchsia-400/20 text-xs font-bold text-fuchsia-300">
           {index + 1}
@@ -648,6 +658,49 @@ export default function RadioDashboardOverview({
           ? 'The show rundown has not been generated yet'
           : 'CREAPD is syncing the final approval state';
 
+  const handleTrackReview = async (track, status) => {
+    await onReviewTrack?.(track, status);
+    if (status !== 'approved') return;
+
+    const next = nextPendingAfter(activePlaylist, track?.id);
+    if (!next?.id) return;
+
+    window.setTimeout(() => {
+      document.getElementById(`playlist-review-${next.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 80);
+  };
+
+  const handleSegmentReview = async (segment, status) => {
+    await onReviewSegment?.(segment, status);
+    if (status !== 'approved') return;
+
+    const activeSpoken = activeRundown.filter(item => item.segment_type !== 'song');
+    const next = nextPendingAfter(activeSpoken, segment?.id);
+    if (!next?.id) return;
+
+    window.setTimeout(() => {
+      document.getElementById(`segment-review-${next.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 80);
+  };
+
+  const handleScriptModalReview = async (segment, status) => {
+    const next = status === 'approved'
+      ? nextPendingAfter(spokenReviewItems, segment?.id)
+      : null;
+
+    await onReviewSegment?.(segment, status);
+
+    if (status === 'approved') {
+      setScriptReviewId(next?.id || null);
+    }
+  };
+
   const progress = Number.isFinite(Number(pipeline?.pipeline_progress))
     ? Number(pipeline.pipeline_progress)
     : readinessPercent;
@@ -775,7 +828,7 @@ export default function RadioDashboardOverview({
                 topics={topics}
                 assets={assets}
                 reviewingId={reviewingId}
-                onReviewSegment={onReviewSegment}
+                onReviewSegment={handleSegmentReview}
                 onOpenScript={item => setScriptReviewId(item.id)}
               />
             )) : (
@@ -805,7 +858,7 @@ export default function RadioDashboardOverview({
                 track={track}
                 index={index}
                 reviewingId={reviewingId}
-                onReviewTrack={onReviewTrack}
+                onReviewTrack={handleTrackReview}
               />
             )) : (
               <div className="py-16 text-center text-sm text-white/35">No active playlist tracks.</div>
@@ -830,7 +883,7 @@ export default function RadioDashboardOverview({
           item={scriptReviewItem}
           source={scriptReviewSource}
           reviewingId={reviewingId}
-          onReview={onReviewSegment}
+          onReview={handleScriptModalReview}
           onClose={() => setScriptReviewId(null)}
         />
       )}
