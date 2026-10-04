@@ -75,6 +75,139 @@ function trackNeedsYoutubeMetadata(track) {
 }
 
 const catalogMetadataRepairRuns = new Set();
+let youtubeIframeApiPromise = null;
+
+function loadYoutubeIframeApi() {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('YouTube player API requires a browser.'));
+  }
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (youtubeIframeApiPromise) return youtubeIframeApiPromise;
+
+  youtubeIframeApiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    const timeout = window.setTimeout(() => {
+      youtubeIframeApiPromise = null;
+      reject(new Error('YouTube player API did not load in time.'));
+    }, 15000);
+
+    window.onYouTubeIframeAPIReady = () => {
+      window.clearTimeout(timeout);
+      try {
+        if (typeof previousReady === 'function') previousReady();
+      } catch {}
+      resolve(window.YT);
+    };
+
+    let script = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      script.async = true;
+      script.onerror = () => {
+        window.clearTimeout(timeout);
+        youtubeIframeApiPromise = null;
+        reject(new Error('YouTube player API failed to load.'));
+      };
+      document.head.appendChild(script);
+    }
+  });
+
+  return youtubeIframeApiPromise;
+}
+
+async function resolveYoutubeDurationInBrowser(videoId) {
+  if (!videoId) return null;
+  const YT = await loadYoutubeIframeApi();
+
+  return new Promise(resolve => {
+    const host = document.createElement('div');
+    host.style.position = 'fixed';
+    host.style.left = '-10000px';
+    host.style.top = '-10000px';
+    host.style.width = '200px';
+    host.style.height = '200px';
+    host.style.opacity = '0';
+    host.style.pointerEvents = 'none';
+    document.body.appendChild(host);
+
+    let player = null;
+    let settled = false;
+    let poll = null;
+    let timeout = null;
+
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      if (poll) window.clearInterval(poll);
+      if (timeout) window.clearTimeout(timeout);
+      try { player?.stopVideo?.(); } catch {}
+      try { player?.destroy?.(); } catch {}
+      try { host.remove(); } catch {}
+      const duration = Math.round(Number(value) || 0);
+      resolve(duration > 0 ? duration : null);
+    };
+
+    const readDuration = () => {
+      try {
+        const duration = Number(player?.getDuration?.() || 0);
+        if (duration > 0) finish(duration);
+      } catch {}
+    };
+
+    timeout = window.setTimeout(() => finish(null), 12000);
+
+    try {
+      player = new YT.Player(host, {
+        width: '200',
+        height: '200',
+        videoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          playsinline: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: event => {
+            try {
+              event.target.mute();
+              event.target.playVideo();
+            } catch {}
+            poll = window.setInterval(readDuration, 250);
+            readDuration();
+          },
+          onStateChange: readDuration,
+          onError: () => finish(null),
+        },
+      });
+    } catch {
+      finish(null);
+    }
+  });
+}
+
+async function resolveMissingYoutubeDurations(videos = [], concurrency = 3) {
+  const results = videos.map(video => ({ ...video }));
+  const indexes = results
+    .map((video, index) => ({ video, index }))
+    .filter(({ video }) => Number(video?.duration_seconds || 0) <= 0 && video?.video_id)
+    .map(({ index }) => index);
+
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(concurrency, indexes.length) }, async () => {
+    while (cursor < indexes.length) {
+      const position = cursor;
+      cursor += 1;
+      const index = indexes[position];
+      const duration = await resolveYoutubeDurationInBrowser(results[index].video_id).catch(() => null);
+      if (duration) results[index].duration_seconds = duration;
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
 
 function apiErrorMessage(err, fallback) {
   const diagnostic = err?.data?.diagnostic;
