@@ -1012,6 +1012,15 @@ export default function RadioLive() {
               <div className="flex items-center gap-2 mt-1 min-w-0">
                 <span className="text-[10px] rounded bg-fuchsia-500/15 text-fuchsia-200 px-2 py-0.5 shrink-0">{segmentLabel(currentSegment)}</span>
                 <h2 className="font-heading font-semibold truncate">{currentSegment?.title || 'No segment selected'}</h2>
+                {showRunning && currentSegment && (
+                  <span className={`shrink-0 text-[9px] font-bold tracking-wider px-2 py-0.5 rounded border ${
+                    currentSegment.segment_type === 'song'
+                      ? 'border-emerald-400/25 bg-emerald-500/[0.08] text-emerald-300'
+                      : 'border-amber-400/25 bg-amber-500/[0.08] text-amber-200'
+                  }`}>
+                    {currentSegment.segment_type === 'song' ? 'MUSIC ON AIR' : 'HOST LIVE · TELEPROMPTER'}
+                  </span>
+                )}
                 {currentSegment && (
                   <span className="shrink-0 font-mono text-[10px] text-white/35">
                     {plannedSegmentSeconds > 0
