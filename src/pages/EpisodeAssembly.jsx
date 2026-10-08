@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
   CheckCircle2,
@@ -55,7 +55,9 @@ function assemblyFromMetadata(config) {
 
 export default function EpisodeAssembly() {
   const navigate = useNavigate();
-  const { config, loading: configLoading, refresh } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, loading: configLoading, refresh } = useTalkProduction(configurationId);
   const [articles, setArticles] = useState([]);
   const [notes, setNotes] = useState([]);
   const [loadingSources, setLoadingSources] = useState(true);
@@ -213,7 +215,7 @@ export default function EpisodeAssembly() {
         configuration_id: config.id,
       });
       await refresh();
-      navigate('/podcast/production');
+      navigate(`/podcast/production?config_id=${encodeURIComponent(config.id)}`);
     } catch (err) {
       console.error('Podcast Assembly approval failed:', err);
       setError(
@@ -503,7 +505,7 @@ export default function EpisodeAssembly() {
                   {assemblyApproved ? (
                     <Button
                       className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
-                      onClick={() => navigate('/podcast/production')}
+                      onClick={() => navigate(`/podcast/production?config_id=${encodeURIComponent(config.id)}`)}
                     >
                       Continue to Production
                       <ArrowRight className="ml-1.5 h-4 w-4" />
