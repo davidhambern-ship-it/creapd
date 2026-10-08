@@ -78,6 +78,7 @@ function useDualRadioDecks({ enabled, deckATrack, deckBTrack, activeDeck, onActi
   const loadedTrackRef = useRef({ A: null, B: null });
   const cuedVideoIdRef = useRef({ A: null, B: null });
   const [ytReady, setYtReady] = useState({ A: false, B: false });
+  const ytReadyRef = useRef({ A: false, B: false });
   const [audioReady, setAudioReady] = useState({ A: false, B: false });
   const [playing, setPlaying] = useState({ A: false, B: false });
   const [youtubeError, setYoutubeError] = useState({ A: null, B: null });
@@ -151,6 +152,7 @@ function useDualRadioDecks({ enabled, deckATrack, deckBTrack, activeDeck, onActi
     if (!enabled) return undefined;
     let cancelled = false;
     let timer;
+    let watchdog;
 
     const ensureApi = () => {
       if (window.YT?.Player) return Promise.resolve();
@@ -161,10 +163,16 @@ function useDualRadioDecks({ enabled, deckATrack, deckBTrack, activeDeck, onActi
         document.body.appendChild(tag);
       }
 
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
+        const startedAt = Date.now();
         const poll = () => {
+          if (cancelled) return;
           if (window.YT?.Player) {
             resolve();
+            return;
+          }
+          if (Date.now() - startedAt > 15000) {
+            reject(new Error('YouTube API did not initialize. Check network or content blockers, then reload Studio.'));
             return;
           }
           timer = window.setTimeout(poll, 120);
@@ -193,6 +201,7 @@ function useDualRadioDecks({ enabled, deckATrack, deckBTrack, activeDeck, onActi
         events: {
           onReady: event => {
             if (cancelled) return;
+            ytReadyRef.current[deck] = true;
             setYtReady(value => ({ ...value, [deck]: true }));
 
             const track = tracksRef.current[deck];
@@ -266,11 +275,29 @@ function useDualRadioDecks({ enabled, deckATrack, deckBTrack, activeDeck, onActi
       if (cancelled) return;
       createPlayer('A', wrapperARef.current, playerARef);
       createPlayer('B', wrapperBRef.current, playerBRef);
+      watchdog = window.setTimeout(() => {
+        if (cancelled) return;
+        for (const deck of ['A', 'B']) {
+          if (ytReadyRef.current[deck]) continue;
+          setYoutubeError(value => ({ ...value, [deck]: 'INIT' }));
+          setPlaybackDiagnostic(value => ({
+            ...value,
+            [deck]: 'YOUTUBE PLAYER TIMED OUT · check embedding or browser blockers',
+          }));
+        }
+      }, 15000);
+    }).catch(error => {
+      if (cancelled) return;
+      setYoutubeError({ A: 'API', B: 'API' });
+      setPlaybackDiagnostic({ A: error.message, B: error.message });
     });
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(watchdog);
+      ytReadyRef.current = { A: false, B: false };
+      setYtReady({ A: false, B: false });
       try { playerARef.current?.destroy?.(); } catch {}
       try { playerBRef.current?.destroy?.(); } catch {}
       playerARef.current = null;
@@ -839,7 +866,7 @@ export default function RadioLive() {
   const transitionDeckRef = useRef(async () => {});
 
   const decks = useDualRadioDecks({
-    enabled: studioApproved,
+    enabled: studioApproved && !loading && !error,
     deckATrack,
     deckBTrack,
     activeDeck,
