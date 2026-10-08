@@ -7,7 +7,6 @@ import { ClipboardList, Disc3, Plus, Volume2 } from 'lucide-react';
 import { formatRuntime, SEGMENT_COLORS } from '@/lib/musicConstants';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 import RundownDragList from '@/components/music/RundownDragList';
 import AddSegmentModal from '@/components/music/AddSegmentModal';
 
@@ -17,7 +16,18 @@ export default function MusicRundown() {
   const isPro = user?.subscription_tier === 'pro' || user?.role === 'admin';
 
   const ctx = useShowPlayback();
-  const { selectedVoiceURI, setSelectedVoiceURI, voices, isSupported } = ctx;
+  const {
+    selectedVoiceURI,
+    setSelectedVoiceURI,
+    voices,
+    isSupported,
+    voiceEnabled,
+    setVoiceEnabled,
+    voiceStatus,
+    voiceProgress,
+    voiceError,
+    previewVoice,
+  } = ctx;
 
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -51,7 +61,7 @@ export default function MusicRundown() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
 
         {/* Header */}
         <motion.div
@@ -70,24 +80,51 @@ export default function MusicRundown() {
             </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {isSupported && voices.length > 0 && (
+            {isSupported && (
               <div className="cp-glass flex items-center gap-2 px-3 py-1.5" style={{ borderColor: 'rgba(0,255,255,0.2)' }}>
                 <Volume2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
-                <select
-                  value={selectedVoiceURI || ''}
-                  onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                  className="bg-transparent text-xs text-cyan-300 outline-none cursor-pointer max-w-[160px]"
+                <button
+                  type="button"
+                  onClick={() => setVoiceEnabled(!voiceEnabled)}
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${
+                    voiceEnabled
+                      ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300'
+                      : 'border-white/10 bg-white/[0.03] text-white/45'
+                  }`}
                 >
-                  <option value="" className="bg-zinc-900 text-white">Default Voice</option>
-                  {voices
-                    .filter(v => v.lang.startsWith('en'))
-                    .map(v => (
-                      <option key={v.voiceURI} value={v.voiceURI} className="bg-zinc-900 text-white">
-                        {v.name} ({v.lang})
-                      </option>
-                    ))}
-                </select>
+                  {voiceEnabled ? 'Human Voice On' : 'Voice Off'}
+                </button>
+                {voiceEnabled && (
+                  <>
+                    <select
+                      value={selectedVoiceURI}
+                      onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                      className="bg-transparent text-xs text-cyan-300 outline-none cursor-pointer max-w-[180px]"
+                    >
+                      {voices.map(voice => (
+                        <option key={voice.id} value={voice.id} className="bg-zinc-900 text-white">
+                          {voice.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={previewVoice}
+                      disabled={voiceStatus === 'loading' || voiceStatus === 'generating'}
+                      className="text-[10px] font-semibold text-fuchsia-300 disabled:opacity-40"
+                    >
+                      {voiceStatus === 'loading'
+                        ? `Loading ${voiceProgress || 0}%`
+                        : voiceStatus === 'generating'
+                          ? 'Generating…'
+                          : 'Preview'}
+                    </button>
+                  </>
+                )}
               </div>
+            )}
+            {voiceError && (
+              <span className="text-[10px] text-red-300 max-w-[260px] truncate" title={voiceError}>{voiceError}</span>
             )}
             <div className="cp-glass px-4 py-2" style={{ borderColor: 'rgba(0,255,255,0.2)' }}>
               <span className="text-xs text-gray-400">Items</span>
@@ -149,8 +186,6 @@ export default function MusicRundown() {
             </button>
           </div>
         )}
-
-        <PPNavBar />
       </div>
 
       {/* Add Segment Modal */}

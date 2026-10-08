@@ -11,6 +11,17 @@ import {
 import { useFooterStats } from '@/hooks/useFooterStats';
 
 const VARIANTS = {
+  podcast: {
+    label: 'Podcast Production',
+    stats: [
+      { key: 'automation', icon: Activity, label: 'Prep' },
+      { key: 'sources', icon: Radio, label: 'Sources' },
+      { key: 'approved', icon: CheckCircle, label: 'Approved' },
+      { key: 'topics', icon: Lightbulb, label: 'Topics' },
+      { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
+    ],
+    action: { icon: Zap, label: 'Next Episode Brief', path: '/news/brief' },
+  },
   news: {
     label: 'News Production',
     stats: [
@@ -78,7 +89,7 @@ const VARIANTS = {
     action: { icon: Zap, label: 'Open Rundown', path: '/sports/rundown' },
   },
   cosmo: {
-    label: 'Cosmo Production',
+    label: 'Beauty Production',
     stats: [
       { key: 'automation', icon: Activity, label: 'Automation' },
       { key: 'topics', icon: Sparkles, label: 'Topics' },
@@ -86,7 +97,7 @@ const VARIANTS = {
       { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
       { key: 'assets', icon: CheckCircle, label: 'Assets' },
     ],
-    action: { icon: Zap, label: 'Open Rundown', path: '/cosmo/rundown' },
+    action: { icon: Zap, label: 'Open Rundown', path: '/beauty/rundown' },
   },
   research: {
     label: 'Research Production',

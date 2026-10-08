@@ -4,7 +4,6 @@ import MediaLibrary from './MediaLibrary';
 import AssetBrowser from './AssetBrowser';
 import AssetInspector from './AssetInspector';
 import AssetPreview from './AssetPreview';
-import AIGenerationPanel from './AIGenerationPanel';
 import './media.css';
 
 export default function MediaModeLayout({ ed }) {
@@ -26,43 +25,10 @@ export default function MediaModeLayout({ ed }) {
     ml.toggleFavorite(assetId);
   }, [ml]);
 
-  const handleDuplicate = useCallback((asset) => {
-    if (!asset) return;
-    ed.addElement?.(asset.type, { content: asset.url, name: `${asset.name} copy` });
-  }, [ed]);
-
-  const handleDelete = useCallback((asset) => {
-    if (!asset) return;
-    if (asset.usageCount > 0) {
-      const proceed = window.confirm(`"${asset.name}" is used in ${asset.usageCount} slide(s). Delete anyway?`);
-      if (!proceed) return;
-    }
-    // In a full implementation, this would remove the asset from the library
-    ml.setSelectedAssetId(null);
-  }, [ml, ed]);
-
-  const handleDragToCanvas = useCallback((asset) => {
-    // Dragging to canvas is handled by the canvas drop handler
-  }, []);
-
-  const handleAIGenerated = useCallback((result) => {
-    // Add generated asset to the current slide
-    ed.addElement?.(result.type || 'image', {
-      content: result.url,
-      name: result.prompt?.substring(0, 30) || 'Generated Asset',
-      is_ai_generated: true,
-      generation_prompt: result.prompt,
-      source: 'generated',
-    });
-  }, [ed]);
-
-  const handleAddTag = useCallback((assetId, tag) => {
-    // Tags managed in memory; full implementation would persist
-  }, []);
-
-  const handleRemoveTag = useCallback((assetId, tag) => {
-    // Tags managed in memory; full implementation would persist
-  }, []);
+  // Tag editing will be reintroduced when it is persisted by the local media
+  // library. Do not expose a button until the operation is real and free.
+  const handleAddTag = useCallback(() => {}, []);
+  const handleRemoveTag = useCallback(() => {}, []);
 
   return (
     <>
@@ -90,11 +56,6 @@ export default function MediaModeLayout({ ed }) {
           onSelect={handleSelect}
           onPreview={handlePreview}
           onFavorite={handleFavorite}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          onDragToCanvas={handleDragToCanvas}
-          onOpenAI={() => ml.setAiPanelOpen(true)}
-          onImport={() => ed.addElement?.('image')}
         />
 
         <AssetInspector
@@ -110,12 +71,6 @@ export default function MediaModeLayout({ ed }) {
       {ml.previewAsset && (
         <AssetPreview asset={ml.previewAsset} onClose={() => ml.setPreviewAsset(null)} />
       )}
-
-      <AIGenerationPanel
-        isOpen={ml.aiPanelOpen}
-        onClose={() => ml.setAiPanelOpen(false)}
-        onGenerated={handleAIGenerated}
-      />
     </>
   );
 }

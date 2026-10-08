@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
+import CreapdLogo from '@/components/brand/CreapdLogo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,19 +30,35 @@ const STEPS = [
   { label: 'Review', icon: CheckCircle2 }
 ];
 
+const CARD_PROMPTS = [
+  'Tell me about the show we’re making.',
+  'What kind of conversation are we producing?',
+  'How much time do we have?',
+  'What do you want to talk about?',
+  'Where should I research?',
+  'Who’s joining the conversation?',
+  'How should this show feel?',
+  'What should I prepare for you?',
+  'Ready to save your setup and continue?'
+];
+
 function safeParse(str, fallback) {
   if (!str) return fallback;
+  if (Array.isArray(str)) return str;
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
-export default function TalkConfigure() {
+export default function TalkConfigure({ embedded = false, onBuilt }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editConfigId = searchParams.get('config_id');
+  const startNewPodcast = searchParams.get('new') === '1';
+  const ownedPreview = shouldUseNeonAuth();
 
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState('');
+  const [cardExiting, setCardExiting] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const [config, setConfig] = useState({
     production_name: '',
@@ -62,14 +81,28 @@ export default function TalkConfigure() {
   });
 
   useEffect(() => {
-    if (editConfigId) {
-      base44.entities.TalkProductionConfiguration.get(editConfigId).then(c => {
-        if (c) {
-          setConfig({ ...c, status: 'configuring' });
-        }
-      }).catch(() => {});
+    if (startNewPodcast || (!editConfigId && !ownedPreview)) return;
+
+    if (ownedPreview) {
+      // Reopening Setup must edit the active podcast instead of creating a
+      // different configuration without its approved Assembly checkpoint.
+      const url = editConfigId
+        ? `/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`
+        : '/production/core?studio=talk';
+      creapdApi.get(url)
+        .then(data => {
+          if (data?.configuration) setConfig(data.configuration);
+        })
+        .catch(err => console.error('Could not load existing Podcast setup:', err));
+      return;
     }
-  }, [editConfigId]);
+
+    base44.entities.TalkProductionConfiguration.get(editConfigId).then(c => {
+      if (c) {
+        setConfig({ ...c, status: 'configuring' });
+      }
+    }).catch(() => {});
+  }, [editConfigId, ownedPreview, startNewPodcast]);
 
   const updateConfig = (field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -93,28 +126,68 @@ export default function TalkConfigure() {
     return true;
   };
 
+  const changeCard = (nextStep) => {
+    if (nextStep === step || nextStep < 0 || nextStep >= STEPS.length) return;
+    setCardExiting(true);
+    window.setTimeout(() => {
+      setStep(nextStep);
+      setCardExiting(false);
+    }, 240);
+  };
+
   const handleBuild = async () => {
     setBuilding(true);
     setBuildError('');
     try {
       let savedConfig;
-      if (editConfigId) {
-        savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
+      let nextPath = '/podcast';
+
+      if (ownedPreview) {
+        const saveResult = await creapdApi.post('/talk/configuration', {
+          ...config,
+          ...(startNewPodcast ? { id: undefined } : {}),
+          ...(editConfigId ? { id: editConfigId } : {}),
+        });
+        savedConfig = saveResult?.configuration;
+        if (!savedConfig?.id) throw new Error('Podcast setup did not return an id.');
+
+        // Research and Assembly are separate approvals; setup must not call
+        // the production builder before they are completed.
+        const meta = savedConfig.build_metadata && typeof savedConfig.build_metadata === 'object'
+          ? savedConfig.build_metadata
+          : {};
+        if (meta.assembly_approved_at && Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+          nextPath = `/podcast/production?config_id=${encodeURIComponent(savedConfig.id)}`;
+        } else if (Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+          nextPath = `/podcast/assembly?config_id=${encodeURIComponent(savedConfig.id)}`;
+        }
       } else {
-        savedConfig = await base44.entities.TalkProductionConfiguration.create(config);
+        if (editConfigId) {
+          savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
+        } else {
+          savedConfig = await base44.entities.TalkProductionConfiguration.create(config);
+        }
+
+        await base44.auth.updateMe({
+          default_production_type: 'talk',
+          default_production_config_id: savedConfig.id
+        });
+        await base44.entities.TalkProductionConfiguration.update(savedConfig.id, { is_default: true });
+        await base44.functions.invoke('buildTalkProduction', { configuration_id: savedConfig.id });
       }
 
-      await base44.auth.updateMe({
-        default_production_type: 'talk',
-        default_production_config_id: savedConfig.id
-      });
-      await base44.entities.TalkProductionConfiguration.update(savedConfig.id, { is_default: true });
-
-      await base44.functions.invoke('buildTalkProduction', { configuration_id: savedConfig.id });
-
-      navigate('/talk/dashboard');
+      if (embedded && onBuilt) {
+        await onBuilt();
+      } else {
+        navigate(nextPath);
+      }
     } catch (err) {
-      setBuildError(err.message || 'Failed to build production. Please try again.');
+      setBuildError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Failed to prepare this podcast. Please try again.'
+      );
       setBuilding(false);
     }
   };
@@ -201,7 +274,7 @@ export default function TalkConfigure() {
             </div>
             <div className="space-y-2">
               <Label>Short Show Description</Label>
-              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your talk show..." rows={3} />
+              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your podcast..." rows={3} />
             </div>
           </div>
         );
@@ -216,7 +289,7 @@ export default function TalkConfigure() {
                 <Input type="number" value={config.total_show_runtime} onChange={e => updateConfig('total_show_runtime', Number(e.target.value))} />
               </div>
               <div className="space-y-2">
-                <Label>Talk / Discussion Runtime (min)</Label>
+                <Label>Main Discussion Runtime (min)</Label>
                 <Input type="number" value={config.talk_segment_runtime} onChange={e => updateConfig('talk_segment_runtime', Number(e.target.value))} />
               </div>
               <div className="space-y-2">
@@ -295,18 +368,18 @@ export default function TalkConfigure() {
 
   if (building) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center">
+      <div className="talk-config-interview min-h-full flex items-center justify-center p-6">
+        <div className="talk-build-card max-w-md w-full text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
-          <h2 className="text-xl font-heading font-bold mb-3">Building Your Talk Production</h2>
-          <p className="text-muted-foreground mb-8">Producer is generating research, topics, talking points, rundown, and AI assets. This takes about 30-60 seconds.</p>
+          <h2 className="text-xl font-heading font-bold mb-3">CREAPD is building your Podcast episode.</h2>
+          <p className="text-white/60 mb-8">I’ve got your answers. Now I’m preparing the episode research, rundown, scripts, and studio package.</p>
           <div className="space-y-3 text-left">
-            {['Researching topics', 'Generating talking points', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
+            {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating host-ready assets'].map((label, i) => (
               <div key={i} className="!flex items-center gap-3 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">{label}...</span>
+                <span className="text-white/60">{label}...</span>
               </div>
             ))}
           </div>
@@ -316,72 +389,94 @@ export default function TalkConfigure() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-6 md:p-10">
-        <div className="!flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary/20 !flex items-center justify-center">
-            <Mic2 className="w-5 h-5 text-primary" />
+    <div className={`talk-config-interview ${embedded ? 'talk-config-interview-embedded' : ''}`}>
+      <div className="talk-config-dim" aria-hidden="true" />
+
+      <div className="talk-interview-stage">
+        <div className="talk-interview-heading">
+          <div className="flex items-center justify-center gap-3">
+            <CreapdLogo height="h-8" />
+            <span className="h-6 w-px bg-white/20" />
+            <span className="text-xs font-semibold tracking-[0.28em] text-white/70">PODCAST SETUP</span>
           </div>
-          <div>
-            <h1 className="text-2xl font-heading font-bold">Talk Production Configuration</h1>
-            <p className="text-sm text-muted-foreground">Step {step + 1} of {STEPS.length}: {STEPS[step].label}</p>
+          <p className="mt-2 text-center text-xs text-white/45">
+            Question {step + 1} of {STEPS.length} · {STEPS[step].label}
+          </p>
+        </div>
+
+        <div className="talk-cue-stack">
+          <div className="talk-cue-card-back talk-cue-card-back-2">
+            <CreapdLogo height="h-10" />
           </div>
-        </div>
+          <div className="talk-cue-card-back talk-cue-card-back-1">
+            <CreapdLogo height="h-10" />
+          </div>
 
-        {/* Step indicator */}
-        <div className="!flex items-center gap-1 mb-8 overflow-x-auto pb-2">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <React.Fragment key={i}>
-                <button
-                  onClick={() => i < step && setStep(i)}
-                  className={`!flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors ${
-                    i === step
-                      ? 'bg-primary text-primary-foreground font-medium'
-                      : i < step
-                        ? 'text-primary hover:bg-primary/10'
-                        : 'text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {s.label}
-                </button>
-                {i < STEPS.length - 1 && <div className="w-2 h-px bg-border" />}
-              </React.Fragment>
-            );
-          })}
-        </div>
-
-        {/* Step content */}
-        <div className="glass-panel p-6 md:p-8 mb-6">
-          {renderStep()}
-        </div>
-
-        {/* Navigation */}
-        <div className="!flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={() => setStep(s => Math.max(0, s - 1))}
-            disabled={step === 0}
+          <section
+            key={step}
+            className={`talk-cue-card ${cardExiting ? 'talk-cue-card-exit' : 'talk-cue-card-enter'}`}
           >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Back
-          </Button>
+            <div className="talk-cue-card-topline">
+              <div className="flex items-center gap-3">
+                <CreapdLogo height="h-7" />
+                <span className="h-5 w-px bg-white/15" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-300/80">
+                  CREAPD asks
+                </span>
+              </div>
+              <span className="text-[10px] text-white/35">{String(step + 1).padStart(2, '0')}</span>
+            </div>
 
-          {step < STEPS.length - 1 ? (
-            <Button onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))} disabled={!canProceed()}>
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          ) : (
-            <Button onClick={handleBuild} size="lg" disabled={!canProceed()}>
-              <Building2 className="w-4 h-4 mr-2" />
-              Build Production
-            </Button>
-          )}
+            <h1 className="talk-cue-question">{CARD_PROMPTS[step]}</h1>
+            <div className="talk-cue-divider" />
+
+            <div className="talk-cue-form">
+              {renderStep()}
+            </div>
+
+            <div className="talk-cue-actions">
+              <Button
+                variant="outline"
+                onClick={() => changeCard(step - 1)}
+                disabled={step === 0 || cardExiting}
+                className="border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous Card
+              </Button>
+
+              {step < STEPS.length - 1 ? (
+                <Button
+                  onClick={() => changeCard(step + 1)}
+                  disabled={!canProceed() || cardExiting}
+                  className="talk-cue-next"
+                >
+                  Next Card
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              ) : (
+                <Button onClick={handleBuild} size="lg" disabled={!canProceed() || cardExiting} className="talk-cue-next">
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Save & Continue
+                </Button>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="talk-interview-progress" aria-label="Configuration progress">
+          {STEPS.map((s, i) => (
+            <button
+              key={s.label}
+              type="button"
+              aria-label={s.label}
+              title={s.label}
+              onClick={() => i < step && changeCard(i)}
+              disabled={i > step || cardExiting}
+              className={`talk-interview-dot ${i === step ? 'is-current' : ''} ${i < step ? 'is-complete' : ''}`}
+            />
+          ))}
         </div>
       </div>
     </div>
-  );
-}
+  );}

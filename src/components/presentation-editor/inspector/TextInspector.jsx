@@ -1,24 +1,15 @@
-import React, { useState } from 'react';
-import { InspectorShell, Group, Field, ColorField, SelectField, SliderField, ToggleGroup, pj, IconBtn } from './shared';
+import React from 'react';
+import { InspectorShell, Group, Field, ColorField, SliderField, ToggleGroup, pj, IconBtn } from './shared';
 import FontPicker from './FontPicker';
 import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Copy, Scissors, Clipboard, Trash2, Lock, Unlock, ArrowUp, ArrowDown, Wand2,
+  Copy, Scissors, Clipboard, Trash2, Lock, Unlock, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { useCustomFonts } from '@/hooks/useCustomFonts';
-const AI_ACTIONS = [
-  { label: 'Rewrite', action: 'rewrite' },
-  { label: 'Summarize', action: 'summarize' },
-  { label: 'Expand', action: 'expand' },
-  { label: 'Shorten', action: 'shorten' },
-  { label: 'Grammar', action: 'grammar' },
-  { label: 'Readability', action: 'readability' },
-];
 
-export default function TextInspector({ element, onUpdate, onDelete, onRegenerate, onDuplicate, onCopy, onCut, onPaste, onBringForward, onSendBackward }) {
+export default function TextInspector({ element, onUpdate, onDelete, onCopy, onCut, onPaste, onBringForward, onSendBackward }) {
   const { allFonts, uploadFont, uploading } = useCustomFonts();
   const style = pj(element.style, {});
-  const [aiAction, setAiAction] = useState(null);
 
   const setStyle = (patch) => onUpdate(element.id, { style: JSON.stringify({ ...style, ...patch }) });
   const ALIGN_OPTS = [
@@ -89,17 +80,6 @@ export default function TextInspector({ element, onUpdate, onDelete, onRegenerat
 
       <Group value="appearance" title="Appearance">
         <SliderField label="Opacity" value={element.opacity ?? 100} min={0} max={100} onChange={(v) => onUpdate(element.id, { opacity: v })} />
-      </Group>
-
-      <Group value="ai" title="AI Actions">
-        <div className="grid grid-cols-2 gap-1">
-          {AI_ACTIONS.map(a => (
-            <button key={a.action} className="cpe-mini-btn" disabled={aiAction === a.action}
-              onClick={() => { setAiAction(a.action); onRegenerate(); }}>
-              <Wand2 className="w-2.5 h-2.5" /> {a.label}
-            </button>
-          ))}
-        </div>
       </Group>
     </InspectorShell>
   );

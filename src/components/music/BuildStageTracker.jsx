@@ -45,10 +45,20 @@ export default function BuildStageTracker({ configId }) {
     return { ...stage, complete, failed, error: errorEntry?.error };
   });
 
-  const currentIdx = stageStatuses.findIndex(s => !s.complete && !s.failed);
-  const activeIdx = currentIdx === -1 ? STAGES.length : currentIdx;
+  const failedIdx = stageStatuses.findIndex(s => s.failed);
+  const currentIdx = failedIdx >= 0 ? -1 : stageStatuses.findIndex(s => !s.complete && !s.failed);
+  const activeIdx = failedIdx >= 0
+    ? failedIdx + 1
+    : currentIdx === -1
+      ? STAGES.length
+      : currentIdx;
+  const pipelineFailure = log.find(entry => entry?.stage === 'pipeline' && (entry?.status === 'failed' || entry?.success === false));
   const failedStages = stageStatuses.filter(s => s.failed);
-  const isFailed = status === 'failed' || failedStages.length > 0;
+  const isFailed = status === 'failed' || failedStages.length > 0 || Boolean(pipelineFailure);
+
+  useEffect(() => {
+    if (isFailed) setExpanded(true);
+  }, [isFailed]);
 
   return (
     <div className="cp-glass p-3">
@@ -63,7 +73,7 @@ export default function BuildStageTracker({ configId }) {
         </h4>
         <span className="text-[10px] font-mono text-gray-500">
           {activeIdx}/{STAGES.length}
-          {isFailed && <span className="text-red-400 ml-1.5">• {failedStages.length} failed</span>}
+          {isFailed && <span className="text-red-400 ml-1.5">• failed</span>}
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -148,6 +158,18 @@ export default function BuildStageTracker({ configId }) {
             </div>
 
             {/* Crash details */}
+            {pipelineFailure && (
+              <div className="mt-3 p-2.5 rounded-lg bg-red-500/5 border border-red-500/20">
+                <div className="flex items-center gap-1.5 text-[11px] text-red-400 font-medium">
+                  <AlertCircle className="w-3 h-3" />
+                  Production pipeline crashed
+                </div>
+                <p className="text-[10px] text-red-300/80 mt-1 ml-4 font-mono break-all">
+                  {pipelineFailure.error || 'Unknown build error'}
+                  {pipelineFailure.code ? ` [${pipelineFailure.code}]` : ''}
+                </p>
+              </div>
+            )}
             {failedStages.length > 0 && (
               <div className="mt-3 p-2.5 rounded-lg bg-red-500/5 border border-red-500/20 space-y-2">
                 {failedStages.map((s) => (

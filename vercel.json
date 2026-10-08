@@ -1,12 +1,38 @@
 {
-  "rewrites": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/creapd/**/*.js": {
+      "maxDuration": 60
+    }
+  },
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "https://creapd.base44.app/api/:path*"
+      "handle": "filesystem"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/api/creapd/health",
+      "dest": "/api/creapd/diagnostics.js?probe=backend"
+    },
+    {
+      "src": "/api/creapd/db-health",
+      "dest": "/api/creapd/diagnostics.js?probe=db"
+    },
+    {
+      "src": "/api/creapd/ai/health",
+      "dest": "/api/creapd/diagnostics.js?probe=ai"
+    },
+    {
+      "src": "/api/creapd/neon-auth/(.*)",
+      "dest": "/api/creapd/neon-auth.js?path=$1"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "https://creapd.base44.app/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
-  ]
+  ],
+  "installCommand": "npm install --legacy-peer-deps"
 }

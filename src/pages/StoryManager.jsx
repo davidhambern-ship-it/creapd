@@ -227,7 +227,7 @@ export default function StoryManager() {
     setGeneratingAll(false);
     logActivity('generate', {
       entity_type: 'ProductionPackage',
-      entity_name: `Bulk generate — ${stories.length} stories`,
+      entity_name: `Bulk generate — ${stories.length} items`,
       details: `Generated production packages for ${stories.length} approved stories`
     });
   };
@@ -454,11 +454,11 @@ export default function StoryManager() {
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-xl font-bold text-white">Story Manager</h1>
-            <p className="text-xs text-muted-foreground mt-1 hidden sm:block">Generate story packages, approve, and manage your rundown</p>
+            <h1 className="text-xl font-bold text-white">Episode Workspace</h1>
+            <p className="text-xs text-muted-foreground mt-1 hidden sm:block">Turn approved research into host-ready scripts, segments, and episode packages</p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{stories.length} stories</span>
+            <span className="text-xs text-muted-foreground">{stories.length} items</span>
             <span className="text-xs text-berna-emerald flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" />
               {Object.values(pkgMap).filter((p) => p.status === 'approved' || p.status === 'edited').length} approved
@@ -481,7 +481,7 @@ export default function StoryManager() {
             disabled={generatingAll || stories.length === 0}>
             
             {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-            {generatingAll ? 'Generating All...' : 'Generate All Packages'}
+            {generatingAll ? 'Building Packages...' : 'Build All Packages'}
           </Button>
         </div>
         <Button
@@ -499,10 +499,10 @@ export default function StoryManager() {
       <div className="flex gap-2">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search stories..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
+          <Input placeholder="Search episode material..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-white/[0.03] border-white/[0.08] text-white text-xs h-8" />
         </div>
         <SortDropdown value={sortBy} onChange={setSortBy} storageKey="productionSort" options={[
-        { value: 'priority', label: 'Story Priority' },
+        { value: 'priority', label: 'Episode Priority' },
         { value: 'newest', label: 'Newest First' },
         { value: 'oldest', label: 'Oldest First' },
         { value: 'alphabetical', label: 'Alphabetical' },

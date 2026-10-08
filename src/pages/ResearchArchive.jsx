@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { Link } from 'react-router-dom';
 import {
   Search as SearchIcon, Calendar, FileText, ChevronRight,
@@ -56,14 +57,25 @@ export default function ResearchArchive() {
 
   const loadAll = async () => {
     try {
-      const [allProds, allDossiers, allPackages] = await Promise.all([
-        base44.entities.ResearchProductionConfiguration.list('-created_date', 200),
-        base44.entities.ResearchDossier.list('-created_date', 200),
+      const [archiveResult, packageResult] = await Promise.allSettled([
+        creapdApi.get('/research/archive'),
         base44.entities.ProductionPackage.filter({ production_profile: 'research' }, '-created_date', 200),
       ]);
-      setProductions(allProds);
-      setDossiers(allDossiers);
-      setPackages(allPackages);
+
+      if (archiveResult.status === 'fulfilled') {
+        const archive = archiveResult.value || {};
+        setProductions(archive.productions || []);
+        setDossiers(archive.dossiers || []);
+      } else {
+        throw archiveResult.reason;
+      }
+
+      if (packageResult.status === 'fulfilled') {
+        setPackages(packageResult.value || []);
+      } else {
+        setPackages([]);
+        console.warn('Research packages are temporarily unavailable until package storage is migrated:', packageResult.reason);
+      }
     } catch (e) {
       console.error('Failed to load research archive:', e);
     } finally {

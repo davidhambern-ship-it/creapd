@@ -1,13 +1,10 @@
 import React from 'react';
 import { InspectorShell, Group, Field, ColorField, SliderField, NumField, pj, IconBtn } from './shared';
-import SvgGenerator from './SvgGenerator';
 import IconifyIconPicker from './IconifyIconPicker';
 import SvgApiGallery from './SvgApiGallery';
-import {
-  Trash2, Lock, Unlock, ArrowUp, ArrowDown, ImagePlus,
-} from 'lucide-react';
+import { Trash2, Lock, Unlock, ArrowUp, ArrowDown } from 'lucide-react';
 
-export default function ImageInspector({ element, slide, presentation, onUpdate, onDelete, onRegenerate, onBringForward, onSendBackward }) {
+export default function ImageInspector({ element, slide, presentation, onUpdate, onDelete, onBringForward, onSendBackward }) {
   const style = pj(element.style, {});
   const setStyle = (patch) => onUpdate(element.id, { style: JSON.stringify({ ...style, ...patch }) });
 
@@ -18,8 +15,8 @@ export default function ImageInspector({ element, slide, presentation, onUpdate,
     background: bg.color || theme.bg || '#0a0a0a',
     primary: theme.primary || '#7c3aed',
     accent: theme.text || fonts.titleColor || '#ffffff',
-    titleColor: fonts.titleColor || theme.text,
-    bodyColor: fonts.bodyColor || theme.text,
+    titleColor: fonts.titleColor || theme.text || '#ffffff',
+    bodyColor: fonts.bodyColor || theme.text || '#ffffff',
   };
 
   return (
@@ -36,23 +33,20 @@ export default function ImageInspector({ element, slide, presentation, onUpdate,
       }
     >
       <Group value="source" title="Image Source" defaultOpen>
-        {element.content && <img src={element.content} alt="" className="w-full rounded-lg border border-white/[0.06] mb-2" />}
-        <input value={element.content || ''} placeholder="Image URL..." onChange={(e) => onUpdate(element.id, { content: e.target.value })}
-          className="cpe-input" />
-        <button className="cpe-mini-btn w-full" onClick={onRegenerate}>
-          <ImagePlus className="w-3 h-3" /> Replace Using AI
-        </button>
+        {element.content && <img src={element.content} alt={style.altText || ''} className="w-full rounded-lg border border-white/[0.06] mb-2" />}
+        <input
+          value={element.content || ''}
+          placeholder="Image URL..."
+          onChange={(e) => onUpdate(element.id, { content: e.target.value })}
+          className="cpe-input"
+        />
       </Group>
 
-      <Group value="ai-svg" title="AI Vector Art (SVG)">
-        <SvgGenerator colorScheme={colorScheme} onInsert={(url) => onUpdate(element.id, { content: url })} />
-      </Group>
-
-      <Group value="iconify" title="Icon Library (200K+)">
+      <Group value="iconify" title="Free Icon Library">
         <IconifyIconPicker colorScheme={colorScheme} onInsert={(url) => onUpdate(element.id, { content: url })} />
       </Group>
 
-      <Group value="svgapi" title="Stock Vector Gallery">
+      <Group value="svgapi" title="Free Stock Vector Gallery">
         <SvgApiGallery onInsert={(url) => onUpdate(element.id, { content: url })} />
       </Group>
 

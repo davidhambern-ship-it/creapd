@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image as ImageIcon, Video, Music, Shapes, BarChart3, FileText, Mic, Disc, Film, Flag, Palette, Sparkles, Star, Eye, Copy, Trash2, ExternalLink, Wand2 } from 'lucide-react';
+import { Image as ImageIcon, Video, Music, Shapes, BarChart3, FileText, Mic, Disc, Film, Flag, Palette, Sparkles, Star, Eye, ExternalLink } from 'lucide-react';
 
 const TYPE_ICONS = {
   image: ImageIcon, video: Video, audio: Music, svg: Shapes, icon: Shapes,
@@ -14,25 +14,14 @@ function formatSize(bytes) {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-export default function AssetCard({ asset, isSelected, viewMode, onSelect, onPreview, onFavorite, onDuplicate, onDelete, onDragToCanvas }) {
+export default function AssetCard({ asset, isSelected, viewMode, onSelect, onPreview, onFavorite }) {
   const Icon = TYPE_ICONS[asset.type] || ImageIcon;
-
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      type: asset.type,
-      content: asset.url,
-      name: asset.name,
-    }));
-    onDragToCanvas?.(asset);
-  };
 
   if (viewMode === 'list') {
     return (
       <div
         className={`cpe-asset-card list-mode ${isSelected ? 'selected' : ''}`}
         onClick={() => onSelect(asset.id)}
-        draggable
-        onDragStart={handleDragStart}
       >
         <div className="cpe-asset-thumb-wrap">
           {asset.thumbnail ? (
@@ -53,6 +42,7 @@ export default function AssetCard({ asset, isSelected, viewMode, onSelect, onPre
         <button
           className={`cpe-asset-fav-btn ${asset.isFavorite ? 'active' : ''}`}
           onClick={(e) => { e.stopPropagation(); onFavorite(asset.id); }}
+          title={asset.isFavorite ? 'Remove favorite' : 'Add favorite'}
         >
           <Star className={`w-3 h-3 ${asset.isFavorite ? 'fill-current' : ''}`} />
         </button>
@@ -64,8 +54,6 @@ export default function AssetCard({ asset, isSelected, viewMode, onSelect, onPre
     <div
       className={`cpe-asset-card ${isSelected ? 'selected' : ''}`}
       onClick={() => onSelect(asset.id)}
-      draggable
-      onDragStart={handleDragStart}
       onDoubleClick={() => onPreview(asset)}
     >
       <div className="cpe-asset-thumb-wrap">
@@ -90,6 +78,7 @@ export default function AssetCard({ asset, isSelected, viewMode, onSelect, onPre
         <button
           className={`cpe-asset-fav-btn ${asset.isFavorite ? 'active' : ''}`}
           onClick={(e) => { e.stopPropagation(); onFavorite(asset.id); }}
+          title={asset.isFavorite ? 'Remove favorite' : 'Add favorite'}
         >
           <Star className={`w-3 h-3 ${asset.isFavorite ? 'fill-current' : ''}`} />
         </button>
@@ -100,17 +89,6 @@ export default function AssetCard({ asset, isSelected, viewMode, onSelect, onPre
           </button>
           <button className="cpe-asset-hover-btn" onClick={(e) => { e.stopPropagation(); onSelect(asset.id); }} title="Inspect">
             <ExternalLink className="w-3 h-3" />
-          </button>
-          <button className="cpe-asset-hover-btn" onClick={(e) => { e.stopPropagation(); onDuplicate(asset); }} title="Duplicate">
-            <Copy className="w-3 h-3" />
-          </button>
-          {asset.isAIGenerated && (
-            <button className="cpe-asset-hover-btn" onClick={(e) => { e.stopPropagation(); }} title="Enhance">
-              <Wand2 className="w-3 h-3" />
-            </button>
-          )}
-          <button className="cpe-asset-hover-btn danger" onClick={(e) => { e.stopPropagation(); onDelete(asset); }} title="Delete">
-            <Trash2 className="w-3 h-3" />
           </button>
         </div>
       </div>

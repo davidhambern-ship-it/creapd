@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 
-export function useProductionDepartments(profileKey, configurationId) {
+export function useProductionDepartments(profileKey, configurationId, options = {}) {
   const [pipeline, setPipeline] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -28,8 +28,26 @@ export function useProductionDepartments(profileKey, configurationId) {
   }, [profileKey, configurationId]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!options.defer) {
+      load();
+      return undefined;
+    }
+
+    let idleId = null;
+    let timerId = null;
+    const run = () => load();
+
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      timerId = window.setTimeout(run, 1200);
+    }
+
+    return () => {
+      if (idleId !== null && 'cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [load, options.defer]);
 
   const initPipeline = useCallback(async (productionName) => {
     if (!profileKey || !configurationId) return;

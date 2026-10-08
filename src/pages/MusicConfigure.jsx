@@ -17,7 +17,7 @@ import {
   Loader2, Music, Clock, Smile, Mic, ListChecks,
   Bot, CheckCircle2, ChevronDown, ChevronUp,
   Plus, Radio, Disc3, Zap, Sliders, Dices, ListMusic,
-  LayoutDashboard, Search, Package, Sparkles, Save
+  LayoutDashboard, Search, Package, Sparkles, Save, ArrowRight
 } from 'lucide-react';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import StageLights from '@/components/music/StageLights';
@@ -28,10 +28,34 @@ import { playClick, playComplete } from '@/lib/recordingSound';
 import DiscoveryBreakRoom from '@/components/music/DiscoveryBreakRoom';
 import RealtimeBuildProgress from '@/components/music/RealtimeBuildProgress';
 import RuntimeSoundBoard from '@/components/music/RuntimeSoundBoard';
+import ArtistShowDiscovery from '@/components/music/ArtistShowDiscovery';
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function safeParse(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback;
+
+  if (Array.isArray(fallback)) {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string') return fallback;
+
+    let current = value;
+    for (let pass = 0; pass < 2; pass += 1) {
+      try {
+        const parsed = JSON.parse(current);
+        if (Array.isArray(parsed)) return parsed;
+        if (typeof parsed === 'string') {
+          current = parsed;
+          continue;
+        }
+        return fallback;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  if (typeof value !== 'string') return value;
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function NeonChip({ label, active, onClick, color = 'pink' }) {
@@ -140,6 +164,7 @@ export default function MusicConfigure() {
   const [recording, setRecording] = useState(null);
   const [finalSequence, setFinalSequence] = useState(false);
   const [spinOffset, setSpinOffset] = useState(0);
+  const [artistShowOpen, setArtistShowOpen] = useState(false);
   const prevRecordingRef = useRef(null);
 
   const [config, setConfig] = useState({
@@ -213,6 +238,25 @@ export default function MusicConfigure() {
     setRouletteOpen(false);
     triggerBuild(mergedConfig);
   };
+  const handleArtistShowUseProfile = ({ profile, catalog = [] }) => {
+    const artistName = String(profile?.public_name || profile?.artist_name || '').trim();
+
+    setConfig(prev => ({
+      ...prev,
+      production_format: 'radio',
+      source_payload: {
+        ...(prev.source_payload && typeof prev.source_payload === 'object' ? prev.source_payload : {}),
+        show_mode: 'catalog',
+        catalog_only: true,
+        artist_profile_id: profile?.id || null,
+        catalog_track_count: catalog.length,
+        catalog_artist_name: artistName || null,
+      },
+    }));
+    setArtistShowOpen(false);
+    setOpenRoom('identity');
+  };
+
 
   const selectedGenres = safeParse(config.genres, []);
   const selectedMoods = safeParse(config.moods, []);
@@ -299,15 +343,14 @@ export default function MusicConfigure() {
       } else {
         savedConfig = await base44.entities.MusicProductionConfiguration.create(configToUse);
       }
-      await base44.auth.updateMe({
-        default_production_type: 'music',
-        default_production_config_id: savedConfig.id
-      });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
       setBuilding(true);
       base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
-        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
+        .catch(err => {
+          console.error('Build HTTP error:', err?.message || err);
+          setBuildError(err?.message || 'CREAPD could not build this production.');
+        });
     } catch (err) {
       setBuildError(err.message || 'Failed to build production.');
       setBuilding(false);
@@ -334,14 +377,13 @@ export default function MusicConfigure() {
       } else {
         savedConfig = await base44.entities.MusicProductionConfiguration.create(config);
       }
-      await base44.auth.updateMe({
-        default_production_type: 'music',
-        default_production_config_id: savedConfig.id
-      });
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
       base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
-        .catch(err => console.error('Build HTTP error (pipeline may still be running):', err.message));
+        .catch(err => {
+          console.error('Build HTTP error:', err?.message || err);
+          setBuildError(err?.message || 'CREAPD could not build this production.');
+        });
     } catch (err) {
       setBuildError(err.message || 'Failed to build production. Please try again.');
       setBuilding(false);
@@ -414,7 +456,32 @@ export default function MusicConfigure() {
             </div>
             <p className="relative z-10 text-2xl mb-1 tracking-[0.15em]" style={{ fontFamily: "'ModernConformist', sans-serif", color: 'hsl(152 60% 45%)', filter: 'drop-shadow(0 0 6px hsl(152 60% 45% / 0.6)) drop-shadow(0 0 20px hsl(152 60% 45% / 0.4))' }}>Discover Your Vibes</p>
             <div className="flex justify-center mt-4">
-              <MusicDiscoveryNav onRoulette={() => setRouletteOpen(true)} />
+              <MusicDiscoveryNav config={config} onRoulette={() => setRouletteOpen(true)} />
+            </div>
+
+            <div className="mx-auto mt-4 max-w-3xl">
+              <button
+                type="button"
+                onClick={() => setArtistShowOpen(true)}
+                className="group w-full overflow-hidden rounded-2xl border border-fuchsia-400/20 bg-gradient-to-r from-fuchsia-500/[0.08] via-white/[0.025] to-cyan-500/[0.07] p-4 text-left transition hover:border-fuchsia-300/35 hover:from-fuchsia-500/[0.12] hover:to-cyan-500/[0.10]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-fuchsia-400/25 bg-black/30 shadow-[0_0_24px_rgba(217,70,239,.10)]">
+                    <ListMusic className="h-5 w-5 text-fuchsia-300" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-fuchsia-300">New Discovery Path</p>
+                      <span className="rounded-full border border-cyan-400/20 bg-cyan-500/[0.06] px-2 py-0.5 text-[8px] font-bold tracking-wider text-cyan-200">MY MUSIC</span>
+                    </div>
+                    <h2 className="mt-1 font-heading text-base font-bold text-white">Use your own music in a normal Radio production.</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-white/40">
+                      Import a catalogue from YouTube or upload your tracks, then let CREAPD build the regular show workflow using only music from that catalogue.
+                    </p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 shrink-0 text-white/25 transition group-hover:translate-x-1 group-hover:text-fuchsia-200" />
+                </div>
+              </button>
             </div>
           </motion.div>
 
@@ -655,6 +722,12 @@ export default function MusicConfigure() {
         open={rouletteOpen}
         onClose={() => setRouletteOpen(false)}
         onApply={handleRouletteApply}
+      />
+
+      <ArtistShowDiscovery
+        open={artistShowOpen}
+        onClose={() => setArtistShowOpen(false)}
+        onUseProfile={handleArtistShowUseProfile}
       />
     </div>
   );

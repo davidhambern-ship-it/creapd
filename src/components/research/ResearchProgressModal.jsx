@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Search, Compass, ShieldCheck, Layers, CheckCircle2, Brain,
@@ -48,13 +48,13 @@ export default function ResearchProgressModal({ open, topicId, topicTitle, exter
 
     const poll = async () => {
       try {
-        const dossiers = await base44.entities.ResearchDossier.filter(
-          { topic_id: topicId }, '-created_date', 1
+        const payload = await creapdApi.get(
+          `/research/dossier-status?topic_id=${encodeURIComponent(topicId)}`
         );
         if (!active) return;
 
-        if (dossiers && dossiers.length > 0) {
-          const d = dossiers[0];
+        const d = payload?.dossier || null;
+        if (d) {
           setDossier(d);
           setProgress(safeParse(d.orchestration_metadata, {}));
           setPollError(null);

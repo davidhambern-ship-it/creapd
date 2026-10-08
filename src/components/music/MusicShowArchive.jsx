@@ -7,6 +7,8 @@ import { formatMinutes } from '@/lib/musicConstants';
 
 const STATUS_STYLES = {
   ready: { color: '#00FF88', bg: 'rgba(0,255,136,0.12)', border: 'rgba(0,255,136,0.3)' },
+  in_review: { color: '#FFD166', bg: 'rgba(255,209,102,0.10)', border: 'rgba(255,209,102,0.28)' },
+  approved: { color: '#00FF88', bg: 'rgba(0,255,136,0.12)', border: 'rgba(0,255,136,0.3)' },
   building: { color: '#FFD700', bg: 'rgba(255,215,0,0.12)', border: 'rgba(255,215,0,0.3)' },
   failed: { color: '#FF4466', bg: 'rgba(255,68,102,0.12)', border: 'rgba(255,68,102,0.3)' },
   configuring: { color: '#888', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' },
@@ -36,13 +38,30 @@ export default function MusicShowArchive({ currentConfigId }) {
 
   if (loading) {
     return (
-      <div className="cp-glass p-5 flex items-center justify-center" style={{ borderColor: 'rgba(0,255,136,0.15)' }}>
+      <div id="show-archive" className="cp-glass p-5 flex items-center justify-center scroll-mt-24" style={{ borderColor: 'rgba(0,255,136,0.15)' }}>
         <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
       </div>
     );
   }
 
-  if (shows.length === 0) return null;
+  if (shows.length === 0) {
+    return (
+      <div id="show-archive" className="cp-glass p-5 scroll-mt-24" style={{ borderColor: 'rgba(0,255,136,0.15)' }}>
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)' }}
+          >
+            <Archive className="w-4 h-4" style={{ color: '#00FF88' }} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white text-sm">Show Archive</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Past Radio productions will appear here.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const visible = expanded ? shows : shows.slice(0, 4);
 
@@ -51,7 +70,8 @@ export default function MusicShowArchive({ currentConfigId }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.45 }}
-      className="relative overflow-hidden cp-glass"
+      id="show-archive"
+      className="relative overflow-hidden cp-glass scroll-mt-24"
       style={{ borderColor: 'rgba(0,255,136,0.15)' }}
     >
       <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #00FF88, transparent)' }} />
@@ -103,7 +123,7 @@ export default function MusicShowArchive({ currentConfigId }) {
                     className="text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0"
                     style={{ background: style.bg, color: style.color, borderColor: style.border }}
                   >
-                    {show.status}
+                    {String(show.status || '').replaceAll('_', ' ')}
                   </span>
                   {show.total_show_runtime > 0 && (
                     <span className="text-xs text-gray-400 flex-shrink-0 hidden sm:inline">{formatMinutes(show.total_show_runtime)}</span>
