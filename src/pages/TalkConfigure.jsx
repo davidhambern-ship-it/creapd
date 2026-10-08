@@ -39,7 +39,7 @@ const CARD_PROMPTS = [
   'Who’s joining the conversation?',
   'How should this show feel?',
   'What should I prepare for you?',
-  'Ready for me to build the show?'
+  'Ready to save your setup and continue?'
 ];
 
 function safeParse(str, fallback) {
@@ -52,6 +52,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editConfigId = searchParams.get('config_id');
+  const startNewPodcast = searchParams.get('new') === '1';
   const ownedPreview = shouldUseNeonAuth();
 
   const [step, setStep] = useState(0);
@@ -80,16 +81,19 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
   });
 
   useEffect(() => {
-    if (!editConfigId) return;
+    if (startNewPodcast || (!editConfigId && !ownedPreview)) return;
 
     if (ownedPreview) {
-      creapdApi.get(`/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`)
+      // Reopening Setup must edit the active podcast instead of creating a
+      // different configuration without its approved Assembly checkpoint.
+      const url = editConfigId
+        ? `/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`
+        : '/production/core?studio=talk';
+      creapdApi.get(url)
         .then(data => {
-          if (data?.configuration) {
-            setConfig({ ...data.configuration, status: 'configuring' });
-          }
+          if (data?.configuration) setConfig(data.configuration);
         })
-        .catch(() => {});
+        .catch(err => console.error('Could not load existing Podcast setup:', err));
       return;
     }
 
@@ -98,7 +102,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
         setConfig({ ...c, status: 'configuring' });
       }
     }).catch(() => {});
-  }, [editConfigId, ownedPreview]);
+  }, [editConfigId, ownedPreview, startNewPodcast]);
 
   const updateConfig = (field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -136,19 +140,27 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
     setBuildError('');
     try {
       let savedConfig;
+      let nextPath = '/podcast';
 
       if (ownedPreview) {
         const saveResult = await creapdApi.post('/talk/configuration', {
           ...config,
+          ...(startNewPodcast ? { id: undefined } : {}),
           ...(editConfigId ? { id: editConfigId } : {}),
         });
         savedConfig = saveResult?.configuration;
         if (!savedConfig?.id) throw new Error('Podcast setup did not return an id.');
 
-        await creapdApi.post('/talk/production', {
-          action: 'build',
-          configuration_id: savedConfig.id,
-        });
+        // Research and Assembly are separate approvals; setup must not call
+        // the production builder before they are completed.
+        const meta = savedConfig.build_metadata && typeof savedConfig.build_metadata === 'object'
+          ? savedConfig.build_metadata
+          : {};
+        if (meta.assembly_approved_at && Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+          nextPath = `/podcast/production?config_id=${encodeURIComponent(savedConfig.id)}`;
+        } else if (Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+          nextPath = `/podcast/assembly?config_id=${encodeURIComponent(savedConfig.id)}`;
+        }
       } else {
         if (editConfigId) {
           savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
@@ -167,7 +179,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
       if (embedded && onBuilt) {
         await onBuilt();
       } else {
-        navigate('/podcast');
+        navigate(nextPath);
       }
     } catch (err) {
       setBuildError(
@@ -445,7 +457,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
               ) : (
                 <Button onClick={handleBuild} size="lg" disabled={!canProceed() || cardExiting} className="talk-cue-next">
                   <Building2 className="w-4 h-4 mr-2" />
-                  Build My Podcast
+                  Save & Continue
                 </Button>
               )}
             </div>
