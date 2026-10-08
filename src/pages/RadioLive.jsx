@@ -63,7 +63,7 @@ function trackPlayable(track) {
   return Boolean(track?.youtube_video_id || trackAudioUrl(track));
 }
 
-function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }) {
+function useDualRadioDecks({ enabled, deckATrack, deckBTrack, activeDeck, onActiveEnded }) {
   const wrapperARef = useRef(null);
   const wrapperBRef = useRef(null);
   const playerARef = useRef(null);
@@ -75,6 +75,8 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
   const tracksRef = useRef({ A: deckATrack, B: deckBTrack });
   const pendingPlayRef = useRef({ A: false, B: false });
   const pendingUnlockRef = useRef({ A: false, B: false });
+  const loadedTrackRef = useRef({ A: null, B: null });
+  const cuedVideoIdRef = useRef({ A: null, B: null });
   const [ytReady, setYtReady] = useState({ A: false, B: false });
   const [audioReady, setAudioReady] = useState({ A: false, B: false });
   const [playing, setPlaying] = useState({ A: false, B: false });
@@ -144,6 +146,9 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
   }, []);
 
   useEffect(() => {
+    // The Studio returns its loading/approval screens before the YouTube hosts
+    // exist. Do not initialize until the approved Studio has actually mounted.
+    if (!enabled) return undefined;
     let cancelled = false;
     let timer;
 
@@ -194,35 +199,39 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
             const videoId = track?.youtube_video_id;
             if (videoId && !trackAudioUrl(track)) {
               try {
-                event.target.cueVideoById(videoId);
+                const shouldPlay = pendingPlayRef.current[deck];
+                const shouldUnlock = pendingUnlockRef.current[deck] && !shouldPlay;
+                pendingPlayRef.current[deck] = false;
+                pendingUnlockRef.current[deck] = false;
+                cuedVideoIdRef.current[deck] = videoId;
                 event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
-                if (pendingUnlockRef.current[deck]) {
-                  pendingUnlockRef.current[deck] = false;
-                  try {
-                    event.target.mute();
-                    event.target.loadVideoById(videoId);
-                    event.target.playVideo();
-                    window.setTimeout(() => {
-                      try {
-                        event.target.pauseVideo();
-                        event.target.seekTo(0, true);
-                        event.target.unMute();
-                        event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
-                        captureYoutubeState(deck, 'UNLOCKED');
-                      } catch {}
-                    }, 180);
-                  } catch {}
-                } else if (pendingPlayRef.current[deck]) {
-                  pendingPlayRef.current[deck] = false;
-                  try {
-                    event.target.unMute();
-                    event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
-                    event.target.loadVideoById(videoId);
-                    event.target.playVideo();
-                    window.setTimeout(() => captureYoutubeState(deck, 'PLAY'), 700);
-                  } catch {}
+                // A real pending play wins over an old primer: otherwise the
+                // unlock timer pauses the song just as the show goes on air.
+                if (shouldPlay) {
+                  event.target.unMute();
+                  event.target.loadVideoById(videoId);
+                  event.target.playVideo();
+                  window.setTimeout(() => captureYoutubeState(deck, 'PLAY'), 700);
+                } else if (shouldUnlock) {
+                  event.target.mute();
+                  event.target.loadVideoById(videoId);
+                  event.target.playVideo();
+                  window.setTimeout(() => {
+                    if (cancelled || pendingPlayRef.current[deck]) return;
+                    try {
+                      event.target.pauseVideo();
+                      event.target.seekTo(0, true);
+                      event.target.unMute();
+                      event.target.setVolume(activeDeckRef.current === deck ? 100 : 0);
+                      captureYoutubeState(deck, 'UNLOCKED');
+                    } catch {}
+                  }, 180);
+                } else {
+                  event.target.cueVideoById(videoId);
                 }
-              } catch {}
+              } catch (error) {
+                setPlaybackDiagnostic(value => ({ ...value, [deck]: `YT INIT ERROR · ${error?.message || 'player unavailable'}` }));
+              }
             }
           },
           onStateChange: event => {
@@ -244,6 +253,11 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
             setPlaying(value => ({ ...value, [deck]: false }));
             setYoutubeError(value => ({ ...value, [deck]: Number(event?.data || 0) || 'unknown' }));
           },
+          onAutoplayBlocked: () => {
+            if (cancelled) return;
+            setPlaying(value => ({ ...value, [deck]: false }));
+            setPlaybackDiagnostic(value => ({ ...value, [deck]: 'BROWSER BLOCKED AUTOPLAY · click Play to enable YouTube audio' }));
+          },
         },
       });
     };
@@ -262,15 +276,22 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
       playerARef.current = null;
       playerBRef.current = null;
     };
-  }, [captureYoutubeState]);
+  }, [enabled, captureYoutubeState]);
 
   const loadDeck = useCallback((deck, track, isActive) => {
     const audioRef = deck === 'A' ? audioARef : audioBRef;
     const playerRef = deck === 'A' ? playerARef : playerBRef;
     const audioUrl = trackAudioUrl(track);
+    const nextTrackKey = track ? `${trackKey(track)}::${audioUrl}::${track.youtube_video_id || ''}` : null;
+    const changed = loadedTrackRef.current[deck] !== nextTrackKey;
+    loadedTrackRef.current[deck] = nextTrackKey;
 
-    setPlaying(value => ({ ...value, [deck]: false }));
-    setYoutubeError(value => ({ ...value, [deck]: null }));
+    if (changed) {
+      setPlaying(value => ({ ...value, [deck]: false }));
+      setYoutubeError(value => ({ ...value, [deck]: null }));
+      cuedVideoIdRef.current[deck] = null;
+      pendingPlayRef.current[deck] = false;
+    }
 
     if (audioUrl) {
       setAudioReady(value => ({ ...value, [deck]: false }));
@@ -300,7 +321,12 @@ function useDualRadioDecks({ deckATrack, deckBTrack, activeDeck, onActiveEnded }
     const videoId = track?.youtube_video_id;
     if (!videoId || !playerRef.current) return;
     try {
-      playerRef.current.cueVideoById(videoId);
+      // The onReady handler may have started this same video. Re-cueing here
+      // whenever ytReady or activeDeck changes stops playback at 0:00.
+      if (cuedVideoIdRef.current[deck] !== videoId) {
+        cuedVideoIdRef.current[deck] = videoId;
+        playerRef.current.cueVideoById(videoId);
+      }
       playerRef.current.setVolume(isActive ? 100 : 0);
     } catch {}
   }, []);
@@ -813,6 +839,7 @@ export default function RadioLive() {
   const transitionDeckRef = useRef(async () => {});
 
   const decks = useDualRadioDecks({
+    enabled: studioApproved,
     deckATrack,
     deckBTrack,
     activeDeck,
