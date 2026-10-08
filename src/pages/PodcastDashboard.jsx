@@ -165,6 +165,10 @@ export default function PodcastDashboard() {
   const confirmedGuests = guests.filter(guest => guest.status === 'confirmed').length;
   const approvedAssets = assets.filter(asset => asset.status === 'approved').length;
   const move = nextMove({ config, research, topics, segments, assets, session });
+  // Keep links aimed at the episode whose checkpoint the dashboard is displaying.
+  const movePath = config?.id && !move.path.includes('?')
+    ? `${move.path}?config_id=${encodeURIComponent(config.id)}`
+    : move.path;
   const studioPath = config?.id
     ? `/podcast/studio?config_id=${encodeURIComponent(config.id)}`
     : '/podcast/setup';
@@ -199,7 +203,7 @@ export default function PodcastDashboard() {
             instructions={guideInstructions}
             readyText={`${research.length} research · ${approvedTopics}/${topics.length} topics · ${confirmedGuests} guests · ${approvedAssets}/${assets.length} assets`}
             nextLabel={move.label}
-            onNext={() => { window.location.href = move.path; }}
+            onNext={() => { window.location.href = movePath; }}
           />
         </div>
 
@@ -239,7 +243,7 @@ export default function PodcastDashboard() {
           icon={Sparkles}
           title="Your Next Move"
           actionLabel={move.label}
-          to={move.path}
+          to={movePath}
         >
           <p className="text-[9px] uppercase tracking-[0.18em] text-orange-300/70">{move.eyebrow}</p>
           <p className="mt-1.5 text-sm font-semibold text-white leading-snug">{move.title}</p>
@@ -349,7 +353,7 @@ export default function PodcastDashboard() {
         </ScenePanel>
 
         <Link
-          to={move.path}
+          to={movePath}
           className="absolute bottom-[2.5%] left-1/2 w-[19%] -translate-x-1/2 z-20 flex min-h-14 items-center gap-3 rounded-xl border border-white/10 bg-black/45 px-4 py-2 backdrop-blur-md shadow-2xl transition hover:bg-black/55 hover:border-orange-300/30"
         >
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-orange-400/10 border border-orange-300/20">
@@ -370,7 +374,7 @@ export default function PodcastDashboard() {
           <h1 className="mt-1 text-2xl font-heading font-bold text-white">{config?.production_name || 'New Podcast'}</h1>
           <p className="mt-2 text-sm text-white/60">Setup → research → assembly → production → studio → publish.</p>
           <Button asChild className="mt-4 w-full bg-gradient-to-r from-orange-500 to-fuchsia-600">
-            <Link to={move.path}>{move.label}<ArrowRight className="w-4 h-4 ml-2" /></Link>
+            <Link to={movePath}>{move.label}<ArrowRight className="w-4 h-4 ml-2" /></Link>
           </Button>
         </div>
 
