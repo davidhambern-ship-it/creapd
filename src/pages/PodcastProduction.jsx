@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
   CheckCircle2,
@@ -59,6 +59,8 @@ function scriptWordCount(value) {
 
 export default function PodcastProduction() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
   const {
     config,
     topics = [],
@@ -69,7 +71,7 @@ export default function PodcastProduction() {
     session,
     loading,
     refresh,
-  } = useTalkProduction();
+  } = useTalkProduction(configurationId);
 
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState('');
@@ -191,7 +193,7 @@ export default function PodcastProduction() {
           <p className="mt-2 text-sm text-white/45">
             Production only starts after you review and approve the episode structure. Assembly decides what the show is; Production writes the material needed to perform it.
           </p>
-          <Button className="mt-4" onClick={() => navigate('/podcast/assembly')}>Review Assembly</Button>
+          <Button className="mt-4" onClick={() => navigate(`/podcast/assembly?config_id=${encodeURIComponent(config.id)}`)}>Review Assembly</Button>
         </div>
       </div>
     );
