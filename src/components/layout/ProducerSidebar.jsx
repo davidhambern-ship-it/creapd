@@ -6,11 +6,11 @@ import MobileBottomNav from './MobileBottomNav';
 
 const allPodcastItems = PRODUCER_NAV_SECTIONS.flatMap(section => section.items);
 const mobileItems = [
-  allPodcastItems.find(item => item.path === '/news/dashboard'),
-  allPodcastItems.find(item => item.path === '/news/brief'),
-  allPodcastItems.find(item => item.path === '/news/queue'),
-  allPodcastItems.find(item => item.path === '/news/workspace'),
-  allPodcastItems.find(item => item.path === '/news/export'),
+  allPodcastItems.find(item => item.path === '/podcast'),
+  allPodcastItems.find(item => item.path === '/podcast/research'),
+  allPodcastItems.find(item => item.path === '/podcast/assembly'),
+  allPodcastItems.find(item => item.path === '/podcast/production'),
+  allPodcastItems.find(item => item.path === '/podcast/export'),
 ].filter(Boolean);
 
 export default function ProducerSidebar({ collapsed, onToggle }) {
