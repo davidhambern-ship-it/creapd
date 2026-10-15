@@ -40,6 +40,8 @@ import {
 } from '../../../server/presentationStudioActions.js';
 import {
   handoffPackageToPresentationStudio,
+  createResearchAutoBuildPresentation,
+  listPresentationStudioProjects,
   loadPresentationStudioEditor,
   updateEditorPresentation,
   createEditorSlide,
@@ -1112,6 +1114,45 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
     }
 
     switch (action) {
+      case 'auto_build_research_packet': {
+        const result = await createResearchAutoBuildPresentation({
+          sql,
+          ownerUserId,
+          configurationId: body.configuration_id,
+          presentationTitle: body.presentation_title,
+        });
+        return success(response, action, result);
+      }
+
+      case 'list_presentation_studio': {
+        const presentations = await listPresentationStudioProjects({
+          sql,
+          ownerUserId,
+          limit: body.limit || 100,
+        });
+        return success(response, action, { presentations });
+      }
+
+      case 'share_package_to_creapd': {
+        const handoff = await handoffPackageToPresentationStudio({
+          sql,
+          ownerUserId,
+          packageId: body.package_id || body.source_production_id,
+          approve: true,
+        });
+        const showcase = await sharePresentationStudioProject({
+          sql,
+          ownerUserId,
+          presentationId: handoff.presentation?.id,
+          visibility: body.visibility || 'public',
+        });
+        return success(response, action, {
+          success: true,
+          presentation: handoff.presentation,
+          showcase,
+        });
+      }
+
       case 'approve_package_and_handoff': {
         const result = await handoffPackageToPresentationStudio({
           sql,
