@@ -98,6 +98,18 @@ function nextMove({ config, research, topics, segments, assets, session }) {
   }
 
   const approvedTopics = topics.filter(topic => topic.status === 'approved').length;
+
+  if (!approvedTopics) {
+    return {
+      step: 2,
+      eyebrow: 'Editorial review',
+      title: 'Choose what actually belongs in this episode.',
+      description: 'Review the verified discussion topics and approve the ones CREAPD should use before Assembly.',
+      label: 'Review Discussion Topics',
+      path: '/podcast/review',
+    };
+  }
+
   if (!hasAssembly) {
     return {
       step: 3,
