@@ -28,8 +28,23 @@ function reportLegacyFallback(kind, name) {
   if (reportedLegacyFallbacks.has(key)) return;
   reportedLegacyFallbacks.add(key);
   console.warn(
-    `[CREAPD MIGRATION] Base44 fallback used on owned Preview: ${kind} ${String(name || 'unknown')}`,
+    `[CREAPD MIGRATION] Legacy Base44 surface requested in Neon mode: ${kind} ${String(name || 'unknown')}`,
   );
+}
+
+function blockedBase44Runtime(kind, name) {
+  const label = String(name || 'unknown');
+  const error = new Error(
+    `CREAPD blocked legacy Base44 ${kind} "${label}" on the Neon/Vercel runtime. This action still needs a native CREAPD backend route.`,
+  );
+  error.code = 'BASE44_RUNTIME_BLOCKED';
+  error.status = 503;
+  error.details = {
+    kind,
+    name: label,
+    backend: 'neon_vercel',
+  };
+  return error;
 }
 
 function isOwnedAssetSchemaMissing(error) {
@@ -739,7 +754,7 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           } catch (error) {
             if (!isOwnedNotFound(error)) throw error;
             activeOwnedPresentationId = null;
-            return target.invoke(functionName, payload);
+            throw blockedBase44Runtime('function', functionName);
           }
         }
 
@@ -929,6 +944,9 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
 
 
         reportLegacyFallback('function', functionName);
+        if (shouldUseNeonAuth()) {
+          throw blockedBase44Runtime('function', functionName);
+        }
         return target.invoke(functionName, payload);
       };
     }
@@ -989,6 +1007,9 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
         }
 
         reportLegacyFallback('integration', 'Core.InvokeLLM');
+        if (shouldUseNeonAuth()) {
+          throw blockedBase44Runtime('integration', 'Core.InvokeLLM');
+        }
         return target.InvokeLLM(payload);
       };
     }
@@ -1001,6 +1022,13 @@ const integrationsAdapter = new Proxy(sdkBase44.integrations, {
   get(target, property) {
     if (property === 'Core') return coreIntegrationsAdapter;
     reportLegacyFallback('integration', property);
+    if (shouldUseNeonAuth()) {
+      return new Proxy({}, {
+        get() {
+          throw blockedBase44Runtime('integration', property);
+        },
+      });
+    }
     return bindIfFunction(Reflect.get(target, property), target);
   },
 });
@@ -1027,11 +1055,10 @@ const authAdapter = new Proxy(sdkBase44.auth, {
 });
 
 
-// Keep the existing Base44 surface intact for services that have not migrated
-// yet. On the owned Preview, explicitly bridged operations are redirected to
-// CREAPD's Neon/Vercel backend. There is still only one Presentation Editor;
-// this compatibility layer changes its data authority for Presentation Studio
-// projects without creating a second editor implementation.
+// CREAPD production and Preview run on the Neon/Vercel backend.
+// The Base44 SDK object remains only as a temporary compatibility facade for
+// legacy data surfaces. Base44 Functions and integrations are hard-blocked in
+// Neon mode unless an explicit native CREAPD bridge above handles the action.
 export const base44 = new Proxy(sdkBase44, {
   get(target, property) {
     if (property === 'auth') return authAdapter;
