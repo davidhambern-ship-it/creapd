@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
-import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
 import CreapdLogo from '@/components/brand/CreapdLogo';
 import { Input } from '@/components/ui/input';
@@ -53,7 +51,6 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
   const [searchParams] = useSearchParams();
   const editConfigId = searchParams.get('config_id');
   const startNewPodcast = searchParams.get('new') === '1';
-  const ownedPreview = shouldUseNeonAuth();
 
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
@@ -81,28 +78,19 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
   });
 
   useEffect(() => {
-    if (startNewPodcast || (!editConfigId && !ownedPreview)) return;
+    if (startNewPodcast) return;
 
-    if (ownedPreview) {
-      // Reopening Setup must edit the active podcast instead of creating a
-      // different configuration without its approved Assembly checkpoint.
-      const url = editConfigId
-        ? `/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`
-        : '/production/core?studio=talk';
-      creapdApi.get(url)
-        .then(data => {
-          if (data?.configuration) setConfig(data.configuration);
-        })
-        .catch(err => console.error('Could not load existing Podcast setup:', err));
-      return;
-    }
-
-    base44.entities.TalkProductionConfiguration.get(editConfigId).then(c => {
-      if (c) {
-        setConfig({ ...c, status: 'configuring' });
-      }
-    }).catch(() => {});
-  }, [editConfigId, ownedPreview, startNewPodcast]);
+    // Reopening Setup edits the active Neon/Vercel podcast instead of creating
+    // a second configuration without its current Research/Assembly checkpoint.
+    const url = editConfigId
+      ? `/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`
+      : '/production/core?studio=talk';
+    creapdApi.get(url)
+      .then(data => {
+        if (data?.configuration) setConfig(data.configuration);
+      })
+      .catch(err => console.error('Could not load existing Podcast setup:', err));
+  }, [editConfigId, startNewPodcast]);
 
   const updateConfig = (field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -142,38 +130,25 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
       let savedConfig;
       let nextPath = '/podcast';
 
-      if (ownedPreview) {
-        const saveResult = await creapdApi.post('/talk/configuration', {
-          ...config,
-          ...(startNewPodcast ? { id: undefined } : {}),
-          ...(editConfigId ? { id: editConfigId } : {}),
-        });
-        savedConfig = saveResult?.configuration;
-        if (!savedConfig?.id) throw new Error('Podcast setup did not return an id.');
+      const saveResult = await creapdApi.post('/talk/configuration', {
+        ...config,
+        ...(startNewPodcast ? { id: undefined } : {}),
+        ...(editConfigId ? { id: editConfigId } : {}),
+      });
+      savedConfig = saveResult?.configuration;
+      if (!savedConfig?.id) throw new Error('Podcast setup did not return an id.');
 
-        // Research and Assembly are separate approvals; setup must not call
-        // the production builder before they are completed.
-        const meta = savedConfig.build_metadata && typeof savedConfig.build_metadata === 'object'
-          ? savedConfig.build_metadata
-          : {};
-        if (meta.assembly_approved_at && Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
-          nextPath = `/podcast/production?config_id=${encodeURIComponent(savedConfig.id)}`;
-        } else if (Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
-          nextPath = `/podcast/assembly?config_id=${encodeURIComponent(savedConfig.id)}`;
-        }
+      // Research and Assembly are separate native checkpoints; Setup saves the
+      // show identity and sends the producer into the owned Podcast workflow.
+      const meta = savedConfig.build_metadata && typeof savedConfig.build_metadata === 'object'
+        ? savedConfig.build_metadata
+        : {};
+      if (meta.assembly_approved_at && Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+        nextPath = `/podcast/production?config_id=${encodeURIComponent(savedConfig.id)}`;
+      } else if (Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+        nextPath = `/podcast/assembly?config_id=${encodeURIComponent(savedConfig.id)}`;
       } else {
-        if (editConfigId) {
-          savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
-        } else {
-          savedConfig = await base44.entities.TalkProductionConfiguration.create(config);
-        }
-
-        await base44.auth.updateMe({
-          default_production_type: 'talk',
-          default_production_config_id: savedConfig.id
-        });
-        await base44.entities.TalkProductionConfiguration.update(savedConfig.id, { is_default: true });
-        await base44.functions.invoke('buildTalkProduction', { configuration_id: savedConfig.id });
+        nextPath = `/podcast/research?config_id=${encodeURIComponent(savedConfig.id)}`;
       }
 
       if (embedded && onBuilt) {
