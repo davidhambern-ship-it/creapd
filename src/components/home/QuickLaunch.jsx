@@ -4,9 +4,9 @@ import { Clock, Mic2, Radio, FlaskConical, Eye, ArrowRight, Clapperboard, Film }
 
 const QUICK_ACTIONS = [
   { icon: Radio, label: 'Open Radio', path: '/music/configure', color: 'text-purple-400', bg: 'bg-purple-500/10' },
-  { icon: Mic2, label: 'Open Podcast', path: '/news/dashboard', color: 'text-orange-300', bg: 'bg-orange-500/10' },
+  { icon: Mic2, label: 'Open Podcast', path: '/podcast', color: 'text-orange-300', bg: 'bg-orange-500/10' },
   { icon: FlaskConical, label: 'Open Research', path: '/research', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-  { icon: Clock, label: 'Continue Production', path: '/news/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
+  { icon: Clock, label: 'Continue Production', path: '/podcast/production', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
   { icon: Clapperboard, label: 'Blank Editor', path: '/editor', color: 'text-berna-purple', bg: 'bg-berna-purple/10' },
   { icon: Film, label: 'Presentations', path: '/presentations', color: 'text-berna-orange', bg: 'bg-berna-orange/10' },
   { icon: Eye, label: 'Shared Productions', path: null, color: 'text-berna-emerald', bg: 'bg-berna-emerald/10', action: 'scrollToShowcase' },
