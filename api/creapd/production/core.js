@@ -7,11 +7,14 @@ import { requireCreapdUser, getRequestedAuthProvider } from '../../../server/cre
 import { requireNeonUser } from '../../../server/neonAuth.js';
 import { requireBase44User } from '../../../server/base44Auth.js';
 import { readProductionCore } from '../../../server/productionCore.js';
+import { generateStructuredGatewayResponse } from '../../../server/aiGateway.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
 import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../../server/musicStudio.js';
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
 import { runTalkResearchStage } from '../../../server/talkResearchEngine.js';
 import { runTalkProductionStage } from '../../../server/talkProductionEngine.js';
+import { buildPodcastAssembly } from '../../../server/podcastAssemblyEngine.js';
+import { regeneratePodcastScript } from '../../../server/podcastScriptEngine.js';
 import { generateTalkImages } from '../../../server/talkMedia.js';
 import {
   isObsBridgeAgentAction,
@@ -57,6 +60,7 @@ export const config = {
 const OBS_MEDIA_TICKET_TTL_MS = 15 * 60 * 1000;
 const OBS_IMAGE_MAX_BYTES = 40 * 1024 * 1024;
 const OBS_VIDEO_MAX_BYTES = 1024 * 1024 * 1024;
+const OBS_AUDIO_MAX_BYTES = 128 * 1024 * 1024;
 const OBS_IMAGE_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -71,6 +75,18 @@ const OBS_VIDEO_TYPES = new Set([
   'video/quicktime',
   'video/x-m4v',
   'video/mpeg',
+]);
+const OBS_AUDIO_TYPES = new Set([
+  'audio/webm',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/m4a',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/aac',
+  'audio/flac',
 ]);
 
 function safeObsUploadText(value, max = 300) {
@@ -100,6 +116,9 @@ function obsAllowedMediaType(contentType) {
   if (OBS_VIDEO_TYPES.has(contentType)) {
     return { kind: 'video', maxBytes: OBS_VIDEO_MAX_BYTES };
   }
+  if (OBS_AUDIO_TYPES.has(contentType)) {
+    return { kind: 'audio', maxBytes: OBS_AUDIO_MAX_BYTES };
+  }
   return null;
 }
 
@@ -119,6 +138,16 @@ function obsMediaExtension(filename, contentType) {
     'video/quicktime': 'mov',
     'video/x-m4v': 'm4v',
     'video/mpeg': 'mpeg',
+    'audio/webm': 'webm',
+    'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/m4a': 'm4a',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/ogg': 'ogg',
+    'audio/aac': 'aac',
+    'audio/flac': 'flac',
   };
 
   return map[contentType] || 'bin';
@@ -162,7 +191,7 @@ function verifyObsMediaTicket(ticket) {
   }
 
   if (
-    !['creapd_obs_media', 'creapd_asset_media'].includes(payload?.purpose) ||
+    !['creapd_obs_media', 'creapd_asset_media', 'creapd_artist_catalog_audio'].includes(payload?.purpose) ||
     !payload?.ownerUserId ||
     !payload?.pathname ||
     !payload?.contentType ||
@@ -439,6 +468,458 @@ async function handleMusicRequest(request, response, action = '') {
   });
 }
 
+function safePodcastResearchText(value, max = 18000) {
+  return String(value || '').trim().slice(0, max);
+}
+
+const SOURCE_FETCH_MAX_HTML_CHARS = 2_000_000;
+const SOURCE_FETCH_MAX_BODY_CHARS = 60_000;
+
+function decodeHtmlEntities(value) {
+  return String(value || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCodePoint(n) : _;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+      const n = Number.parseInt(code, 16);
+      return Number.isFinite(n) ? String.fromCodePoint(n) : _;
+    });
+}
+
+function stripTags(value) {
+  return decodeHtmlEntities(
+    String(value || '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p\s*>/gi, '\n\n')
+      .replace(/<\/h[1-6]\s*>/gi, '\n\n')
+      .replace(/<[^>]+>/g, ' '),
+  )
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function isPrivateSourceHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!host) return true;
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+  if (host === '::1' || host === '0.0.0.0') return true;
+  if (/^127\./.test(host) || /^10\./.test(host) || /^169\.254\./.test(host) || /^192\.168\./.test(host)) return true;
+  const match = host.match(/^172\.(\d+)\./);
+  if (match && Number(match[1]) >= 16 && Number(match[1]) <= 31) return true;
+  return false;
+}
+
+function safePublicSourceUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || '').trim());
+  } catch {
+    const error = new Error('The source URL is invalid.');
+    error.code = 'PODCAST_SOURCE_URL_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol) || isPrivateSourceHost(url.hostname)) {
+    const error = new Error('The source URL is not a public HTTP(S) address.');
+    error.code = 'PODCAST_SOURCE_URL_UNSAFE';
+    error.status = 400;
+    throw error;
+  }
+  return url;
+}
+
+async function fetchPublicSourceHtml(sourceUrl) {
+  let current = safePublicSourceUrl(sourceUrl);
+
+  for (let redirectCount = 0; redirectCount < 5; redirectCount += 1) {
+    const response = await fetch(current, {
+      method: 'GET',
+      redirect: 'manual',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36 CREAPD/1.0',
+        Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.8',
+        'Cache-Control': 'no-cache',
+      },
+      signal: AbortSignal.timeout(18000),
+    });
+
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers.get('location');
+      if (!location) break;
+      current = safePublicSourceUrl(new URL(location, current).href);
+      continue;
+    }
+
+    if (!response.ok) {
+      const error = new Error(`Source returned HTTP ${response.status}.`);
+      error.code = 'PODCAST_SOURCE_FETCH_FAILED';
+      error.status = 502;
+      throw error;
+    }
+
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
+      const error = new Error('The source did not return an HTML article page.');
+      error.code = 'PODCAST_SOURCE_NOT_HTML';
+      error.status = 422;
+      throw error;
+    }
+
+    const html = (await response.text()).slice(0, SOURCE_FETCH_MAX_HTML_CHARS);
+    return { html, finalUrl: current.href };
+  }
+
+  const error = new Error('The source redirected too many times.');
+  error.code = 'PODCAST_SOURCE_REDIRECT_LIMIT';
+  error.status = 502;
+  throw error;
+}
+
+function findArticleBodyInJsonLd(html) {
+  const scripts = String(html || '').match(/<script\b[^>]*type=["'][^"']*ld\+json[^"']*["'][^>]*>[\s\S]*?<\/script>/gi) || [];
+  const inspect = value => {
+    if (!value) return '';
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = inspect(item);
+        if (found) return found;
+      }
+      return '';
+    }
+    if (typeof value !== 'object') return '';
+
+    if (typeof value.articleBody === 'string' && value.articleBody.trim().length >= 300) {
+      return decodeHtmlEntities(value.articleBody).trim();
+    }
+
+    if (Array.isArray(value['@graph'])) {
+      const graph = inspect(value['@graph']);
+      if (graph) return graph;
+    }
+
+    for (const nested of Object.values(value)) {
+      if (nested && typeof nested === 'object') {
+        const found = inspect(nested);
+        if (found) return found;
+      }
+    }
+    return '';
+  };
+
+  for (const script of scripts) {
+    const raw = script
+      .replace(/^<script\b[^>]*>/i, '')
+      .replace(/<\/script>$/i, '')
+      .trim();
+    try {
+      const found = inspect(JSON.parse(raw));
+      if (found) return found;
+    } catch {}
+  }
+  return '';
+}
+
+function removeNonArticleHtml(html) {
+  return String(html || '')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<nav\b[\s\S]*?<\/nav>/gi, ' ')
+    .replace(/<header\b[\s\S]*?<\/header>/gi, ' ')
+    .replace(/<footer\b[\s\S]*?<\/footer>/gi, ' ')
+    .replace(/<aside\b[\s\S]*?<\/aside>/gi, ' ')
+    .replace(/<form\b[\s\S]*?<\/form>/gi, ' ');
+}
+
+function paragraphLooksLikeBoilerplate(text) {
+  const value = String(text || '').trim();
+  if (value.length < 35) return true;
+  return /^(advertisement|related:|read more|sign up|subscribe|newsletter|cookie|privacy policy|terms of use|all rights reserved)/i.test(value)
+    || /(accept all cookies|manage your privacy|subscribe to our newsletter|sign up for our newsletter)/i.test(value);
+}
+
+function extractParagraphArticle(html) {
+  const cleaned = removeNonArticleHtml(html);
+  const articleMatch = cleaned.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i);
+  const mainMatch = cleaned.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
+  const region = articleMatch?.[1] || mainMatch?.[1] || cleaned;
+
+  const blocks = [];
+  const seen = new Set();
+  const blockRe = /<(p|h2|h3|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let match;
+  while ((match = blockRe.exec(region)) !== null) {
+    const tag = String(match[1] || '').toLowerCase();
+    const text = stripTags(match[2]);
+    if (!text) continue;
+    if (tag === 'p' && paragraphLooksLikeBoilerplate(text)) continue;
+    if ((tag === 'h2' || tag === 'h3') && text.length < 3) continue;
+    const key = text.toLowerCase().replace(/\W+/g, ' ').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    blocks.push(tag === 'h2' || tag === 'h3' ? `## ${text}` : tag === 'blockquote' ? `> ${text}` : text);
+  }
+
+  return blocks.join('\n\n').slice(0, SOURCE_FETCH_MAX_BODY_CHARS).trim();
+}
+
+function extractSourceArticle(html) {
+  const jsonLdBody = findArticleBodyInJsonLd(html);
+  if (jsonLdBody && jsonLdBody.split(/\s+/).length >= 120) {
+    return {
+      bodyContent: jsonLdBody.slice(0, SOURCE_FETCH_MAX_BODY_CHARS),
+      extractionMethod: 'json_ld_article_body',
+    };
+  }
+
+  const paragraphBody = extractParagraphArticle(html);
+  return {
+    bodyContent: paragraphBody,
+    extractionMethod: 'article_paragraphs',
+  };
+}
+
+async function fetchPodcastSourceArticle(body = {}) {
+  const sourceUrl = String(body.url || '').trim();
+  if (!sourceUrl) {
+    const error = new Error('A source URL is required.');
+    error.code = 'PODCAST_SOURCE_URL_REQUIRED';
+    error.status = 400;
+    throw error;
+  }
+
+  const { html, finalUrl } = await fetchPublicSourceHtml(sourceUrl);
+  const extracted = extractSourceArticle(html);
+  const bodyContent = String(extracted.bodyContent || '').trim();
+  const wordCount = bodyContent ? bodyContent.split(/\s+/).filter(Boolean).length : 0;
+
+  if (wordCount < 120 || bodyContent.length < 600) {
+    const error = new Error(
+      'CREAPD reached the source, but the page did not expose enough readable article text. It may be paywalled, JavaScript-only, or primarily video.',
+    );
+    error.code = 'PODCAST_SOURCE_FULL_TEXT_UNAVAILABLE';
+    error.status = 422;
+    error.details = {
+      final_url: finalUrl,
+      extracted_word_count: wordCount,
+      extraction_method: extracted.extractionMethod,
+    };
+    throw error;
+  }
+
+  return {
+    body_content: bodyContent,
+    word_count: wordCount,
+    final_url: finalUrl,
+    fetched_at: new Date().toISOString(),
+    extraction_method: extracted.extractionMethod,
+  };
+}
+
+async function setPodcastSourceApproval({ sql, ownerUserId, body = {} }) {
+  const configId = String(body.configuration_id || '').trim();
+  const articleId = String(body.article_id || '').trim();
+  const approved = Boolean(body.approved);
+
+  if (!configId || !articleId) {
+    const error = new Error('Podcast source approval requires configuration_id and article_id.');
+    error.code = 'PODCAST_SOURCE_APPROVAL_INPUT_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  const [configuration] = await sql`
+    SELECT build_metadata
+    FROM creapd.talk_production_configurations
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+    LIMIT 1
+  `;
+
+  if (!configuration) {
+    const error = new Error('Podcast configuration was not found.');
+    error.code = 'PODCAST_CONFIGURATION_NOT_FOUND';
+    error.status = 404;
+    throw error;
+  }
+
+  const metadata = configuration.build_metadata && typeof configuration.build_metadata === 'object'
+    ? configuration.build_metadata
+    : {};
+  const current = Array.isArray(metadata.podcast_approved_source_ids)
+    ? metadata.podcast_approved_source_ids.map(String)
+    : [];
+  const ids = new Set(current);
+
+  if (approved) ids.add(articleId);
+  else ids.delete(articleId);
+
+  const nextMeta = {
+    ...metadata,
+    podcast_approved_source_ids: [...ids],
+    podcast_source_selection_updated_at: new Date().toISOString(),
+  };
+
+  await sql`
+    UPDATE creapd.talk_production_configurations
+    SET build_metadata=${JSON.stringify(nextMeta)}::jsonb, updated_at=now()
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+  `;
+
+  return {
+    configuration_id: configId,
+    article_id: articleId,
+    approved,
+    approved_source_ids: [...ids],
+  };
+}
+
+async function approvePodcastAssembly({ sql, ownerUserId, body = {} }) {
+  const configId = String(body.configuration_id || '').trim();
+
+  if (!configId) {
+    const error = new Error('Podcast Assembly approval requires configuration_id.');
+    error.code = 'PODCAST_ASSEMBLY_APPROVAL_INPUT_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  const [configuration] = await sql`
+    SELECT build_metadata
+    FROM creapd.talk_production_configurations
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+    LIMIT 1
+  `;
+
+  if (!configuration) {
+    const error = new Error('Podcast configuration was not found.');
+    error.code = 'PODCAST_CONFIGURATION_NOT_FOUND';
+    error.status = 404;
+    throw error;
+  }
+
+  const current = configuration.build_metadata && typeof configuration.build_metadata === 'object'
+    ? configuration.build_metadata
+    : {};
+
+  if (!Array.isArray(current.assembly_segments) || !current.assembly_segments.length) {
+    const error = new Error('Episode Assembly must be completed before it can be approved.');
+    error.code = 'PODCAST_ASSEMBLY_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const approvedAt = new Date().toISOString();
+  const nextMeta = {
+    ...current,
+    stage: 'assembly_approved',
+    assembly_approved_at: approvedAt,
+    assembly_approved: true,
+  };
+
+  await sql`
+    UPDATE creapd.talk_production_configurations
+    SET status='assembled', build_metadata=${JSON.stringify(nextMeta)}::jsonb, updated_at=now()
+    WHERE id=${configId} AND owner_user_id=${String(ownerUserId)}
+  `;
+
+  return {
+    configuration_id: configId,
+    approved: true,
+    approved_at: approvedAt,
+  };
+}
+
+async function runPodcastResearchAssist(body = {}) {
+  const mode = String(body.mode || 'custom').trim().toLowerCase();
+  const article = body.article && typeof body.article === 'object' ? body.article : {};
+  const show = body.show && typeof body.show === 'object' ? body.show : {};
+  const userPrompt = safePodcastResearchText(body.prompt, 1200);
+
+  const modeInstructions = {
+    summary: 'Create a clean producer summary of the material. Capture the central point, the strongest supporting facts, and why it may matter to this podcast. Do not turn this into a host script.',
+    talking_points: 'Create useful host talking points from the material. Organize them in a natural discussion order and include specific facts or angles the host can use. These are research notes, not the final script.',
+    opposing_viewpoints: 'Identify credible counterarguments, competing interpretations, caveats, and perspectives that would help the host avoid a one-sided treatment. Clearly distinguish sourced facts from interpretation.',
+    fact_check: 'Identify the key factual claims that should be verified before production. For each claim, explain what needs verification and whether the supplied material itself supports it. Do not claim live verification unless current source evidence is actually available.',
+    broll: 'Suggest practical B-roll, graphics, screenshots, data visuals, archival material, or other visual support that matches this material and the configured podcast format.',
+    custom: userPrompt || 'Analyze this material and give the producer the most useful next-step research notes for the configured podcast.',
+  };
+
+  const showTopics = Array.isArray(show.topics)
+    ? show.topics.join(', ')
+    : safePodcastResearchText(show.topics, 1600);
+
+  const sourceText = safePodcastResearchText(
+    article.body_content ||
+    article.transcript ||
+    article.full_text_excerpt ||
+    article.summary ||
+    '',
+  );
+
+  const prompt = [
+    'You are Echo, the research assistant inside CREAPD.',
+    'Your job at this stage is to help the producer understand source material. Do NOT write the finished podcast episode unless explicitly asked.',
+    '',
+    'PODCAST CONFIGURATION:',
+    `Show: ${safePodcastResearchText(show.production_name || show.show_name || 'Podcast', 300)}`,
+    `Description: ${safePodcastResearchText(show.show_description, 1200) || 'Not provided'}`,
+    `Format: ${safePodcastResearchText(show.show_format, 240) || 'Podcast'}`,
+    `Tone: ${safePodcastResearchText(show.show_tone, 240) || 'Conversational'}`,
+    `Target runtime: ${safePodcastResearchText(show.total_show_runtime, 120) || 'Not specified'}`,
+    `Configured topics: ${showTopics || 'Not specified'}`,
+    '',
+    'SOURCE MATERIAL:',
+    `Title: ${safePodcastResearchText(article.title, 500)}`,
+    `Source: ${safePodcastResearchText(article.source_name || article.publication, 300) || 'Unknown'}`,
+    `Author: ${safePodcastResearchText(article.author, 200) || 'Unknown'}`,
+    `Published: ${safePodcastResearchText(article.published_at, 120) || 'Unknown'}`,
+    `Existing summary: ${safePodcastResearchText(article.summary, 2200) || 'None'}`,
+    '',
+    sourceText || 'No full source text is available.',
+    '',
+    'TASK:',
+    modeInstructions[mode] || modeInstructions.custom,
+    '',
+    'Keep the output useful for a producer who will later combine multiple research items into one coherent episode.',
+  ].join('\n');
+
+  const result = await generateStructuredGatewayResponse({
+    prompt,
+    schema: {
+      type: 'object',
+      properties: {
+        content: { type: 'string' },
+      },
+      required: ['content'],
+    },
+    schemaName: 'creapd_podcast_research_assist_v1',
+    webSearch: mode === 'fact_check',
+    maxOutputTokens: 1400,
+    timeoutMs: 50000,
+  });
+
+  return {
+    mode,
+    content: result?.data?.content || '',
+    provider: result?.provider || null,
+    model: result?.model || null,
+    web_search_used: Boolean(result?.webSearchUsed),
+  };
+}
+
 async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   const body = request.body && typeof request.body === 'object' ? request.body : {};
   const action = String(body.action || '').trim();
@@ -457,6 +938,14 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         purpose: 'creapd_asset_media',
         folder: 'assets',
         action: 'asset_media_upload_authorize',
+      });
+    }
+
+    if (action === 'artist_catalog_audio_upload_authorize') {
+      return authorizeObsMediaUpload(response, ownerUserId, body, {
+        purpose: 'creapd_artist_catalog_audio',
+        folder: 'artist-catalog',
+        action: 'artist_catalog_audio_upload_authorize',
       });
     }
 
@@ -529,6 +1018,47 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
         action,
         body,
       });
+      return success(response, action, result);
+    }
+
+    if (action === 'podcast_set_source_approval') {
+      const result = await setPodcastSourceApproval({ sql, ownerUserId, body });
+      return success(response, action, { result });
+    }
+
+    if (action === 'podcast_regenerate_script') {
+      const result = await regeneratePodcastScript({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+        assetId: body.asset_id,
+        instruction: body.instruction || '',
+      });
+      return success(response, action, { result });
+    }
+
+    if (action === 'podcast_approve_assembly') {
+      const result = await approvePodcastAssembly({ sql, ownerUserId, body });
+      return success(response, action, { result });
+    }
+
+    if (action === 'podcast_build_assembly') {
+      const result = await buildPodcastAssembly({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+        articles: Array.isArray(body.articles) ? body.articles : [],
+      });
+      return success(response, action, { result });
+    }
+
+    if (action === 'podcast_fetch_source_article') {
+      const result = await fetchPodcastSourceArticle(body);
+      return success(response, action, result);
+    }
+
+    if (action === 'podcast_research_assist') {
+      const result = await runPodcastResearchAssist(body);
       return success(response, action, result);
     }
 

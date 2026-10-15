@@ -65,8 +65,8 @@ export default function StoryIntelligenceReview() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Story Intelligence Review</h1>
-          <p className="text-xs text-muted-foreground mt-1">Inspect AI output, verify quality, and control story selection</p>
+          <h1 className="text-xl font-bold text-white">Content Review</h1>
+          <p className="text-xs text-muted-foreground mt-1">Inspect CREAPD's research, verify quality, and decide what belongs in the episode</p>
         </div>
         <Button variant="outline" size="sm" onClick={loadArticles} disabled={refreshing}
           className="border-white/10 text-white text-xs hover:bg-white/[0.04]">
@@ -129,14 +129,14 @@ export default function StoryIntelligenceReview() {
       {/* Results count */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Filter className="w-3 h-3" />
-        <span>{filtered.length} of {articles.length} stories</span>
+        <span>{filtered.length} of {articles.length} items</span>
       </div>
 
       {/* Cards */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <AlertTriangle className="w-10 h-10 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">No stories match your filters</p>
+          <p className="text-sm text-muted-foreground">No material matches your filters</p>
         </div>
       ) : (
         <div className="space-y-3">

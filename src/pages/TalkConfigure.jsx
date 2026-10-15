@@ -39,7 +39,7 @@ const CARD_PROMPTS = [
   'Who’s joining the conversation?',
   'How should this show feel?',
   'What should I prepare for you?',
-  'Ready for me to build the show?'
+  'Ready to save your setup and continue?'
 ];
 
 function safeParse(str, fallback) {
@@ -52,6 +52,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editConfigId = searchParams.get('config_id');
+  const startNewPodcast = searchParams.get('new') === '1';
   const ownedPreview = shouldUseNeonAuth();
 
   const [step, setStep] = useState(0);
@@ -80,16 +81,19 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
   });
 
   useEffect(() => {
-    if (!editConfigId) return;
+    if (startNewPodcast || (!editConfigId && !ownedPreview)) return;
 
     if (ownedPreview) {
-      creapdApi.get(`/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`)
+      // Reopening Setup must edit the active podcast instead of creating a
+      // different configuration without its approved Assembly checkpoint.
+      const url = editConfigId
+        ? `/talk/production?configuration_id=${encodeURIComponent(editConfigId)}`
+        : '/production/core?studio=talk';
+      creapdApi.get(url)
         .then(data => {
-          if (data?.configuration) {
-            setConfig({ ...data.configuration, status: 'configuring' });
-          }
+          if (data?.configuration) setConfig(data.configuration);
         })
-        .catch(() => {});
+        .catch(err => console.error('Could not load existing Podcast setup:', err));
       return;
     }
 
@@ -98,7 +102,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
         setConfig({ ...c, status: 'configuring' });
       }
     }).catch(() => {});
-  }, [editConfigId, ownedPreview]);
+  }, [editConfigId, ownedPreview, startNewPodcast]);
 
   const updateConfig = (field, value) => {
     setConfig(prev => ({ ...prev, [field]: value }));
@@ -136,19 +140,27 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
     setBuildError('');
     try {
       let savedConfig;
+      let nextPath = '/podcast';
 
       if (ownedPreview) {
         const saveResult = await creapdApi.post('/talk/configuration', {
           ...config,
+          ...(startNewPodcast ? { id: undefined } : {}),
           ...(editConfigId ? { id: editConfigId } : {}),
         });
         savedConfig = saveResult?.configuration;
-        if (!savedConfig?.id) throw new Error('Talk configuration did not return an id.');
+        if (!savedConfig?.id) throw new Error('Podcast setup did not return an id.');
 
-        await creapdApi.post('/talk/production', {
-          action: 'build',
-          configuration_id: savedConfig.id,
-        });
+        // Research and Assembly are separate approvals; setup must not call
+        // the production builder before they are completed.
+        const meta = savedConfig.build_metadata && typeof savedConfig.build_metadata === 'object'
+          ? savedConfig.build_metadata
+          : {};
+        if (meta.assembly_approved_at && Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+          nextPath = `/podcast/production?config_id=${encodeURIComponent(savedConfig.id)}`;
+        } else if (Array.isArray(meta.assembly_segments) && meta.assembly_segments.length) {
+          nextPath = `/podcast/assembly?config_id=${encodeURIComponent(savedConfig.id)}`;
+        }
       } else {
         if (editConfigId) {
           savedConfig = await base44.entities.TalkProductionConfiguration.update(editConfigId, config);
@@ -167,14 +179,14 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
       if (embedded && onBuilt) {
         await onBuilt();
       } else {
-        navigate('/talk/dashboard');
+        navigate(nextPath);
       }
     } catch (err) {
       setBuildError(
         err?.data?.diagnostic?.message ||
         err?.data?.error ||
         err?.message ||
-        'Failed to build production. Please try again.'
+        'Failed to prepare this podcast. Please try again.'
       );
       setBuilding(false);
     }
@@ -262,7 +274,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
             </div>
             <div className="space-y-2">
               <Label>Short Show Description</Label>
-              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your talk show..." rows={3} />
+              <Textarea value={config.show_description} onChange={e => updateConfig('show_description', e.target.value)} placeholder="Describe your podcast..." rows={3} />
             </div>
           </div>
         );
@@ -277,7 +289,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
                 <Input type="number" value={config.total_show_runtime} onChange={e => updateConfig('total_show_runtime', Number(e.target.value))} />
               </div>
               <div className="space-y-2">
-                <Label>Talk / Discussion Runtime (min)</Label>
+                <Label>Main Discussion Runtime (min)</Label>
                 <Input type="number" value={config.talk_segment_runtime} onChange={e => updateConfig('talk_segment_runtime', Number(e.target.value))} />
               </div>
               <div className="space-y-2">
@@ -361,8 +373,8 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
-          <h2 className="text-xl font-heading font-bold mb-3">CREAPD is building your Talk production.</h2>
-          <p className="text-white/60 mb-8">I’ve got your answers. Now I’m researching, verifying, and assembling the show.</p>
+          <h2 className="text-xl font-heading font-bold mb-3">CREAPD is building your Podcast episode.</h2>
+          <p className="text-white/60 mb-8">I’ve got your answers. Now I’m preparing the episode research, rundown, scripts, and studio package.</p>
           <div className="space-y-3 text-left">
             {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating host-ready assets'].map((label, i) => (
               <div key={i} className="!flex items-center gap-3 text-sm">
@@ -385,7 +397,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
           <div className="flex items-center justify-center gap-3">
             <CreapdLogo height="h-8" />
             <span className="h-6 w-px bg-white/20" />
-            <span className="text-xs font-semibold tracking-[0.28em] text-white/70">TALK INTERVIEW</span>
+            <span className="text-xs font-semibold tracking-[0.28em] text-white/70">PODCAST SETUP</span>
           </div>
           <p className="mt-2 text-center text-xs text-white/45">
             Question {step + 1} of {STEPS.length} · {STEPS[step].label}
@@ -445,7 +457,7 @@ export default function TalkConfigure({ embedded = false, onBuilt }) {
               ) : (
                 <Button onClick={handleBuild} size="lg" disabled={!canProceed() || cardExiting} className="talk-cue-next">
                   <Building2 className="w-4 h-4 mr-2" />
-                  Build My Show
+                  Save & Continue
                 </Button>
               )}
             </div>

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import { creapdApi } from '@/api/creapdClient';
 import { Button } from '@/components/ui/button';
+import FormatSwitcher from '@/components/layout/FormatSwitcher';
 import { SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import {
   ArrowLeft,
@@ -380,7 +381,7 @@ export default function TalkLive() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-9 h-9 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Opening CREAPD Live…</p>
+          <p className="text-sm text-muted-foreground">Opening Podcast Studio…</p>
         </div>
       </div>
     );
@@ -391,9 +392,9 @@ export default function TalkLive() {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-lg text-center">
           <Mic2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-xl font-heading font-bold mb-2">CREAPD Live could not open this production</h1>
-          <p className="text-sm text-muted-foreground mb-5">{error?.message || 'No Talk production was found.'}</p>
-          <Button asChild><Link to="/talk/dashboard">Back to Talk Dashboard</Link></Button>
+          <h1 className="text-xl font-heading font-bold mb-2">Podcast Studio could not open this episode</h1>
+          <p className="text-sm text-muted-foreground mb-5">{error?.message || 'No Podcast episode was found.'}</p>
+          <Button asChild><Link to="/podcast">Back to Podcast Dashboard</Link></Button>
         </div>
       </div>
     );
@@ -404,9 +405,9 @@ export default function TalkLive() {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-lg text-center">
           <WifiOff className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-xl font-heading font-bold mb-2">CREAPD Live is available in the owned Preview build</h1>
+          <h1 className="text-xl font-heading font-bold mb-2">Podcast Studio is available in the owned Preview build</h1>
           <p className="text-sm text-muted-foreground mb-5">This execution cockpit intentionally does not fall back to Base44.</p>
-          <Button asChild><Link to="/talk/dashboard">Back to Talk Dashboard</Link></Button>
+          <Button asChild><Link to="/podcast">Back to Podcast Dashboard</Link></Button>
         </div>
       </div>
     );
@@ -418,19 +419,20 @@ export default function TalkLive() {
         <div className="px-4 md:px-6 py-2.5 flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/talk/dashboard"><ArrowLeft className="w-4 h-4 mr-1" /> Talk</Link>
+              <Link to="/podcast"><ArrowLeft className="w-4 h-4 mr-1" /> Podcast</Link>
             </Button>
             <div className="h-6 w-px bg-white/10" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Radio className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">CREAPD Live</span>
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-red-300">Podcast Studio</span>
               </div>
               <h1 className="font-heading font-bold truncate">{config.production_name}</h1>
             </div>
           </div>
 
           <div id="talk-live-header-controls" className="flex flex-wrap items-center justify-end gap-1.5">
+            <FormatSwitcher format="podcast" compact />
             <span className={`text-xs px-2.5 py-1 rounded-full border ${
               isRunning ? 'border-red-500/40 bg-red-500/15 text-red-300' :
               isPaused ? 'border-amber-500/40 bg-amber-500/15 text-amber-300' :

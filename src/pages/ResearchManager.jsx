@@ -559,7 +559,6 @@ export default function ResearchManager() {
                             {generating === point.id
                               ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Generating...</>
                               : <><Sparkles className="w-3 h-3 mr-1" /> Generate Package</>}
-                            }
                           </Button>
                         </>
                       )}

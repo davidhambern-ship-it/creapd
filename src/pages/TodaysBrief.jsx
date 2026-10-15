@@ -17,21 +17,21 @@ import { logActivity } from '@/lib/activityUtils';
 import CreapdLoading from '@/components/shared/CreapdLoading';
 
 const BRIEFING_TYPES = [
-  { value: 'daily', label: 'Daily Briefing', icon: FileText, desc: 'The day\u2019s most important stories' },
-  { value: 'breaking_news', label: 'Breaking News', icon: Zap, desc: 'Real-time developing stories' },
-  { value: 'weekly_planning', label: 'Weekly Planning', icon: CalendarDays, desc: 'Forward-looking upcoming events' },
-  { value: 'custom', label: 'Custom Briefing', icon: Settings, desc: 'Custom criteria and filters' },
+  { value: 'daily', label: 'Episode Brief', icon: FileText, desc: 'The day\u2019s most important stories' },
+  { value: 'breaking_news', label: 'Current Developments', icon: Zap, desc: 'Current information relevant to this episode' },
+  { value: 'weekly_planning', label: 'Episode Planning', icon: CalendarDays, desc: 'Plan material for an upcoming episode' },
+  { value: 'custom', label: 'Custom Research', icon: Settings, desc: 'Custom research criteria and filters' },
 ];
 
 const BRIEF_SECTIONS = [
-  { field: 'monologue', label: 'Opening Monologue (60–90 sec)', icon: Mic, highlight: false },
-  { field: 'poll', label: 'Chat Poll of the Day', icon: MessageSquare, highlight: false },
-  { field: 'graphic_stat', label: 'Graphic-Worthy Statistic', icon: BarChart3, highlight: true },
+  { field: 'monologue', label: 'Opening Monologue / Host Intro', icon: Mic, highlight: false },
+  { field: 'poll', label: 'Audience Poll', icon: MessageSquare, highlight: false },
+  { field: 'graphic_stat', label: 'Supporting Statistic', icon: BarChart3, highlight: true },
   { field: 'broll', label: 'Suggested B-Roll Ideas', icon: Camera, highlight: false },
   { field: 'cta', label: 'Call to Action', icon: Megaphone, highlight: true },
   { field: 'conversation_starters', label: 'Conversation Starters', icon: MessageSquare, highlight: false },
   { field: 'fact_check', label: 'Fact-Check Notes', icon: CheckCircle, highlight: false },
-  { field: 'tomorrow_watch', label: 'Tomorrow Watch', icon: Clock, highlight: false },
+  { field: 'tomorrow_watch', label: 'Follow-Up / Watch List', icon: Clock, highlight: false },
 ];
 
 function StorySection({ icon: Icon, title, children, highlight, defaultOpen = false }) {
@@ -191,7 +191,7 @@ export default function TodaysBrief() {
     await base44.entities.Briefing.update(briefing.id, { approved_sections: JSON.stringify(allApproved) });
 
     // Navigate to production
-    window.location.href = '/news/production';
+    window.location.href = '/podcast/production';
   };
 
   // Copy full brief
@@ -326,7 +326,7 @@ export default function TodaysBrief() {
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-berna-purple/10 to-transparent rounded-full -mr-12 -mt-12" />
         <div className="relative space-y-4">
           <p className="text-[10px] text-berna-purple uppercase tracking-[0.2em] font-semibold">{currentDomain?.display_name || 'Producer Brief'}</p>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">Good Morning, Berna.</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white">Episode Brief</h1>
           <p className="text-sm text-muted-foreground">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
@@ -345,14 +345,14 @@ export default function TodaysBrief() {
               <p className="text-sm text-white font-medium mt-1">{briefing?.estimated_read_time || '12 min'}</p>
             </div>
             <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              <p className="text-[10px] text-muted-foreground uppercase">Stories</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Research Items</p>
               <p className="text-sm text-white font-medium mt-1">{articles.length}</p>
             </div>
           </div>
 
           {briefing?.mission && (
             <div className="p-3 rounded-lg bg-berna-purple/5 border border-berna-purple/10">
-              <p className="text-[10px] text-berna-purple uppercase tracking-wider mb-1">Today's Mission</p>
+              <p className="text-[10px] text-berna-purple uppercase tracking-wider mb-1">Episode Direction</p>
               <p className="text-xs text-white/80">{briefing.mission}</p>
             </div>
           )}
@@ -374,7 +374,7 @@ export default function TodaysBrief() {
 
       {/* Top Story */}
       {otherArticles[0] && (
-        <StorySection icon={TrendingUp} title="Top Story of the Day" defaultOpen>
+        <StorySection icon={TrendingUp} title="Lead Topic" defaultOpen>
           <BriefStoryCard
             article={otherArticles[0]}
             onApprove={handleApproveStory}
@@ -439,9 +439,9 @@ export default function TodaysBrief() {
         <div className="glass-panel p-12 text-center">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-white mb-2">No Brief Yet</h2>
-          <p className="text-sm text-muted-foreground mb-4">The morning brief hasn't been generated yet.</p>
+          <p className="text-sm text-muted-foreground mb-4">This episode brief hasn't been generated yet.</p>
           <Button size="sm" onClick={handleGenerate} disabled={generating} className="bg-berna-purple hover:bg-berna-purple/90 text-white">
-            {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Today's Brief</>}
+            {generating ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating...</> : <><Sparkles className="w-3 h-3 mr-1" />Generate Episode Brief</>}
           </Button>
         </div>
       )}

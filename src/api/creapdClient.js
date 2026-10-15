@@ -1,5 +1,6 @@
 import { appParams } from '@/lib/app-params';
 import { neonAuth, shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { getDirectObsBridge, isDirectObsBridgeSession, sendDirectObsCommand } from '@/lib/obsDirectBridge';
 
 const liveReadCache = new Map();
 const liveReadInFlight = new Map();
@@ -193,9 +194,23 @@ async function request(path, options = {}, authRetry = false) {
       return request(path, options, true);
     }
 
-    const error = new Error(data?.error || `CREAPD API request failed (${response.status})`);
+    const payloadError = data?.error;
+    const payloadMessage =
+      data?.diagnostic?.message ||
+      data?.message ||
+      (typeof payloadError === 'string' ? payloadError : null) ||
+      (payloadError && typeof payloadError === 'object'
+        ? payloadError.message || payloadError.code || null
+        : null) ||
+      `CREAPD API request failed (${response.status})`;
+
+    const error = new Error(String(payloadMessage));
     error.status = response.status;
     error.data = data;
+    error.code =
+      data?.diagnostic?.code ||
+      (typeof payloadError === 'string' ? payloadError : payloadError?.code) ||
+      null;
     throw error;
   }
 
@@ -231,6 +246,7 @@ function normalizePost(path, body = {}) {
       build_research: 'talk_build_research',
       build_production: 'talk_build_production',
       generate_media: 'talk_generate_media',
+      import_episode: 'talk_import_episode',
       set_topic_status: 'talk_set_topic_status',
       create_guest: 'talk_create_guest',
       update_guest: 'talk_update_guest',
@@ -271,6 +287,25 @@ function mutationChangesStaticTalkData(action) {
 
 async function postNormalized(path, body) {
   const normalized = normalizePost(path, body ?? {});
+
+  if (
+    normalized.path === '/production/core'
+    && normalized.body?.action === 'obs_bridge_get'
+    && isDirectObsBridgeSession()
+  ) {
+    return { bridge: getDirectObsBridge() };
+  }
+
+  if (
+    normalized.path === '/production/core'
+    && normalized.body?.action === 'obs_command_enqueue'
+    && isDirectObsBridgeSession()
+  ) {
+    return sendDirectObsCommand(
+      normalized.body?.command_type,
+      normalized.body?.payload || {},
+    );
+  }
   const isBridgeRead = (
     isTalkLivePage()
     && normalized.path === '/production/core'

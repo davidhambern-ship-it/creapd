@@ -11,6 +11,17 @@ import {
 import { useFooterStats } from '@/hooks/useFooterStats';
 
 const VARIANTS = {
+  podcast: {
+    label: 'Podcast Production',
+    stats: [
+      { key: 'automation', icon: Activity, label: 'Prep' },
+      { key: 'sources', icon: Radio, label: 'Sources' },
+      { key: 'approved', icon: CheckCircle, label: 'Approved' },
+      { key: 'topics', icon: Lightbulb, label: 'Topics' },
+      { key: 'rundown', icon: ClipboardList, label: 'Rundown' },
+    ],
+    action: { icon: Zap, label: 'Next Episode Brief', path: '/news/brief' },
+  },
   news: {
     label: 'News Production',
     stats: [

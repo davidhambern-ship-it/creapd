@@ -1,4 +1,4 @@
-// Talk Production Configuration Options
+// Podcast Production Configuration Options (legacy Talk paths remain during migration)
 
 export const SHOW_FORMAT_OPTIONS = [
   'Interview Show', 'Panel Discussion', 'Solo Commentary', 'Debate Format',
@@ -81,14 +81,14 @@ export const RUNTIME_DEFAULTS = {
 };
 
 export const TALK_NAV_ITEMS = [
-  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/talk/dashboard', section: null },
-  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/talk/configure', section: 'Discovery' },
+  { icon: 'LayoutDashboard', label: 'Podcast Dashboard', path: '/talk/dashboard', section: null },
+  { icon: 'Compass', label: 'Discovery — Podcast Setup', path: '/talk/configure', section: 'Discovery' },
   { icon: 'Search', label: 'Knowledge — Research', path: '/talk/research', section: 'Knowledge' },
   { icon: 'Lightbulb', label: 'Blueprint — Topics', path: '/talk/topics', section: 'Blueprint' },
   { icon: 'Users', label: 'Blueprint — Guests', path: '/talk/guests', section: 'Blueprint' },
   { icon: 'Sparkles', label: 'Production — AI Assets', path: '/talk/assets', section: 'Production' },
   { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/talk/rundown', section: 'Assembly' },
-  { icon: 'Mic2', label: 'Live — Studio', path: '/talk/live', section: 'Execution' },
+  { icon: 'Mic2', label: 'Podcast Studio', path: '/talk/live', section: 'Execution' },
   { icon: 'Download', label: 'Assembly — Export', path: '/talk/export', section: 'Delivery' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];

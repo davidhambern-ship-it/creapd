@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { generateStructuredGatewayResponse, configuredProvider } from './aiGateway.js';
 
+const DEFAULT_MUSIC_AUTOMATION = [
+  'Auto Research',
+  'Auto Build Playlist',
+  'Auto Develop',
+  'Auto Assemble Packet',
+];
+
 const PLAYLIST_SCHEMA = {
   type: 'object',
   required: ['playlist'],
@@ -148,6 +155,11 @@ function array(value, fallback = []) {
   return fallback;
 }
 
+function automationPreferences(value) {
+  const parsed = array(value, []);
+  return parsed.length ? parsed : [...DEFAULT_MUSIC_AUTOMATION];
+}
+
 function object(value, fallback = {}) {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
   if (typeof value === 'string' && value.trim()) {
@@ -166,6 +178,68 @@ function num(value, fallback = 0) {
 
 function safeJson(value) {
   return JSON.stringify(value ?? null);
+}
+
+function radioProductionTools(config) {
+  const plan = object(config?.production_plan, {});
+  const tools = object(plan.production_tools, {});
+  const quality = object(tools.quality, {});
+  const scripts = object(tools.scripts, {});
+
+  return {
+    quality: {
+      ground_current_facts: quality.ground_current_facts !== false,
+      avoid_repeated_phrasing: quality.avoid_repeated_phrasing !== false,
+      keep_show_premise: quality.keep_show_premise !== false,
+      require_station_host_name: true,
+      require_station_name: quality.require_station_name !== false,
+    },
+    scripts: {
+      intro: object(scripts.intro, {}),
+      station_id: object(scripts.station_id, {}),
+      topic_segment: object(scripts.topic_segment, {}),
+      talk_break: object(scripts.talk_break, {}),
+      song_copy: object(scripts.song_copy, {}),
+      outro: object(scripts.outro, {}),
+    },
+  };
+}
+
+function producerInstruction(config, key) {
+  const rules = radioProductionTools(config);
+  return text(rules.scripts?.[key]?.instruction).slice(0, 500);
+}
+
+function producerInstructionBlock(config, keys = []) {
+  const labels = {
+    intro: 'show intro',
+    station_id: 'station ID',
+    topic_segment: 'topic segment',
+    talk_break: 'talk break',
+    song_copy: 'song intro/outro copy',
+    outro: 'show outro',
+  };
+  const lines = keys
+    .map(key => {
+      const instruction = producerInstruction(config, key);
+      return instruction ? `- ${labels[key] || key}: ${instruction}` : '';
+    })
+    .filter(Boolean);
+
+  return lines.length ? `\nPRODUCER OVERRIDES:\n${lines.join('\n')}\n` : '';
+}
+
+function stationIdWordRange(config) {
+  const settings = radioProductionTools(config).scripts.station_id;
+  const rawMin = Math.round(num(settings.min_words, 24));
+  const rawMax = Math.round(num(settings.max_words, 38));
+  const min = Math.max(8, Math.min(80, rawMin));
+  const max = Math.max(min + 2, Math.min(100, rawMax));
+  return {
+    min,
+    max,
+    target: Math.round((min + max) / 2),
+  };
 }
 
 function decodeXml(value) {
@@ -268,9 +342,9 @@ async function appendStage(sql, ownerUserId, configurationId, buildLog, stage, s
   return entry;
 }
 
-async function updateBuildFailure(sql, ownerUserId, configurationId, buildLog, error) {
+async function updateBuildFailure(sql, ownerUserId, configurationId, buildLog, error, stage = 'pipeline') {
   const failure = {
-    stage: 'pipeline',
+    stage,
     status: 'failed',
     success: false,
     error: text(error?.message, 'Music build failed').slice(0, 600),
@@ -337,32 +411,1024 @@ function scoreYoutubeMatch(metadata, songTitle, artist, expectedLength = 0) {
   return { score, titleCoverage, artistCoverage };
 }
 
-async function fetchYoutubeDuration(videoId) {
+function parseYoutubeDurationText(value) {
+  const raw = String(value || '').trim();
+  if (!/^\d{1,3}:\d{2}(?::\d{2})?$/.test(raw)) return 0;
+  const parts = raw.split(':').map(Number);
+  if (parts.some(part => !Number.isFinite(part))) return 0;
+  if (parts.length === 2) return (parts[0] * 60) + parts[1];
+  return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+}
+
+function extractBalancedJson(html, marker) {
+  const markerIndex = html.indexOf(marker);
+  if (markerIndex < 0) return null;
+  const start = html.indexOf('{', markerIndex + marker.length);
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < html.length; index += 1) {
+    const char = html[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char === '{') depth += 1;
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(html.slice(start, index + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+function youtubeText(node) {
+  if (!node) return '';
+  if (typeof node.simpleText === 'string') return node.simpleText.trim();
+  if (Array.isArray(node.runs)) return node.runs.map(run => String(run?.text || '')).join('').trim();
+  return '';
+}
+
+function extractYoutubeSearchCandidates(html) {
+  const data =
+    extractBalancedJson(html, 'var ytInitialData =') ||
+    extractBalancedJson(html, 'ytInitialData =') ||
+    extractBalancedJson(html, 'window["ytInitialData"] =') ||
+    extractBalancedJson(html, 'window.ytInitialData =');
+  if (!data) return [];
+
+  const results = [];
+  const seen = new Set();
+  const stack = [data];
+
+  const pushRenderer = renderer => {
+    const videoId =
+      renderer?.videoId ||
+      renderer?.navigationEndpoint?.watchEndpoint?.videoId ||
+      renderer?.endpoint?.watchEndpoint?.videoId ||
+      renderer?.onTap?.innertubeCommand?.watchEndpoint?.videoId ||
+      '';
+    if (!videoId || seen.has(videoId)) return;
+    seen.add(videoId);
+
+    const title =
+      youtubeText(renderer?.title) ||
+      youtubeText(renderer?.headline) ||
+      youtubeText(renderer?.accessibilityText) ||
+      text(renderer?.metadata?.lockupMetadataViewModel?.title?.content);
+    const channelName =
+      youtubeText(renderer?.ownerText) ||
+      youtubeText(renderer?.longBylineText) ||
+      youtubeText(renderer?.shortBylineText) ||
+      text(renderer?.metadata?.lockupMetadataViewModel?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content);
+    const durationText =
+      youtubeText(renderer?.lengthText) ||
+      youtubeText(renderer?.thumbnailOverlays?.find?.(item => item?.thumbnailOverlayTimeStatusRenderer)?.thumbnailOverlayTimeStatusRenderer?.text) ||
+      text(renderer?.contentImage?.thumbnailViewModel?.overlays?.[0]?.thumbnailOverlayBadgeViewModel?.thumbnailBadges?.[0]?.thumbnailBadgeViewModel?.text);
+
+    results.push({
+      video_id: videoId,
+      title,
+      channel_name: channelName,
+      duration_seconds: parseYoutubeDurationText(durationText),
+    });
+  };
+
+  while (stack.length && results.length < 80) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object') continue;
+
+    if (node.videoRenderer) pushRenderer(node.videoRenderer);
+    if (node.gridVideoRenderer) pushRenderer(node.gridVideoRenderer);
+    if (node.playlistVideoRenderer) pushRenderer(node.playlistVideoRenderer);
+    if (node.compactVideoRenderer) pushRenderer(node.compactVideoRenderer);
+    if (node.richItemRenderer?.content?.videoRenderer) pushRenderer(node.richItemRenderer.content.videoRenderer);
+    if (node.lockupViewModel) pushRenderer(node.lockupViewModel);
+
+    if (Array.isArray(node)) {
+      for (let index = node.length - 1; index >= 0; index -= 1) stack.push(node[index]);
+    } else {
+      for (const value of Object.values(node)) stack.push(value);
+    }
+  }
+
+  return results;
+}
+
+function extractYoutubePlaylistIds(html) {
+  const source = String(html || '');
+  const ids = new Set();
+  const patterns = [
+    /[?&]list=([A-Za-z0-9_-]{10,})/g,
+    /"playlistId":"([A-Za-z0-9_-]{10,})"/g,
+    /"browseId":"VL([A-Za-z0-9_-]{10,})"/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const id = match?.[1];
+      if (id) ids.add(id);
+      if (ids.size >= 40) return [...ids];
+    }
+  }
+  return [...ids];
+}
+
+async function fetchYoutubeDiscoveryPage(url) {
   try {
-    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return { ok: false, status: response.status, html: '', videos: [], playlists: [] };
+    const html = await response.text();
+    const videos = [
+      ...extractYoutubeSearchCandidates(html),
+      ...extractYoutubeLooseCandidates(html),
+    ];
+    return {
+      ok: true,
+      status: response.status,
+      html,
+      videos,
+      playlists: extractYoutubePlaylistIds(html),
+    };
+  } catch {
+    return { ok: false, status: 0, html: '', videos: [], playlists: [] };
+  }
+}
+
+function extractYoutubeLooseCandidates(html) {
+  const source = String(html || '');
+  const seen = new Set();
+  const results = [];
+  const patterns = [
+    /"videoId":"([A-Za-z0-9_-]{11})"/g,
+    /"videoId":\s*"([A-Za-z0-9_-]{11})"/g,
+    /watch\?v=([A-Za-z0-9_-]{11})/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const videoId = match?.[1];
+      if (!videoId || seen.has(videoId)) continue;
+      seen.add(videoId);
+      results.push({ video_id: videoId, title: '', channel_name: '', duration_seconds: 0 });
+      if (results.length >= 40) return results;
+    }
+  }
+
+  return results;
+}
+
+function extractYoutubeChannelId(html, channelUrl = '') {
+  const urlMatch = String(channelUrl || '').match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{20,})/i);
+  if (urlMatch?.[1]) return urlMatch[1];
+
+  const source = String(html || '');
+  const patterns = [
+    /<meta[^>]+itemprop=["']channelId["'][^>]+content=["'](UC[A-Za-z0-9_-]{20,})["']/i,
+    /<meta[^>]+content=["'](UC[A-Za-z0-9_-]{20,})["'][^>]+itemprop=["']channelId["']/i,
+    /"channelId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /"externalId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /"browseId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /"browseEndpoint":\{"browseId":"(UC[A-Za-z0-9_-]{20,})"/,
+    /\/channel\/(UC[A-Za-z0-9_-]{20,})/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = source.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return '';
+}
+
+function extractYoutubeChannelContext(html, channelUrl = '') {
+  const source = String(html || '');
+  const initialData =
+    extractBalancedJson(source, 'var ytInitialData =') ||
+    extractBalancedJson(source, 'ytInitialData =') ||
+    extractBalancedJson(source, 'window["ytInitialData"] =') ||
+    extractBalancedJson(source, 'window.ytInitialData =');
+
+  let metadata = null;
+  if (initialData) {
+    const stack = [initialData];
+    while (stack.length && !metadata) {
+      const node = stack.pop();
+      if (!node || typeof node !== 'object') continue;
+      if (node.channelMetadataRenderer) {
+        metadata = node.channelMetadataRenderer;
+        break;
+      }
+      if (Array.isArray(node)) {
+        for (let index = node.length - 1; index >= 0; index -= 1) stack.push(node[index]);
+      } else {
+        for (const value of Object.values(node)) stack.push(value);
+      }
+    }
+  }
+
+  const metaMap = {};
+  for (const tag of source.match(/<meta\b[^>]*>/gi) || []) {
+    const keyMatch = tag.match(/(?:name|property)=["']([^"']+)["']/i);
+    const contentMatch = tag.match(/content=["']([^"']*)["']/i);
+    if (!keyMatch?.[1] || !contentMatch) continue;
+    metaMap[keyMatch[1].toLowerCase()] = decodeYoutubeEntities(contentMatch[1]).trim();
+  }
+
+  let handle = '';
+  try {
+    const parsed = new URL(channelUrl);
+    handle = parsed.pathname
+      .split('/')
+      .filter(Boolean)
+      .find(part => part.startsWith('@')) || '';
+  } catch {}
+
+  const channelName =
+    text(metadata?.title) ||
+    metaMap['og:title'] ||
+    metaMap['twitter:title'] ||
+    '';
+
+  const description = cleanYoutubeDescription(
+    text(metadata?.description) ||
+    metaMap.description ||
+    metaMap['og:description'] ||
+    '',
+  );
+
+  const canonicalMatch =
+    source.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i) ||
+    source.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']canonical["']/i);
+
+  return {
+    channel_name: channelName,
+    channel_id: text(metadata?.externalId) || extractYoutubeChannelId(source, channelUrl) || null,
+    handle: handle || null,
+    description,
+    keywords: text(metadata?.keywords) || null,
+    channel_url: text(metadata?.channelUrl) || text(metadata?.vanityChannelUrl) || canonicalMatch?.[1] || channelUrl || null,
+  };
+}
+
+function youtubeFeedTag(entry, tag) {
+  const escaped = tag.replace(':', '\\:');
+  const match = String(entry || '').match(new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, 'i'));
+  return match?.[1] ? decodeYoutubeEntities(match[1].replace(/<!\[CDATA\[|\]\]>/g, '')).trim() : '';
+}
+
+async function fetchYoutubeChannelFeed(channelId) {
+  if (!channelId) return [];
+  try {
+    const response = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) return [];
+    const xml = await response.text();
+    const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)].map(match => match[1]);
+    return entries.map(entry => {
+      const videoId = youtubeFeedTag(entry, 'yt:videoId');
+      return {
+        video_id: videoId,
+        title: youtubeFeedTag(entry, 'title'),
+        channel_name: youtubeFeedTag(entry, 'name'),
+        duration_seconds: 0,
+        published_at: youtubeFeedTag(entry, 'published'),
+      };
+    }).filter(item => item.video_id);
+  } catch {
+    return [];
+  }
+}
+
+async function resolveYoutubeChannelFeedCandidates(html, normalizedUrl) {
+  const baseUrl = normalizedUrl.replace(/\/videos\/?$/, '');
+  let channelId = extractYoutubeChannelId(html, normalizedUrl);
+
+  if (!channelId) {
+    for (const suffix of ['', '/about', '/featured']) {
+      try {
+        const response = await fetch(`${baseUrl}${suffix}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) continue;
+        const pageHtml = await response.text();
+        channelId = extractYoutubeChannelId(pageHtml, baseUrl);
+        if (channelId) break;
+      } catch {}
+    }
+  }
+
+  let videos = channelId ? await fetchYoutubeChannelFeed(channelId) : [];
+
+  if (channelId) {
+    const uploadsPlaylistId = `UU${channelId.slice(2)}`;
+    try {
+      const response = await fetch(
+        `https://www.youtube.com/playlist?list=${encodeURIComponent(uploadsPlaylistId)}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+      if (response.ok) {
+        const playlistHtml = await response.text();
+        const playlistCandidates = [
+          ...extractYoutubeSearchCandidates(playlistHtml),
+          ...extractYoutubeLooseCandidates(playlistHtml),
+        ];
+        videos = [...videos, ...playlistCandidates];
+      }
+    } catch {}
+  }
+
+  const unique = [];
+  const seen = new Set();
+  for (const item of videos) {
+    if (!item?.video_id || seen.has(item.video_id)) continue;
+    seen.add(item.video_id);
+    unique.push(item);
+  }
+
+  return {
+    channel_id: channelId || null,
+    videos: unique,
+  };
+}
+
+function youtubeChannelHint(channelUrl) {
+  try {
+    const url = new URL(channelUrl);
+    const path = url.pathname.replace(/^\/+|\/+$/g, '');
+    const parts = path.split('/').filter(Boolean);
+    const handle = parts.find(part => part.startsWith('@')) || '';
+    return handle || parts[parts.length - 1] || '';
+  } catch {
+    return '';
+  }
+}
+
+async function searchYoutubeArtistFallback(channelUrl, artistName = '') {
+  const hint = youtubeChannelHint(channelUrl);
+  const queryText = [hint, artistName, 'music'].filter(Boolean).join(' ');
+  if (!queryText) return [];
+
+  try {
+    const response = await fetch(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(queryText)}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(12000),
+      },
+    );
+    if (!response.ok) return [];
+    const html = await response.text();
+    const candidates = [
+      ...extractYoutubeSearchCandidates(html),
+      ...extractYoutubeLooseCandidates(html),
+    ];
+    const unique = [];
+    const seen = new Set();
+    for (const item of candidates) {
+      if (!item?.video_id || seen.has(item.video_id)) continue;
+      seen.add(item.video_id);
+      unique.push(item);
+      if (unique.length >= 36) break;
+    }
+    return unique;
+  } catch {
+    return [];
+  }
+}
+
+function decodeYoutubeEntities(value) {
+  return String(value || '')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, code) => {
+      const parsed = Number(code);
+      return Number.isFinite(parsed) ? String.fromCodePoint(parsed) : _;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+      const parsed = Number.parseInt(code, 16);
+      return Number.isFinite(parsed) ? String.fromCodePoint(parsed) : _;
+    });
+}
+
+function normalizeYoutubeChannelUrl(value) {
+  const raw = text(value);
+  if (!raw) return '';
+  let url;
+  try {
+    url = new URL(raw.startsWith('http') ? raw : `https://www.youtube.com/${raw.replace(/^\/+/, '')}`);
+  } catch {
+    return '';
+  }
+  if (!/(^|\.)youtube\.com$/i.test(url.hostname)) return '';
+  url.hostname = 'www.youtube.com';
+  url.search = '';
+  url.hash = '';
+  url.pathname = url.pathname.replace(/\/+$/, '');
+  if (!url.pathname || url.pathname === '/') return '';
+  if (!url.pathname.endsWith('/videos')) url.pathname = `${url.pathname}/videos`;
+  return url.toString();
+}
+
+function cleanYoutubeDescription(value) {
+  return decodeYoutubeEntities(value)
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
+
+function extractDescriptionLyrics(description) {
+  const source = cleanYoutubeDescription(description);
+  if (!source) return '';
+
+  const explicit = source.match(/(?:^|\n)\s*(?:lyrics?|song lyrics?)\s*[:\-]?\s*\n([\s\S]{80,})/i);
+  if (explicit?.[1]) {
+    return explicit[1]
+      .split(/\n\s*(?:follow|stream|listen|subscribe|social|credits?|produced by|written by|copyright|©|http)/i)[0]
+      .trim()
+      .slice(0, 12000);
+  }
+
+  const lines = source.split('\n').map(line => line.trim()).filter(Boolean);
+  const lyricLike = lines.filter(line =>
+    line.length >= 2 &&
+    line.length <= 140 &&
+    !/^https?:\/\//i.test(line) &&
+    !/^(follow|stream|listen|subscribe|available|produced|written|mixed|mastered|copyright|©|#)/i.test(line)
+  );
+  if (lyricLike.length >= 8 && lyricLike.join(' ').length >= 180) {
+    return lyricLike.join('\n').slice(0, 12000);
+  }
+  return '';
+}
+
+function youtubeCaptionTextFromXml(xml) {
+  return decodeYoutubeEntities(
+    [...String(xml || '').matchAll(/<text[^>]*>([\s\S]*?)<\/text>/gi)]
+      .map(match => match[1].replace(/<[^>]+>/g, ' '))
+      .join(' ')
+  ).replace(/\s+/g, ' ').trim();
+}
+
+async function fetchYoutubeCaptionTranscript(playerResponse) {
+  const tracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!Array.isArray(tracks) || !tracks.length) return '';
+
+  const preferred =
+    tracks.find(track => /^en(?:-|$)/i.test(String(track?.languageCode || ''))) ||
+    tracks[0];
+  const baseUrl = text(preferred?.baseUrl);
+  if (!baseUrl) return '';
+
+  try {
+    const response = await fetch(baseUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) return null;
-    const html = await response.text();
+    if (!response.ok) return '';
+    const transcript = youtubeCaptionTextFromXml(await response.text());
+    return transcript.slice(0, 12000);
+  } catch {
+    return '';
+  }
+}
+
+async function fetchArtistYoutubeVideoDetails(videoId, hint = {}, options = {}) {
+  let html = '';
+  let player = null;
+  let watchStatus = 0;
+  let watchError = '';
+  let oembedStatus = 0;
+  let oembedError = '';
+
+  try {
+    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    watchStatus = response.status;
+    if (response.ok) {
+      html = await response.text();
+      player =
+        extractBalancedJson(html, 'var ytInitialPlayerResponse =') ||
+        extractBalancedJson(html, 'ytInitialPlayerResponse =');
+    }
+  } catch (error) {
+    watchError = String(error?.name || error?.message || 'watch_fetch_failed').slice(0, 80);
+  }
+
+  const details = player?.videoDetails || {};
+  const micro = player?.microformat?.playerMicroformatRenderer || {};
+
+  let fallback = null;
+  if (!text(details.title) || !text(details.author)) {
+    try {
+      const response = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+        { signal: AbortSignal.timeout(9000) },
+      );
+      oembedStatus = response.status;
+      if (response.ok) fallback = await response.json();
+    } catch (error) {
+      oembedError = String(error?.name || error?.message || 'oembed_fetch_failed').slice(0, 80);
+    }
+  }
+
+  const durationFromHtml = (() => {
     const match =
       html.match(/"lengthSeconds":"(\d+)"/) ||
-      html.match(/"approxDurationMs":"(\d+)"/);
-    if (!match) return null;
+      html.match(/"approxDurationMs":"(\d+)"/) ||
+      html.match(/"lengthSeconds":(\d+)/);
+    if (!match) return 0;
     const raw = Number(match[1]);
-    if (!Number.isFinite(raw) || raw <= 0) return null;
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
     return match[0].includes('approxDurationMs') ? Math.round(raw / 1000) : Math.round(raw);
-  } catch {
-    return null;
+  })();
+
+  let durationSeconds = num(details.lengthSeconds, hint.duration_seconds || durationFromHtml || 0);
+  if (!durationSeconds) {
+    durationSeconds = num(await fetchYoutubeDuration(videoId), 0);
   }
+
+  const description = cleanYoutubeDescription(details.shortDescription || '');
+  const descriptionLyrics = extractDescriptionLyrics(description);
+  const captionTranscript = player && !descriptionLyrics
+    ? await fetchYoutubeCaptionTranscript(player)
+    : '';
+
+  const hintedTitle = ['youtube track', 'untitled track'].includes(
+    text(hint.title).toLowerCase()
+  ) ? '' : text(hint.title);
+  const title = text(details.title, fallback?.title || hintedTitle || '');
+  const channelName = text(details.author, fallback?.author_name || hint.channel_name || '');
+
+  const resolutionDiagnostic = {
+    video_id: videoId,
+    watch_status: watchStatus || null,
+    watch_error: watchError || null,
+    html_bytes: html.length,
+    player_found: Boolean(player),
+    video_details_found: Boolean(player?.videoDetails),
+    consent_page: /before you continue|consent\.youtube\.com/i.test(html),
+    bot_challenge: /unusual traffic|captcha|automated queries/i.test(html),
+    oembed_status: oembedStatus || null,
+    oembed_error: oembedError || null,
+    oembed_title_found: Boolean(fallback?.title),
+    hint_title_found: Boolean(hintedTitle),
+    duration_from_html: durationFromHtml || 0,
+    resolved_duration_seconds: durationSeconds || 0,
+    resolved_title_found: Boolean(title),
+    resolved_channel_found: Boolean(channelName),
+  };
+
+  if (!title) {
+    return options.includeDiagnostics
+      ? {
+          video_id: videoId,
+          title: '',
+          channel_name: channelName,
+          duration_seconds: durationSeconds,
+          source_url: `https://www.youtube.com/watch?v=${videoId}`,
+          resolution_diagnostic: resolutionDiagnostic,
+        }
+      : null;
+  }
+
+  return {
+    video_id: videoId,
+    title,
+    channel_name: channelName,
+    channel_id: text(details.channelId),
+    duration_seconds: durationSeconds,
+    description,
+    lyrics: descriptionLyrics || captionTranscript,
+    lyrics_source: descriptionLyrics ? 'youtube_description' : captionTranscript ? 'youtube_captions' : null,
+    published_at: text(micro.publishDate || micro.uploadDate || hint.published_at),
+    thumbnail_url: text(
+      details?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url,
+      fallback?.thumbnail_url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    ),
+    source_url: `https://www.youtube.com/watch?v=${videoId}`,
+    resolution_diagnostic: resolutionDiagnostic,
+  };
+}
+
+function likelyArtistMusicUpload(video = {}) {
+  const title = String(video.title || '').toLowerCase();
+  const duration = num(video.duration_seconds, 0);
+  if (duration > 0 && (duration < 60 || duration > 1200)) return false;
+  if (/\b(shorts?|trailer|teaser|behind the scenes|interview|podcast|reaction|vlog|live stream|livestream)\b/i.test(title)) return false;
+  return true;
+}
+
+export async function scanArtistYoutubeChannel(channelUrl, options = {}) {
+  const normalized = normalizeYoutubeChannelUrl(channelUrl);
+  if (!normalized) {
+    const error = new Error('Enter a valid YouTube channel URL or @handle URL.');
+    error.code = 'ARTIST_YOUTUBE_CHANNEL_INVALID';
+    error.status = 400;
+    throw error;
+  }
+
+  const baseUrl = normalized.replace(/\/videos\/?$/, '');
+  const pageUrls = [
+    baseUrl,
+    `${baseUrl}/releases`,
+    `${baseUrl}/videos`,
+    `${baseUrl}/playlists`,
+  ];
+
+  const pageResults = [];
+  for (const url of pageUrls) {
+    pageResults.push({ url, ...(await fetchYoutubeDiscoveryPage(url)) });
+  }
+
+  const primary = pageResults[0]?.html || pageResults[2]?.html || '';
+  const channelContext = extractYoutubeChannelContext(primary, baseUrl);
+  const feedResult = await resolveYoutubeChannelFeedCandidates(primary, normalized);
+
+  const pageVideos = pageResults.flatMap(result => result.videos || []);
+  const pagePlaylistIds = [...new Set(pageResults.flatMap(result => result.playlists || []))];
+
+  const playlistVideos = [];
+  for (const playlistId of pagePlaylistIds.slice(0, 24)) {
+    const result = await fetchYoutubeDiscoveryPage(
+      `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`,
+    );
+    playlistVideos.push(...(result.videos || []));
+  }
+
+  const searchFallback =
+    pageVideos.length || feedResult.videos.length || playlistVideos.length
+      ? []
+      : await searchYoutubeArtistFallback(
+          normalized,
+          text(options.artist_name || options.public_name),
+        );
+
+  const discovered = [
+    ...pageVideos,
+    ...feedResult.videos,
+    ...playlistVideos,
+    ...searchFallback,
+  ];
+
+  const unique = [];
+  const seen = new Set();
+  for (const item of discovered) {
+    if (!item?.video_id || seen.has(item.video_id)) continue;
+    seen.add(item.video_id);
+    unique.push(item);
+    if (unique.length >= Math.max(1, Math.min(80, num(options.limit, 50)))) break;
+  }
+
+  const diagnostics = {
+    requested_url: channelUrl,
+    normalized_url: baseUrl,
+    channel_id: feedResult.channel_id || null,
+    pages: pageResults.map(result => ({
+      path: result.url.replace(baseUrl, '') || '/',
+      ok: result.ok,
+      status: result.status,
+      video_candidates: result.videos?.length || 0,
+      playlist_candidates: result.playlists?.length || 0,
+    })),
+    feed_candidates: feedResult.videos?.length || 0,
+    release_playlist_candidates: pagePlaylistIds.length,
+    release_playlist_video_candidates: playlistVideos.length,
+    search_candidates: searchFallback.length,
+    raw_intake_sample: unique.slice(0, 15).map(item => ({
+      video_id: item.video_id || null,
+      title: item.title || '',
+      channel_name: item.channel_name || '',
+      duration_seconds: num(item.duration_seconds, 0),
+      published_at: item.published_at || null,
+    })),
+  };
+
+  if (!unique.length) {
+    const error = new Error(
+      'That YouTube URL is valid, but YouTube did not expose any catalogue videos to CREAPD. If this is an Official Artist Channel, the music may live in the auto-generated Releases shelf instead of the channel uploads feed.'
+    );
+    error.code = 'ARTIST_YOUTUBE_CATALOG_NOT_EXPOSED';
+    error.status = 404;
+    error.details = diagnostics;
+    throw error;
+  }
+
+  const details = (await Promise.all(
+    unique.map(item => fetchArtistYoutubeVideoDetails(item.video_id, item))
+  )).filter(Boolean);
+
+  if (!details.length) {
+    const error = new Error(
+      'CREAPD found YouTube catalogue IDs, but YouTube did not return readable metadata for them.'
+    );
+    error.code = 'ARTIST_YOUTUBE_METADATA_UNAVAILABLE';
+    error.status = 502;
+    error.details = diagnostics;
+    throw error;
+  }
+
+  const resolvedById = new Map(details.map(video => [video.video_id, video]));
+  diagnostics.resolved_intake_sample = diagnostics.raw_intake_sample.map(raw => {
+    const resolved = resolvedById.get(raw.video_id) || {};
+    return {
+      video_id: raw.video_id,
+      raw_title: raw.title || '',
+      raw_channel_name: raw.channel_name || '',
+      raw_duration_seconds: num(raw.duration_seconds, 0),
+      resolved_title: resolved.title || '',
+      resolved_channel_name: resolved.channel_name || '',
+      resolved_duration_seconds: num(resolved.duration_seconds, 0),
+      source_url: resolved.source_url || (raw.video_id ? `https://www.youtube.com/watch?v=${raw.video_id}` : null),
+    };
+  });
+
+  return {
+    channel_url: baseUrl,
+    channel_id: feedResult.channel_id,
+    channel_context: {
+      ...channelContext,
+      channel_id: channelContext.channel_id || feedResult.channel_id || null,
+      channel_url: channelContext.channel_url || baseUrl,
+    },
+    discovery_mode:
+      pageResults[1]?.videos?.length || pagePlaylistIds.length
+        ? 'artist_releases'
+        : pageVideos.length
+          ? 'channel_pages'
+          : feedResult.videos.length
+            ? 'youtube_feed'
+            : playlistVideos.length
+              ? 'release_playlists'
+              : 'search_fallback',
+    scanned_count: details.length,
+    diagnostics,
+    videos: details.map(video => ({
+      ...video,
+      likely_music: likelyArtistMusicUpload(video),
+    })),
+  };
+}
+
+function classifyRadioSafeYoutubeSource(metadata = {}) {
+  const title = String(metadata?.title || '').toLowerCase();
+  const channel = String(metadata?.channel_name || '').toLowerCase();
+
+  const blocked = [
+    /\bofficial music video\b/,
+    /\bmusic video\b/,
+    /\bofficial video\b/,
+    /\bofficial mv\b/,
+    /\blive performance\b/,
+    /\blive at\b/,
+    /\blive from\b/,
+    /\blive session\b/,
+    /\bconcert\b/,
+    /\bkaraoke\b/,
+    /\breaction\b/,
+    /\bcover version\b/,
+    /\btrailer\b/,
+    /\bteaser\b/,
+    /\bbehind the scenes\b/,
+    /\bshorts?\b/,
+    /\bsnippet\b/,
+    /\bpreview\b/,
+    /\bclip\b/,
+    /\bdance performance\b/,
+    /\bperformance video\b/,
+  ];
+  if (blocked.some(pattern => pattern.test(title))) return null;
+
+  if (/\blyric(?:s)?\b/.test(title)) return 'lyric_video';
+  if (/\bvisuali[sz]er\b/.test(title)) return 'visualizer';
+  if (/\bofficial audio\b/.test(title) || /\baudio only\b/.test(title) || /\baudio\b/.test(title)) return 'audio_track';
+
+  // YouTube Music/Topic uploads often use only the exact song title with no
+  // "audio" label. Those are continuous full-track sources and are valid for radio.
+  if (/\btopic\b/.test(channel) || /- topic$/.test(channel)) return 'audio_track';
+
+  return null;
+}
+
+function isRadioSafeYoutubeSource(metadata) {
+  return Boolean(classifyRadioSafeYoutubeSource(metadata));
+}
+
+function parseYoutubeDurationFromHtml(html) {
+  const source = String(html || '');
+  const numericMatch =
+    source.match(/"lengthSeconds":"(\d+)"/) ||
+    source.match(/"approxDurationMs":"(\d+)"/) ||
+    source.match(/"lengthSeconds":(\d+)/);
+
+  if (numericMatch) {
+    const raw = Number(numericMatch[1]);
+    if (Number.isFinite(raw) && raw > 0) {
+      return numericMatch[0].includes('approxDurationMs')
+        ? Math.round(raw / 1000)
+        : Math.round(raw);
+    }
+  }
+
+  const isoMatch =
+    source.match(/"duration":"(PT[^"]+)"/i) ||
+    source.match(/itemprop=["']duration["'][^>]+content=["'](PT[^"']+)["']/i) ||
+    source.match(/content=["'](PT[^"']+)["'][^>]+itemprop=["']duration["']/i);
+
+  if (!isoMatch?.[1]) return null;
+
+  const duration = isoMatch[1];
+  const parts = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (!parts) return null;
+
+  const hours = Number(parts[1] || 0);
+  const minutes = Number(parts[2] || 0);
+  const seconds = Number(parts[3] || 0);
+  const total = hours * 3600 + minutes * 60 + seconds;
+  return total > 0 ? total : null;
+}
+
+async function fetchYoutubeDuration(videoId) {
+  const urls = [
+    `https://www.youtube.com/watch?v=${videoId}`,
+    `https://www.youtube.com/embed/${videoId}`,
+    `https://www.youtube-nocookie.com/embed/${videoId}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) continue;
+
+      const duration = parseYoutubeDurationFromHtml(await response.text());
+      if (duration) return duration;
+    } catch {}
+  }
+
+  return null;
 }
 
 function countWords(value) {
   return String(value || '').trim().split(/\s+/).filter(Boolean).length;
 }
 
-function spokenWordRange(seconds, segmentType) {
-  if (segmentType === 'station_id') return { min: 24, target: 30, max: 38 };
+function normalizedIdentity(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scriptSimilarity(a, b) {
+  const left = new Set(normalizedIdentity(a).split(' ').filter(Boolean));
+  const right = new Set(normalizedIdentity(b).split(' ').filter(Boolean));
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  for (const token of left) if (right.has(token)) overlap += 1;
+  return overlap / Math.max(left.size, right.size);
+}
+
+function stationIdIsValid(script, config, previousScript = '', avoidScripts = []) {
+  const copy = text(script);
+  if (!copy) return false;
+
+  const rules = radioProductionTools(config);
+  const normalizedCopy = normalizedIdentity(copy);
+  const hostName = normalizedIdentity(config.host_name);
+  const stationName = normalizedIdentity(config.station_name);
+  const words = stationIdWordRange(config);
+  const wordCount = countWords(copy);
+
+  if (rules.quality.require_station_host_name && hostName && !normalizedCopy.includes(hostName)) return false;
+  if (hostName && /\b(with\s+)?your\s+host\b/i.test(copy)) return false;
+  if (rules.quality.require_station_name && stationName && !normalizedCopy.includes(stationName)) return false;
+  if (wordCount < words.min || wordCount > words.max) return false;
+
+  if (rules.quality.avoid_repeated_phrasing) {
+    const variation = text(rules.scripts.station_id?.variation, 'high').toLowerCase();
+    const similarityLimit = variation === 'low' ? 0.88 : variation === 'medium' ? 0.78 : 0.68;
+    if (previousScript && scriptSimilarity(copy, previousScript) >= similarityLimit) return false;
+    if (avoidScripts.some(existing => scriptSimilarity(copy, existing) >= similarityLimit)) return false;
+  }
+
+  return true;
+}
+
+function fallbackStationId(config, previousScript = '') {
+  const host = text(config.host_name);
+  const station = text(config.station_name);
+  const show = text(config.production_name, 'this show');
+  const identity = [
+    station ? `You're tuned to ${station}.` : '',
+    host ? `${host} is on the mic for ${show}.` : `You're listening to ${show}.`,
+  ].filter(Boolean).join(' ');
+
+  const variants = [
+    `${identity} Keep it right here—more music and more of the show are coming up next.`,
+    `${identity} Stay locked in; the next stretch of music is lined up and ready to go.`,
+    `${identity} Don't touch that dial. We're keeping the music moving and the show rolling.`,
+    `${identity} You're in the right place. More music is on deck, so keep it right here.`,
+  ];
+
+  const hash = [...String(previousScript || show)].reduce((sum, ch) => ((sum * 31) + ch.charCodeAt(0)) >>> 0, 7);
+  return variants[hash % variants.length];
+}
+
+async function generateStationIdReplacement({ config, previousScript = '', avoidScripts = [] }) {
+  const rules = radioProductionTools(config);
+  const words = stationIdWordRange(config);
+  const customInstruction = producerInstruction(config, 'station_id');
+  const prompt = `Write ONE fresh radio Station ID.
+
+SHOW IDENTITY
+Show title: ${config.production_name}
+Station: ${config.station_name || 'Not supplied'}
+Host name: ${config.host_name || 'Not supplied'}
+Co-host: ${config.co_host_name || 'None'}
+Tone: ${config.show_tone || 'Professional'}
+
+HARD RULES
+- If a host name is supplied, you MUST say the exact host name "${config.host_name}" in the Station ID.
+- NEVER substitute phrases such as "your host", "with your host", "our host", or "the host" for the configured host name.
+- Keep it to ${words.min}-${words.max} spoken words.
+- Make it sound like a real radio liner/ID, not an explanation.
+- Do not invent slogans, frequencies, cities, call letters, sponsors, awards, or facts that were not configured.
+- Make the wording materially different from the rejected/current version: change the opening, sentence structure, and closing.
+${rules.quality.require_station_name && config.station_name ? `- The station name "${config.station_name}" is required.` : '- Station name mention is optional for this show.'}
+${customInstruction ? `- Producer instruction: ${customInstruction}` : ''}
+
+REJECTED/CURRENT VERSION TO AVOID:
+${previousScript || '(none)'}
+
+OTHER STATION IDS IN THIS SHOW TO AVOID COPYING:
+${avoidScripts.length ? avoidScripts.join('\n---\n') : '(none)'}
+
+Return one repair with order=1 and script_content containing only the new Station ID.`;
+
+  try {
+    const result = await structured(prompt, SCRIPT_REPAIR_SCHEMA, 'creapd_music_station_id_replacement_v2', 1200);
+    const candidate = text(array(result?.data?.repairs, [])[0]?.script_content);
+    if (stationIdIsValid(candidate, config, previousScript, avoidScripts)) return candidate;
+  } catch {}
+
+  return fallbackStationId(config, previousScript);
+}
+
+function spokenWordRange(seconds, segmentType, config = null) {
+  if (segmentType === 'station_id') return config ? stationIdWordRange(config) : { min: 24, target: 30, max: 38 };
   const safeSeconds = Math.max(10, num(seconds, 60));
   // Native speech runs at ~0.95 rate. 140-150 WPM keeps generated copy close
   // to the configured segment runtime instead of ending minutes early.
@@ -374,7 +1440,7 @@ function spokenWordRange(seconds, segmentType) {
   };
 }
 
-async function validateYoutubeVideo(videoId) {
+async function validateYoutubeVideo(videoId, hint = null) {
   if (!videoId) return null;
   try {
     const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, {
@@ -382,41 +1448,74 @@ async function validateYoutubeVideo(videoId) {
     });
     if (!response.ok) return null;
     const payload = await response.json();
-    const durationSeconds = await fetchYoutubeDuration(videoId);
+    const hintedDuration = num(hint?.duration_seconds, 0);
+    const durationSeconds = hintedDuration > 0 ? hintedDuration : await fetchYoutubeDuration(videoId);
     return {
       video_id: videoId,
-      title: text(payload?.title),
+      title: text(payload?.title, hint?.title || ''),
       thumbnail_url: text(payload?.thumbnail_url, `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`),
-      channel_name: text(payload?.author_name),
+      channel_name: text(payload?.author_name, hint?.channel_name || ''),
       duration_seconds: durationSeconds,
+      source_type: classifyRadioSafeYoutubeSource({
+        title: text(payload?.title, hint?.title || ''),
+        channel_name: text(payload?.author_name, hint?.channel_name || ''),
+      }) || 'youtube_video',
     };
   } catch {
     return null;
   }
 }
 
-async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0) {
+async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expectedLength = 0, options = {}) {
   try {
-    const query = encodeURIComponent(`${songTitle} ${artist} official audio official music video`);
-    const response = await fetch(`https://www.youtube.com/results?search_query=${query}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!response.ok) return null;
-    const html = await response.text();
-    const ids = [];
-    const regex = /"videoId":"([A-Za-z0-9_-]{11})"/g;
-    let match;
-    while ((match = regex.exec(html)) !== null && ids.length < 10) {
-      if (!ids.includes(match[1]) && !usedIds.has(match[1])) ids.push(match[1]);
+    const requireRadioSafe = options.requireRadioSafe !== false;
+    const queries = requireRadioSafe
+      ? [
+          `"${songTitle}" "${artist}" official audio`,
+          `"${songTitle}" "${artist}" visualizer`,
+          `"${songTitle}" "${artist}" lyrics`,
+          `${artist} ${songTitle} audio`,
+        ]
+      : [
+          `"${songTitle}" "${artist}" official music video`,
+          `"${songTitle}" "${artist}" official video`,
+          `${artist} ${songTitle} music video`,
+        ];
+
+    const candidateMap = new Map();
+    for (const queryText of queries) {
+      const query = encodeURIComponent(queryText);
+      const response = await fetch(`https://www.youtube.com/results?search_query=${query}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!response.ok) continue;
+      const html = await response.text();
+      for (const candidate of extractYoutubeSearchCandidates(html)) {
+        if (usedIds.has(candidate.video_id) || candidateMap.has(candidate.video_id)) continue;
+        candidateMap.set(candidate.video_id, candidate);
+      }
+      const usableCount = [...candidateMap.values()].filter(candidate => !requireRadioSafe || isRadioSafeYoutubeSource(candidate)).length;
+      if (usableCount >= 6) break;
     }
 
-    const metadata = (await Promise.all(ids.slice(0, 8).map(validateYoutubeVideo))).filter(Boolean);
+    const candidates = [...candidateMap.values()]
+      .filter(candidate => !requireRadioSafe || isRadioSafeYoutubeSource(candidate))
+      .slice(0, 12);
+
+    const metadata = (await Promise.all(
+      candidates.map(candidate => validateYoutubeVideo(candidate.video_id, candidate))
+    )).filter(Boolean);
+
     const ranked = metadata
+      .filter(meta => !requireRadioSafe || isRadioSafeYoutubeSource(meta))
       .map(meta => ({ meta, ...scoreYoutubeMatch(meta, songTitle, artist, expectedLength) }))
       .filter(({ meta, titleCoverage, artistCoverage }) => {
         const duration = num(meta.duration_seconds, 0);
-        const durationLooksLikeSong = !duration || (duration >= 75 && duration <= 900);
+        const durationLooksLikeSong = duration >= 75 && duration <= 900;
         return durationLooksLikeSong && titleCoverage >= 0.67 && artistCoverage >= 0.5;
       })
       .sort((a, b) => b.score - a.score);
@@ -426,7 +1525,7 @@ async function searchYoutubeVideo(songTitle, artist, usedIds = new Set(), expect
   return null;
 }
 
-export async function fetchYoutubeMetadata(url) {
+export async function fetchYoutubeMetadata(url, options = {}) {
   const videoId = extractVideoId(url);
   if (!videoId) {
     const error = new Error('Could not extract a valid YouTube video ID from the provided URL');
@@ -441,7 +1540,172 @@ export async function fetchYoutubeMetadata(url) {
     error.status = 404;
     throw error;
   }
+
+  if (options.requireRadioSafe === true) {
+    const duration = num(metadata.duration_seconds, 0);
+    if (!isRadioSafeYoutubeSource(metadata)) {
+      const error = new Error('Radio playlists accept lyric videos, visualizers, and continuous audio tracks only.');
+      error.code = 'RADIO_SAFE_YOUTUBE_SOURCE_REQUIRED';
+      error.status = 400;
+      throw error;
+    }
+    if (duration < 75 || duration > 900) {
+      const error = new Error('Could not verify a full-song duration for this Radio track.');
+      error.code = 'RADIO_SAFE_DURATION_REQUIRED';
+      error.status = 400;
+      throw error;
+    }
+  }
+
   return metadata;
+}
+
+
+export async function refreshMusicPlaylistYoutubeMetadata({ sql, ownerUserId, configurationId }) {
+  const ownerId = String(ownerUserId);
+  const configId = text(configurationId);
+  if (!configId) throw new Error('configuration_id_required');
+
+  const [config] = await sql`
+    SELECT * FROM creapd.music_production_configurations
+    WHERE id=${configId} AND owner_user_id=${ownerId}
+    LIMIT 1
+  `;
+  if (!config) throw new Error('Music configuration not found');
+
+  const playlist = await sql`
+    SELECT * FROM creapd.music_playlist_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  const resolutions = await Promise.all(playlist.map(async song => {
+    let metadata = null;
+
+    if (song.youtube_video_id) {
+      const current = await validateYoutubeVideo(song.youtube_video_id);
+      const currentDuration = num(current?.duration_seconds, 0);
+      if (
+        current &&
+        isRadioSafeYoutubeSource(current) &&
+        currentDuration >= 75 &&
+        currentDuration <= 900
+      ) {
+        metadata = current;
+      }
+    }
+
+    if (!metadata) {
+      metadata = await searchYoutubeVideo(
+        text(song.song_title),
+        text(song.artist),
+        new Set(),
+        num(song.length_seconds, 0) > 75 ? num(song.length_seconds, 0) : 0,
+      );
+    }
+
+    return { song, metadata };
+  }));
+
+  const updated = [];
+  const unresolved = [];
+  const usedIds = new Set();
+
+  for (const { song, metadata } of resolutions) {
+    const duration = num(metadata?.duration_seconds, 0);
+    if (
+      !metadata ||
+      usedIds.has(metadata.video_id) ||
+      !isRadioSafeYoutubeSource(metadata) ||
+      duration < 75 ||
+      duration > 900
+    ) {
+      unresolved.push({
+        id: song.id,
+        song_title: song.song_title,
+        artist: song.artist,
+      });
+      continue;
+    }
+
+    usedIds.add(metadata.video_id);
+    const sourcePayload = {
+      ...(song.source_payload && typeof song.source_payload === 'object' ? song.source_payload : {}),
+      youtube_title: metadata.title,
+      youtube_duration_seconds: duration,
+      youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
+      requested_title: song.song_title,
+      requested_artist: song.artist,
+      refreshed_at: new Date().toISOString(),
+    };
+
+    const [row] = await sql`
+      UPDATE creapd.music_playlist_items
+      SET
+        length_seconds=${duration},
+        youtube_video_id=${metadata.video_id},
+        thumbnail_url=${metadata.thumbnail_url},
+        channel_name=${metadata.channel_name},
+        source='youtube_radio_verified',
+        source_payload=${safeJson(sourcePayload)}::jsonb,
+        updated_at=now()
+      WHERE id=${song.id} AND owner_user_id=${ownerId}
+      RETURNING *
+    `;
+    if (row) updated.push(row);
+  }
+
+  const refreshedPlaylist = await sql`
+    SELECT * FROM creapd.music_playlist_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  const byId = new Map(refreshedPlaylist.map(song => [song.id, song]));
+  const byTitle = new Map(
+    refreshedPlaylist.map(song => [text(song.song_title).toLowerCase(), song])
+  );
+
+  const rundown = await sql`
+    SELECT * FROM creapd.music_rundown_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  let cursor = parseTimeToSeconds(config.show_start_time || '00:00');
+  for (const item of rundown) {
+    let duration = Math.max(0, num(item.duration_seconds, 0));
+
+    if (item.segment_type === 'song') {
+      const matched =
+        (item.associated_song_id ? byId.get(item.associated_song_id) : null) ||
+        byTitle.get(text(item.associated_song_title || item.title).toLowerCase());
+
+      if (matched?.length_seconds) {
+        duration = num(matched.length_seconds, duration);
+      }
+    }
+
+    const startTime = formatSecondsToTime(cursor);
+    cursor += duration;
+    const endTime = formatSecondsToTime(cursor);
+
+    await sql`
+      UPDATE creapd.music_rundown_items
+      SET
+        start_time=${startTime},
+        duration_seconds=${duration},
+        end_time=${endTime},
+        updated_at=now()
+      WHERE id=${item.id} AND owner_user_id=${ownerId}
+    `;
+  }
+
+  return {
+    updated_count: updated.length,
+    unresolved,
+    playlist: refreshedPlaylist,
+  };
 }
 
 async function fetchMusicNews(config) {
@@ -469,6 +1733,407 @@ async function fetchMusicNews(config) {
     console.warn('[MUSIC ENGINE] RSS research unavailable', error?.message);
     return [];
   }
+}
+
+function artistShowMetadata(config) {
+  const payload = object(config?.source_payload, {});
+  const showMode = String(payload.show_mode || '').toLowerCase();
+  return {
+    enabled: showMode === 'catalog' || showMode === 'artist',
+    catalog_only: payload.catalog_only === true || showMode === 'catalog' || showMode === 'artist',
+    artist_profile_id: text(payload.artist_profile_id),
+  };
+}
+
+async function buildArtistPlaylist({ sql, ownerUserId, config, targetCount }) {
+  const ownerId = String(ownerUserId);
+  const artistMeta = artistShowMetadata(config);
+  if (!artistMeta.enabled || !artistMeta.artist_profile_id) return [];
+
+  const catalog = await sql`
+    SELECT *
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${artistMeta.artist_profile_id}
+      AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
+
+  if (!catalog.length) {
+    const error = new Error('Catalogue-only Radio cannot build without at least one catalogue track');
+    error.code = 'CATALOG_ONLY_TRACK_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const rows = [];
+  const metadataFailures = [];
+  const selectedCatalog = catalog.slice(0, Math.max(1, Math.min(catalog.length, Number(targetCount) || 10)));
+  for (let index = 0; index < selectedCatalog.length; index += 1) {
+    let track = selectedCatalog[index];
+    let metadata = object(track.metadata, {});
+    const youtubeVideoId = extractVideoId(track.source_url);
+
+    let verified = null;
+
+    if (youtubeVideoId) {
+      verified = await fetchArtistYoutubeVideoDetails(
+        youtubeVideoId,
+        {
+          title: track.title,
+          channel_name: track.artist,
+          duration_seconds: metadata.duration_seconds,
+          published_at: metadata.published_at,
+        },
+        { includeDiagnostics: true },
+      );
+
+      if (verified?.title) {
+        const resolvedMetadata = {
+          ...metadata,
+          youtube_video_id: youtubeVideoId,
+          youtube_channel_name: verified.channel_name || metadata.youtube_channel_name || null,
+          duration_seconds: num(verified.duration_seconds, metadata.duration_seconds || 0) || null,
+          published_at: verified.published_at || metadata.published_at || null,
+        };
+        const [updatedTrack] = await sql`
+          UPDATE creapd.artist_catalog_tracks
+          SET
+            title=${text(verified.title, track.title || 'YouTube Track')},
+            artist=${text(verified.channel_name, track.artist || config.host_name || 'Artist')},
+            artwork_url=${text(verified.thumbnail_url, track.artwork_url || '') || null},
+            metadata=${safeJson(resolvedMetadata)}::jsonb,
+            updated_at=now()
+          WHERE id=${track.id} AND owner_user_id=${ownerId}
+          RETURNING *
+        `;
+        if (updatedTrack) {
+          track = updatedTrack;
+          metadata = object(track.metadata, {});
+        }
+      }
+    }
+
+    const finalTitle = text(track.title);
+    const finalDuration = num(metadata.duration_seconds, 0);
+
+    if (youtubeVideoId && (
+      !finalTitle ||
+      ['youtube track', 'untitled track'].includes(finalTitle.toLowerCase()) ||
+      finalDuration <= 0
+    )) {
+      metadataFailures.push({
+        track_id: track.id,
+        source_url: track.source_url || null,
+        video_id: youtubeVideoId,
+        diagnostic: verified?.resolution_diagnostic || null,
+      });
+      console.warn('[MUSIC ENGINE] Skipping unresolved catalog YouTube track', track.id, track.source_url, verified?.resolution_diagnostic || null);
+      continue;
+    }
+
+    const duration = track.audio_url
+      ? Math.max(30, num(metadata.duration_seconds, 180))
+      : Math.max(1, finalDuration);
+    const source = track.audio_url
+      ? 'artist_catalog_upload'
+      : youtubeVideoId
+        ? 'artist_catalog_youtube'
+        : 'artist_catalog_link';
+
+    const [row] = await sql`
+      INSERT INTO creapd.music_playlist_items (
+        id, configuration_id, owner_user_id, order_index, song_title, artist,
+        length_seconds, genre, mood, era_year, album, release_year,
+        reason_selected, status, source, youtube_video_id, thumbnail_url,
+        channel_name, source_payload
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId}, ${rows.length},
+        ${text(track.title, `Artist Track ${index + 1}`)},
+        ${text(track.artist, config.host_name || 'Artist')},
+        ${duration}, ${text(metadata.genre) || null}, ${text(metadata.mood) || null},
+        ${text(track.release_year) || null}, ${text(track.album) || null},
+        ${text(track.release_year) || null},
+        'Artist-supplied catalogue track', 'suggested', ${source},
+        ${youtubeVideoId || null}, ${text(track.artwork_url) || null},
+        ${text(metadata.youtube_channel_name, track.artist || config.host_name || 'Artist')},
+        ${safeJson({
+          catalog_only: true,
+          catalog_track_id: track.id,
+          audio_url: track.audio_url || null,
+          source_url: track.source_url || null,
+          description: track.description || null,
+          lyrics: track.lyrics || null,
+          source_type: track.source_type || 'manual',
+          artist_profile_id: artistMeta.artist_profile_id,
+          youtube_channel_name: metadata.youtube_channel_name || null,
+          youtube_duration_seconds: finalDuration || null,
+        })}::jsonb
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  if (!rows.length) {
+    const diagnosticText = metadataFailures.slice(0, 3).map(item => {
+      const d = item.diagnostic || {};
+      return [
+        item.video_id || 'no-id',
+        `watch=${d.watch_status ?? 'ERR'}`,
+        `html=${d.html_bytes ?? 0}`,
+        `player=${d.player_found ? 'yes' : 'no'}`,
+        `consent=${d.consent_page ? 'yes' : 'no'}`,
+        `bot=${d.bot_challenge ? 'yes' : 'no'}`,
+        `oembed=${d.oembed_status ?? 'ERR'}`,
+        `oembedTitle=${d.oembed_title_found ? 'yes' : 'no'}`,
+        `duration=${d.resolved_duration_seconds ?? 0}`,
+      ].join(' ');
+    }).join(' | ');
+
+    const error = new Error(
+      `CREAPD could not resolve title and duration for any selected catalogue YouTube tracks.${diagnosticText ? ` YouTube diagnostics: ${diagnosticText}` : ''}`
+    );
+    error.code = 'CATALOG_YOUTUBE_METADATA_REQUIRED';
+    error.status = 409;
+    error.details = metadataFailures.slice(0, 5);
+    throw error;
+  }
+
+  return rows;
+}
+
+async function buildArtistResearch({ sql, ownerUserId, config, playlist = [] }) {
+  const ownerId = String(ownerUserId);
+  const artistMeta = artistShowMetadata(config);
+  if (!artistMeta.enabled || !artistMeta.artist_profile_id) return [];
+
+  const [profile] = await sql`
+    SELECT *
+    FROM creapd.artist_profiles
+    WHERE id=${artistMeta.artist_profile_id} AND owner_user_id=${ownerId}
+    LIMIT 1
+  `;
+
+  const catalog = await sql`
+    SELECT *
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${artistMeta.artist_profile_id} AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
+
+  const catalogById = new Map(catalog.map(track => [String(track.id), track]));
+  const selectedCatalog = [];
+  const selectedIds = new Set();
+
+  for (const item of playlist || []) {
+    const payload = object(item?.source_payload, {});
+    const trackId = text(payload.catalog_track_id);
+    const track = trackId ? catalogById.get(trackId) : null;
+    if (track && !selectedIds.has(String(track.id))) {
+      selectedIds.add(String(track.id));
+      selectedCatalog.push(track);
+    }
+  }
+
+  if (!selectedCatalog.length) {
+    selectedCatalog.push(...catalog.slice(0, 30));
+  }
+
+  const knowledge = object(profile?.knowledge, {});
+  let channel = object(knowledge.youtube_channel, {});
+
+  if (!text(channel.description) || !text(channel.channel_name)) {
+    const sourceLinks = array(profile?.source_links, []);
+    const youtubeSource = sourceLinks
+      .map(item => typeof item === 'string' ? item : item?.url)
+      .map(value => text(value))
+      .find(value => /(?:^|\.)youtube\.com\//i.test(value) || /youtu\.be\//i.test(value));
+
+    if (youtubeSource) {
+      const normalized = normalizeYoutubeChannelUrl(youtubeSource);
+      const baseUrl = normalized ? normalized.replace(/\/videos\/?$/, '') : '';
+      if (baseUrl) {
+        const page = await fetchYoutubeDiscoveryPage(baseUrl);
+        if (page?.html) {
+          const fetchedChannel = extractYoutubeChannelContext(page.html, baseUrl);
+          channel = {
+            ...channel,
+            ...Object.fromEntries(
+              Object.entries(fetchedChannel).filter(([, value]) => value !== null && value !== undefined && value !== '')
+            ),
+          };
+          await sql`
+            UPDATE creapd.artist_profiles
+            SET knowledge=${safeJson({
+              ...knowledge,
+              youtube_channel: {
+                ...channel,
+                scanned_at: new Date().toISOString(),
+              },
+            })}::jsonb,
+            updated_at=now()
+            WHERE id=${profile.id} AND owner_user_id=${ownerId}
+          `;
+        }
+      }
+    }
+  }
+
+  const youtubeArtistNames = [
+    text(channel.channel_name),
+    ...selectedCatalog.map(track => text(object(track.metadata, {}).youtube_channel_name)),
+    ...playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)),
+    ...playlist.map(item => text(item.channel_name)),
+  ].filter(Boolean);
+
+  const fallbackArtistNames = [
+    ...selectedCatalog.map(track => text(track.artist)),
+    ...playlist.map(item => text(item.artist)),
+    text(profile?.public_name),
+    text(profile?.artist_name),
+  ].filter(Boolean);
+
+  const mostCommon = values => {
+    const counts = new Map();
+    for (const value of values) {
+      const key = value.toLowerCase();
+      const current = counts.get(key) || { value, count: 0 };
+      current.count += 1;
+      counts.set(key, current);
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count)[0]?.value || '';
+  };
+
+  const artistName =
+    mostCommon(youtubeArtistNames) ||
+    mostCommon(fallbackArtistNames) ||
+    'Artist';
+
+  const rows = [];
+  const today = new Date().toISOString().slice(0, 10);
+
+  const channelSummary = [
+    `Artist: ${artistName}`,
+    channel.channel_name ? `YouTube channel: ${channel.channel_name}` : '',
+    channel.handle ? `Handle: ${channel.handle}` : '',
+    channel.description ? `Channel description: ${channel.description}` : '',
+    profile?.bio_summary ? `Artist-approved background: ${profile.bio_summary}` : '',
+    profile?.artistic_message ? `Artist message: ${profile.artistic_message}` : '',
+  ].filter(Boolean).join('\n');
+
+  if (channelSummary) {
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} — Artist & YouTube Channel Context`},
+        'Selected YouTube channel + artist profile', 'artist_channel',
+        ${channelSummary},
+        ${channel.channel_url || null},
+        ${`This show is an artist-focused special about ${artistName}. Use this as the identity anchor for intros, talk breaks, topics, and the outro. Do not drift into unrelated generic music news.`},
+        ${today}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  const channelLibrary = array(knowledge.youtube_channel_library, []);
+  if (channelLibrary.length) {
+    const librarySummary = channelLibrary.slice(0, 30).map((video, index) => [
+      `${index + 1}. ${text(video.title, 'Untitled video')}`,
+      video.published_at ? `uploaded ${video.published_at}` : '',
+      video.likely_music === true ? 'music upload' : 'channel upload',
+      video.description ? `description: ${String(video.description).slice(0, 500)}` : '',
+    ].filter(Boolean).join(' | ')).join('\n');
+
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} — YouTube Channel Snapshot`},
+        'Selected YouTube channel scan', 'artist_channel_library',
+        ${librarySummary},
+        ${channel.channel_url || null},
+        ${`Use the channel's actual upload history to understand what ${artistName} is putting out and how the selected songs fit the wider channel. Do not invent facts beyond titles, dates, and supplied descriptions.`},
+        ${today}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  const catalogueMap = selectedCatalog.map((track, index) => {
+    const metadata = object(track.metadata, {});
+    return [
+      `${index + 1}. ${track.title} — ${text(track.artist, artistName)}`,
+      metadata.published_at ? `published ${metadata.published_at}` : '',
+      metadata.youtube_channel_name ? `channel ${metadata.youtube_channel_name}` : '',
+    ].filter(Boolean).join(' | ');
+  }).join('\n');
+
+  if (catalogueMap) {
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} — Selected Show Catalogue`},
+        'Selected playlist from artist YouTube catalogue', 'artist_catalog_map',
+        ${catalogueMap},
+        ${channel.channel_url || null},
+        'Use the actual selected songs as the spine of the show. Spoken segments should connect back to these exact tracks, their release order, titles, descriptions, and supported lyrical material.',
+        ${today}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  for (const track of selectedCatalog.slice(0, 30)) {
+    const metadata = object(track.metadata, {});
+    const publishedAt = text(metadata.published_at);
+    const channelName = text(metadata.youtube_channel_name, channel.channel_name || artistName);
+    const evidence = [
+      `Artist: ${text(track.artist, artistName)}`,
+      `Track: ${track.title}`,
+      channelName ? `YouTube channel: ${channelName}` : '',
+      publishedAt ? `Published/uploaded: ${publishedAt}` : '',
+      track.album ? `Album/project: ${track.album}` : '',
+      track.release_year ? `Release year: ${track.release_year}` : '',
+      track.description ? `YouTube/artist description:\n${String(track.description).slice(0, 2400)}` : '',
+      track.lyrics ? `Lyrics/captions excerpt:\n${String(track.lyrics).slice(0, 2600)}` : '',
+    ].filter(Boolean).join('\n');
+
+    const parsedDate = publishedAt ? new Date(publishedAt) : null;
+    const researchDate = parsedDate && !Number.isNaN(parsedDate.valueOf())
+      ? parsedDate.toISOString().slice(0, 10)
+      : today;
+
+    const [row] = await sql`
+      INSERT INTO creapd.music_research_items (
+        id, configuration_id, owner_user_id, title, source, category, summary,
+        url, suggested_angle, research_date, relevance
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${ownerId},
+        ${`${artistName} Track: ${track.title}`},
+        'Selected artist YouTube catalogue', 'artist_track',
+        ${evidence},
+        ${track.source_url || track.audio_url || null},
+        ${`Build host copy around this exact ${artistName} track. You may discuss only observable/supplied evidence. If the song's meaning is not explicitly explained, frame interpretations as observations or questions, never as artist-stated fact.`},
+        ${researchDate}, 'high'
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  return rows;
 }
 
 async function buildPlaylist({ sql, ownerUserId, config, targetCount }) {
@@ -530,7 +2195,8 @@ Return exactly ${candidateCount} candidates so CREAPD has enough verified option
   for (const { song, metadata } of resolved) {
     if (!metadata || usedIds.has(metadata.video_id)) continue;
     usedIds.add(metadata.video_id);
-    const actualDuration = Math.max(60, num(metadata.duration_seconds, num(song.length_seconds, 180)));
+    const actualDuration = num(metadata.duration_seconds, 0);
+    if (actualDuration < 75) continue;
     selected.push({ song, metadata, actualDuration });
     selectedRuntime += actualDuration;
 
@@ -559,11 +2225,12 @@ Return exactly ${candidateCount} candidates so CREAPD has enough verified option
         ${text(song.song_title, metadata.title || 'Unknown')}, ${text(song.artist, metadata.channel_name || 'Unknown')},
         ${actualDuration}, ${text(song.genre) || null}, ${text(song.mood) || null},
         ${text(song.era_year) || null}, ${text(song.reason_selected) || null},
-        'suggested', 'youtube_verified',
+        'suggested', 'youtube_radio_verified',
         ${metadata.video_id}, ${metadata.thumbnail_url}, ${metadata.channel_name},
         ${safeJson({
           youtube_title: metadata.title,
           youtube_duration_seconds: metadata.duration_seconds,
+          youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
           requested_title: text(song.song_title),
           requested_artist: text(song.artist),
         })}::jsonb
@@ -625,6 +2292,75 @@ For each selected item, return its 1-based source_index, a short category, a fac
   return inserted;
 }
 
+async function buildArtistTopics({ sql, ownerUserId, config, research, playlist = [] }) {
+  const artistName =
+    playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.artist)).find(Boolean) ||
+    'the artist';
+  const playlistText = playlist
+    .slice(0, 20)
+    .map((item, index) => `${index + 1}. ${item.song_title} — ${item.artist || artistName}`)
+    .join('\n');
+  const researchText = research
+    .slice(0, 30)
+    .map((item, index) => `${index + 1}. [${item.category || 'artist_source'}] ${item.title}\n${item.summary}`)
+    .join('\n\n');
+
+  const prompt = `You are the editorial producer for a SINGLE-ARTIST radio special built from one selected YouTube channel and its selected songs.
+
+ARTIST: ${artistName}
+SHOW: ${config.production_name}
+SHOW PREMISE: ${config.show_description || `A focused show about ${artistName} and the music on the selected YouTube channel.`}
+TONE: ${config.show_tone || 'Professional'}
+
+SELECTED PLAYLIST:
+${playlistText || 'No playlist titles supplied.'}
+
+ARTIST/CHANNEL EVIDENCE:
+${researchText || 'No artist evidence supplied.'}
+
+Create 5-8 discussion topics for the spoken portions of this show.
+
+HARD EDITORIAL RULES:
+- EVERY topic must center on ${artistName}, this selected YouTube channel, or one/more exact songs in the playlist.
+- Do NOT create generic music-news, chart, celebrity, genre-history, or unrelated-artist topics.
+- Use the selected songs as the spine of the show: song themes, titles, descriptions, lyrics/captions, release/upload sequence, recurring ideas, contrasts between tracks, artistic presentation, and channel identity.
+- At least half of the topics must name one or more exact playlist songs.
+- Include one topic that establishes who ${artistName} is based ONLY on the supplied artist/channel evidence.
+- Include one topic that looks across multiple selected songs and identifies a supported pattern, contrast, evolution, or recurring idea.
+- If lyrics/description do NOT establish what a song means, do not claim the artist's intent. Phrase interpretation as an observation, reading, question, or possible theme.
+- Do not invent biography, awards, chart positions, collaborators, release facts, quotes, or motivations.
+- Talking points must be specific enough that a host can naturally transition into or out of the relevant playlist songs.
+- In sources, reference the supplied ARTIST/CHANNEL EVIDENCE item titles, not invented URLs.
+
+Return 5-8 strong topics with concise summaries, newline-separated talking points, source labels, and useful placement suggestions.`;
+
+  const result = await structured(prompt, TOPICS_SCHEMA, 'creapd_artist_channel_topics_v1', 6000);
+  const topics = array(result?.data?.topics, []).slice(0, 8);
+  const rows = [];
+
+  for (let index = 0; index < topics.length; index += 1) {
+    const topic = topics[index];
+    const [row] = await sql`
+      INSERT INTO creapd.music_topics (
+        id, configuration_id, owner_user_id, topic_name, generated_summary,
+        talking_points, sources, suggested_placement, status, display_order
+      ) VALUES (
+        ${randomUUID()}, ${config.id}, ${String(ownerUserId)},
+        ${text(topic.topic_name, `${artistName} Topic ${index + 1}`)},
+        ${text(topic.generated_summary)}, ${text(topic.talking_points)},
+        ${text(topic.sources) || 'Selected artist YouTube channel/catalogue'},
+        ${text(topic.suggested_placement) || null}, 'ready', ${index}
+      )
+      RETURNING *
+    `;
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 async function buildTopics({ sql, ownerUserId, config, research }) {
   const requested = array(config.music_topics, []);
   const researchText = research.slice(0, 12).map((item, i) => `${i + 1}. ${item.title}: ${item.summary}`).join('\n');
@@ -663,9 +2399,35 @@ Talking points should be newline-separated. When a topic comes from RSS research
 }
 
 async function buildAssets({ sql, ownerUserId, config, playlist, topics, research }) {
-  const playlistText = playlist.slice(0, 15).map((s, i) => `${i + 1}. ${s.song_title} — ${s.artist}`).join('\n');
+  const artistMeta = artistShowMetadata(config);
+  const artistName =
+    playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.artist)).find(Boolean) ||
+    'the artist';
+  const playlistText = playlist.slice(0, 20).map((s, i) => {
+    const payload = object(s.source_payload, {});
+    return [
+      `${i + 1}. ${s.song_title} — ${s.artist}`,
+      payload.description ? `Description: ${String(payload.description).slice(0, 500)}` : '',
+      payload.lyrics ? `Lyrics/captions: ${String(payload.lyrics).slice(0, 700)}` : '',
+    ].filter(Boolean).join('\n');
+  }).join('\n\n');
   const topicsText = topics.slice(0, 8).map((t, i) => `${i + 1}. ${t.topic_name}: ${t.generated_summary}`).join('\n');
-  const researchText = research.slice(0, 8).map((r, i) => `${i + 1}. ${r.title}: ${r.summary}`).join('\n');
+  const researchText = research.slice(0, artistMeta.enabled ? 24 : 8).map((r, i) => `${i + 1}. ${r.title}: ${r.summary}`).join('\n\n');
+  const producerOverrides = producerInstructionBlock(config, ['station_id', 'song_copy']);
+  const artistChannelRules = artistMeta.enabled ? `
+
+ARTIST CHANNEL SHOW MODE:
+- This is a focused show about ${artistName} and the selected music from that artist's YouTube channel.
+- The playlist is not background music. It is the subject matter and narrative spine of the show.
+- Every host_banter, artist_fact, music_trivia, song_intro, and song_outro must stay centered on ${artistName} or an exact selected playlist track.
+- Do NOT introduce generic music news, unrelated artists, chart chatter, or genre-history filler unless it is explicitly present in the supplied artist/channel evidence.
+- Generate at least one useful song_intro for EVERY playlist track so the host can introduce each actual song.
+- Song intros/outros should connect exact track titles to supported evidence from descriptions, lyrics/captions, upload/release context, or the surrounding artist-channel story.
+- If artist intent is not explicitly stated, do not invent it. Use phrasing such as "you can hear," "the lyrics suggest," "one way to read it," or ask a question.
+- Refer to the artist as ${artistName} when the evidence identifies that name.
+` : '';
   const prompt = `You are the production-assets writer for CREAPD Music Studio. Generate practical on-air material for this show.
 
 SHOW: ${config.production_name}
@@ -674,30 +2436,57 @@ Editorial focus: ${array(config.music_topics, []).join(', ') || 'Music and artis
 Host: ${config.host_name || 'Host'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
+${artistChannelRules}
 PLAYLIST:
 ${playlistText}
 
 TOPICS:
 ${topicsText || 'None'}
 
-VERIFIED RSS RESEARCH SUMMARIES:
+VERIFIED / ARTIST-SUPPLIED RESEARCH:
 ${researchText || 'None'}
 
-Create a useful mix of these asset types: song_intro, song_outro, artist_fact, host_banter, music_trivia, station_id, sponsor_read, social_caption, hashtag, video_prompt, production_notes. For artist facts or current-event material, only use facts supported by the playlist metadata or supplied RSS summaries; otherwise make the asset evergreen. Aim for 12-20 concise assets total.`;
+Create a useful mix of these asset types: song_intro, song_outro, artist_fact, host_banter, music_trivia, station_id, sponsor_read, social_caption, hashtag, video_prompt, production_notes.
+
+SOURCE RULES:
+- song_intro and song_outro MUST name an exact playlist song in associated_song_title. Build the copy from that exact song title + artist and only use factual artist/current-event claims when supported by the supplied verified research. Never invent chart positions, release facts, awards, quotes, or biography details.
+- host_banter comes from the show's description/premise, editorial focus, tone, and playlist context.
+- station_id comes only from the configured station/show/host identity.
+- Every station_id asset MUST say the exact configured host name "${config.host_name || 'Host'}".
+${radioProductionTools(config).quality.require_station_name && config.station_name ? `- Every station_id asset must also say the exact station name "${config.station_name}".` : ''}
+- Never substitute "your host", "with your host", "our host", or "the host" for the configured host name.
+- sponsor_read is placeholder copy unless sponsor information is explicitly present in the show instructions.
+- topic/current-event/artist-story copy must stay grounded in TOPICS and VERIFIED / ARTIST-SUPPLIED RESEARCH.
+
+${artistMeta.enabled
+  ? `Aim for ${Math.min(24, Math.max(14, playlist.length + 6))} concise assets total, with playlist-specific song intros prioritized.`
+  : 'Aim for 12-20 concise assets total.'}`;
   const result = await structured(prompt, ASSETS_SCHEMA, 'creapd_music_assets_v1', 7000);
   const rawAssets = array(result?.data?.assets, []).slice(0, 24);
   const rows = [];
+  const usedStationAssetCopy = [];
   for (const asset of rawAssets) {
     const type = text(asset.asset_type, 'host_banter');
     if (!VALID_ASSET_TYPES.has(type)) continue;
+    let assetContent = text(asset.content);
+    if (type === 'station_id') {
+      if (!stationIdIsValid(assetContent, config, '', usedStationAssetCopy)) {
+        assetContent = await generateStationIdReplacement({
+          config,
+          previousScript: assetContent,
+          avoidScripts: usedStationAssetCopy,
+        });
+      }
+      usedStationAssetCopy.push(assetContent);
+    }
     const [row] = await sql`
       INSERT INTO creapd.music_assets (
         id, configuration_id, owner_user_id, asset_type, title, content,
         associated_song_title, associated_topic, status
       ) VALUES (
         ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${type},
-        ${text(asset.title, type.replaceAll('_', ' '))}, ${text(asset.content)},
+        ${text(asset.title, type.replaceAll('_', ' '))}, ${assetContent},
         ${text(asset.associated_song_title) || null}, ${text(asset.associated_topic) || null}, 'ready'
       ) RETURNING *
     `;
@@ -718,6 +2507,30 @@ export async function generateMusicTop10({ sql, ownerUserId, configurationId, pr
     WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}
     ORDER BY order_index ASC
   `;
+  const artistMeta = artistShowMetadata(config);
+  if (artistMeta.enabled) {
+    await sql`DELETE FROM creapd.music_top10_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
+    const catalogVideoTracks = playlist.filter(item => item.youtube_video_id).slice(0, 10);
+    const rows = [];
+    for (let index = 0; index < catalogVideoTracks.length; index += 1) {
+      const item = catalogVideoTracks[index];
+      const [row] = await sql`
+        INSERT INTO creapd.music_top10_items (
+          id, configuration_id, owner_user_id, order_index, title, youtube_video_id,
+          thumbnail_url, channel_name, locked, note
+        ) VALUES (
+          ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${index},
+          ${`${item.song_title} — ${item.artist}`}, ${item.youtube_video_id},
+          ${item.thumbnail_url || null}, ${item.channel_name || item.artist || null},
+          false, 'Selected from the active music catalogue'
+        )
+        RETURNING *
+      `;
+      rows.push(row);
+    }
+    return rows;
+  }
+
   const locked = preserveLocked ? existing.filter(row => row.locked) : [];
   if (preserveLocked) {
     await sql`DELETE FROM creapd.music_top10_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} AND locked=false`;
@@ -755,7 +2568,7 @@ Return real song_title + artist pairs only. Prefer ${year - 2}-${year} releases 
   // turn into a long chain of network waits inside one serverless invocation.
   const resolved = await Promise.all(candidates.map(async candidate => ({
     candidate,
-    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds),
+    metadata: await searchYoutubeVideo(candidate.song_title, candidate.artist, usedIds, 0, { requireRadioSafe: false }),
   })));
 
   for (const { candidate, metadata } of resolved) {
@@ -795,11 +2608,29 @@ function buildRundownBlueprint(playlist, topics, config) {
       blueprint.push({ segment_type: 'song', title: song.song_title, associated_song_title: song.song_title, target_duration: Math.max(60, num(song.length_seconds, 180)) });
     }
     if (blockIndex < blocks.length - 1) {
+      const previousSong = blocks[blockIndex]?.[blocks[blockIndex].length - 1] || null;
+      const followingSong = blocks[blockIndex + 1]?.[0] || null;
+      const transitionContext = {
+        preceding_song_title: previousSong?.song_title || null,
+        following_song_title: followingSong?.song_title || null,
+      };
+
       if (topicIndex < topics.length) {
-        blueprint.push({ segment_type: 'topic_segment', title: topics[topicIndex].topic_name, associated_topic: topics[topicIndex].topic_name, target_duration: talkPer });
+        blueprint.push({
+          segment_type: 'topic_segment',
+          title: topics[topicIndex].topic_name,
+          associated_topic: topics[topicIndex].topic_name,
+          target_duration: talkPer,
+          ...transitionContext,
+        });
         topicIndex += 1;
       } else {
-        blueprint.push({ segment_type: 'talk_break', title: 'Host Banter', target_duration: talkPer });
+        blueprint.push({
+          segment_type: 'talk_break',
+          title: 'Host Banter',
+          target_duration: talkPer,
+          ...transitionContext,
+        });
       }
       if (sponsorPer && (blockIndex + 1) % 2 === 0) blueprint.push({ segment_type: 'sponsor_break', title: 'Sponsor Break', target_duration: sponsorPer });
       blueprint.push({ segment_type: 'station_id', title: 'Station ID', target_duration: 15 });
@@ -813,18 +2644,67 @@ function buildRundownBlueprint(playlist, topics, config) {
   return blueprint;
 }
 
-async function buildRundown({ sql, ownerUserId, config, playlist, topics }) {
+function rundownScriptSource(item, config) {
+  switch (item.segment_type) {
+    case 'intro':
+      return 'Discovery Room show identity: title, premise, host/co-host, station, tone, and editorial focus.';
+    case 'outro':
+      return 'Discovery Room show identity plus the completed show/rundown context.';
+    case 'topic_segment':
+      return 'Selected topic + generated topic material/research: ' + (item.associated_topic || item.title) + '.';
+    case 'talk_break':
+      return 'Discovery Room show premise/editorial focus + surrounding playlist context. No unsupported current facts.';
+    case 'sponsor_break':
+      return 'Commercial/sponsor runtime settings. Placeholder sponsor copy unless sponsor information was explicitly supplied.';
+    case 'station_id':
+      return 'Configured station/show identity: ' + (config.station_name || 'station name not supplied') + ', ' + config.production_name + ', ' + (config.host_name || 'host') + '.';
+    case 'song':
+      return 'Playlist audio track: ' + (item.associated_song_title || item.title) + '. The song itself has no rundown script; host intro/outro copy comes from song-specific Production assets.';
+    default:
+      return 'Show configuration + relevant approved production material.';
+  }
+}
+
+async function buildRundown({ sql, ownerUserId, config, playlist, topics, research = [], assets = [] }) {
+  const artistMeta = artistShowMetadata(config);
+  const artistName =
+    playlist.map(item => text(object(item.source_payload, {}).youtube_channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.channel_name)).find(Boolean) ||
+    playlist.map(item => text(item.artist)).find(Boolean) ||
+    'the artist';
   const blueprint = buildRundownBlueprint(playlist, topics, config);
   const blueprintText = blueprint.map((item, index) => {
     if (item.segment_type === 'song') {
       return `${index + 1}. [song] ${item.title} | song=${item.associated_song_title || item.title} | full track=${Math.round(item.target_duration)}s`;
     }
-    const words = spokenWordRange(item.target_duration, item.segment_type);
-    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target})`;
+    const words = spokenWordRange(item.target_duration, item.segment_type, config);
+    return `${index + 1}. [${item.segment_type}] ${item.title}${item.associated_topic ? ` | topic=${item.associated_topic}` : ''}${item.preceding_song_title ? ` | previous_song=${item.preceding_song_title}` : ''}${item.following_song_title ? ` | next_song=${item.following_song_title}` : ''} | target=${Math.round(item.target_duration)}s | REQUIRED WORDS=${words.min}-${words.max} (aim ${words.target}) | SCRIPT SOURCE=${rundownScriptSource(item, config)}`;
   }).join('\n');
 
-  const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\n${t.talking_points}`).join('\n\n');
-  const editorialFocus = array(config.music_topics, []).join(', ') || 'Music and artist conversation';
+  const topicText = topics.map(t => `${t.topic_name}: ${t.generated_summary}\nTalking points: ${t.talking_points || ''}\nSources: ${t.sources || 'evergreen/no external source'}`).join('\n\n');
+  const researchText = research.slice(0, 12).map((r, i) => `${i + 1}. ${r.title} — ${r.source || 'source'}: ${r.summary}`).join('\n');
+  const assetText = assets
+    .filter(a => ['song_intro','song_outro','host_banter','station_id','sponsor_read','artist_fact','music_trivia'].includes(a.asset_type))
+    .slice(0, 40)
+    .map((a, i) => `${i + 1}. [${a.asset_type}] ${a.title || ''}${a.associated_song_title ? ` | song=${a.associated_song_title}` : ''}${a.associated_topic ? ` | topic=${a.associated_topic}` : ''}: ${a.content || ''}`)
+    .join('\n');
+  const editorialFocus = artistMeta.enabled
+    ? `${artistName}: selected YouTube channel, songs, lyrics/descriptions, release/upload context, and artist story`
+    : array(config.music_topics, []).join(', ') || 'Music and artist conversation';
+  const producerOverrides = producerInstructionBlock(config, ['intro', 'station_id', 'topic_segment', 'talk_break', 'outro']);
+  const artistChannelRundownRules = artistMeta.enabled ? `
+
+ARTIST CHANNEL SHOW MODE:
+- This entire show is about ${artistName} and the exact selected playlist from that artist's YouTube channel.
+- Spoken segments must sound like an artist special, not a generic radio show.
+- The intro MUST establish ${artistName} as the featured artist and frame the show around the selected catalogue/channel.
+- Topic segments MUST use the supplied artist/channel evidence and should name exact playlist songs when relevant.
+- Every talk_break with previous_song / next_song context must connect those actual songs to ${artistName}. Use the previous track to reflect, the next track to set up what is coming, or both.
+- The outro MUST recap ${artistName} and several songs actually heard in this rundown.
+- Do NOT insert unrelated music news, other artists, chart chatter, genre history, or random trivia unless explicitly supported by the supplied evidence.
+- Song meaning/intent cannot be invented. If the artist did not explicitly state intent, present lyrical/theme observations as interpretation rather than fact.
+- Prefer specific references to titles, descriptions, lyrics/captions, upload/release dates, and recurring patterns over generic praise like "great music" or "incredible sound."
+` : '';
 
   const prompt = `You are the rundown/script writer for CREAPD Music Studio. The rundown structure below is LOCKED. Return exactly the same number of items in exactly the same order. Do not add, remove, merge, split, or reorder segments.
 
@@ -836,7 +2716,8 @@ Host: ${config.host_name || 'Host'}
 Co-host: ${config.co_host_name || 'None'}
 Station: ${config.station_name || 'the station'}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
+${artistChannelRundownRules}
 The description/premise and editorial focus are PRIMARY instructions. The host script must sound like THIS show, not a generic music show.
 
 LOCKED BLUEPRINT:
@@ -845,6 +2726,21 @@ ${blueprintText}
 TOPIC MATERIAL:
 ${topicText || 'No generated topics'}
 
+VERIFIED RESEARCH MATERIAL:
+${researchText || 'No verified current research supplied.'}
+
+PRE-GENERATED PRODUCTION ASSETS:
+${assetText || 'No production assets supplied.'}
+
+SCRIPT SOURCE MAP:
+- intro: ${artistMeta.enabled ? `featured artist ${artistName} + selected YouTube channel/catalogue + show identity` : 'Discovery Room show identity and premise only'}.
+- topic_segment: matching TOPIC MATERIAL and its cited/verified research.
+- talk_break: ${artistMeta.enabled ? `featured artist ${artistName} + the exact previous_song / next_song named in the LOCKED BLUEPRINT` : 'show premise/editorial focus plus surrounding playlist context'}; do not invent current facts.
+- sponsor_break: sponsor/commercial settings; use placeholder copy unless sponsor information was explicitly supplied.
+- station_id: configured station name, show title, and host identity only.
+- outro: show identity plus a recap/close of the actual rundown.
+- song: AUDIO ONLY. script_content must be empty. Song intro/outro host copy lives in PRE-GENERATED PRODUCTION ASSETS.
+
 SCRIPT RULES:
 - For every spoken segment, obey its REQUIRED WORDS range. This is a runtime requirement, not a suggestion.
 - Do NOT shorten long segments for concision. A 10-minute segment needs roughly 1,400-1,500 spoken words.
@@ -852,8 +2748,12 @@ SCRIPT RULES:
 - Talk breaks: natural host commentary tied to the show's premise/editorial focus.
 - Sponsor breaks: generic placeholder ad-read unless show data names a sponsor; fill the required runtime with a realistic break structure.
 - Station IDs may be brief but must still fit their listed word range.
-- Intro/outro: establish and close the specific show premise, not generic filler.
-- Song segments: keep script_content to a short 1-3 sentence segue only; the full song itself supplies that segment's runtime.
+- EVERY station_id MUST say the exact configured host name "${config.host_name || 'Host'}".
+- NEVER write "your host", "with your host", "our host", or "the host" as a substitute for the configured host name.
+${radioProductionTools(config).quality.require_station_name && config.station_name ? `- EVERY station_id must also say the exact station name "${config.station_name}".` : ''}
+- If the rundown contains multiple Station IDs, vary the opening, sentence structure, and closing so they do not sound like copies of one another.
+- Intro/outro: establish and close the specific show premise, not generic filler.${artistMeta.enabled ? ` The intro must name ${artistName}; the outro must recap ${artistName} and actual playlist songs.` : ''}
+- Song segments: script_content MUST be empty. The full song audio supplies the runtime; use song_intro/song_outro Production assets for host copy around songs.
 - Never change a song title or artist from the playlist.
 Return rundown array matching the blueprint exactly.`;
 
@@ -865,7 +2765,7 @@ Return rundown array matching the blueprint exactly.`;
     const bp = blueprint[index];
     if (bp.segment_type === 'song') continue;
     const script = text(scripts[index]?.script_content);
-    const words = spokenWordRange(bp.target_duration, bp.segment_type);
+    const words = spokenWordRange(bp.target_duration, bp.segment_type, config);
     if (countWords(script) < Math.round(words.min * 0.9)) {
       underfilled.push({
         order: index + 1,
@@ -889,7 +2789,8 @@ Name: ${config.production_name}
 Description / premise: ${config.show_description || 'Not supplied'}
 Editorial focus: ${editorialFocus}
 Tone: ${config.show_tone || 'Professional'}
-
+${producerOverrides}
+${artistChannelRundownRules}
 TOPIC MATERIAL:
 ${topicText || 'No generated topics'}
 
@@ -909,12 +2810,33 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
     }
   }
 
+  const acceptedStationIds = [];
+  for (let index = 0; index < blueprint.length; index += 1) {
+    const bp = blueprint[index];
+    if (bp.segment_type !== 'station_id') continue;
+
+    const current = text(scripts[index]?.script_content);
+    if (!stationIdIsValid(current, config, '', acceptedStationIds)) {
+      const replacement = await generateStationIdReplacement({
+        config,
+        previousScript: current,
+        avoidScripts: acceptedStationIds,
+      });
+      if (!scripts[index]) scripts[index] = {};
+      scripts[index].script_content = replacement;
+    }
+    acceptedStationIds.push(text(scripts[index]?.script_content));
+  }
+
   let cursor = parseTimeToSeconds(config.show_start_time || '06:00');
   const rows = [];
   for (let index = 0; index < blueprint.length; index += 1) {
     const bp = blueprint[index];
     const generated = scripts[index] || {};
-    const script = text(generated.script_content);
+    const script = bp.segment_type === 'song' ? '' : text(generated.script_content);
+    const scriptSource = rundownScriptSource(bp, config);
+    const generatedNote = text(generated.notes);
+    const sourceNote = 'Script source: ' + scriptSource + (generatedNote ? ' | ' + generatedNote : '');
     const duration = Math.max(10, num(bp.target_duration, 60));
     const start = formatSecondsToTime(cursor);
     cursor += duration;
@@ -930,7 +2852,7 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
         associated_song_id, associated_song_title, associated_topic
       ) VALUES (
         ${randomUUID()}, ${config.id}, ${String(ownerUserId)}, ${index}, ${bp.segment_type},
-        ${bp.title}, ${script || null}, ${start}, ${duration}, ${end}, ${text(generated.notes) || null},
+        ${bp.title}, ${script || null}, ${start}, ${duration}, ${end}, ${sourceNote},
         'ready', ${matchingSong?.id || null}, ${bp.associated_song_title || null}, ${bp.associated_topic || null}
       ) RETURNING *
     `;
@@ -942,6 +2864,7 @@ Return one repair per listed order. Each repaired script MUST fall inside its re
 export async function runMusicBuild({ sql, ownerUserId, configurationId, section = null }) {
   const config = await requireConfig(sql, ownerUserId, configurationId);
   const buildLog = section ? array(config.build_log, []) : [];
+  let currentStage = section || 'planning';
   try {
     await sql`
       UPDATE creapd.music_production_configurations
@@ -949,15 +2872,18 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       WHERE id=${config.id} AND owner_user_id=${String(ownerUserId)}
     `;
 
+    const artistMeta = artistShowMetadata(config);
     const total = Math.max(30, Math.min(180, num(config.total_show_runtime, 90)));
     const musicMinutes = Math.max(15, Math.round(num(config.required_music_runtime, total * 0.5)));
     const targetCount = Math.max(8, Math.min(15, Math.ceil(musicMinutes / 3.5)));
     const plan = {
       production_format: config.production_format || 'radio',
+      show_mode: artistMeta.enabled ? 'catalog' : 'standard',
+      artist_profile_id: artistMeta.artist_profile_id || null,
       total_show_runtime: total,
       required_music_runtime: musicMinutes,
       estimated_song_count: targetCount,
-      automation_preferences: array(config.ai_automation, []),
+      automation_preferences: automationPreferences(config.ai_automation),
       provider: configuredProvider(),
       generated_at: new Date().toISOString(),
     };
@@ -970,7 +2896,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       await appendStage(sql, ownerUserId, config.id, buildLog, 'planning', 'complete', { requirements_count: 7 });
     }
 
-    const automation = array(config.ai_automation, ['Auto Research','Auto Build Playlist','Auto Develop','Auto Assemble Packet']);
+    const automation = automationPreferences(config.ai_automation);
     const runStage = (name) => !section || section === name;
     let playlist = await sql`SELECT * FROM creapd.music_playlist_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY order_index ASC`;
     let research = await sql`SELECT * FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY created_at ASC`;
@@ -979,36 +2905,59 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
     let rundown = await sql`SELECT * FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY order_index ASC`;
     let top10 = await sql`SELECT * FROM creapd.music_top10_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)} ORDER BY order_index ASC`;
 
+    currentStage = 'playlist';
     if (runStage('playlist')) {
       if (!section && !automation.includes('Auto Build Playlist')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'playlist', 'skipped', { count: playlist.length });
       } else {
         await sql`DELETE FROM creapd.music_playlist_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        playlist = await buildPlaylist({ sql, ownerUserId, config, targetCount });
+        playlist = artistMeta.enabled
+          ? await buildArtistPlaylist({ sql, ownerUserId, config, targetCount })
+          : await buildPlaylist({ sql, ownerUserId, config, targetCount });
         await appendStage(sql, ownerUserId, config.id, buildLog, 'playlist', 'complete', { count: playlist.length, youtube_resolved: playlist.filter(x => x.youtube_video_id).length });
       }
     }
 
+    currentStage = 'research';
     if (runStage('research')) {
       if (!section && !automation.includes('Auto Research')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'research', 'skipped', { count: research.length });
       } else {
         await sql`DELETE FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        research = await buildResearch({ sql, ownerUserId, config });
-        await appendStage(sql, ownerUserId, config.id, buildLog, 'research', research.length ? 'complete' : 'skipped', { count: research.length, source: 'google_news_rss' });
+        if (artistMeta.enabled) {
+          research = await buildArtistResearch({ sql, ownerUserId, config, playlist });
+        } else {
+          research = await buildResearch({ sql, ownerUserId, config });
+        }
+        await appendStage(
+          sql,
+          ownerUserId,
+          config.id,
+          buildLog,
+          'research',
+          research.length ? 'complete' : 'skipped',
+          { count: research.length, source: artistMeta.enabled ? 'selected_artist_youtube_channel' : 'google_news_rss' },
+        );
       }
     }
 
+    currentStage = 'topics';
     if (runStage('topics')) {
       if (!section && !automation.includes('Auto Develop')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', 'skipped', { count: topics.length });
       } else {
         await sql`DELETE FROM creapd.music_topics WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        topics = await buildTopics({ sql, ownerUserId, config, research });
-        await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', topics.length ? 'complete' : 'failed', { count: topics.length });
+        topics = artistMeta.enabled
+          ? await buildArtistTopics({ sql, ownerUserId, config, research, playlist })
+          : await buildTopics({ sql, ownerUserId, config, research });
+        await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', topics.length ? 'complete' : 'failed', {
+          count: topics.length,
+          source: artistMeta.enabled ? 'artist_channel_editorial' : 'standard_radio_editorial',
+        });
       }
     }
 
+    currentStage = 'assets';
     if (runStage('assets')) {
       if (!section && !automation.includes('Auto Develop')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'assets', 'skipped', { count: assets.length });
@@ -1019,6 +2968,7 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       }
     }
 
+    currentStage = 'top10';
     if (runStage('top10')) {
       top10 = await generateMusicTop10({ sql, ownerUserId, configurationId: config.id, preserveLocked: Boolean(section) });
       await appendStage(sql, ownerUserId, config.id, buildLog, 'top10', top10.length ? 'complete' : 'failed', { count: top10.length });
@@ -1027,20 +2977,21 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       await appendStage(sql, ownerUserId, config.id, buildLog, 'top10', top10.length ? 'complete' : 'failed', { count: top10.length });
     }
 
+    currentStage = 'rundown';
     if (runStage('rundown')) {
       if (!section && !automation.includes('Auto Assemble Packet')) {
         await appendStage(sql, ownerUserId, config.id, buildLog, 'rundown', 'skipped', { count: rundown.length });
       } else {
         if (!playlist.length) throw new Error('Cannot build rundown without a playlist');
         await sql`DELETE FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${String(ownerUserId)}`;
-        rundown = await buildRundown({ sql, ownerUserId, config, playlist, topics });
+        rundown = await buildRundown({ sql, ownerUserId, config, playlist, topics, research, assets });
         await appendStage(sql, ownerUserId, config.id, buildLog, 'rundown', rundown.length ? 'complete' : 'failed', { count: rundown.length });
       }
     }
 
     await sql`
       UPDATE creapd.music_production_configurations
-      SET status='ready', build_log=${safeJson(buildLog)}::jsonb,
+      SET status='in_review', build_log=${safeJson(buildLog)}::jsonb,
           build_metadata=${safeJson({
             provider: configuredProvider(),
             completed_at: new Date().toISOString(),
@@ -1069,7 +3020,567 @@ export async function runMusicBuild({ sql, ownerUserId, configurationId, section
       build_log: buildLog,
     };
   } catch (error) {
-    await updateBuildFailure(sql, ownerUserId, config.id, buildLog, error).catch(() => {});
+    await updateBuildFailure(sql, ownerUserId, config.id, buildLog, error, currentStage).catch(() => {});
+    throw error;
+  }
+}
+
+
+async function retimeMusicRundown(sql, ownerUserId, configurationId, showStartTime = '06:00') {
+  const ownerId = String(ownerUserId);
+  const rows = await sql`
+    SELECT * FROM creapd.music_rundown_items
+    WHERE configuration_id=${configurationId} AND owner_user_id=${ownerId}
+    ORDER BY order_index ASC, created_at ASC
+  `;
+
+  let cursor = parseTimeToSeconds(showStartTime || '06:00');
+  for (const row of rows) {
+    const duration = Math.max(0, num(row.duration_seconds, 0));
+    const start = formatSecondsToTime(cursor);
+    cursor += duration;
+    const end = formatSecondsToTime(cursor);
+    await sql`
+      UPDATE creapd.music_rundown_items
+      SET start_time=${start}, end_time=${end}, updated_at=now()
+      WHERE id=${row.id} AND owner_user_id=${ownerId}
+    `;
+  }
+}
+
+async function regenerateRejectedTracks({ sql, ownerUserId, config, playlist, research }) {
+  const ownerId = String(ownerUserId);
+  const rejected = playlist.filter(item => text(item.status).toLowerCase() === 'rejected');
+  if (!rejected.length) return { replaced: 0, unresolved: [] };
+
+  const active = playlist.filter(item => text(item.status).toLowerCase() !== 'rejected');
+  const exclusions = [...active, ...rejected]
+    .map(item => `${item.song_title} — ${item.artist}`)
+    .filter(Boolean);
+
+  const artistMeta = artistShowMetadata(config);
+  let replacements = [];
+
+  if (artistMeta.enabled && artistMeta.artist_profile_id) {
+    const catalog = await sql`
+      SELECT *
+      FROM creapd.artist_catalog_tracks
+      WHERE profile_id=${artistMeta.artist_profile_id}
+        AND owner_user_id=${ownerId}
+      ORDER BY created_at ASC
+    `;
+
+    const usedCatalogIds = new Set(
+      active
+        .map(item => text(object(item.source_payload, {}).catalog_track_id))
+        .filter(Boolean)
+    );
+
+    const available = catalog.filter(track => !usedCatalogIds.has(String(track.id)));
+    replacements = available.slice(0, rejected.length).map(track => {
+      const trackMetadata = object(track.metadata, {});
+      const videoId = extractVideoId(track.source_url);
+      const duration = Math.max(30, num(trackMetadata.duration_seconds, 180));
+      const source = track.audio_url
+        ? 'artist_catalog_upload'
+        : videoId
+          ? 'artist_catalog_youtube'
+          : 'artist_catalog_link';
+
+      return {
+        song: {
+          song_title: text(track.title),
+          artist: text(track.artist, config.host_name || 'Artist'),
+          genre: text(trackMetadata.genre),
+          mood: text(trackMetadata.mood),
+          era_year: text(track.release_year),
+          reason_selected: 'Replacement from the selected music catalogue',
+        },
+        metadata: {
+          video_id: videoId || null,
+          title: text(track.title),
+          duration_seconds: duration,
+          thumbnail_url: text(track.artwork_url) || null,
+          channel_name: text(track.artist, config.host_name || 'Artist'),
+        },
+        duration,
+        catalogTrack: track,
+        source,
+      };
+    });
+  } else {
+    const candidateCount = Math.min(24, Math.max(8, rejected.length * 5));
+    const year = new Date().getUTCFullYear();
+    const prompt = `You are replacing REJECTED playlist tracks for a CREAPD radio show. Return ${candidateCount} REAL commercially released replacement candidates.
+
+SHOW: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Genres: ${array(config.genres, []).join(', ') || 'Top 40'}
+Moods: ${array(config.moods, []).join(', ') || 'Feel Good'}
+Tone: ${config.show_tone || 'Professional'}
+Preferred eras: ${config.preferred_eras || 'Current'}
+Energy flow: ${config.playlist_energy_flow || 'Build Energy Gradually'}
+Clean only: ${config.clean_only === true}
+Explicit allowed: ${config.explicit_allowed === true}
+
+THESE TRACKS WERE REJECTED:
+${rejected.map((item, i) => `${i + 1}. ${item.song_title} — ${item.artist}`).join('\n')}
+
+DO NOT RETURN ANY EXISTING OR REJECTED TRACK:
+${exclusions.join('\n') || 'None'}
+
+Return real song_title + artist pairs only. Do not invent titles, artists, collaborations, or remixes. Prefer ${year - 2}-${year} releases unless the configured eras/throwback rules call for older music. Each replacement must fit the show and playlist tone. Include a realistic length_seconds, genre, mood, era_year, and a short reason_selected.`;
+
+    const result = await structured(prompt, PLAYLIST_SCHEMA, 'creapd_music_rejected_playlist_v1', 5000);
+    const candidates = array(result?.data?.playlist, []).slice(0, candidateCount);
+    const usedIds = new Set(active.map(item => item.youtube_video_id).filter(Boolean));
+    const usedTitles = new Set(
+      [...active, ...rejected].map(item => `${text(item.song_title).toLowerCase()}::${text(item.artist).toLowerCase()}`)
+    );
+
+    const resolved = await Promise.all(candidates.map(async song => {
+      const key = `${text(song.song_title).toLowerCase()}::${text(song.artist).toLowerCase()}`;
+      if (usedTitles.has(key)) return { song, metadata: null };
+      return {
+        song,
+        metadata: await searchYoutubeVideo(
+          text(song.song_title),
+          text(song.artist),
+          usedIds,
+          num(song.length_seconds, 180),
+        ),
+      };
+    }));
+
+    replacements = [];
+    for (const entry of resolved) {
+      const duration = num(entry.metadata?.duration_seconds, 0);
+      const key = `${text(entry.song?.song_title).toLowerCase()}::${text(entry.song?.artist).toLowerCase()}`;
+      if (!entry.metadata || duration < 75 || usedIds.has(entry.metadata.video_id) || usedTitles.has(key)) continue;
+      usedIds.add(entry.metadata.video_id);
+      usedTitles.add(key);
+      replacements.push({ ...entry, duration, source: 'youtube_radio_verified', catalogTrack: null });
+      if (replacements.length >= rejected.length) break;
+    }
+  }
+
+  const changed = [];
+  const unresolved = [];
+  for (let index = 0; index < rejected.length; index += 1) {
+    const old = rejected[index];
+    const replacement = replacements[index];
+    if (!replacement) {
+      unresolved.push({ id: old.id, song_title: old.song_title, artist: old.artist });
+      continue;
+    }
+
+    const { song, metadata, duration, catalogTrack, source } = replacement;
+    const oldTitle = old.song_title;
+    const sourcePayload = catalogTrack
+      ? {
+          catalog_only: true,
+          catalog_track_id: catalogTrack.id,
+          audio_url: catalogTrack.audio_url || null,
+          source_url: catalogTrack.source_url || null,
+          description: catalogTrack.description || null,
+          lyrics: catalogTrack.lyrics || null,
+          source_type: catalogTrack.source_type || 'manual',
+          artist_profile_id: artistMeta.artist_profile_id,
+          regenerated_from_rejected_track: {
+            song_title: old.song_title,
+            artist: old.artist,
+          },
+          regenerated_at: new Date().toISOString(),
+        }
+      : {
+          youtube_title: metadata.title,
+          youtube_duration_seconds: duration,
+          youtube_source_type: classifyRadioSafeYoutubeSource(metadata),
+          requested_title: text(song.song_title),
+          requested_artist: text(song.artist),
+          regenerated_from_rejected_track: {
+            song_title: old.song_title,
+            artist: old.artist,
+          },
+          regenerated_at: new Date().toISOString(),
+        };
+
+    const [updated] = await sql`
+      UPDATE creapd.music_playlist_items
+      SET
+        song_title=${text(song.song_title, metadata.title || old.song_title)},
+        artist=${text(song.artist, metadata.channel_name || old.artist)},
+        length_seconds=${duration},
+        genre=${text(song.genre) || old.genre || null},
+        mood=${text(song.mood) || old.mood || null},
+        era_year=${text(song.era_year) || old.era_year || null},
+        reason_selected=${text(song.reason_selected) || 'Replacement for rejected track'},
+        status='suggested',
+        note=${'Regenerated replacement for rejected track: ' + old.song_title + ' — ' + old.artist},
+        source=${source},
+        youtube_video_id=${metadata.video_id || null},
+        thumbnail_url=${metadata.thumbnail_url || null},
+        channel_name=${metadata.channel_name || null},
+        source_payload=${safeJson(sourcePayload)}::jsonb,
+        updated_at=now()
+      WHERE id=${old.id} AND owner_user_id=${ownerId}
+      RETURNING *
+    `;
+
+    if (!updated) continue;
+    changed.push(updated);
+
+    await sql`
+      UPDATE creapd.music_rundown_items
+      SET
+        title=${updated.song_title},
+        associated_song_title=${updated.song_title},
+        duration_seconds=${duration},
+        status=CASE WHEN status='rejected' THEN 'ready' ELSE status END,
+        updated_at=now()
+      WHERE configuration_id=${config.id}
+        AND owner_user_id=${ownerId}
+        AND associated_song_id=${old.id}
+    `;
+
+    await sql`
+      DELETE FROM creapd.music_assets
+      WHERE configuration_id=${config.id}
+        AND owner_user_id=${ownerId}
+        AND lower(COALESCE(associated_song_title, ''))=lower(${oldTitle})
+        AND asset_type IN ('song_intro','song_outro','artist_fact')
+    `;
+  }
+
+  if (changed.length) {
+    const researchText = research.slice(0, 8)
+      .map((item, i) => `${i + 1}. ${item.title} — ${item.source || 'source'}: ${item.summary}`)
+      .join('\n');
+
+    const trackText = changed
+      .map((item, i) => `${i + 1}. ${item.song_title} — ${item.artist}`)
+      .join('\n');
+    const songCopyOverride = producerInstructionBlock(config, ['song_copy']);
+
+    const assetPrompt = `You are writing replacement on-air song assets for a CREAPD radio show.
+
+SHOW: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Host: ${config.host_name || 'Host'}
+Station: ${config.station_name || 'the station'}
+Tone: ${config.show_tone || 'Professional'}
+${songCopyOverride}
+REPLACEMENT TRACKS:
+${trackText}
+
+VERIFIED RESEARCH:
+${researchText || 'None supplied. Keep factual artist/current-event claims evergreen.'}
+
+For EACH replacement track, generate exactly:
+1) one song_intro
+2) one song_outro
+
+Every asset MUST put the exact playlist song title in associated_song_title. The intro should naturally set up the track. The outro should recap/transition out of that exact track. Do not invent chart positions, awards, quotes, release facts, or biography details not supported above.`;
+
+    const assetResult = await structured(assetPrompt, ASSETS_SCHEMA, 'creapd_music_rejected_track_assets_v1', 4500);
+    const newAssets = array(assetResult?.data?.assets, []);
+
+    for (const item of changed) {
+      const titleKey = text(item.song_title).toLowerCase();
+      for (const assetType of ['song_intro', 'song_outro']) {
+        const generated = newAssets.find(asset =>
+          text(asset.asset_type).toLowerCase() === assetType &&
+          text(asset.associated_song_title).toLowerCase() === titleKey
+        );
+        if (!generated?.content) continue;
+
+        await sql`
+          INSERT INTO creapd.music_assets (
+            id, configuration_id, owner_user_id, asset_type, title, content,
+            associated_song_title, associated_topic, status
+          ) VALUES (
+            ${randomUUID()}, ${config.id}, ${ownerId}, ${assetType},
+            ${text(generated.title, assetType.replaceAll('_', ' '))},
+            ${text(generated.content)}, ${item.song_title}, null, 'ready'
+          )
+        `;
+      }
+    }
+  }
+
+  if (changed.length) {
+    await retimeMusicRundown(sql, ownerUserId, config.id, config.show_start_time || '06:00');
+  }
+
+  return { replaced: changed.length, unresolved };
+}
+
+async function regenerateRejectedSegments({ sql, ownerUserId, config, rundown, topics, research }) {
+  const ownerId = String(ownerUserId);
+  const rejected = rundown.filter(item =>
+    text(item.status).toLowerCase() === 'rejected' &&
+    text(item.segment_type).toLowerCase() !== 'song'
+  );
+  if (!rejected.length) return { replaced: 0, unresolved: [] };
+
+  const topicText = topics.map(t =>
+    `${t.topic_name}: ${t.generated_summary}\nTalking points: ${t.talking_points || ''}\nSources: ${t.sources || 'evergreen/no external source'}`
+  ).join('\n\n');
+  const researchText = research.slice(0, 12)
+    .map((r, i) => `${i + 1}. ${r.title} — ${r.source || 'source'}: ${r.summary}`)
+    .join('\n');
+
+  const rejectedRuleKeys = [...new Set(rejected.map(item => {
+    if (item.segment_type === 'intro') return 'intro';
+    if (item.segment_type === 'station_id') return 'station_id';
+    if (item.segment_type === 'topic_segment') return 'topic_segment';
+    if (item.segment_type === 'talk_break') return 'talk_break';
+    if (item.segment_type === 'outro') return 'outro';
+    return null;
+  }).filter(Boolean))];
+  const producerOverrides = producerInstructionBlock(config, rejectedRuleKeys);
+
+  const targets = rejected.map(item => {
+    const words = spokenWordRange(item.duration_seconds, item.segment_type, config);
+    return {
+      order: Number(item.order_index || 0) + 1,
+      item,
+      words,
+      source: rundownScriptSource(item, config),
+    };
+  });
+
+  const prompt = `You are replacing REJECTED spoken segments for a CREAPD radio show. Generate fresh replacement copy ONLY for the listed segments.
+
+SHOW
+Name: ${config.production_name}
+Description / premise: ${config.show_description || 'Not supplied'}
+Editorial focus: ${array(config.music_topics, []).join(', ') || 'Music and artist conversation'}
+Host: ${config.host_name || 'Host'}
+Co-host: ${config.co_host_name || 'None'}
+Station: ${config.station_name || 'the station'}
+Tone: ${config.show_tone || 'Professional'}
+${producerOverrides}
+TOPIC MATERIAL:
+${topicText || 'No topic material'}
+
+VERIFIED RESEARCH:
+${researchText || 'No current research supplied'}
+
+REJECTED SEGMENTS TO REPLACE:
+${targets.map(target =>
+  `${target.order}. [${target.item.segment_type}] ${target.item.title || ''}${target.item.associated_topic ? ` | topic=${target.item.associated_topic}` : ''} | SOURCE=${target.source} | REQUIRED ${target.words.min}-${target.words.max} words, aim ${target.words.target}\nREJECTED COPY TO REPLACE: ${target.item.script_content || '(empty)'}`
+).join('\n\n')}
+
+STATION ID REGENERATION RULES:
+- Every station_id MUST say the exact configured host name "${config.host_name || 'Host'}".
+${radioProductionTools(config).quality.require_station_name && config.station_name ? `- It MUST also say the exact station name "${config.station_name}".` : ''}
+- NEVER use "your host", "with your host", "our host", or "the host" instead of the actual configured host name.
+- A regenerated Station ID must be materially different from its rejected copy: use a different opening, sentence structure, and closing.
+- Do not invent slogans, frequencies, call letters, cities, or station facts that were not configured.
+
+Return one fresh repair for every listed order. Do not reuse the rejected wording. Stay inside each required word range. Current factual claims must be supported by VERIFIED RESEARCH; otherwise keep the copy evergreen.`;
+
+  const result = await structured(prompt, SCRIPT_REPAIR_SCHEMA, 'creapd_music_rejected_segments_v1', 12000);
+  const repairs = array(result?.data?.repairs, []);
+  const changed = [];
+  const unresolved = [];
+
+  for (const target of targets) {
+    const repair = repairs.find(item => Math.round(num(item.order, 0)) === target.order);
+    let script = text(repair?.script_content);
+
+    if (target.item.segment_type === 'station_id') {
+      if (!stationIdIsValid(script, config, target.item.script_content || '')) {
+        script = await generateStationIdReplacement({
+          config,
+          previousScript: target.item.script_content || '',
+          avoidScripts: rundown
+            .filter(item => item.id !== target.item.id && item.segment_type === 'station_id')
+            .map(item => item.script_content)
+            .filter(Boolean),
+        });
+      }
+    }
+
+    if (!script) {
+      unresolved.push({ id: target.item.id, title: target.item.title, segment_type: target.item.segment_type });
+      continue;
+    }
+
+    const sourceNote = 'Script source: ' + target.source + ' | Regenerated after rejection';
+    const [updated] = await sql`
+      UPDATE creapd.music_rundown_items
+      SET
+        script_content=${script},
+        notes=${sourceNote},
+        status='suggested',
+        updated_at=now()
+      WHERE id=${target.item.id} AND owner_user_id=${ownerId}
+      RETURNING *
+    `;
+    if (updated) changed.push(updated);
+  }
+
+  return { replaced: changed.length, unresolved };
+}
+
+export async function regenerateRejectedMusicMaterials({ sql, ownerUserId, configurationId, kind = 'all' }) {
+  const config = await requireConfig(sql, ownerUserId, configurationId);
+  const ownerId = String(ownerUserId);
+
+  await sql`
+    UPDATE creapd.music_production_configurations
+    SET status='in_review', updated_at=now()
+    WHERE id=${config.id} AND owner_user_id=${ownerId}
+  `;
+  const normalizedKind = ['all', 'tracks', 'segments'].includes(text(kind).toLowerCase())
+    ? text(kind).toLowerCase()
+    : 'all';
+
+  const [playlist, rundown, topics, research] = await Promise.all([
+    sql`SELECT * FROM creapd.music_playlist_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId} ORDER BY order_index ASC`,
+    sql`SELECT * FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId} ORDER BY order_index ASC`,
+    sql`SELECT * FROM creapd.music_topics WHERE configuration_id=${config.id} AND owner_user_id=${ownerId} ORDER BY display_order ASC`,
+    sql`SELECT * FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId} ORDER BY created_at ASC`,
+  ]);
+
+  const result = {
+    tracks: { replaced: 0, unresolved: [] },
+    segments: { replaced: 0, unresolved: [] },
+  };
+
+  if (normalizedKind === 'all' || normalizedKind === 'tracks') {
+    result.tracks = await regenerateRejectedTracks({
+      sql,
+      ownerUserId,
+      config,
+      playlist,
+      research,
+    });
+  }
+
+  const freshRundown = (normalizedKind === 'all' && result.tracks.replaced)
+    ? await sql`SELECT * FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId} ORDER BY order_index ASC`
+    : rundown;
+
+  if (normalizedKind === 'all' || normalizedKind === 'segments') {
+    result.segments = await regenerateRejectedSegments({
+      sql,
+      ownerUserId,
+      config,
+      rundown: freshRundown,
+      topics,
+      research,
+    });
+  }
+
+  return {
+    success: true,
+    configuration_id: config.id,
+    kind: normalizedKind,
+    ...result,
+  };
+}
+
+export async function rebuildArtistStory({ sql, ownerUserId, configurationId }) {
+  const config = await requireConfig(sql, ownerUserId, configurationId);
+  const artistMeta = artistShowMetadata(config);
+  if (!artistMeta.enabled || !artistMeta.artist_profile_id) {
+    const error = new Error('Rebuild Artist Story is only available for catalogue/channel productions.');
+    error.code = 'ARTIST_STORY_MODE_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const ownerId = String(ownerUserId);
+  const playlist = await sql`
+    SELECT * FROM creapd.music_playlist_items
+    WHERE configuration_id=${config.id}
+      AND owner_user_id=${ownerId}
+      AND status <> 'rejected'
+    ORDER BY order_index ASC
+  `;
+
+  if (!playlist.length) {
+    const error = new Error('The artist story cannot be rebuilt without an active playlist.');
+    error.code = 'ARTIST_STORY_PLAYLIST_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const buildLog = array(config.build_log, []);
+  let currentStage = 'research';
+
+  try {
+    await sql`
+      UPDATE creapd.music_production_configurations
+      SET status='refreshing', updated_at=now()
+      WHERE id=${config.id} AND owner_user_id=${ownerId}
+    `;
+
+    await sql`DELETE FROM creapd.music_research_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const research = await buildArtistResearch({ sql, ownerUserId, config, playlist });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'research', research.length ? 'complete' : 'failed', {
+      count: research.length,
+      source: 'selected_artist_youtube_channel',
+      rebuilt_artist_story: true,
+    });
+
+    currentStage = 'topics';
+    await sql`DELETE FROM creapd.music_topics WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const topics = await buildArtistTopics({ sql, ownerUserId, config, research, playlist });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'topics', topics.length ? 'complete' : 'failed', {
+      count: topics.length,
+      source: 'artist_channel_editorial',
+      rebuilt_artist_story: true,
+    });
+
+    currentStage = 'assets';
+    await sql`DELETE FROM creapd.music_assets WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const assets = await buildAssets({ sql, ownerUserId, config, playlist, topics, research });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'assets', assets.length ? 'complete' : 'failed', {
+      count: assets.length,
+      rebuilt_artist_story: true,
+    });
+
+    currentStage = 'rundown';
+    await sql`DELETE FROM creapd.music_rundown_items WHERE configuration_id=${config.id} AND owner_user_id=${ownerId}`;
+    const rundown = await buildRundown({ sql, ownerUserId, config, playlist, topics, research, assets });
+    await appendStage(sql, ownerUserId, config.id, buildLog, 'rundown', rundown.length ? 'complete' : 'failed', {
+      count: rundown.length,
+      rebuilt_artist_story: true,
+    });
+
+    await sql`
+      UPDATE creapd.music_production_configurations
+      SET
+        status='in_review',
+        build_log=${safeJson(buildLog)}::jsonb,
+        build_metadata=${safeJson({
+          ...object(config.build_metadata, {}),
+          artist_story_rebuilt_at: new Date().toISOString(),
+          artist_story_source: 'selected_artist_youtube_channel',
+          research_count: research.length,
+          topic_count: topics.length,
+          asset_count: assets.length,
+          rundown_count: rundown.length,
+        })}::jsonb,
+        updated_at=now()
+      WHERE id=${config.id} AND owner_user_id=${ownerId}
+    `;
+
+    return {
+      success: true,
+      configuration_id: config.id,
+      playlist_preserved: playlist.length,
+      research_count: research.length,
+      topic_count: topics.length,
+      asset_count: assets.length,
+      rundown_count: rundown.length,
+    };
+  } catch (error) {
+    await updateBuildFailure(sql, ownerUserId, config.id, buildLog, error, currentStage).catch(() => {});
     throw error;
   }
 }

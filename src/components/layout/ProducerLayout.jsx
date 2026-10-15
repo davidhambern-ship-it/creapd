@@ -1,69 +1,47 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import ProducerHeader from './ProducerHeader';
-import ProducerSidebar from './ProducerSidebar';
-import ProductionFooter from './ProductionFooter';
-import MobileNavDrawer from './MobileNavDrawer';
-import MobileBottomNav from './MobileBottomNav';
-import PPNavBar from './PPNavBar';
-import { PRODUCER_NAV_ITEMS } from '@/lib/producerNav';
-import { PP_NAV_ITEMS } from '@/lib/ppNavItems';
 import EnvironmentLayer from '@/components/environment/EnvironmentLayer';
 import MobilePageShell from '@/components/mobile/MobilePageShell';
+import PodcastProductionMap from './PodcastProductionMap';
 import { PRODUCTION_PROFILE_THEMES } from '@/lib/productionProfileThemes';
 
 export default function ProducerLayout() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const location = useLocation();
+  const fixedWorkspace = [
+    '/podcast/research',
+    '/news/research',
+  ].some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
 
   return (
     <div
-      className="news-studio-shell relative h-screen flex flex-col overflow-hidden env-root"
-      style={PRODUCTION_PROFILE_THEMES.news.vars}
+      className="talk-studio-shell relative h-screen flex flex-col overflow-hidden env-root"
+      style={PRODUCTION_PROFILE_THEMES.talk.vars}
     >
-      <EnvironmentLayer profileKey="news" />
+      <div className="talk-studio-backdrop" aria-hidden="true" />
+      <EnvironmentLayer profileKey="talk" />
 
-      <div className="news-studio-lightbar news-studio-lightbar-left" aria-hidden="true" />
-      <div className="news-studio-lightbar news-studio-lightbar-right" aria-hidden="true" />
 
       <div className="relative z-10 flex flex-col flex-1 overflow-hidden">
         <ProducerHeader
-          variant="news"
+          variant="podcast"
           onGenerateBrief={() => {}}
           onOpenNav={() => setNavDrawerOpen(true)}
         />
 
-        <div className="flex flex-1 overflow-hidden">
-          <ProducerSidebar
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
-
-          <main className="news-studio-main relative flex-1 overflow-y-auto pb-16 lg:pb-0">
-            <div className="news-studio-content relative z-20">
-              <MobilePageShell>
-                <Outlet />
-              </MobilePageShell>
-            </div>
-
-            <div className="news-desk-ghost hidden xl:block" aria-hidden="true">
-              <img src="/assets/news/NewsPP_broadcast_desk.png" alt="" />
-            </div>
-          </main>
-        </div>
-
-        <div className="news-studio-footer-wrap">
-          <ProductionFooter variant="news" />
-        </div>
-        <PPNavBar />
+        <main className={`talk-studio-main relative flex-1 min-h-0 ${fixedWorkspace ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <div className={`relative z-20 ${fixedWorkspace ? 'h-full min-h-0' : 'min-h-full'}`}>
+            <MobilePageShell>
+              <Outlet />
+            </MobilePageShell>
+          </div>
+        </main>
       </div>
 
-      <MobileBottomNav items={PP_NAV_ITEMS} />
-      <MobileNavDrawer
+      <PodcastProductionMap
         open={navDrawerOpen}
         onClose={() => setNavDrawerOpen(false)}
-        navItems={PRODUCER_NAV_ITEMS}
-        variant="producer"
       />
     </div>
   );

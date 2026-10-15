@@ -853,6 +853,14 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
 
+        if (shouldUseNeonAuth() && functionName === 'getMusicProductionBundle') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_get_bundle',
+            configuration_id: payload?.configuration_id || null,
+          });
+          return { data: result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'buildMusicProduction') {
           const result = await creapdApi.post('/production/core', {
             action: 'music_build',
@@ -870,6 +878,15 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result?.result || result };
         }
 
+        if (shouldUseNeonAuth() && functionName === 'regenerateRejectedMusic') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_regenerate_rejected',
+            configuration_id: payload?.configuration_id,
+            kind: payload?.kind || 'all',
+          });
+          return { data: result?.result || result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'generateMusicTop10') {
           const result = await creapdApi.post('/production/core', {
             action: 'music_generate_top10',
@@ -882,8 +899,17 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           const result = await creapdApi.post('/production/core', {
             action: 'music_fetch_youtube_metadata',
             url: payload?.url,
+            require_radio_safe: payload?.require_radio_safe === true,
           });
           return { data: result };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'refreshMusicYoutubeMetadata') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'music_refresh_youtube_metadata',
+            configuration_id: payload?.configuration_id,
+          });
+          return { data: result?.result || result };
         }
 
         if (

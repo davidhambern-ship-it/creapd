@@ -190,6 +190,6 @@ function TalkObsRecordingControlLive() {
 }
 
 export default function TalkObsRecordingControl() {
-  if (window.location.pathname !== '/talk/live') return null;
+  if (!['/talk/live', '/podcast/studio', '/music/live'].includes(window.location.pathname)) return null;
   return <TalkObsRecordingControlLive />;
 }

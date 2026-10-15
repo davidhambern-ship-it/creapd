@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import {
   runMusicBuild,
+  rebuildArtistStory,
   regenerateMusicSection,
+  regenerateRejectedMusicMaterials,
   generateMusicTop10,
   fetchYoutubeMetadata,
+  refreshMusicPlaylistYoutubeMetadata,
   generateMusicStructured,
+  scanArtistYoutubeChannel,
 } from './musicEngine.js';
 
 function clean(value, fallback = '') {
@@ -55,6 +59,18 @@ function parseArray(value, fallback = []) {
   return fallback;
 }
 
+const DEFAULT_MUSIC_AUTOMATION = [
+  'Auto Research',
+  'Auto Build Playlist',
+  'Auto Develop',
+  'Auto Assemble Packet',
+];
+
+function normalizeAutomation(value) {
+  const parsed = parseArray(value, []);
+  return parsed.length ? parsed : [...DEFAULT_MUSIC_AUTOMATION];
+}
+
 function parseObject(value, fallback = {}) {
   if (value && typeof value === 'object' && !Array.isArray(value)) return value;
   if (typeof value === 'string' && value.trim()) {
@@ -71,6 +87,15 @@ function withDates(row) {
   return { ...row, created_date: row.created_at || null, updated_date: row.updated_at || null };
 }
 
+function withArtistProfile(row) {
+  if (!row) return row;
+  return withDates({
+    ...row,
+    source_links: parseArray(row.source_links, []),
+    knowledge: parseObject(row.knowledge, {}),
+  });
+}
+
 function withConfigAliases(row) {
   if (!row) return row;
   return withDates({
@@ -81,7 +106,7 @@ function withConfigAliases(row) {
     music_topics: JSON.stringify(parseArray(row.music_topics, [])),
     research_sources: JSON.stringify(parseArray(row.research_sources, [])),
     pacing_rules: JSON.stringify(parseObject(row.pacing_rules, {})),
-    ai_automation: JSON.stringify(parseArray(row.ai_automation, [])),
+    ai_automation: JSON.stringify(normalizeAutomation(row.ai_automation)),
     vo_requirements: JSON.stringify(parseObject(row.vo_requirements, {})),
     production_plan: JSON.stringify(parseObject(row.production_plan, {})),
     build_log: JSON.stringify(parseArray(row.build_log, [])),
@@ -250,10 +275,11 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
     preferred_eras: nullable(merged.preferred_eras),
     playlist_energy_flow: clean(merged.playlist_energy_flow, 'Build Energy Gradually'),
     pacing_rules: parseObject(merged.pacing_rules, { max_sequential_songs: 4, min_talk_break_frequency: 1 }),
-    ai_automation: parseArray(merged.ai_automation, ['Auto Research','Auto Build Playlist','Auto Develop','Auto Assemble Packet']),
+    ai_automation: normalizeAutomation(merged.ai_automation),
     vo_requirements: parseObject(merged.vo_requirements, {}),
     production_plan: parseObject(merged.production_plan, {}),
     build_log: parseArray(merged.build_log, []),
+    source_payload: parseObject(merged.source_payload, {}),
     status: clean(merged.status, 'configuring'),
     is_default: boolean(merged.is_default, false),
   };
@@ -280,7 +306,8 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
         explicit_allowed=${values.explicit_allowed}, preferred_eras=${values.preferred_eras}, playlist_energy_flow=${values.playlist_energy_flow},
         pacing_rules=${JSON.stringify(values.pacing_rules)}::jsonb, ai_automation=${JSON.stringify(values.ai_automation)}::jsonb,
         vo_requirements=${JSON.stringify(values.vo_requirements)}::jsonb, production_plan=${JSON.stringify(values.production_plan)}::jsonb,
-        build_log=${JSON.stringify(values.build_log)}::jsonb, status=${values.status}, is_default=${values.is_default}, updated_at=now()
+        build_log=${JSON.stringify(values.build_log)}::jsonb, source_payload=${JSON.stringify(values.source_payload)}::jsonb,
+        status=${values.status}, is_default=${values.is_default}, updated_at=now()
       WHERE id=${id} AND owner_user_id=${ownerId}
       RETURNING *
     `;
@@ -293,7 +320,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
         must_play_songs, blocked_songs, blocked_artists, recently_played_songs, max_songs_per_artist,
         min_artist_variety, include_indie, include_local, include_new_releases, include_throwbacks, clean_only, explicit_allowed,
         preferred_eras, playlist_energy_flow, pacing_rules, ai_automation, vo_requirements, production_plan, build_log,
-        status, is_default, created_by_email
+        status, is_default, created_by_email, source_payload
       ) VALUES (
         ${id}, ${ownerId}, ${values.production_name}, ${values.host_name}, ${values.co_host_name}, ${values.show_date},
         ${values.show_start_time}, ${values.production_format}, ${values.station_name}, ${values.show_description},
@@ -306,7 +333,7 @@ export async function saveMusicConfiguration({ sql, ownerUserId, ownerEmail, inp
         ${values.preferred_eras}, ${values.playlist_energy_flow}, ${JSON.stringify(values.pacing_rules)}::jsonb,
         ${JSON.stringify(values.ai_automation)}::jsonb, ${JSON.stringify(values.vo_requirements)}::jsonb,
         ${JSON.stringify(values.production_plan)}::jsonb, ${JSON.stringify(values.build_log)}::jsonb,
-        ${values.status}, ${values.is_default}, ${ownerEmail || null}
+        ${values.status}, ${values.is_default}, ${ownerEmail || null}, ${JSON.stringify(values.source_payload)}::jsonb
       ) RETURNING *
     `;
   }
@@ -458,6 +485,83 @@ async function updateResearch(sql, ownerUserId, id, patch) {
   return withResearchAliases(row);
 }
 
+async function getMusicProductionBundle(sql, ownerUserId, configurationId) {
+  const ownerId = String(ownerUserId);
+  const requestedId = clean(configurationId);
+  let config = null;
+
+  if (requestedId) {
+    [config] = await sql`
+      SELECT * FROM creapd.music_production_configurations
+      WHERE id=${requestedId} AND owner_user_id=${ownerId}
+      LIMIT 1
+    `;
+  } else {
+    [config] = await sql`
+      SELECT * FROM creapd.music_production_configurations
+      WHERE owner_user_id=${ownerId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+  }
+
+  if (!config) {
+    return {
+      configuration: null,
+      playlist: [],
+      topics: [],
+      research: [],
+      rundown: [],
+      assets: [],
+    };
+  }
+
+  const configId = config.id;
+  const [playlist, topics, research, rundown, assets] = await Promise.all([
+    sql`
+      SELECT * FROM creapd.music_playlist_items
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY order_index ASC
+    `,
+    sql`
+      SELECT * FROM creapd.music_topics
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY display_order ASC, created_at ASC
+    `,
+    sql`
+      SELECT * FROM creapd.music_research_items
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY research_date DESC NULLS LAST, created_at DESC
+    `,
+    sql`
+      SELECT * FROM creapd.music_rundown_items
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY order_index ASC
+    `,
+    sql`
+      SELECT * FROM creapd.music_assets
+      WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+      ORDER BY created_at ASC
+    `,
+  ]);
+
+  if (!['planning', 'building', 'refreshing'].includes(String(config.status || '').toLowerCase())) {
+    const reconciledStatus = await syncMusicReviewStatus(sql, ownerUserId, configId);
+    if (reconciledStatus && reconciledStatus !== config.status) {
+      config = { ...config, status: reconciledStatus };
+    }
+  }
+
+  return {
+    configuration: withConfigAliases(config),
+    playlist: playlist.map(withOrder),
+    topics: topics.map(withDates),
+    research: research.map(withResearchAliases),
+    rundown: rundown.map(withOrder),
+    assets: assets.map(withDates),
+  };
+}
+
 async function entityGet(sql, ownerUserId, entity, id) {
   const ownerId = String(ownerUserId);
   let row = null;
@@ -547,6 +651,60 @@ async function resolveMusicConfigurationForUpdate(sql, ownerUserId, ownerEmail, 
   return null;
 }
 
+async function syncMusicReviewStatus(sql, ownerUserId, configurationId) {
+  const ownerId = String(ownerUserId);
+  const configId = clean(configurationId);
+  if (!configId) return 'in_review';
+
+  const [playlistCounts] = await sql`
+    SELECT
+      count(*)::int AS total,
+      count(*) FILTER (WHERE lower(status) IN ('approved','locked'))::int AS approved
+    FROM creapd.music_playlist_items
+    WHERE configuration_id=${configId} AND owner_user_id=${ownerId}
+  `;
+
+  const [segmentCounts] = await sql`
+    SELECT
+      count(*)::int AS rundown_total,
+      count(*) FILTER (WHERE lower(segment_type) <> 'song')::int AS spoken_total,
+      count(*) FILTER (
+        WHERE lower(segment_type) <> 'song'
+          AND lower(status) IN ('approved','locked')
+      )::int AS spoken_approved
+    FROM creapd.music_rundown_items
+    WHERE configuration_id=${configId}
+      AND owner_user_id=${ownerId}
+  `;
+
+  const playlistTotal = number(playlistCounts?.total, 0);
+  const playlistApproved = number(playlistCounts?.approved, 0);
+  const rundownTotal = number(segmentCounts?.rundown_total, 0);
+  const spokenTotal = number(segmentCounts?.spoken_total, 0);
+  const spokenApproved = number(segmentCounts?.spoken_approved, 0);
+
+  const structurallyComplete =
+    playlistTotal > 0 &&
+    rundownTotal > 0 &&
+    spokenTotal > 0;
+
+  const allReviewableApproved =
+    playlistApproved === playlistTotal &&
+    spokenApproved === spokenTotal;
+
+  const nextStatus = structurallyComplete && allReviewableApproved ? 'approved' : 'in_review';
+
+  await sql`
+    UPDATE creapd.music_production_configurations
+    SET status=${nextStatus}, updated_at=now()
+    WHERE id=${configId}
+      AND owner_user_id=${ownerId}
+      AND status NOT IN ('building','refreshing','planning')
+  `;
+
+  return nextStatus;
+}
+
 async function entityUpdate(sql, ownerUserId, entity, id, patch, ownerEmail) {
   if (entity === 'MusicProductionConfiguration') {
     const existing = await resolveMusicConfigurationForUpdate(sql, ownerUserId, ownerEmail, id, patch);
@@ -558,10 +716,18 @@ async function entityUpdate(sql, ownerUserId, entity, id, patch, ownerEmail) {
       input: { ...existing, ...patch, id: existing.id },
     });
   }
-  if (entity === 'PlaylistItem') return updatePlaylistItem(sql, ownerUserId, id, patch);
+  if (entity === 'PlaylistItem') {
+    const row = await updatePlaylistItem(sql, ownerUserId, id, patch);
+    await syncMusicReviewStatus(sql, ownerUserId, row.configuration_id);
+    return row;
+  }
   if (entity === 'MusicTopic') return updateTopic(sql, ownerUserId, id, patch);
   if (entity === 'MusicResearchItem') return updateResearch(sql, ownerUserId, id, patch);
-  if (entity === 'ShowRundownItem') return updateRundownItem(sql, ownerUserId, id, patch);
+  if (entity === 'ShowRundownItem') {
+    const row = await updateRundownItem(sql, ownerUserId, id, patch);
+    await syncMusicReviewStatus(sql, ownerUserId, row.configuration_id);
+    return row;
+  }
   if (entity === 'MusicAsset') return updateAsset(sql, ownerUserId, id, patch);
   if (entity === 'Top10Item') return updateTop10Item(sql, ownerUserId, id, patch);
   throw fail(`Update not supported for ${entity}`, 'MUSIC_ENTITY_UPDATE_UNSUPPORTED');
@@ -607,12 +773,346 @@ function pipelineFromConfig(config) {
     blueprint_status: stageState(['playlist','topics']),
     production_status: stageState(['assets','top10']),
     assembly_status: stageState(['rundown']),
-    pipeline_status: config.status === 'ready' ? 'completed' : config.status === 'failed' ? 'failed' : 'in_progress',
+    pipeline_status: ['ready','in_review','approved'].includes(config.status) ? 'completed' : config.status === 'failed' ? 'failed' : 'in_progress',
   };
   const statuses = ['discovery','knowledge','blueprint','production','assembly'].map(k => pipeline[`${k}_status`]);
   pipeline.pipeline_progress = Math.round((statuses.filter(s => s === 'approved' || s === 'skipped').length / statuses.length) * 100);
   pipeline.current_department = ['discovery','knowledge','blueprint','production','assembly'].find(k => pipeline[`${k}_status`] === 'pending') || 'assembly';
   return pipeline;
+}
+
+
+async function getArtistProfile(sql, ownerUserId) {
+  const [profile] = await sql`
+    SELECT * FROM creapd.artist_profiles
+    WHERE owner_user_id=${String(ownerUserId)}
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `;
+  return profile || null;
+}
+
+async function requireArtistProfile(sql, ownerUserId, profileId = null) {
+  const ownerId = String(ownerUserId);
+  const requested = clean(profileId);
+  const [profile] = requested
+    ? await sql`
+        SELECT * FROM creapd.artist_profiles
+        WHERE id=${requested} AND owner_user_id=${ownerId}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT * FROM creapd.artist_profiles
+        WHERE owner_user_id=${ownerId}
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `;
+  if (!profile) throw fail('Artist profile not found', 'ARTIST_PROFILE_NOT_FOUND', 404);
+  return profile;
+}
+
+async function readArtistShow(sql, ownerUserId) {
+  const ownerId = String(ownerUserId);
+  const profile = await getArtistProfile(sql, ownerUserId);
+  if (!profile) {
+    return { profile: null, catalog: [] };
+  }
+
+  const catalog = await sql`
+    SELECT * FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+    ORDER BY created_at ASC
+  `;
+
+  return {
+    profile: withArtistProfile(profile),
+    catalog: (catalog || []).map(withDates),
+  };
+}
+
+async function saveArtistProfile(sql, ownerUserId, input = {}) {
+  const ownerId = String(ownerUserId);
+  const existing = await getArtistProfile(sql, ownerUserId);
+  const artistName = clean(input.artist_name || input.public_name || existing?.artist_name);
+  if (!artistName) throw fail('Artist name is required', 'ARTIST_PROFILE_NAME_REQUIRED');
+
+  const sourceLinks = parseArray(
+    input.source_links !== undefined ? input.source_links : existing?.source_links,
+    [],
+  );
+  const knowledge = parseObject(
+    input.knowledge !== undefined ? input.knowledge : existing?.knowledge,
+    {},
+  );
+
+  if (existing) {
+    const [updated] = await sql`
+      UPDATE creapd.artist_profiles
+      SET
+        artist_name=${artistName},
+        public_name=${nullable(input.public_name !== undefined ? input.public_name : existing.public_name)},
+        bio_summary=${nullable(input.bio_summary !== undefined ? input.bio_summary : existing.bio_summary)},
+        artistic_message=${nullable(input.artistic_message !== undefined ? input.artistic_message : existing.artistic_message)},
+        source_links=${JSON.stringify(sourceLinks)}::jsonb,
+        knowledge=${JSON.stringify(knowledge)}::jsonb,
+        status='active',
+        updated_at=now()
+      WHERE id=${existing.id} AND owner_user_id=${ownerId}
+      RETURNING *
+    `;
+    return withArtistProfile(updated);
+  }
+
+  const [created] = await sql`
+    INSERT INTO creapd.artist_profiles (
+      id, owner_user_id, artist_name, public_name, bio_summary, artistic_message,
+      source_links, knowledge, status
+    ) VALUES (
+      ${randomUUID()}, ${ownerId}, ${artistName}, ${nullable(input.public_name)},
+      ${nullable(input.bio_summary)}, ${nullable(input.artistic_message)},
+      ${JSON.stringify(sourceLinks)}::jsonb, ${JSON.stringify(knowledge)}::jsonb, 'active'
+    )
+    RETURNING *
+  `;
+  return withArtistProfile(created);
+}
+
+async function addArtistCatalogTrack(sql, ownerUserId, input = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, input.profile_id);
+  const title = clean(input.title);
+  if (!title) throw fail('Track title is required', 'ARTIST_TRACK_TITLE_REQUIRED');
+
+  const [created] = await sql`
+    INSERT INTO creapd.artist_catalog_tracks (
+      id, profile_id, owner_user_id, title, artist, album, release_year,
+      description, lyrics, source_type, source_url, audio_url, artwork_url, metadata
+    ) VALUES (
+      ${randomUUID()}, ${profile.id}, ${ownerId}, ${title},
+      ${nullable(input.artist || profile.public_name || profile.artist_name)},
+      ${nullable(input.album)}, ${nullable(input.release_year)},
+      ${nullable(input.description)}, ${nullable(input.lyrics)},
+      ${clean(input.source_type, input.audio_url ? 'upload' : 'manual')},
+      ${nullable(input.source_url)}, ${nullable(input.audio_url)},
+      ${nullable(input.artwork_url)}, ${JSON.stringify(parseObject(input.metadata, {}))}::jsonb
+    )
+    RETURNING *
+  `;
+  return withDates(created);
+}
+
+async function deleteArtistCatalogTrack(sql, ownerUserId, trackId) {
+  const rows = await sql`
+    DELETE FROM creapd.artist_catalog_tracks
+    WHERE id=${clean(trackId)} AND owner_user_id=${String(ownerUserId)}
+    RETURNING id
+  `;
+  if (!rows?.length) throw fail('Artist catalog track not found', 'ARTIST_TRACK_NOT_FOUND', 404);
+  return { id: clean(trackId), deleted: true };
+}
+
+async function syncCatalogTrackMetadataToPlaylists(sql, ownerUserId, track, channelName = null) {
+  if (!track?.id) return;
+  const metadata = parseObject(track.metadata, {});
+  await sql`
+    UPDATE creapd.music_playlist_items
+    SET
+      song_title=${clean(track.title, 'YouTube Track')},
+      artist=${clean(track.artist, 'Artist')},
+      length_seconds=${Math.max(30, number(metadata.duration_seconds, 180))},
+      thumbnail_url=${track.artwork_url || null},
+      channel_name=${nullable(channelName || metadata.youtube_channel_name || track.artist)},
+      updated_at=now()
+    WHERE owner_user_id=${String(ownerUserId)}
+      AND source_payload->>'catalog_track_id'=${String(track.id)}
+  `;
+}
+
+async function importArtistYoutubeVideos(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+  const videos = Array.isArray(body.videos) ? body.videos.slice(0, 50) : [];
+  if (!videos.length) throw fail('Choose at least one YouTube video to import', 'ARTIST_YOUTUBE_IMPORT_EMPTY');
+
+  const existing = await sql`
+    SELECT id, source_url, metadata
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id} AND owner_user_id=${ownerId}
+  `;
+  const existingByVideoId = new Map();
+  for (const row of existing || []) {
+    const metadata = parseObject(row.metadata, {});
+    if (metadata.youtube_video_id) existingByVideoId.set(String(metadata.youtube_video_id), row);
+    const match = String(row.source_url || '').match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    if (match) existingByVideoId.set(match[1], row);
+  }
+
+  const imported = [];
+  const refreshed = [];
+  const skipped = [];
+  for (const video of videos) {
+    const videoId = clean(video.video_id);
+    if (!videoId) {
+      skipped.push(clean(video.title));
+      continue;
+    }
+
+    let resolvedVideo = { ...video };
+    const criticalMetadataMissing =
+      !clean(resolvedVideo.title) ||
+      !clean(resolvedVideo.channel_name) ||
+      number(resolvedVideo.duration_seconds, 0) <= 0;
+
+    if (criticalMetadataMissing) {
+      try {
+        const verified = await fetchYoutubeMetadata(
+          clean(resolvedVideo.source_url, `https://www.youtube.com/watch?v=${videoId}`),
+          { requireRadioSafe: false },
+        );
+        resolvedVideo = {
+          ...resolvedVideo,
+          title: clean(verified?.title, resolvedVideo.title),
+          channel_name: clean(verified?.channel_name, resolvedVideo.channel_name),
+          duration_seconds: number(verified?.duration_seconds, resolvedVideo.duration_seconds),
+          thumbnail_url: clean(verified?.thumbnail_url, resolvedVideo.thumbnail_url),
+        };
+      } catch {}
+    }
+
+    if (!clean(resolvedVideo.title)) {
+      skipped.push(videoId);
+      continue;
+    }
+
+    const existingTrack = existingByVideoId.get(videoId);
+    if (existingTrack) {
+      const [updated] = await sql`
+        UPDATE creapd.artist_catalog_tracks
+        SET
+          title=${clean(resolvedVideo.title, 'YouTube Track')},
+          artist=${clean(resolvedVideo.channel_name, profile.public_name || profile.artist_name || 'Artist')},
+          release_year=${clean(resolvedVideo.published_at).slice(0,4) || null},
+          description=${nullable(resolvedVideo.description)},
+          lyrics=${nullable(resolvedVideo.lyrics)},
+          source_type='youtube',
+          source_url=${clean(resolvedVideo.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
+          artwork_url=${nullable(resolvedVideo.thumbnail_url)},
+          metadata=${JSON.stringify({
+            youtube_video_id: videoId,
+            youtube_channel_name: nullable(resolvedVideo.channel_name),
+            duration_seconds: number(resolvedVideo.duration_seconds, 0) || null,
+            published_at: nullable(resolvedVideo.published_at),
+            lyrics_source: nullable(resolvedVideo.lyrics_source),
+            imported_from_channel: true,
+          })}::jsonb,
+          updated_at=now()
+        WHERE id=${existingTrack.id} AND owner_user_id=${ownerId}
+        RETURNING *
+      `;
+      if (updated) {
+        const normalizedUpdated = withDates(updated);
+        refreshed.push(normalizedUpdated);
+        await syncCatalogTrackMetadataToPlaylists(sql, ownerUserId, normalizedUpdated, resolvedVideo.channel_name);
+      }
+      continue;
+    }
+
+    const [created] = await sql`
+      INSERT INTO creapd.artist_catalog_tracks (
+        id, profile_id, owner_user_id, title, artist, album, release_year,
+        description, lyrics, source_type, source_url, audio_url, artwork_url, metadata
+      ) VALUES (
+        ${randomUUID()}, ${profile.id}, ${ownerId},
+        ${clean(resolvedVideo.title, 'YouTube Track')},
+        ${clean(resolvedVideo.channel_name, profile.public_name || profile.artist_name || 'Artist')},
+        null,
+        ${clean(resolvedVideo.published_at).slice(0,4) || null},
+        ${nullable(resolvedVideo.description)},
+        ${nullable(resolvedVideo.lyrics)},
+        'youtube',
+        ${clean(resolvedVideo.source_url, `https://www.youtube.com/watch?v=${videoId}`)},
+        null,
+        ${nullable(resolvedVideo.thumbnail_url)},
+        ${JSON.stringify({
+          youtube_video_id: videoId,
+          youtube_channel_name: nullable(resolvedVideo.channel_name),
+          duration_seconds: number(resolvedVideo.duration_seconds, 0) || null,
+          published_at: nullable(resolvedVideo.published_at),
+          lyrics_source: nullable(resolvedVideo.lyrics_source),
+          imported_from_channel: true,
+        })}::jsonb
+      )
+      RETURNING *
+    `;
+    existingByVideoId.set(videoId, created);
+    imported.push(withDates(created));
+  }
+
+  return { imported, refreshed, skipped };
+}
+
+async function repairArtistYoutubeCatalogMetadata(sql, ownerUserId, body = {}) {
+  const ownerId = String(ownerUserId);
+  const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+  const catalog = await sql`
+    SELECT *
+    FROM creapd.artist_catalog_tracks
+    WHERE profile_id=${profile.id}
+      AND owner_user_id=${ownerId}
+      AND source_type='youtube'
+    ORDER BY created_at ASC
+  `;
+
+  const stale = (catalog || []).filter(track => {
+    const metadata = parseObject(track.metadata, {});
+    return (
+      !clean(track.title) ||
+      clean(track.title).toLowerCase() === 'youtube track' ||
+      !clean(track.artist) ||
+      number(metadata.duration_seconds, 0) <= 0
+    );
+  });
+
+  const limit = Math.max(1, Math.min(12, Math.round(number(body.limit, 12))));
+  const batch = stale.slice(0, limit);
+  const repaired = [];
+
+  for (const track of batch) {
+    if (!clean(track.source_url)) continue;
+    try {
+      const verified = await fetchYoutubeMetadata(track.source_url, { requireRadioSafe: false });
+      if (!verified?.title) continue;
+
+      const existingMetadata = parseObject(track.metadata, {});
+      const [updated] = await sql`
+        UPDATE creapd.artist_catalog_tracks
+        SET
+          title=${clean(verified.title, track.title || 'YouTube Track')},
+          artist=${clean(verified.channel_name, track.artist || profile.public_name || profile.artist_name || 'Artist')},
+          artwork_url=${nullable(verified.thumbnail_url) || track.artwork_url || null},
+          metadata=${JSON.stringify({
+            ...existingMetadata,
+            youtube_video_id: verified.video_id || existingMetadata.youtube_video_id || null,
+            youtube_channel_name: verified.channel_name || existingMetadata.youtube_channel_name || null,
+            duration_seconds: number(verified.duration_seconds, existingMetadata.duration_seconds) || null,
+            imported_from_channel: existingMetadata.imported_from_channel !== false,
+          })}::jsonb,
+          updated_at=now()
+        WHERE id=${track.id} AND owner_user_id=${ownerId}
+        RETURNING *
+      `;
+      if (updated) {
+        const normalizedUpdated = withDates(updated);
+        repaired.push(normalizedUpdated);
+        await syncCatalogTrackMetadataToPlaylists(sql, ownerUserId, normalizedUpdated, verified.channel_name);
+      }
+    } catch {}
+  }
+
+  return {
+    repaired,
+    remaining_count: Math.max(0, stale.length - batch.length),
+  };
 }
 
 export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, action, body = {} }) {
@@ -621,16 +1121,88 @@ export async function runMusicStudioAction({ sql, ownerUserId, ownerEmail, actio
       return { configuration: await saveMusicConfiguration({ sql, ownerUserId, ownerEmail, input: body.configuration || body }) };
     case 'music_list_configurations':
       return { configurations: await listMusicConfigurations(sql, ownerUserId, body.limit) };
+    case 'music_get_bundle':
+      return await getMusicProductionBundle(sql, ownerUserId, body.configuration_id);
     case 'music_build':
       return { result: await runMusicBuild({ sql, ownerUserId, configurationId: body.configuration_id }) };
+    case 'music_rebuild_artist_story':
+      return { result: await rebuildArtistStory({ sql, ownerUserId, configurationId: body.configuration_id }) };
     case 'music_regenerate_section':
       return { result: await regenerateMusicSection({ sql, ownerUserId, configurationId: body.configuration_id, section: body.section }) };
+    case 'music_regenerate_rejected':
+      return { result: await regenerateRejectedMusicMaterials({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+        kind: body.kind || 'all',
+      }) };
     case 'music_generate_top10':
       return { top10: await generateMusicTop10({ sql, ownerUserId, configurationId: body.configuration_id, preserveLocked: true }) };
     case 'music_fetch_youtube_metadata':
-      return await fetchYoutubeMetadata(body.url);
+      return await fetchYoutubeMetadata(body.url, { requireRadioSafe: body.require_radio_safe === true });
+    case 'music_refresh_youtube_metadata':
+      return { result: await refreshMusicPlaylistYoutubeMetadata({
+        sql,
+        ownerUserId,
+        configurationId: body.configuration_id,
+      }) };
     case 'music_generate_structured':
       return { result: await generateMusicStructured({ prompt: body.prompt, schema: body.schema, schemaName: body.schema_name, maxOutputTokens: body.max_output_tokens }) };
+    case 'music_artist_show_get':
+      return await readArtistShow(sql, ownerUserId);
+    case 'music_artist_profile_save':
+      return { profile: await saveArtistProfile(sql, ownerUserId, body.profile || body) };
+    case 'music_artist_catalog_add':
+      return { track: await addArtistCatalogTrack(sql, ownerUserId, body.track || body) };
+    case 'music_artist_catalog_delete':
+      return await deleteArtistCatalogTrack(sql, ownerUserId, body.track_id);
+    case 'music_artist_youtube_scan': {
+      const profile = await requireArtistProfile(sql, ownerUserId, body.profile_id);
+      const result = await scanArtistYoutubeChannel(body.channel_url, {
+        limit: body.limit || 24,
+        artist_name: profile.artist_name,
+        public_name: profile.public_name,
+      });
+
+      if (result?.channel_context) {
+        const knowledge = parseObject(profile.knowledge, {});
+        const sourceLinks = parseArray(profile.source_links, []);
+        const channelUrl = clean(result.channel_context.channel_url || result.channel_url || body.channel_url);
+        const nextSourceLinks = channelUrl && !sourceLinks.some(item => clean(item?.url || item) === channelUrl)
+          ? [...sourceLinks, { type: 'youtube', url: channelUrl, label: result.channel_context.channel_name || 'YouTube' }]
+          : sourceLinks;
+
+        await sql`
+          UPDATE creapd.artist_profiles
+          SET
+            knowledge=${JSON.stringify({
+              ...knowledge,
+              youtube_channel: {
+                ...result.channel_context,
+                scanned_at: new Date().toISOString(),
+              },
+              youtube_channel_library: (result.videos || []).slice(0, 40).map(video => ({
+                video_id: clean(video.video_id),
+                title: clean(video.title),
+                channel_name: clean(video.channel_name),
+                published_at: nullable(video.published_at),
+                description: clean(video.description).slice(0, 700),
+                likely_music: video.likely_music === true,
+                source_url: clean(video.source_url),
+              })),
+            })}::jsonb,
+            source_links=${JSON.stringify(nextSourceLinks)}::jsonb,
+            updated_at=now()
+          WHERE id=${profile.id} AND owner_user_id=${String(ownerUserId)}
+        `;
+      }
+
+      return result;
+    }
+    case 'music_artist_youtube_import':
+      return await importArtistYoutubeVideos(sql, ownerUserId, body);
+    case 'music_artist_youtube_repair_metadata':
+      return await repairArtistYoutubeCatalogMetadata(sql, ownerUserId, body);
     case 'music_entity_get':
       return { item: await entityGet(sql, ownerUserId, body.entity, body.id) };
     case 'music_entity_create':
