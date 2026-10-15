@@ -868,6 +868,55 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
 
+        if (shouldUseNeonAuth() && functionName === 'autoBuildTopics') {
+          const result = await creapdApi.post('/research/topic-action', {
+            action: 'auto_build',
+            prompt: payload?.prompt,
+            skip_confirmation: payload?.skip_confirmation === true,
+          });
+          return { data: result };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'autoBuildPacket') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'auto_build_research_packet',
+            configuration_id: payload?.configuration_id,
+            presentation_title: payload?.presentation_title,
+          });
+          return { data: result };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'generateProductionPackage') {
+          const result = await creapdApi.post('/research/production', {
+            action: 'generate_package',
+            point_id: payload?.source_entity_id || payload?.research_point_id,
+          });
+          return {
+            data: {
+              ...result,
+              ...(result?.package || {}),
+              package_id: result?.package?.id || null,
+            },
+          };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'listPresentations') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'list_presentation_studio',
+            limit: payload?.limit || 100,
+          });
+          return { data: result };
+        }
+
+        if (shouldUseNeonAuth() && functionName === 'shareWithCreapd') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'share_package_to_creapd',
+            package_id: payload?.source_production_id,
+            visibility: 'public',
+          });
+          return { data: result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'buildTalkProduction') {
           const result = await creapdApi.post('/production/core', {
             action: 'talk_build',
