@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -346,11 +347,13 @@ export default function MusicConfigure() {
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
       setBuilding(true);
-      base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
-        .catch(err => {
-          console.error('Build HTTP error:', err?.message || err);
-          setBuildError(err?.message || 'CREAPD could not build this production.');
-        });
+      creapdApi.post('/production/core', {
+        action: 'music_build',
+        configuration_id: savedConfig.id,
+      }).catch(err => {
+        console.error('Build HTTP error:', err?.message || err);
+        setBuildError(err?.message || 'CREAPD could not build this production.');
+      });
     } catch (err) {
       setBuildError(err.message || 'Failed to build production.');
       setBuilding(false);
@@ -379,11 +382,13 @@ export default function MusicConfigure() {
       }
       await base44.entities.MusicProductionConfiguration.update(savedConfig.id, { is_default: true });
       setBuildConfigId(savedConfig.id);
-      base44.functions.invoke('buildMusicProduction', { configuration_id: savedConfig.id })
-        .catch(err => {
-          console.error('Build HTTP error:', err?.message || err);
-          setBuildError(err?.message || 'CREAPD could not build this production.');
-        });
+      creapdApi.post('/production/core', {
+        action: 'music_build',
+        configuration_id: savedConfig.id,
+      }).catch(err => {
+        console.error('Build HTTP error:', err?.message || err);
+        setBuildError(err?.message || 'CREAPD could not build this production.');
+      });
     } catch (err) {
       setBuildError(err.message || 'Failed to build production. Please try again.');
       setBuilding(false);
