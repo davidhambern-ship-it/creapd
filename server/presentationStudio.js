@@ -451,6 +451,151 @@ async function writeEditorState(sql, ownerUserId, presentation, editorState, ext
   return updated || presentation;
 }
 
+export async function createResearchAutoBuildPresentation({
+  sql,
+  ownerUserId,
+  configurationId,
+  presentationTitle,
+}) {
+  const configId = String(configurationId || '').trim();
+  if (!configId) {
+    throw studioError('Research configuration is required.', 'CONFIGURATION_ID_REQUIRED', 400);
+  }
+
+  const [configuration] = await sql`
+    SELECT *
+    FROM creapd.research_production_configurations
+    WHERE id = ${configId}
+      AND owner_user_id = ${String(ownerUserId)}
+    LIMIT 1
+  `;
+
+  if (!configuration) {
+    throw studioError('Research configuration not found.', 'CONFIGURATION_NOT_FOUND', 404);
+  }
+
+  const packages = await sql`
+    SELECT
+      pkg.*,
+      point.display_order AS source_point_order,
+      point.title AS source_point_title
+    FROM creapd.production_packages pkg
+    LEFT JOIN creapd.research_points point
+      ON point.id = pkg.source_entity_id
+      AND point.owner_user_id = ${String(ownerUserId)}
+    WHERE pkg.configuration_id = ${configId}
+      AND pkg.owner_user_id = ${String(ownerUserId)}
+      AND pkg.source_entity_type = 'ResearchPoint'
+      AND pkg.status IN ('generated', 'edited', 'approved')
+    ORDER BY point.display_order ASC NULLS LAST, pkg.created_at ASC
+  `;
+
+  if (!packages.length) {
+    throw studioError(
+      'Generate Research production packages before assembling the presentation.',
+      'PRESENTATION_PACKAGES_REQUIRED',
+      409,
+    );
+  }
+
+  const existing = await sql`
+    SELECT *
+    FROM creapd.presentations
+    WHERE owner_user_id = ${String(ownerUserId)}
+      AND source_entity_type = 'ResearchProductionConfiguration'
+      AND source_entity_id = ${configId}
+      AND COALESCE(source_payload->'presentation_studio'->>'handoff_type', '') = 'research_auto_build'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  let presentation = existing[0] || null;
+  if (!presentation) {
+    const presentationId = randomUUID();
+    const title = String(
+      presentationTitle ||
+      configuration.production_name ||
+      'Auto-Built Research Presentation'
+    ).trim();
+
+    const [created] = await sql`
+      INSERT INTO creapd.presentations (
+        id, owner_user_id, production_profile, title, status, presentation_mode,
+        director_plan, timeline, output_config, source_system,
+        source_entity_type, source_entity_id, source_payload
+      ) VALUES (
+        ${presentationId}, ${String(ownerUserId)}, 'research', ${title}, 'generating', 'studio',
+        '{}'::jsonb, '[]'::jsonb, '{}'::jsonb, 'creapd-neon-vercel',
+        'ResearchProductionConfiguration', ${configId},
+        ${JSON.stringify({
+          presentation_studio: {
+            version: PRESENTATION_STUDIO_VERSION,
+            handoff_type: 'research_auto_build',
+            handoff_status: 'packet_ready',
+            configuration_id: configId,
+            created_at: new Date().toISOString(),
+          },
+        })}::jsonb
+      )
+      RETURNING *
+    `;
+    presentation = created;
+  } else if (presentationTitle && String(presentationTitle).trim()) {
+    const [updated] = await sql`
+      UPDATE creapd.presentations
+      SET title = ${String(presentationTitle).trim()}, status='generating', updated_at=now()
+      WHERE id=${presentation.id}
+        AND owner_user_id=${String(ownerUserId)}
+      RETURNING *
+    `;
+    presentation = updated || presentation;
+  }
+
+  await sql`
+    DELETE FROM creapd.presentation_packages
+    WHERE presentation_id = ${presentation.id}
+  `;
+
+  for (let index = 0; index < packages.length; index += 1) {
+    await sql`
+      INSERT INTO creapd.presentation_packages (
+        presentation_id, production_package_id, position, role, settings
+      ) VALUES (
+        ${presentation.id}, ${packages[index].id}, ${index},
+        ${index === 0 ? 'primary' : 'supporting'}, '{}'::jsonb
+      )
+      ON CONFLICT (presentation_id, production_package_id)
+      DO UPDATE SET position=EXCLUDED.position, role=EXCLUDED.role
+    `;
+  }
+
+  return {
+    presentation_id: presentation.id,
+    slide_count: packages.length,
+    presentation,
+    package_ids: packages.map(pkg => pkg.id),
+    reused: Boolean(existing[0]),
+  };
+}
+
+export async function listPresentationStudioProjects({ sql, ownerUserId, limit = 100 }) {
+  const safeLimit = Math.max(1, Math.min(200, Number(limit) || 100));
+  const rows = await sql`
+    SELECT *
+    FROM creapd.presentations
+    WHERE owner_user_id = ${String(ownerUserId)}
+    ORDER BY updated_at DESC, created_at DESC
+    LIMIT ${safeLimit}
+  `;
+
+  return rows.map(row => ({
+    ...row,
+    production_studio: row.production_profile,
+    created_date: row.created_at || null,
+    updated_date: row.updated_at || null,
+  }));
+}
+
 export async function handoffPackageToPresentationStudio({ sql, ownerUserId, packageId, approve = false }) {
   const id = String(packageId || '').trim();
   if (!id) throw studioError('Production Package is required.', 'PACKAGE_ID_REQUIRED', 400);
