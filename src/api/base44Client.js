@@ -868,6 +868,14 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
         }
 
 
+        if (shouldUseNeonAuth() && functionName === 'buildTalkProduction') {
+          const result = await creapdApi.post('/production/core', {
+            action: 'talk_build',
+            configuration_id: payload?.configuration_id,
+          });
+          return { data: result?.result || result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'getMusicProductionBundle') {
           const result = await creapdApi.post('/production/core', {
             action: 'music_get_bundle',
