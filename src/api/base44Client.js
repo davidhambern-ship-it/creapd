@@ -1073,11 +1073,54 @@ const coreIntegrationsAdapter = new Proxy(sdkBase44.integrations.Core, {
           return { content: result?.content || rewriteText };
         }
 
-        reportLegacyFallback('integration', 'Core.InvokeLLM');
         if (shouldUseNeonAuth()) {
-          throw blockedBase44Runtime('integration', 'Core.InvokeLLM');
+          const result = await creapdApi.post('/production/core', {
+            action: 'generate_structured',
+            prompt,
+            schema: payload?.response_json_schema || null,
+            schema_name: 'creapd_legacy_inline_v1',
+            web_search: payload?.add_context_from_internet === true,
+            max_output_tokens: 4000,
+          });
+          return result?.result || {};
         }
+
+        reportLegacyFallback('integration', 'Core.InvokeLLM');
         return target.InvokeLLM(payload);
+      };
+    }
+
+    if (shouldUseNeonAuth() && property === 'GenerateImage') {
+      return async payload => {
+        const result = await creapdApi.post('/production/core', {
+          action: 'generate_image',
+          prompt: payload?.prompt,
+          namespace: 'legacy-ui',
+        });
+        return {
+          url: result?.url || result?.media?.url || null,
+          data: {
+            url: result?.url || result?.media?.url || null,
+            source: 'creapd-native',
+          },
+        };
+      };
+    }
+
+    if (shouldUseNeonAuth() && property === 'GenerateSpeech') {
+      return async () => {
+        const error = new Error(
+          'Paid/server speech is disabled. CREAPD uses the free local human voice engine instead.'
+        );
+        error.code = 'LOCAL_HUMAN_VOICE_REQUIRED';
+        throw error;
+      };
+    }
+
+    if (shouldUseNeonAuth()) {
+      return (...args) => {
+        void args;
+        throw blockedBase44Runtime('integration', `Core.${String(property)}`);
       };
     }
 
