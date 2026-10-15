@@ -29,7 +29,14 @@ export function shouldUseNeonAuth() {
   if (explicitProvider === 'neon') return true;
   if (explicitProvider === 'base44') return false;
 
-  // During migration, all Vercel Preview deployments use Neon Auth while
-  // production remains on Base44 until the replacement is proven end-to-end.
-  return window.location.hostname.endsWith('.vercel.app');
+  const hostname = window.location.hostname.toLowerCase();
+
+  // CREAPD's owned production domains and all Vercel deployments now use the
+  // Neon/Vercel backend. Base44 remains available only through an explicit
+  // VITE_AUTH_PROVIDER=base44 override for legacy recovery.
+  return (
+    hostname === 'creapd.com' ||
+    hostname === 'www.creapd.com' ||
+    hostname.endsWith('.vercel.app')
+  );
 }
