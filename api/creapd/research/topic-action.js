@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { runResearchEngine } from '../../../server/researchEngine.js';
+import { generateStructuredGatewayResponse } from '../../../server/aiGateway.js';
 
 export const config = {
   maxDuration: 60,
@@ -67,6 +68,172 @@ export default async function handler(request, response) {
     const ownerUserId = String(user.id);
     const body = request.body && typeof request.body === 'object' ? request.body : {};
     const action = cleanString(body.action);
+
+    if (action === 'auto_build') {
+      const producerMessage = cleanString(body.prompt);
+      const skipConfirmation = body.skip_confirmation === true;
+
+      if (!producerMessage) {
+        return response.status(400).json({
+          ok: false,
+          service: 'creapd-research',
+          error: 'prompt_required',
+        });
+      }
+
+      const schema = {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          research_query: { type: 'string' },
+          description: { type: 'string' },
+          category: { type: 'string' },
+          target_audience: { type: 'string' },
+          tone: { type: 'string' },
+          reading_style: { type: 'string' },
+          research_depth: { type: 'string' },
+          production_name: { type: 'string' },
+          presentation_goal: { type: 'string' },
+          confidence: { type: 'number' },
+          clarification_question: { type: 'string' },
+        },
+        required: [
+          'title',
+          'research_query',
+          'description',
+          'category',
+          'target_audience',
+          'tone',
+          'reading_style',
+          'research_depth',
+          'production_name',
+          'presentation_goal',
+          'confidence',
+        ],
+      };
+
+      const prompt = `You are CREAPr, the AI Executive Producer inside CREAPD Research.
+
+A producer wants to auto-build a research presentation. They said:
+
+"${producerMessage}"
+
+Infer the production intent and return:
+- title: professional research topic title
+- research_query: refined research query
+- description: 2-3 sentence scope
+- category: broad category
+- target_audience
+- tone: one of professional, conversational, energetic, serious, investigative, educational, inspirational, neutral, urgent, humorous
+- reading_style: one of broadcast_news, podcast, documentary, educational_presentation, storytelling
+- research_depth: one of quick_scan, standard, deep_dive, exhaustive
+- production_name: short session name
+- presentation_goal: one sentence
+- confidence: 0-100
+- clarification_question only when critical information is missing
+
+Rules:
+- Define what should be researched; do not perform the research here.
+- Keep the scope suitable for a 6-10 slide presentation.
+- Do not invent user-specific facts.
+- Make the research_query detailed enough for the Research engine.`;
+
+      const generated = await generateStructuredGatewayResponse({
+        prompt,
+        schema,
+        schemaName: 'creapd_auto_build_topics_v1',
+        maxOutputTokens: 1800,
+        timeoutMs: 50000,
+      });
+
+      const inferred = generated?.data || {};
+      const confidence = Number(inferred.confidence || 0);
+
+      if (!skipConfirmation && confidence < 75 && cleanString(inferred.clarification_question)) {
+        return response.status(200).json({
+          ok: true,
+          service: 'creapd-research',
+          source: 'neon',
+          data_authority: 'neon',
+          action: 'auto_build',
+          requires_confirmation: true,
+          clarification_question: inferred.clarification_question,
+          inferred_params: inferred,
+        });
+      }
+
+      const configurationId = randomUUID();
+      const topicId = randomUUID();
+      const today = new Date().toISOString().slice(0, 10);
+      const productionName = cleanString(inferred.production_name) || cleanString(inferred.title) || 'Auto-Built Production';
+      const targetAudience = cleanString(inferred.target_audience) || 'General Public';
+      const tone = cleanString(inferred.tone) || 'educational';
+      const readingStyle = cleanString(inferred.reading_style) || 'documentary';
+      const researchDepth = cleanString(inferred.research_depth) || 'standard';
+      const title = cleanString(inferred.title) || 'Untitled Research Topic';
+      const description = cleanString(inferred.description) || '';
+      const researchQuery = cleanString(inferred.research_query) || title;
+      const category = cleanString(inferred.category) || 'general';
+
+      await sql`
+        UPDATE creapd.research_production_configurations
+        SET is_default = false, updated_at = now()
+        WHERE owner_user_id = ${ownerUserId}
+          AND is_default = true
+      `;
+
+      const [configuration] = await sql`
+        INSERT INTO creapd.research_production_configurations (
+          id, owner_user_id, production_name, show_date, target_audience, tone,
+          reading_style, research_depth, max_points_per_topic, status, is_default,
+          created_by_id, created_by_email, source_system, source_payload,
+          created_at, updated_at
+        ) VALUES (
+          ${configurationId}, ${ownerUserId}, ${productionName}, ${today}::date, ${targetAudience}, ${tone},
+          ${readingStyle}, ${researchDepth}, 8, 'ready', true,
+          ${ownerUserId}, ${user.email || null}, 'creapd-vercel',
+          ${JSON.stringify({
+            created_via: 'auto-build',
+            presentation_goal: cleanString(inferred.presentation_goal),
+            inferred_params: inferred,
+          })}::jsonb,
+          now(), now()
+        )
+        RETURNING *
+      `;
+
+      const [topic] = await sql`
+        INSERT INTO creapd.research_topics (
+          id, configuration_id, owner_user_id, title, description, research_query,
+          category, priority, research_depth, status, pipeline_stage,
+          confidence_score, created_by_id, created_by_email, source_system, source_payload
+        ) VALUES (
+          ${topicId}, ${configurationId}, ${ownerUserId}, ${title}, ${description}, ${researchQuery},
+          ${category}, 'standard', ${researchDepth}, 'pending', 'idle',
+          ${confidence}, ${ownerUserId}, ${user.email || null}, 'creapd-vercel',
+          ${JSON.stringify({
+            created_via: 'auto-build',
+            presentation_goal: cleanString(inferred.presentation_goal),
+          })}::jsonb
+        )
+        RETURNING *
+      `;
+
+      return response.status(201).json({
+        ok: true,
+        service: 'creapd-research',
+        source: 'neon',
+        data_authority: 'neon',
+        action: 'auto_build',
+        topic_id: topic.id,
+        configuration_id: configuration.id,
+        inferred_params: inferred,
+        topic: normalizeTopic(topic),
+        configuration,
+        message: `Research Assignment created: "${title}"`,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     if (action === 'create') {
       const input = body.topic && typeof body.topic === 'object' ? body.topic : body;
