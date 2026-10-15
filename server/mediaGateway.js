@@ -154,6 +154,24 @@ async function generateAndStoreImage({ namespace, ownerId, mediaType, prompt }) 
   };
 }
 
+export async function generateAndStoreGenericImage({
+  ownerUserId,
+  prompt,
+  namespace = 'general',
+}) {
+  const safeNamespace = String(namespace || 'general')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .slice(0, 48) || 'general';
+
+  return generateAndStoreImage({
+    namespace: safeNamespace,
+    ownerId: String(ownerUserId || 'anonymous'),
+    mediaType: 'image',
+    prompt,
+  });
+}
+
 export function hasOwnedMediaStorageConfig() {
   return Boolean(String(process.env.BLOB_READ_WRITE_TOKEN || '').trim());
 }
