@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { ASSET_TYPE_LABELS } from '@/lib/talkConstants';
 import { Loader2, Mic2, Sparkles, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, Volume2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 
 export default function TalkAssets() {
-  const { config, assets, loading, refresh, source } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, assets, loading, refresh } = useTalkProduction(configurationId);
   const [expanded, setExpanded] = useState(null);
 
   if (loading) {
@@ -31,15 +33,11 @@ export default function TalkAssets() {
 
   const toggleApproved = async (asset) => {
     const newStatus = asset.status === 'approved' ? 'ready' : 'approved';
-    if (source === 'neon') {
-      await creapdApi.post('/talk/production', {
-        action: 'set_asset_status',
-        asset_id: asset.id,
-        status: newStatus,
-      });
-    } else {
-      await base44.entities.TalkAsset.update(asset.id, { status: newStatus });
-    }
+    await creapdApi.post('/talk/production', {
+      action: 'set_asset_status',
+      asset_id: asset.id,
+      status: newStatus,
+    });
     refresh();
   };
 
@@ -70,7 +68,7 @@ export default function TalkAssets() {
           'When the production material is ready, move to Export for the final package check.',
         ]}
         readyText={`${approvedCount} of ${assets.length} asset${assets.length === 1 ? '' : 's'} approved`}
-        nextPath="/talk/export"
+        nextPath={config?.id ? `/podcast/export?config_id=${encodeURIComponent(config.id)}` : '/podcast/export'}
         nextLabel="Final Package & Export"
         nextDescription="Export is the last checkpoint before you take the production package out of Talk Studio."
         note="Approval means ready for use. Unapproved assets remain available for review and do not have to block the rest of the show."
