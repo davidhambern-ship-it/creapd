@@ -1,11 +1,14 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { formatRuntime, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import { Loader2, Mic2, ClipboardList, AlertCircle, Clock } from 'lucide-react';
 
 export default function TalkRundown() {
-  const { config, segments, loading } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, segments, loading } = useTalkProduction(configurationId);
 
   if (loading) {
     return (
@@ -50,7 +53,7 @@ export default function TalkRundown() {
           'If the structure looks right, move to AI Assets and review the scripts, prompts, and production material CREAPD created for this rundown.',
         ]}
         readyText={segments.length ? `${segments.length} segments · ${formatRuntime(totalSeconds)} generated${runtimeLooksClose ? ' · runtime is close to target' : ' · review runtime against your target'}` : 'No rundown is available yet'}
-        nextPath="/talk/assets"
+        nextPath={config?.id ? `/podcast/assets?config_id=${encodeURIComponent(config.id)}` : '/podcast/assets'}
         nextLabel="Review AI Assets"
         nextDescription="Assets are the host scripts, prompts, social copy, and production notes tied to this show."
         note="If the rundown needs a major structural change, go back to Show Setup, adjust the production configuration, and rebuild rather than trying to force a bad plan forward."
