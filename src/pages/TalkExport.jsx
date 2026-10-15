@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Button } from '@/components/ui/button';
 import { Code2, Download, Loader2, Mic2, Package, CheckCircle2, Radio } from 'lucide-react';
 
 export default function TalkExport() {
-  const { config, topics, segments, assets, research, guests, loading } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, topics, segments, assets, research, guests, loading } = useTalkProduction(configurationId);
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState(null);
 
@@ -67,7 +69,7 @@ export default function TalkExport() {
     { label: 'AI Assets', count: assets.length, done: assets.length > 0 },
   ];
   const completeCount = exportItems.filter(item => item.done).length;
-  const livePath = `/talk/live?config_id=${encodeURIComponent(config.id)}`;
+  const livePath = `/podcast/studio?config_id=${encodeURIComponent(config.id)}`;
 
   return (
     <div className="p-6 md:p-8 space-y-6">
