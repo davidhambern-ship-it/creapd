@@ -917,6 +917,16 @@ const functionsAdapter = new Proxy(sdkBase44.functions, {
           return { data: result };
         }
 
+        if (shouldUseNeonAuth() && functionName === 'translateContent') {
+          const result = await creapdApi.post('/research/production', {
+            action: 'translate_content',
+            package_id: payload?.package_id,
+            target_language: payload?.target_language,
+            fields: payload?.fields,
+          });
+          return { data: result };
+        }
+
         if (shouldUseNeonAuth() && functionName === 'buildTalkProduction') {
           const result = await creapdApi.post('/production/core', {
             action: 'talk_build',
