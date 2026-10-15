@@ -2,6 +2,7 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireCreapdUser } from '../../../server/creapdUser.js';
 import { generateResearchProductionPackage } from '../../../server/researchPackageEngine.js';
 import { generateAndStoreResearchMedia } from '../../../server/mediaGateway.js';
+import { generateStructuredGatewayResponse } from '../../../server/aiGateway.js';
 
 export const config = {
   maxDuration: 60,
@@ -186,6 +187,10 @@ async function updateOwnedPackage(sql, ownerUserId, packageId, patch) {
       image_variations = CASE WHEN ${hasOwn(patch, 'image_variations')} THEN ${imageVariations}::jsonb ELSE image_variations END,
       thumbnail_variations = CASE WHEN ${hasOwn(patch, 'thumbnail_variations')} THEN ${thumbnailVariations}::jsonb ELSE thumbnail_variations END,
       custom_prompt = CASE WHEN ${hasOwn(patch, 'custom_prompt')} THEN ${textPatchValue(patch, 'custom_prompt')} ELSE custom_prompt END,
+      translation_language = CASE WHEN ${hasOwn(patch, 'translation_language')} THEN ${textPatchValue(patch, 'translation_language')} ELSE translation_language END,
+      translated_script = CASE WHEN ${hasOwn(patch, 'translated_script')} THEN ${textPatchValue(patch, 'translated_script')} ELSE translated_script END,
+      translated_caption = CASE WHEN ${hasOwn(patch, 'translated_caption')} THEN ${textPatchValue(patch, 'translated_caption')} ELSE translated_caption END,
+      translated_at = CASE WHEN ${hasOwn(patch, 'translated_at')} THEN ${textPatchValue(patch, 'translated_at')}::timestamptz ELSE translated_at END,
       status = CASE WHEN ${hasOwn(patch, 'status')} THEN ${status || existing.status} ELSE status END,
       is_edited = CASE WHEN ${hasOwn(patch, 'is_edited')} THEN ${booleanPatchValue(patch, 'is_edited')} ELSE is_edited END,
       updated_at = now()
@@ -353,6 +358,86 @@ async function handlePost(request, response, sql, ownerUserId) {
       }
       throw error;
     }
+  }
+
+  if (action === 'translate_content') {
+    const packageId = String(body.package_id || '').trim();
+    const targetLanguage = String(body.target_language || '').trim().toLowerCase();
+    const requestedFields = Array.isArray(body.fields) && body.fields.length
+      ? body.fields
+      : ['teleprompter_script', 'social_caption'];
+    const allowedFields = new Set(['teleprompter_script', 'show_script', 'story_summary', 'talking_points', 'social_caption', 'producer_notes']);
+    const fields = requestedFields.map(value => String(value || '').trim()).filter(value => allowedFields.has(value));
+
+    if (!packageId) return response.status(400).json({ ok: false, error: 'package_id_required' });
+    if (!targetLanguage) return response.status(400).json({ ok: false, error: 'target_language_required' });
+    if (!fields.length) return response.status(400).json({ ok: false, error: 'translation_fields_required' });
+
+    const pkg = await getOwnedPackage(sql, ownerUserId, packageId);
+    if (!pkg) return response.status(404).json({ ok: false, error: 'production_package_not_found' });
+
+    const languageNames = {
+      es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese',
+      zh: 'Chinese', ja: 'Japanese', ko: 'Korean', ar: 'Arabic', hi: 'Hindi',
+      ru: 'Russian', en: 'English',
+    };
+    const languageName = languageNames[targetLanguage] || targetLanguage;
+    const populatedFields = fields.filter(field => String(pkg[field] || '').trim());
+    if (!populatedFields.length) {
+      return response.status(400).json({ ok: false, error: 'no_content_to_translate' });
+    }
+
+    const schema = {
+      type: 'object',
+      properties: Object.fromEntries(populatedFields.map(field => [field, { type: 'string' }])),
+      required: populatedFields,
+    };
+
+    const prompt = [
+      `Translate these CREAPD production assets into ${languageName}.`,
+      'Preserve meaning, names, factual claims, tone, and broadcast formatting.',
+      'Do not add facts, commentary, or explanations.',
+      '',
+      ...populatedFields.map(field => `--- ${field} ---\n${String(pkg[field] || '')}`),
+    ].join('\n\n');
+
+    const generated = await generateStructuredGatewayResponse({
+      prompt,
+      schema,
+      schemaName: 'creapd_package_translation_v1',
+      maxOutputTokens: 5000,
+      timeoutMs: 50000,
+    });
+    const translated = generated?.data || {};
+
+    const patch = {};
+    for (const field of populatedFields) {
+      if (translated[field]) patch[field] = translated[field];
+    }
+    patch.translation_language = targetLanguage;
+    if (populatedFields.includes('teleprompter_script')) {
+      patch.translated_script = translated.teleprompter_script || '';
+    }
+    if (populatedFields.includes('social_caption')) {
+      patch.translated_caption = translated.social_caption || '';
+    }
+    patch.translated_at = new Date().toISOString();
+
+    const updatedPackage = await updateOwnedPackage(sql, ownerUserId, packageId, patch);
+    return response.status(200).json({
+      ok: true,
+      service: 'creapd-research',
+      action,
+      source: 'neon',
+      data_authority: 'neon',
+      package: withBase44Aliases(updatedPackage),
+      translated_fields: populatedFields,
+      language: targetLanguage,
+      gateway: {
+        provider: generated?.provider || null,
+        model: generated?.model || null,
+      },
+    });
   }
 
   if (action === 'generate_media') {
