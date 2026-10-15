@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import MobileHome from '@/components/mobile/MobileHome';
 import HeroSection from '@/components/home/HeroSection';
 import PipelineExplainer from '@/components/home/PipelineExplainer';
-import ProfileCard from '@/components/home/ProfileCard';
+import InteractiveProfileCards from '@/components/home/InteractiveProfileCards';
 import ProductionDetailsModal from '@/components/home/ProductionDetailsModal';
 import ShowcaseSection from '@/components/home/ShowcaseSection';
 import QuickLaunch from '@/components/home/QuickLaunch';
@@ -14,7 +14,7 @@ import ShowSetupChat from '@/components/creap/ShowSetupChat';
 import CursorGlow from '@/components/creap/CursorGlow';
 import FloatingObjects from '@/components/home/FloatingObjects';
 import CreapdGuideOverlay from '@/components/creap/CreapdGuideOverlay';
-import { ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
+import { PRODUCTION_PROFILES, ACTIVE_PROFILES, COMING_SOON_PROFILES } from '@/lib/productionProfiles';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function CreapdHome() {
@@ -25,12 +25,12 @@ export default function CreapdHome() {
   const isMobile = useIsMobile();
 
   const handleGetStarted = (profile) => {
-    if (profile.path) {
+    if (profile.available && profile.path) {
       window.location.href = profile.path;
     } else {
       toast({
-        title: `${profile.label} — Coming Soon`,
-        description: 'This Production Profile is being set up. Check back soon!',
+        title: `${profile.label} — Under Construction`,
+        description: 'This Production Profile is being rebuilt for the new CREAPD system.',
       });
     }
   };
@@ -68,10 +68,10 @@ export default function CreapdHome() {
           <PipelineExplainer />
         </div>
 
-        {/* Production Profile Cards */}
+        {/* Production Format Cards */}
         <section id="profiles" className="px-4 lg:px-6 py-8 max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Profiles</h2>
+            <h2 className="text-lg font-heading font-bold text-white neon-underline">Production Formats</h2>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground hidden sm:inline">{ACTIVE_PROFILES.length} active</span>
               <Button size="sm" className="bg-gradient-to-r from-berna-emerald to-berna-purple hover:opacity-90 text-white text-xs h-8" onClick={() => setSetupOpen(true)}>
@@ -80,32 +80,15 @@ export default function CreapdHome() {
             </div>
           </div>
 
-          {/* Mobile: horizontal swipe, Desktop: grid */}
-          <div className="flex gap-3 overflow-x-auto pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 lg:gap-4">
-            {ACTIVE_PROFILES.map((profile) => (
-              <div key={profile.key} className="w-72 lg:w-auto flex-shrink-0">
-                <ProfileCard
-                  profile={profile}
-                  onGetStarted={handleGetStarted}
-                  onShowDetails={setDetailsProfile}
-                  index={ACTIVE_PROFILES.indexOf(profile)}
-                />
-              </div>
-            ))}
-          </div>
+          <InteractiveProfileCards
+            profiles={PRODUCTION_PROFILES}
+            onEnter={handleGetStarted}
+          />
 
-          {/* Coming soon profiles */}
           {COMING_SOON_PROFILES.length > 0 && (
-            <>
-              <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground/50 mt-6 mb-3">Coming Soon</p>
-              <div className="flex gap-3 overflow-x-auto pb-2 lg:overflow-visible lg:grid lg:grid-cols-3 lg:gap-4">
-                {COMING_SOON_PROFILES.map((profile) => (
-                  <div key={profile.key} className="w-72 lg:w-auto flex-shrink-0">
-                    <ProfileCard profile={profile} onGetStarted={() => {}} onShowDetails={() => {}} index={0} />
-                  </div>
-                ))}
-              </div>
-            </>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              CREAPD now uses three core production formats: Radio, Podcast, and Research.
+            </p>
           )}
         </section>
 

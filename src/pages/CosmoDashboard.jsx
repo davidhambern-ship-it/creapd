@@ -59,9 +59,9 @@ export default function CosmoDashboard() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Sparkles className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-xl font-heading font-bold mb-3">No Cosmo Production Found</h2>
-          <p className="text-muted-foreground mb-6">Configure your health & beauty production to get started. Producer will build everything automatically.</p>
-          <Button asChild size="lg"><Link to="/cosmo/configure">Configure Production</Link></Button>
+          <h2 className="text-xl font-heading font-bold mb-3">No Beauty Production Found</h2>
+          <p className="text-muted-foreground mb-6">Configure your cosmetology and beauty production to get started. Producer will build everything automatically.</p>
+          <Button asChild size="lg"><Link to="/beauty/configure">Configure Production</Link></Button>
         </div>
       </div>
     );
@@ -74,7 +74,7 @@ export default function CosmoDashboard() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
-          <h2 className="text-xl font-heading font-bold mb-3">Building Your Cosmo Production</h2>
+          <h2 className="text-xl font-heading font-bold mb-3">Building Your Beauty Production</h2>
           <p className="text-muted-foreground mb-8">Generating research, topics, tutorials, rundown, and AI assets...</p>
           <div className="space-y-3 text-left">
             {['Researching beauty & wellness topics', 'Generating topic summaries', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
@@ -122,7 +122,7 @@ export default function CosmoDashboard() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleRefresh}><RefreshCw className="w-4 h-4 mr-1" /> Refresh</Button>
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/cosmo/configure?config_id=${config.id}`}><Settings className="w-4 h-4 mr-1" /> Edit Config</Link>
+            <Link to={`/beauty/configure?config_id=${config.id}`}><Settings className="w-4 h-4 mr-1" /> Edit Config</Link>
           </Button>
         </div>
       </div>
@@ -138,19 +138,19 @@ export default function CosmoDashboard() {
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={handleRefresh}><RefreshCw className="w-4 h-4 mr-1" /> Refresh Production</Button>
-        <Button size="sm" variant="outline" asChild><Link to="/cosmo/research"><Search className="w-4 h-4 mr-1" /> Research</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/cosmo/topics"><Sparkles className="w-4 h-4 mr-1" /> Topics</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/cosmo/guests"><Users className="w-4 h-4 mr-1" /> Guests</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/cosmo/rundown"><ClipboardList className="w-4 h-4 mr-1" /> Show Rundown</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/cosmo/assets"><Wand2 className="w-4 h-4 mr-1" /> AI Assets</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/cosmo/export"><Download className="w-4 h-4 mr-1" /> Export</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/beauty/research"><Search className="w-4 h-4 mr-1" /> Research</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/beauty/topics"><Sparkles className="w-4 h-4 mr-1" /> Topics</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/beauty/guests"><Users className="w-4 h-4 mr-1" /> Guests</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/beauty/rundown"><ClipboardList className="w-4 h-4 mr-1" /> Show Rundown</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/beauty/assets"><Wand2 className="w-4 h-4 mr-1" /> AI Assets</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/beauty/export"><Download className="w-4 h-4 mr-1" /> Export</Link></Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="glass-panel p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Topics</h3>
-            <Link to="/cosmo/topics" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/beauty/topics" className="text-xs text-primary hover:underline">View all</Link>
           </div>
           {topics.length > 0 ? (
             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -167,7 +167,7 @@ export default function CosmoDashboard() {
         <div className="glass-panel p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Research Updates</h3>
-            <Link to="/cosmo/research" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/beauty/research" className="text-xs text-primary hover:underline">View all</Link>
           </div>
           {research.length > 0 ? (
             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -187,7 +187,7 @@ export default function CosmoDashboard() {
         <div className="glass-panel p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Show Rundown Preview</h3>
-            <Link to="/cosmo/rundown" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/beauty/rundown" className="text-xs text-primary hover:underline">View all</Link>
           </div>
           {segments.length > 0 ? (
             <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -198,7 +198,7 @@ export default function CosmoDashboard() {
                   <span className="truncate">{item.title}</span>
                 </div>
               ))}
-              <Button size="sm" variant="ghost" asChild className="w-full mt-2"><Link to="/cosmo/rundown">Open Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link></Button>
+              <Button size="sm" variant="ghost" asChild className="w-full mt-2"><Link to="/beauty/rundown">Open Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link></Button>
             </div>
           ) : <EmptyState message="No show rundown has been generated yet." onAction={handleRefresh} actionLabel="Generate" />}
         </div>
@@ -206,7 +206,7 @@ export default function CosmoDashboard() {
         <div className="glass-panel p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading font-semibold flex items-center gap-2"><Wand2 className="w-4 h-4 text-primary" /> AI Generated Assets</h3>
-            <Link to="/cosmo/assets" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/beauty/assets" className="text-xs text-primary hover:underline">View all</Link>
           </div>
           {assets.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
@@ -216,7 +216,7 @@ export default function CosmoDashboard() {
                   <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
                 </div>
               ))}
-              <Button size="sm" variant="ghost" asChild className="col-span-2 mt-1"><Link to="/cosmo/assets">View All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link></Button>
+              <Button size="sm" variant="ghost" asChild className="col-span-2 mt-1"><Link to="/beauty/assets">View All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link></Button>
             </div>
           ) : <EmptyState message="No AI assets have been generated yet." onAction={handleRefresh} actionLabel="Generate" />}
         </div>

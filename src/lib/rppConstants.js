@@ -1,7 +1,7 @@
 import {
   Building2, Library, Archive, FileText, Clapperboard, Package,
   Search, Bell, Volume2, VolumeX, ChevronRight, CheckCircle2,
-  Circle, Clock, ArrowRight, RefreshCw
+  Circle, Clock, ArrowRight, RefreshCw, Send
 } from 'lucide-react';
 
 export const RPP_DEPARTMENTS = [
@@ -10,8 +10,8 @@ export const RPP_DEPARTMENTS = [
     name: 'Lobby',
     path: '/research',
     icon: Building2,
-    description: 'Reception and navigation hub',
-    subtitle: 'Start here',
+    description: 'Reception and navigation hub for the Research Studio',
+    subtitle: 'Research Studio Lobby',
     output: null,
   },
   {
@@ -22,7 +22,7 @@ export const RPP_DEPARTMENTS = [
     description: 'Discover and define the research topic',
     subtitle: 'CREAPr Library',
     output: 'Research Assignment',
-    detailed_description: 'The CREAPr Library is where your research journey begins. Work with CREAPr to discover, refine, and finalize your research topic through an immersive conversational process. Define your subject area, scope, depth, and key questions. The output is a formal Research Assignment that guides every downstream department.',
+    detailed_description: 'The CREAPr Library is where your research journey begins. Work with CREAPr to discover, refine, and finalize your research topic through an immersive conversational process. Define your subject area, scope, depth, and key questions. The output is a formal Research Assignment that guides every downstream Research Studio department.',
   },
   {
     id: 'research',
@@ -49,20 +49,20 @@ export const RPP_DEPARTMENTS = [
     name: 'Develop',
     path: '/research/assets',
     icon: Clapperboard,
-    description: 'Generate production assets from the dossier',
-    subtitle: 'Development Studio',
-    output: 'Presentation Assets',
-    detailed_description: 'The Development Studio takes your approved Dossier and generates production-ready assets. This includes scripts, talking points, visual concepts, image generations, B-roll suggestions, social media content, and lower-thirds graphics. Each asset is derived directly from the structured knowledge in your Dossier and tailored to your production profile and brand standards.',
+    description: 'Turn approved research into a complete Production Package',
+    subtitle: 'Production Department',
+    output: 'Production Package',
+    detailed_description: 'The Production Department turns approved Research Studio knowledge into a complete Production Package. Its workers create the teleprompter script, talking points, visual concepts, generated images, B-roll suggestions, lower thirds, voice assets, citations, fact-check notes, and other materials the Presentation Studio will need. Research Studio workers stop at the package; they do not build the presentation.',
   },
   {
     id: 'packet',
-    name: 'Packet',
+    name: 'Dispatch',
     path: '/research/export',
-    icon: Package,
-    description: 'Assemble the complete Production Packet',
-    subtitle: 'Assembly Office',
-    output: 'Production Packet',
-    detailed_description: 'The Assembly Office brings everything together. All approved assets from the Development Studio are collected, organized, and packaged into a single, exportable Production Packet. This is the final deliverable — a complete, ready-to-use production package containing your research dossier, scripts, visual assets, voice packages, and all supporting materials in your chosen export format.',
+    icon: Send,
+    description: 'Approve packages and hand them to the Presentation Studio',
+    subtitle: 'Dispatch Room',
+    output: 'Presentation Studio Handoff',
+    detailed_description: 'The Dispatch Room is the boundary between the Research Studio and the shared Presentation Studio. Review the completed Production Package, approve it, and send an immutable snapshot across the CREAPD lot. The Presentation Director and Presentation Editor then use that package copy to direct, assemble, edit, rehearse, present, and export the actual presentation.',
   },
   {
     id: 'archive',
@@ -72,7 +72,7 @@ export const RPP_DEPARTMENTS = [
     description: 'Browse past research productions, dossiers, and packages',
     subtitle: 'Records Vault',
     output: 'Historical Records',
-    detailed_description: 'The Records Vault stores all past research productions. Browse completed research configurations, approved dossiers, and generated packages. Search, filter, and revisit any past research work — your full research history in one place.',
+    detailed_description: 'The Records Vault stores all past Research Studio work. Browse completed research configurations, approved dossiers, generated Production Packages, and past projects. Search, filter, and revisit any prior research work — your full Research Studio history in one place.',
   },
 ];
 
@@ -80,12 +80,12 @@ export const RPP_PROGRESS_STAGES = [
   { id: 'assignment', label: 'Research Assignment', department: 'topics' },
   { id: 'research', label: 'Raw Research Dataset', department: 'research' },
   { id: 'dossier', label: 'Approved Research Dossier', department: 'dossier' },
-  { id: 'assets', label: 'Presentation Assets', department: 'develop' },
-  { id: 'packet', label: 'Production Packet', department: 'packet' },
+  { id: 'package', label: 'Production Package', department: 'develop' },
+  { id: 'handoff', label: 'Presentation Studio Handoff', department: 'packet' },
 ];
 
 export const ICON_MAP = {
-  Building2, Library, Archive, FileText, Clapperboard, Package,
+  Building2, Library, Archive, FileText, Clapperboard, Package, Send,
   Search, Bell, Volume2, VolumeX, ChevronRight, CheckCircle2,
   Circle, Clock, ArrowRight, RefreshCw
 };

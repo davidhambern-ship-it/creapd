@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
 import { Button } from '@/components/ui/button';
 import MediaGenerator from '@/components/production/MediaGenerator';
 import {
@@ -7,7 +10,8 @@ import {
 } from 'lucide-react';
 
 const MEDIA_CENTER_FIELDS = {
-  story_summary: 'Teleprompter Script',
+  story_summary: 'Story Summary',
+  teleprompter_script: 'Teleprompter Script',
   talking_points: 'Talking Points',
   image_prompt: 'Image Prompt',
   thumbnail_prompt: 'Thumbnail Prompt',
@@ -30,16 +34,59 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
 
   if (!pkg) return null;
 
+  const ownedPreview = shouldUseNeonAuth();
+  const visibleSteps = ownedPreview ? STEPS.filter(step => step.key !== 'video') : STEPS;
   const hasMedia = pkg.generated_audio_url || pkg.generated_thumbnail_url || pkg.generated_image_url || pkg.generated_video_url;
+
+  const generateOwned = async (mediaType, extra = {}) => {
+    const result = await creapdApi.post('/research/production', {
+      action: 'generate_media',
+      package_id: pkg.id,
+      media_type: mediaType,
+      ...extra,
+    });
+    if (result?.package) onMediaUpdate(result.package);
+    return result;
+  };
 
   const handleGenerateAll = async () => {
     setGeneratingAll(true);
     setMediaStep('voiceover');
     try {
-      if (pkg.story_summary) {
+      if (ownedPreview) {
+        if (pkg.teleprompter_script) {
+          try {
+            const result = await generateFreeLocalVoice({
+              packageId: pkg.id,
+              script: pkg.teleprompter_script,
+              voice: 'river',
+            });
+            if (result?.package) onMediaUpdate(result.package);
+          } catch (err) { console.error('Free local voiceover failed:', err); }
+        }
+
+        setMediaStep('thumbnail');
+        if (pkg.thumbnail_prompt) {
+          try {
+            await generateOwned('thumbnail', { prompt: pkg.thumbnail_prompt });
+          } catch (err) { console.error('Owned thumbnail failed:', err); }
+        }
+
+        setMediaStep('story_image');
+        if (pkg.image_prompt) {
+          try {
+            await generateOwned('image', { prompt: pkg.image_prompt });
+          } catch (err) { console.error('Owned story image failed:', err); }
+        }
+
+        setMediaStep('done');
+        return;
+      }
+
+      if (pkg.teleprompter_script || pkg.story_summary) {
         try {
           const vpResult = await base44.functions.invoke('generateVoicePackage', {
-            script_text: pkg.story_summary,
+            script_text: pkg.teleprompter_script || pkg.story_summary,
             voice: 'river',
             language_code: 'en',
             source_type: 'production_package',
@@ -120,14 +167,20 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           className="bg-berna-purple hover:bg-berna-purple/90 text-white text-xs h-7"
         >
           {generatingAll ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-          {generatingAll ? 'Generating...' : 'Generate All'}
+          {generatingAll ? 'Generating...' : ownedPreview ? 'Generate Owned Media' : 'Generate All'}
         </Button>
       </div>
 
+      {ownedPreview && (
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Preview generates voiceover locally in your browser from the Teleprompter Script and stores owned media through CREAPD's Blob + Neon path. Presentation assembly belongs to the universal Presentation Director; video rendering is a downstream Presentation output.
+        </p>
+      )}
+
       {generatingAll && (
         <div className="mb-3 flex flex-wrap gap-3">
-          {STEPS.map(step => {
-            const stepOrder = STEPS.map(s => s.key);
+          {visibleSteps.map(step => {
+            const stepOrder = visibleSteps.map(s => s.key);
             const isDone = stepOrder.indexOf(mediaStep) > stepOrder.indexOf(step.key) || mediaStep === 'done';
             const isActive = mediaStep === step.key;
             return (
@@ -140,7 +193,6 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
         </div>
       )}
 
-      {/* Package content fields that feed the media generation pipeline */}
       <div className="mb-3 space-y-2">
         {Object.entries(MEDIA_CENTER_FIELDS).map(([key, label]) => {
           const value = pkg[key];
@@ -161,7 +213,7 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
         <MediaGenerator
           pkg={pkg}
           mediaType="audio"
-          promptField="story_summary"
+          promptField="teleprompter_script"
           urlField="generated_audio_url"
           label="AI Voiceover"
           icon={Volume2}
@@ -185,15 +237,33 @@ export default function PointMediaGenerator({ pkg, point, onMediaUpdate }) {
           icon={ImageIcon}
           onMediaUpdate={onMediaUpdate}
         />
-        <MediaGenerator
-          pkg={pkg}
-          mediaType="video"
-          promptField="image_prompt"
-          urlField="generated_video_url"
-          label="Video Clip"
-          icon={Film}
-          onMediaUpdate={onMediaUpdate}
-        />
+        {ownedPreview ? (
+          <div className="glass-panel overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
+              <div className="flex items-center gap-2">
+                <Film className="w-3.5 h-3.5 text-berna-orange" />
+                <span className="text-xs font-semibold text-white">Presentation Output</span>
+                <span className="text-[9px] text-cyan-400">CORE MIGRATION</span>
+              </div>
+            </div>
+            <div className="p-4 text-center space-y-2">
+              <Film className="w-7 h-7 text-muted-foreground mx-auto" />
+              <p className="text-[10px] text-muted-foreground max-w-xs mx-auto">
+                Video is intentionally not directed from this asset card. CREAPD's Presentation Director will assemble this Episode's approved Production Packages into a live-ready Presentation first; rendered video can be produced from that Presentation later.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <MediaGenerator
+            pkg={pkg}
+            mediaType="video"
+            promptField="image_prompt"
+            urlField="generated_video_url"
+            label="Video Clip"
+            icon={Film}
+            onMediaUpdate={onMediaUpdate}
+          />
+        )}
       </div>
     </div>
   );

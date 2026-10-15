@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 
 export default function MusicTopics() {
   const { config, topics, loading } = useMusicProduction();
@@ -27,7 +26,7 @@ export default function MusicTopics() {
       <CyberpunkMusicBg variant="left" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -126,7 +125,6 @@ export default function MusicTopics() {
             </Button>
           </div>
         )}
-        <PPNavBar />
       </div>
     </div>
   );

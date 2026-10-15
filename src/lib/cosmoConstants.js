@@ -1,4 +1,4 @@
-// Cosmo (Health/Beauty) Production Configuration Options
+// Beauty (Cosmetology) Production Configuration Options
 
 export const SHOW_FORMAT_OPTIONS = [
   'Product Review', 'Tutorial / How-To', 'Expert Interview', 'Trend Discussion',
@@ -81,14 +81,14 @@ export const RUNTIME_DEFAULTS = {
 };
 
 export const COSMO_NAV_ITEMS = [
-  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/cosmo/dashboard', section: null },
-  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/cosmo/configure', section: 'Discovery' },
-  { icon: 'Search', label: 'Knowledge — Research', path: '/cosmo/research', section: 'Knowledge' },
-  { icon: 'Sparkles', label: 'Blueprint — Topics', path: '/cosmo/topics', section: 'Blueprint' },
-  { icon: 'Users', label: 'Blueprint — Guests', path: '/cosmo/guests', section: 'Blueprint' },
-  { icon: 'Wand2', label: 'Production — AI Assets', path: '/cosmo/assets', section: 'Production' },
-  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/cosmo/rundown', section: 'Assembly' },
-  { icon: 'Download', label: 'Assembly — Export', path: '/cosmo/export', section: 'Assembly' },
+  { icon: 'LayoutDashboard', label: 'Dashboard', path: '/beauty/dashboard', section: null },
+  { icon: 'Compass', label: 'Discovery — Show Setup', path: '/beauty/configure', section: 'Discovery' },
+  { icon: 'Search', label: 'Knowledge — Research', path: '/beauty/research', section: 'Knowledge' },
+  { icon: 'Sparkles', label: 'Blueprint — Topics', path: '/beauty/topics', section: 'Blueprint' },
+  { icon: 'Users', label: 'Blueprint — Guests', path: '/beauty/guests', section: 'Blueprint' },
+  { icon: 'Wand2', label: 'Production — AI Assets', path: '/beauty/assets', section: 'Production' },
+  { icon: 'ClipboardList', label: 'Assembly — Rundown', path: '/beauty/rundown', section: 'Assembly' },
+  { icon: 'Download', label: 'Assembly — Export', path: '/beauty/export', section: 'Assembly' },
   { icon: 'Settings', label: 'Settings', path: '/settings/default-production', section: null }
 ];
 

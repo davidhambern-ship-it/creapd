@@ -9,7 +9,6 @@ import '@/styles/motion-system.css';
  *  • Breathing glow orbs (slow-drifting, low-opacity color washes)
  *  • Floating particles (tiny CSS-animated dots rising upward)
  *  • Periodic scan line sweep (thin light traveling down the screen)
- *  • Worker activity indicators (pulsing status lights at the bottom edge)
  *
  * All animations are pure CSS (transform/opacity only) for GPU acceleration.
  * No JavaScript animation loops. Particle count reduces on mobile for performance.
@@ -58,16 +57,6 @@ export default function LivingEnvironment() {
       {/* Scan line sweep */}
       <div className="living-env-scan" />
 
-      {/* Worker activity indicators */}
-      <div className="living-env-worker-bar">
-        <div className="living-env-worker-dots">
-          <span className="living-env-worker-dot" style={{ animationDelay: '0s' }} />
-          <span className="living-env-worker-dot" style={{ animationDelay: '0.4s' }} />
-          <span className="living-env-worker-dot" style={{ animationDelay: '0.8s' }} />
-          <span className="living-env-worker-dot" style={{ animationDelay: '1.2s' }} />
-        </div>
-        <span className="living-env-worker-label">AI WORKERS ACTIVE</span>
-      </div>
     </div>
   );
 }

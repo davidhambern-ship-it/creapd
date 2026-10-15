@@ -1,16 +1,12 @@
 import React, { useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { usePresentationEditor } from '@/hooks/usePresentationEditor';
-import { useAutoBuild } from '@/hooks/useAutoBuild';
-import { useCpeAiWorkers } from '@/hooks/useCpeAiWorkers';
 import { useWorkspaceMode } from '@/hooks/useWorkspaceMode';
 import EditorTopBar from '@/components/presentation-editor/EditorTopBar';
 import SlideRail from '@/components/presentation-editor/SlideRail';
 import EditorCanvas from '@/components/presentation-editor/EditorCanvas';
 import PropertiesPanel from '@/components/presentation-editor/PropertiesPanel';
 import TransportBar from '@/components/presentation-editor/TransportBar';
-import AutoBuildModal from '@/components/presentation-editor/AutoBuildModal';
-import CpeAiPanel from '@/components/presentation-editor/CpeAiPanel';
 import ReviewPanel from '@/components/presentation-editor/ReviewPanel';
 import ScriptPanel from '@/components/presentation-editor/ScriptPanel';
 import MediaBrowserPanel from '@/components/presentation-editor/MediaBrowserPanel';
@@ -24,15 +20,12 @@ import '@/components/presentation-editor/workspace.css';
 export default function PresentationEditor() {
   const { id } = useParams();
   const ed = usePresentationEditor(id);
-  const autoBuild = useAutoBuild();
   const { workspaceMode, changeMode, config: wsConfig } = useWorkspaceMode();
-  const aiWorkers = useCpeAiWorkers(ed);
 
   const handleWorkspaceChange = useCallback((mode) => {
     changeMode(mode);
   }, [changeMode]);
 
-  // Animate Mode keyboard shortcuts
   useAnimateShortcuts({
     active: workspaceMode === 'animate',
     isPlaying: ed.isPlaying,
@@ -49,9 +42,6 @@ export default function PresentationEditor() {
     onRedo: ed.redo,
   });
 
-  const aiPanelOpen = workspaceMode === 'ai';
-  const reviewPanelOpen = workspaceMode === 'review';
-
   const renderSidePanel = () => {
     switch (wsConfig.sidePanel) {
       case 'inspector':
@@ -67,7 +57,6 @@ export default function PresentationEditor() {
             onUpdateSlide={ed.updateSlide}
             onUpdateElement={ed.updateElement}
             onDeleteElement={ed.deleteElement}
-            onRegenerateElement={ed.regenerateElement}
             onDuplicateElement={ed.duplicateElement}
             onBringForward={ed.bringForward}
             onSendBackward={ed.sendBackward}
@@ -116,33 +105,20 @@ export default function PresentationEditor() {
           <ReviewPanel
             presentation={ed.presentation}
             slides={ed.slides}
-            activeIndex={ed.activeIndex}
-            activeSlide={ed.activeSlide}
-            aiWorkers={aiWorkers}
             onClose={() => handleWorkspaceChange('design')}
             onApprove={ed.approvePresentation}
             onReject={ed.rejectPresentation}
             onShare={ed.shareToCreapd}
-            onExportMP4={ed.exportMP4}
-            onRegenerate={ed.regeneratePresentation}
             approving={ed.approving}
             sharing={ed.sharing}
-            exporting={ed.exportingMP4}
-            regenerating={ed.regeneratingPres}
-            exportJob={ed.exportJob}
             shareResult={ed.shareResult}
           />
         ) : null;
-      case 'ai':
-        return (
-          <CpeAiPanel aiWorkers={aiWorkers} onClose={() => handleWorkspaceChange('design')} />
-        );
       default:
         return null;
     }
   };
 
-  // Present mode overlay
   if (ed.presenting && ed.activeSlide) {
     return (
       <div className="fixed inset-0 bg-black z-[100] flex items-center justify-center cpe-shell"
@@ -184,10 +160,7 @@ export default function PresentationEditor() {
               Retry
             </button>
           )}
-          <Link
-            to="/news/presentations"
-            className="mt-2 text-sm text-primary hover:underline"
-          >
+          <Link to="/presentations" className="mt-2 text-sm text-primary hover:underline">
             Browse Presentations →
           </Link>
         </div>
@@ -195,7 +168,6 @@ export default function PresentationEditor() {
     );
   }
 
-  // Media Mode renders a full DAM workspace, replacing the standard editor layout
   if (workspaceMode === 'media') {
     return (
       <div className="cpe-shell flex flex-col h-screen">
@@ -204,43 +176,15 @@ export default function PresentationEditor() {
           dirty={ed.dirty}
           canUndo={ed.undoStack.length > 0}
           canRedo={ed.redoStack.length > 0}
-          hasSelection={!!ed.selectedElement}
           title={ed.presentation.title}
           onSave={ed.saveAll}
           onUndo={ed.undo}
           onRedo={ed.redo}
-          onExport={ed.exportPresentation}
-          onRegenerateSlide={ed.regenerateSlide}
-          onRegenerateElement={ed.regenerateElement}
-          onRunQA={ed.runQA}
           onAddElement={ed.addElement}
-          onAutoBuild={autoBuild.open}
-          onToggleAiPanel={() => handleWorkspaceChange(aiPanelOpen ? 'design' : 'ai')}
-          aiPanelOpen={aiPanelOpen}
-          onToggleReviewPanel={() => handleWorkspaceChange(reviewPanelOpen ? 'design' : 'review')}
-          reviewPanelOpen={reviewPanelOpen}
           workspaceMode={workspaceMode}
           onWorkspaceModeChange={handleWorkspaceChange}
         />
         <MediaModeLayout ed={ed} />
-        <AutoBuildModal
-          isOpen={autoBuild.isOpen}
-          onClose={autoBuild.close}
-          prompt={autoBuild.prompt}
-          onPromptChange={autoBuild.setPrompt}
-          stages={autoBuild.stages}
-          stageStatuses={autoBuild.stageStatuses}
-          detail={autoBuild.detail}
-          error={autoBuild.error}
-          failedStage={autoBuild.failedStage}
-          onRetry={autoBuild.retry}
-          running={autoBuild.running}
-          needsConfirmation={autoBuild.needsConfirmation}
-          clarificationQuestion={autoBuild.clarificationQuestion}
-          inferredParams={autoBuild.inferredParams}
-          onStart={autoBuild.start}
-          onConfirmProceed={autoBuild.confirmAndProceed}
-        />
       </div>
     );
   }
@@ -252,26 +196,16 @@ export default function PresentationEditor() {
         dirty={ed.dirty}
         canUndo={ed.undoStack.length > 0}
         canRedo={ed.redoStack.length > 0}
-        hasSelection={!!ed.selectedElement}
         title={ed.presentation.title}
         onSave={ed.saveAll}
         onUndo={ed.undo}
         onRedo={ed.redo}
-        onExport={ed.exportPresentation}
-        onRegenerateSlide={ed.regenerateSlide}
-        onRegenerateElement={ed.regenerateElement}
-        onRunQA={ed.runQA}
         onAddElement={ed.addElement}
-        onAutoBuild={autoBuild.open}
-        onToggleAiPanel={() => handleWorkspaceChange(aiPanelOpen ? 'design' : 'ai')}
-        aiPanelOpen={aiPanelOpen}
-        onToggleReviewPanel={() => handleWorkspaceChange(reviewPanelOpen ? 'design' : 'review')}
-        reviewPanelOpen={reviewPanelOpen}
         workspaceMode={workspaceMode}
         onWorkspaceModeChange={handleWorkspaceChange}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         {wsConfig.showSlideRail && (
           <SlideRail
             slides={ed.slides}
@@ -284,7 +218,7 @@ export default function PresentationEditor() {
           />
         )}
 
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
           <div style={{ flex: wsConfig.canvasFlex }} className="overflow-hidden min-h-0 relative flex flex-col">
             <EditorCanvas
               slide={ed.activeSlide}
@@ -365,30 +299,14 @@ export default function PresentationEditor() {
         </div>
 
         {wsConfig.sidePanel !== 'none' && wsConfig.sidePanelWidth > 0 && (
-          <div style={{ width: wsConfig.sidePanelWidth }} className="overflow-hidden flex-shrink-0 cpe-ws-side-panel">
+          <div
+            style={{ width: wsConfig.sidePanelWidth }}
+            className="overflow-y-auto overflow-x-hidden flex-shrink-0 min-h-0 cpe-ws-side-panel"
+          >
             {renderSidePanel()}
           </div>
         )}
       </div>
-
-      <AutoBuildModal
-        isOpen={autoBuild.isOpen}
-        onClose={autoBuild.close}
-        prompt={autoBuild.prompt}
-        onPromptChange={autoBuild.setPrompt}
-        stages={autoBuild.stages}
-        stageStatuses={autoBuild.stageStatuses}
-        detail={autoBuild.detail}
-        error={autoBuild.error}
-        failedStage={autoBuild.failedStage}
-        onRetry={autoBuild.retry}
-        running={autoBuild.running}
-        needsConfirmation={autoBuild.needsConfirmation}
-        clarificationQuestion={autoBuild.clarificationQuestion}
-        inferredParams={autoBuild.inferredParams}
-        onStart={autoBuild.start}
-        onConfirmProceed={autoBuild.confirmAndProceed}
-      />
     </div>
   );
 }

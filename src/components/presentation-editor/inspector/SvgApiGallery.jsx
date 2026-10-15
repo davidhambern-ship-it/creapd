@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field } from './shared';
-import { Loader2, Search, Check } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { Search, Check } from 'lucide-react';
 
 const FEATURED_ICONS = [
   { id: '75320', slug: 'rio', title: 'Rio' },
@@ -25,48 +24,28 @@ const buildUrl = (icon) => `https://cdn.svgapi.com/vector/${icon.id}/${icon.slug
 
 export default function SvgApiGallery({ onInsert }) {
   const [selected, setSelected] = useState(null);
-  const [inserting, setInserting] = useState(false);
   const [error, setError] = useState(null);
   const [customUrl, setCustomUrl] = useState('');
 
-  const insert = async (icon) => {
-    setInserting(true);
+  const insert = (icon) => {
     setError(null);
-    try {
-      const url = buildUrl(icon);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Fetch failed');
-      const svgText = await res.text();
-      const blob = new Blob([svgText], { type: 'image/svg+xml' });
-      const file = new File([blob], `svgapi-${icon.slug}.svg`, { type: 'image/svg+xml' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      onInsert(file_url);
-      setSelected(null);
-    } catch (err) {
-      setError(err.message || 'Failed to insert');
-    } finally {
-      setInserting(false);
-    }
+    onInsert(buildUrl(icon));
+    setSelected(null);
   };
 
   const insertCustom = async () => {
     if (!customUrl.trim()) return;
-    setInserting(true);
     setError(null);
     try {
-      const res = await fetch(customUrl.trim());
+      const url = customUrl.trim();
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Fetch failed');
       const svgText = await res.text();
       if (!svgText.includes('<svg')) throw new Error('Not a valid SVG');
-      const blob = new Blob([svgText], { type: 'image/svg+xml' });
-      const file = new File([blob], `custom-svg-${Date.now()}.svg`, { type: 'image/svg+xml' });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      onInsert(file_url);
+      onInsert(url);
       setCustomUrl('');
     } catch (err) {
       setError(err.message || 'Failed to insert');
-    } finally {
-      setInserting(false);
     }
   };
 
@@ -85,13 +64,13 @@ export default function SvgApiGallery({ onInsert }) {
         ))}
       </div>
 
-      <Field label="Or paste SVGAPI CDN URL">
+      <Field label="Or paste a public SVG URL">
         <div className="flex gap-1">
           <input value={customUrl} onChange={(e) => setCustomUrl(e.target.value)}
-            placeholder="https://cdn.svgapi.com/vector/..."
+            placeholder="https://.../graphic.svg"
             className="flex-1 text-xs bg-background border border-border rounded-md px-2 py-1.5 h-8" />
-          <Button variant="outline" size="sm" className="h-8 text-[10px] px-2" disabled={inserting || !customUrl.trim()} onClick={insertCustom}>
-            {inserting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+          <Button variant="outline" size="sm" className="h-8 text-[10px] px-2" disabled={!customUrl.trim()} onClick={insertCustom}>
+            <Search className="w-3 h-3" />
           </Button>
         </div>
       </Field>
@@ -102,9 +81,8 @@ export default function SvgApiGallery({ onInsert }) {
         <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-muted/30">
           <img src={buildUrl(selected)} alt={selected.title} className="w-8 h-8" />
           <span className="text-[10px] text-muted-foreground flex-1 truncate">{selected.title}</span>
-          <Button variant="default" size="sm" className="h-7 text-[10px]" disabled={inserting} onClick={() => insert(selected)}>
-            {inserting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-            {inserting ? '...' : 'Insert'}
+          <Button variant="default" size="sm" className="h-7 text-[10px]" onClick={() => insert(selected)}>
+            <Check className="w-3 h-3" /> Insert
           </Button>
         </div>
       )}

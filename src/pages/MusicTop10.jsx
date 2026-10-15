@@ -9,7 +9,6 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 
 export default function MusicTop10() {
   const [config, setConfig] = useState(null);
@@ -107,7 +106,7 @@ export default function MusicTop10() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -270,7 +269,6 @@ export default function MusicTop10() {
             </div>
           </div>
         )}
-      <PPNavBar />
       </div>
 
       {/* Add Video Modal */}

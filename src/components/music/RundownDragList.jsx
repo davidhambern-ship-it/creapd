@@ -28,7 +28,7 @@ export default function RundownDragList({
   }, [rundown]);
 
   const {
-    autoplayIndex, songPhase, speakingId, isSupported,
+    autoplayIndex, songPhase, speakingId, isSupported, voiceEnabled,
     startAutoplay, stopAutoplay, handleNativePreview,
     findSongTrack, getScriptForItem, songScriptsByTitle,
   } = playbackCtx;
@@ -223,7 +223,7 @@ export default function RundownDragList({
                           </div>
 
                           {/* Preview button */}
-                          {showVoiceover && isSupported && script && (
+                          {showVoiceover && isSupported && voiceEnabled && script && (
                             <button
                               onClick={() => handleNativePreview(item, i)}
                               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all flex-shrink-0"

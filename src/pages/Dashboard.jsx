@@ -63,19 +63,17 @@ export default function Dashboard() {
   if (isSaturday) {
     return (
       <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
-        {/* Saturday Planning Day */}
+        {/* Episode Planning Day */}
         <div className="glass-panel glow-orange p-6 lg:p-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-berna-orange/10 to-transparent rounded-full -mr-20 -mt-20" />
           <div className="relative">
             <div className="flex items-center gap-2 mb-2">
               <CalendarDays className="w-5 h-5 text-berna-orange" />
-              <p className="text-[10px] text-berna-orange uppercase tracking-[0.2em] font-semibold">Saturday Planning Day</p>
+              <p className="text-[10px] text-berna-orange uppercase tracking-[0.2em] font-semibold">Episode Planning Day</p>
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3 [font-family:'Public_Sans',_sans-serif]">CREAP Your Week!</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
-              Map out every day of the week in one view — assign daily themes, select focus topics and categories,
-              schedule your morning briefings, choose which stories to prioritize, copy a previous week's plan as a starting point,
-              and fine-tune your automation settings before Monday arrives.
+              Plan upcoming episodes in one view — choose themes, topics, categories, source priorities, and the material CREAPD should prepare for review.
             </p>
             <div className="flex flex-wrap gap-2 mt-6">
               <Link to="/news/planner">
@@ -114,11 +112,11 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-white neon-underline">This Week's Status</h2>
             <div className="space-y-2">
               <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-                <span className="text-xs text-muted-foreground">Briefs Generated</span>
+                <span className="text-xs text-muted-foreground">Episode Briefs</span>
                 <span className="text-xs font-mono text-berna-emerald">{articles.filter((a) => a.status === 'used').length}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-                <span className="text-xs text-muted-foreground">Stories Approved</span>
+                <span className="text-xs text-muted-foreground">Topics Approved</span>
                 <span className="text-xs font-mono text-white">{approvedCount}</span>
               </div>
               <div className="flex items-center justify-between py-2">
@@ -132,7 +130,7 @@ export default function Dashboard() {
             <div className="space-y-2">
               <Link to="/news/planner" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
                 <CalendarDays className="w-4 h-4 text-berna-purple" />
-                <span className="text-sm text-white/80 group-hover:text-white">Open Weekly Planner</span>
+                <span className="text-sm text-white/80 group-hover:text-white">Open Episode Planner</span>
                 <ChevronRight className="w-3 h-3 text-muted-foreground ml-auto" />
               </Link>
               <Link to="/news/sources" className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all group">
@@ -148,12 +146,12 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="glass-panel p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-white neon-underline">Berna's Pick</h2>
+            <h2 className="text-sm font-semibold text-white neon-underline">Producer Pick</h2>
             {bernasPick ?
             <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
-                  <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Top Story</span>
+                  <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Featured Topic</span>
                 </div>
                 <p className="text-xs text-white font-medium leading-snug">{bernasPick.title}</p>
               </div> :
@@ -200,13 +198,13 @@ export default function Dashboard() {
             <Link to="/news/brief">
               <Button className="bg-gradient-to-r from-berna-purple to-berna-purple/80 hover:from-berna-purple/90 hover:to-berna-purple/70 text-white glow-purple">
                 <FileText className="w-4 h-4 mr-2" />
-                Open Today's Brief
+                Open Next Episode Brief
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
             <Link to="/news/planner">
               <Button variant="outline" className="border-white/10 text-white hover:bg-white/[0.04]">
-                <CalendarDays className="w-4 h-4 mr-2" />Weekly Planner
+                <CalendarDays className="w-4 h-4 mr-2" />Episode Planner
               </Button>
             </Link>
             <Button variant="outline" onClick={() => setDirectionOpen(true)} className="border-berna-orange/20 text-berna-orange hover:bg-berna-orange/10">
@@ -216,7 +214,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Weekly Planner Card */}
+      {/* Episode Planner Card */}
       <Link to="/news/planner" className="block group">
         <div className="glass-panel glow-purple p-5 lg:p-6 relative overflow-hidden transition-all hover:border-berna-purple/30">
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-berna-purple/10 to-transparent rounded-full -mr-16 -mt-16" />
@@ -225,12 +223,12 @@ export default function Dashboard() {
               <CalendarDays className="w-6 h-6 text-berna-purple" />
             </div>
             <div className="flex-1">
-              <h2 className="text-base font-semibold text-white mb-1">Plan Your Week</h2>
+              <h2 className="text-base font-semibold text-white mb-1">Plan Upcoming Episodes</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Set daily themes, choose focus topics, and schedule briefings ahead of time. Map out your entire week's content strategy in one place.
+                Set episode themes, choose focus topics, and decide what CREAPD should prepare before you return.
               </p>
               <div className="flex items-center gap-1 mt-3 text-xs text-berna-purple font-medium">
-                Open Weekly Planner
+                Open Episode Planner
                 <ArrowRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
@@ -247,7 +245,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
-              <span className="text-xs text-muted-foreground">Next Run</span>
+              <span className="text-xs text-muted-foreground">Next Prep</span>
               <span className="text-xs font-mono text-berna-purple">Tomorrow 6:00 AM</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-white/[0.04]">
@@ -283,7 +281,7 @@ export default function Dashboard() {
           <div className="p-3 rounded-lg bg-gradient-to-r from-berna-orange/10 to-berna-purple/10 border border-berna-orange/20">
               <div className="flex items-center gap-1.5 mb-1">
                 <Star className="w-3 h-3 text-berna-orange fill-berna-orange" />
-                <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Berna's Pick</span>
+                <span className="text-[10px] text-berna-orange font-semibold uppercase tracking-wider">Producer Pick</span>
               </div>
               <p className="text-xs text-white font-medium leading-snug">{bernasPick.title}</p>
             </div>
@@ -291,7 +289,7 @@ export default function Dashboard() {
 
           {topStories.length > 0 &&
           <div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Top Stories</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Top Topics</p>
               <div className="space-y-2">
                 {topStories.map((story, i) =>
               <div key={story.id} className="flex items-start gap-2">
@@ -328,10 +326,10 @@ export default function Dashboard() {
           <h2 className="text-sm font-semibold text-white neon-underline">Quick Actions</h2>
           <div className="space-y-2">
             {[
-            { icon: CalendarDays, label: 'Weekly Planner', path: '/news/planner', color: 'text-berna-purple' },
-            { icon: FileText, label: 'Generate Brief', path: '/news/brief', color: 'text-berna-purple' },
+            { icon: CalendarDays, label: 'Episode Planner', path: '/news/planner', color: 'text-berna-purple' },
+            { icon: FileText, label: 'Prepare Episode Brief', path: '/news/brief', color: 'text-berna-purple' },
             { icon: RefreshCw, label: 'Refresh Sources', path: '/news/sources', color: 'text-berna-emerald' },
-            { icon: Layers, label: 'Review Story Queue', path: '/news/queue', color: 'text-berna-orange' },
+            { icon: Layers, label: 'Review Topic Queue', path: '/news/queue', color: 'text-berna-orange' },
             { icon: Archive, label: 'Open Archive', path: '/news/archive', color: 'text-blue-400' },
             { icon: Settings, label: 'Automation Settings', path: '/news/automation', color: 'text-muted-foreground' }].
             map((action) =>

@@ -1,9 +1,46 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
-import { Loader2, Mic2, Search, AlertCircle, TrendingUp } from 'lucide-react';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
+import { creapdApi } from '@/api/creapdClient';
+import { Button } from '@/components/ui/button';
+import { Loader2, Mic2, Search, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function TalkResearch() {
-  const { config, research, loading } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, research, loading, refresh } = useTalkProduction(configurationId);
+  const [building, setBuilding] = useState(false);
+  const [buildError, setBuildError] = useState('');
+  const autoStartedRef = useRef(false);
+
+  const buildResearch = async () => {
+    if (!config?.id || building) return;
+    setBuilding(true);
+    setBuildError('');
+    try {
+      await creapdApi.post('/production/core', {
+        action: 'talk_build_research',
+        configuration_id: config.id,
+      });
+      await refresh();
+    } catch (error) {
+      setBuildError(
+        error?.data?.diagnostic?.message ||
+        error?.data?.message ||
+        error?.message ||
+        'CREAPD could not build the Podcast research.'
+      );
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || !config?.id || research.length || building || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    buildResearch();
+  }, [loading, config?.id, research.length]);
 
   if (loading) {
     return (
@@ -34,10 +71,38 @@ export default function TalkResearch() {
         <p className="text-sm text-muted-foreground mt-1">Background research for your discussion topics</p>
       </div>
 
+      <TalkProducerGuide
+        currentStep="research"
+        title="Review the research before you lock your discussion topics"
+        instructions={[
+          'Scan the summaries and sources so you understand what CREAPD found.',
+          'Watch for weak, mixed, or questionable information that may need extra attention.',
+          'When the research looks usable, move to Topics and decide what actually belongs in the show.',
+        ]}
+        readyText={`${research.length} research item${research.length === 1 ? '' : 's'} available for review`}
+        nextPath={config?.id ? `/podcast/review?config_id=${encodeURIComponent(config.id)}` : '/podcast/review'}
+        nextLabel="Review Discussion Topics"
+        nextDescription="Research informs the show; Topics is where you decide what CREAPD should actually use."
+      />
+
       {research.length === 0 ? (
         <div className="glass-panel p-8 text-center">
-          <AlertCircle className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
-          <p className="text-muted-foreground">No research items yet. Refresh your production to generate research.</p>
+          {building ? (
+            <>
+              <Loader2 className="w-10 h-10 text-primary mx-auto mb-3 animate-spin" />
+              <p className="text-foreground font-medium">CREAPD is researching this episode…</p>
+              <p className="text-sm text-muted-foreground mt-1">Verifying sources, counter-perspectives, and discussion material.</p>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground">{buildError || 'No research items are available yet.'}</p>
+              <Button type="button" variant="outline" className="mt-4" onClick={buildResearch}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Build Podcast Research
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -30,7 +30,7 @@ export default function CosmoTopics() {
     <div className="p-6 md:p-8 space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> Topics</h1>
-        <p className="text-sm text-muted-foreground mt-1">Health & beauty topics with summaries, talking points, and sources</p>
+        <p className="text-sm text-muted-foreground mt-1">Cosmetology and beauty topics with summaries, talking points, techniques, and sources</p>
       </div>
 
       {topics.length === 0 ? (

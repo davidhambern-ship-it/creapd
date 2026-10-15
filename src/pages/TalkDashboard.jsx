@@ -1,49 +1,166 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
+import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
+import TalkDiscussionTopicsPopup from '@/components/talk/TalkDiscussionTopicsPopup';
+import {
+  TalkResearchPopup,
+  TalkGuestChairPopup,
+  TalkRundownPopup,
+  TalkAssetsPopup,
+  TalkFinishLaunchPopup,
+} from '@/components/talk/TalkDashboardPopups';
+import TalkConfigure from '@/pages/TalkConfigure';
 import { Button } from '@/components/ui/button';
-import { formatRuntime, formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle
+} from '@/components/ui/dialog';
+import { formatMinutes, ASSET_TYPE_LABELS, SEGMENT_TYPE_LABELS } from '@/lib/talkConstants';
 import {
   Mic2, RefreshCw, Lightbulb, Users, ClipboardList, Sparkles, Download,
-  Settings, Clock, TrendingUp, AlertCircle, CheckCircle2, Loader2,
+  Settings, Clock, AlertCircle, CheckCircle2, Loader2,
   Calendar, Radio, ArrowRight, Building2, Search
 } from 'lucide-react';
 
-function safeParse(str, fallback) {
-  if (!str) return fallback;
-  try { return JSON.parse(str); } catch { return fallback; }
+function buildFailureMessage(config) {
+  if (config?.status !== 'failed') return '';
+  const metadata = config?.build_metadata && typeof config.build_metadata === 'object'
+    ? config.build_metadata
+    : {};
+  return metadata.message || 'The last Talk production build did not complete. You can retry it safely.';
+}
+
+function StudioPanel({ className = '', icon: Icon, title, children, actionLabel = 'Open', onOpen }) {
+  const classes = [
+    'overflow-hidden rounded-xl border border-white/10 bg-black/38 backdrop-blur-sm shadow-xl',
+    'transition hover:bg-black/50 hover:border-white/20 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/70',
+    className,
+  ].join(' ');
+
+  return (
+    <section
+      className={classes}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen?.();
+        }
+      }}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-black/15 px-2.5 py-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {Icon && <Icon className="w-4 h-4 text-orange-300 shrink-0" />}
+          <h3 className="font-heading font-semibold text-sm text-white truncate">{title}</h3>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-white/55">
+          {actionLabel}
+          <ArrowRight className="w-3 h-3" />
+        </span>
+      </div>
+      <div className="px-2.5 py-2">{children}</div>
+    </section>
+  );
+}
+
+function ModalEmpty({ children }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-white/45">
+      {children}
+    </div>
+  );
 }
 
 export default function TalkDashboard() {
-  const { config, topics, research, guests, segments, assets, loading, refresh } = useTalkProduction();
+  const ownedPreview = shouldUseNeonAuth();
+  const { config, topics, research, guests, segments, assets, loading, refresh, source } = useTalkProduction();
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
+  const [activePanel, setActivePanel] = useState(null);
+  const [aiHealth, setAiHealth] = useState(null);
+  const [studioClock, setStudioClock] = useState(() => new Date());
 
-  // Poll if building
   useEffect(() => {
-    if (config?.status === 'building') {
-      const interval = setInterval(async () => {
-        if (config?.id) {
-          const updated = await base44.entities.TalkProductionConfiguration.get(config.id);
-          if (updated && (updated.status === 'ready' || updated.status === 'failed')) {
-            clearInterval(interval);
-            refresh();
+    const timer = setInterval(() => setStudioClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/creapd/ai/health', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (active) setAiHealth(payload || { ok: false });
+      })
+      .catch(() => {
+        if (active) setAiHealth({ ok: false });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (config?.status !== 'building' || !config?.id) return undefined;
+
+    let active = true;
+    const check = async () => {
+      try {
+        if (ownedPreview) {
+          const data = await creapdApi.get('/talk/production?configuration_id=' + encodeURIComponent(config.id));
+          const updated = data?.configuration;
+          if (active && updated && ['ready', 'failed'].includes(updated.status)) {
+            await refresh();
           }
+          return;
         }
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [config?.status, config?.id, refresh]);
+
+        const updated = await base44.entities.TalkProductionConfiguration.get(config.id);
+        if (active && updated && ['ready', 'failed'].includes(updated.status)) {
+          await refresh();
+        }
+      } catch (err) {
+        console.error('Talk build status poll failed:', err);
+      }
+    };
+
+    const interval = setInterval(check, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [config?.status, config?.id, ownedPreview, refresh]);
 
   const handleRefresh = async () => {
     if (!config?.id) return;
     setRefreshing(true);
+    setRefreshError('');
     try {
-      await base44.entities.TalkProductionConfiguration.update(config.id, { status: 'building' });
-      await base44.functions.invoke('buildTalkProduction', { configuration_id: config.id });
-      refresh();
+      if (ownedPreview) {
+        await creapdApi.post('/talk/production', {
+          action: 'refresh',
+          configuration_id: config.id,
+        });
+      } else {
+        await base44.entities.TalkProductionConfiguration.update(config.id, { status: 'building' });
+        await base44.functions.invoke('buildTalkProduction', { configuration_id: config.id });
+      }
+      await refresh();
     } catch (err) {
       console.error(err);
+      setRefreshError(
+        err?.data?.diagnostic?.message ||
+        err?.data?.error ||
+        err?.message ||
+        'Talk production refresh failed.'
+      );
+      await refresh().catch(() => {});
     } finally {
       setRefreshing(false);
     }
@@ -51,43 +168,30 @@ export default function TalkDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-full items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!config) {
-    return (
-      <div className="flex items-center justify-center h-screen p-6">
-        <div className="max-w-md text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
-            <Mic2 className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-xl font-heading font-bold mb-3">No Talk Production Found</h2>
-          <p className="text-muted-foreground mb-6">Configure your talk production to get started. Producer will build everything automatically.</p>
-          <Button asChild size="lg">
-            <Link to="/talk/configure">Configure Production</Link>
-          </Button>
-        </div>
-      </div>
-    );
+    return <TalkConfigure embedded onBuilt={refresh} />;
   }
 
   if (config.status === 'building' || refreshing) {
     return (
-      <div className="flex items-center justify-center h-screen p-6">
-        <div className="max-w-md text-center">
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="talk-build-card max-w-md text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-6">
             <Building2 className="w-8 h-8 text-primary animate-pulse" />
           </div>
           <h2 className="text-xl font-heading font-bold mb-3">Building Your Talk Production</h2>
-          <p className="text-muted-foreground mb-8">Generating research, topics, talking points, rundown, and AI assets...</p>
+          <p className="text-white/55 mb-8">CREAPD is researching, verifying, and assembling the production.</p>
           <div className="space-y-3 text-left">
-            {['Researching topics', 'Generating talking points', 'Building show rundown', 'Generating AI assets'].map((label, i) => (
-              <div key={i} className="!flex items-center gap-3 text-sm">
+            {['Researching live sources', 'Verifying claims & counter-perspectives', 'Building show rundown', 'Generating production assets'].map((label, index) => (
+              <div key={index} className="flex items-center gap-3 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">{label}...</span>
+                <span className="text-white/55">{label}...</span>
               </div>
             ))}
           </div>
@@ -96,221 +200,323 @@ export default function TalkDashboard() {
     );
   }
 
-  const aiAutomation = safeParse(config.ai_automation, []);
-  const topicsList = safeParse(config.topics, []);
+  const buildFailure = refreshError || buildFailureMessage(config);
+  const approvedTopics = topics.filter((topic) => topic.status === 'approved').length;
+  const confirmedGuests = guests.filter((guest) => guest.status === 'confirmed').length;
+  const approvedAssets = assets.filter((asset) => asset.status === 'approved').length;
+  const livePath = '/talk/live?config_id=' + encodeURIComponent(config.id);
 
   const checklist = [
-    { label: 'Configuration Saved', done: !!config.production_name },
-    { label: 'Research Generated', done: research.length > 0 },
-    { label: 'Topics Generated', done: topics.length > 0 },
-    { label: 'Talking Points Generated', done: assets.some(a => a.asset_type === 'talking_points') },
-    { label: 'Discussion Questions Generated', done: assets.some(a => a.asset_type === 'discussion_questions') },
-    { label: 'Host Intros Generated', done: assets.some(a => a.asset_type === 'host_intro') },
-    { label: 'Show Rundown Generated', done: segments.length > 0 },
-    { label: 'Social Captions Generated', done: assets.some(a => a.asset_type === 'social_caption') },
-    { label: 'Thumbnail Prompt Generated', done: assets.some(a => a.asset_type === 'thumbnail_prompt') },
-    { label: 'Production Notes Generated', done: assets.some(a => a.asset_type === 'production_notes') },
+    !!config.production_name,
+    research.length > 0,
+    topics.length > 0,
+    assets.some((asset) => asset.asset_type === 'talking_points'),
+    assets.some((asset) => asset.asset_type === 'discussion_questions'),
+    assets.some((asset) => asset.asset_type === 'host_intro'),
+    segments.length > 0,
+    assets.some((asset) => asset.asset_type === 'social_caption'),
+    assets.some((asset) => asset.asset_type === 'thumbnail_prompt'),
+    assets.some((asset) => asset.asset_type === 'production_notes'),
   ];
+  const readinessPercent = Math.round((checklist.filter(Boolean).length / checklist.length) * 100);
 
-  const checklistDone = checklist.filter(c => c.done).length;
-  const readinessPercent = Math.round((checklistDone / checklist.length) * 100);
+  const modalTitles = {
+    research: 'Research',
+    topics: 'Discussion Topics',
+    guests: 'Guests',
+    rundown: 'Show Rundown',
+    assets: 'AI Assets',
+    export: 'Finish & Launch',
+  };
+
+  const fullWorkspacePaths = {
+    research: '/talk/research',
+    topics: '/talk/topics',
+    guests: '/talk/guests',
+    rundown: '/talk/rundown',
+    assets: '/talk/assets',
+    export: '/talk/export',
+  };
+
+  const renderModalBody = () => {
+    if (activePanel === 'research') {
+      return (
+        <TalkResearchPopup
+          research={research}
+          onClose={() => setActivePanel(null)}
+        />
+      );
+    }
+
+    if (activePanel === 'topics') {
+      return (
+        <TalkDiscussionTopicsPopup
+          topics={topics}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
+      );
+    }
+
+    if (activePanel === 'guests') {
+      return (
+        <TalkGuestChairPopup
+          guests={guests}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
+      );
+    }
+
+    if (activePanel === 'rundown') {
+      return (
+        <TalkRundownPopup
+          segments={segments}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
+      );
+    }
+
+    if (activePanel === 'assets') {
+      return (
+        <TalkAssetsPopup
+          assets={assets}
+          source={source}
+          refresh={refresh}
+          onClose={() => setActivePanel(null)}
+        />
+      );
+    }
+
+    if (activePanel === 'export') {
+      return (
+        <TalkFinishLaunchPopup
+          config={config}
+          topics={topics}
+          research={research}
+          guests={guests}
+          segments={segments}
+          assets={assets}
+          livePath={livePath}
+          onClose={() => setActivePanel(null)}
+        />
+      );
+    }
+
+    return null;
+  };
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="!flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="!flex items-center gap-2 mb-1">
-            <Mic2 className="w-5 h-5 text-primary" />
-            <h1 className="text-2xl font-heading font-bold">{config.production_name}</h1>
+    <>
+      <div className="relative h-full min-h-0 overflow-hidden p-3">
+        <div className="absolute z-20 top-2 left-1/2 w-[34%] -translate-x-1/2 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/45 px-3 py-2 backdrop-blur-md shadow-xl">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Mic2 className="w-4 h-4 text-orange-300" />
+              <h1 className="font-heading font-bold text-base text-white truncate">{config.production_name}</h1>
+              {aiHealth?.provider && (
+                <span className={aiHealth.provider === 'gemini'
+                  ? 'rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300'
+                  : 'rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-300'}>
+                  {aiHealth.provider === 'gemini' ? 'Gemini Ready' : 'Vercel AI'}
+                </span>
+              )}
+              <span className="hidden xl:inline-flex items-center gap-1 rounded-full border border-fuchsia-300/15 bg-fuchsia-300/[0.06] px-2 py-0.5 text-[9px] font-medium text-fuchsia-100/75">
+                {studioClock.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                <span className="text-white/20">•</span>
+                {studioClock.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] text-white/45">
+              <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{config.show_date}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{config.show_start_time}</span>
+              <span className="flex items-center gap-1"><Mic2 className="w-3 h-3" />{config.show_format}</span>
+            </div>
           </div>
-          <div className="!flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="!flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {config.show_date}</span>
-            <span className="!flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {config.show_start_time}</span>
-            <span className="!flex items-center gap-1"><Radio className="w-3.5 h-3.5" /> {config.station_name || 'No station'}</span>
-            <span className="!flex items-center gap-1"><Mic2 className="w-3.5 h-3.5" /> {config.show_format}</span>
+          <div className="flex items-center gap-2">
+            {config.status === 'ready' && segments.length > 0 && (
+              <Button size="sm" asChild className="border border-white/10 bg-gradient-to-r from-orange-500 via-purple-500 to-pink-500 text-white hover:brightness-110">
+                <Link to={livePath}><Radio className="w-3.5 h-3.5 mr-1" /> Enter Studio</Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="h-9 w-9 border-white/15 bg-white/5 p-0 text-white hover:bg-white/10">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" asChild className="h-9 w-9 border-white/15 bg-white/5 p-0 text-white hover:bg-white/10">
+              <Link to={'/talk/configure?config_id=' + config.id}><Settings className="w-3.5 h-3.5" /></Link>
+            </Button>
           </div>
         </div>
-        <div className="!flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4 mr-1" />
-            Refresh
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/talk/configure?config_id=${config.id}`}>
-              <Settings className="w-4 h-4 mr-1" />
-              Edit Config
-            </Link>
-          </Button>
-        </div>
-      </div>
 
-      {/* Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Runtime</p>
-          <p className="text-lg font-heading font-bold">{formatMinutes(config.total_show_runtime)}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Talk Runtime</p>
-          <p className="text-lg font-heading font-bold text-primary">{formatMinutes(config.talk_segment_runtime)}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Format</p>
-          <p className="text-sm font-medium">{config.show_format}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Tone</p>
-          <p className="text-sm font-medium">{config.show_tone}</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Guests</p>
-          <p className="text-sm font-medium">{guests.length} listed</p>
-        </div>
-        <div className="glass-panel p-4">
-          <p className="text-xs text-muted-foreground mb-1">Readiness</p>
-          <p className="text-lg font-heading font-bold text-emerald-400">{readinessPercent}%</p>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="!flex flex-wrap gap-2">
-        <Button size="sm" variant="outline" onClick={handleRefresh}><RefreshCw className="w-4 h-4 mr-1" /> Refresh Production</Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/research"><Search className="w-4 h-4 mr-1" /> Research</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/topics"><Lightbulb className="w-4 h-4 mr-1" /> Topics</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/guests"><Users className="w-4 h-4 mr-1" /> Guests</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/rundown"><ClipboardList className="w-4 h-4 mr-1" /> Show Rundown</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/assets"><Sparkles className="w-4 h-4 mr-1" /> AI Assets</Link></Button>
-        <Button size="sm" variant="outline" asChild><Link to="/talk/export"><Download className="w-4 h-4 mr-1" /> Export</Link></Button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Topics Widget */}
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><Lightbulb className="w-4 h-4 text-primary" /> Discussion Topics</h3>
-            <Link to="/talk/topics" className="text-xs text-primary hover:underline">View all</Link>
+        {buildFailure && (
+          <div className="absolute z-30 top-[58px] left-1/2 w-[38%] -translate-x-1/2 flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-950/55 px-2.5 py-2 text-[10px] text-red-100 backdrop-blur-md">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span className="min-w-0 flex-1">
+              {buildFailure.includes('Free tier users do not have access to this model')
+                ? (aiHealth?.provider === 'gemini'
+                    ? 'Previous Vercel AI build failed. Gemini is now configured and ready to retry.'
+                    : 'Vercel AI free-tier build failed. Gemini is not active yet.')
+                : buildFailure}
+            </span>
+            {buildFailure.includes('Free tier users do not have access to this model') && aiHealth?.provider === 'gemini' && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="h-7 shrink-0 bg-emerald-500 px-2.5 text-[10px] font-semibold text-black hover:bg-emerald-400"
+              >
+                Retry with Gemini
+              </Button>
+            )}
           </div>
+        )}
+
+        <div className="absolute top-[5%] left-[1.1%] w-[20%]">
+          <TalkProducerGuide
+            variant="screen"
+            currentStep="research"
+            title="Review the show."
+            instructions={[
+              'Research first.',
+              'Approve topics and confirm guests.',
+              'Check Rundown and AI Assets, then Export.',
+            ]}
+            readyText={research.length + ' research · ' + approvedTopics + '/' + topics.length + ' topics · ' + confirmedGuests + ' guests · ' + approvedAssets + '/' + assets.length + ' assets'}
+            nextLabel="Open Research"
+            onNext={() => setActivePanel('research')}
+          />
+        </div>
+
+        <StudioPanel className="absolute top-[34%] right-[15%] w-[18%]" icon={Lightbulb} title="Discussion Topics" actionLabel="Open" onOpen={() => setActivePanel('topics')}>
           {topics.length > 0 ? (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {topics.slice(0, 6).map(topic => (
-                <div key={topic.id} className="!flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-white/5">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{topic.topic_name}</p>
-                    {topic.suggested_placement && <p className="text-xs text-muted-foreground truncate">{topic.suggested_placement}</p>}
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${topic.status === 'approved' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted text-muted-foreground'}`}>
-                    {topic.status}
-                  </span>
+            <div className="space-y-1.5">
+              {topics.slice(0, 4).map((topic) => (
+                <div key={topic.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
+                  <span className="truncate">{topic.topic_name}</span>
+                  <span className={topic.status === 'approved' ? 'text-emerald-300' : 'text-white/35'}>{topic.status}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyState message="No topics generated yet." actionLabel="Generate" onAction={handleRefresh} />
+            <p className="text-xs text-white/45">No topics generated yet.</p>
           )}
-        </div>
+        </StudioPanel>
 
-        {/* Research Widget */}
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Research Updates</h3>
-            <Link to="/talk/research" className="text-xs text-primary hover:underline">View all</Link>
-          </div>
-          {research.length > 0 ? (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {research.slice(0, 6).map(item => (
-                <div key={item.id} className="text-sm py-1.5 px-2 rounded hover:bg-white/5">
-                  <p className="font-medium truncate">{item.title}</p>
-                  <div className="!flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{item.source}</span>
-                    <span className={`px-1.5 py-0.5 rounded ${item.relevance === 'high' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-muted'}`}>{item.relevance}</span>
-                  </div>
+        <StudioPanel className="absolute top-[34%] left-[22%] w-[18%]" icon={Users} title="Guest Chair" actionLabel="Open" onOpen={() => setActivePanel('guests')}>
+          {guests.length > 0 ? (
+            <div className="space-y-1.5">
+              {guests.slice(0, 3).map((guest) => (
+                <div key={guest.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
+                  <span className="truncate">{guest.guest_name}</span>
+                  <span className={guest.status === 'confirmed' ? 'text-emerald-300' : 'text-white/35'}>{guest.status}</span>
                 </div>
               ))}
+              <p className="pt-1 text-[10px] text-white/35">{confirmedGuests} confirmed · {guests.length} total</p>
             </div>
           ) : (
-            <EmptyState message="No research has been generated yet." onAction={handleRefresh} actionLabel="Refresh" />
+            <p className="text-xs text-white/45">No guests added yet.</p>
           )}
-        </div>
+        </StudioPanel>
 
-        {/* Show Rundown Preview */}
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Show Rundown Preview</h3>
-            <Link to="/talk/rundown" className="text-xs text-primary hover:underline">View all</Link>
-          </div>
+        <section className="absolute top-[58%] left-[38.5%] w-[28%] grid grid-cols-6 gap-1 rounded-xl border border-white/10 bg-black/32 p-2 backdrop-blur-sm shadow-lg">
+          {[
+            ['Total Runtime', formatMinutes(config.total_show_runtime)],
+            ['Talk Runtime', formatMinutes(config.talk_segment_runtime)],
+            ['Format', config.show_format],
+            ['Tone', config.show_tone],
+            ['Guests', guests.length],
+            ['Generated', readinessPercent + '%'],
+          ].map(([label, value]) => (
+            <div key={label} className="min-h-12 min-w-0 rounded-lg border border-white/10 bg-black/15 px-1.5 py-1.5">
+              <span className="block truncate text-[8px] text-white/40">{label}</span>
+              <strong className={label === 'Generated' ? 'mt-1 block truncate text-[10px] text-emerald-300' : 'mt-1 block truncate text-[10px] text-white/90'}>
+                {value}
+              </strong>
+            </div>
+          ))}
+        </section>
+
+        <StudioPanel className="absolute bottom-[3%] left-[1.5%] w-[22%]" icon={ClipboardList} title="Show Rundown" actionLabel="Open" onOpen={() => setActivePanel('rundown')}>
           {segments.length > 0 ? (
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {segments.slice(0, 8).map((item) => (
-                <div key={item.id} className="!flex items-center gap-2 text-sm py-1.5 px-2 rounded hover:bg-white/5">
-                  <span className="text-xs text-muted-foreground w-12">{item.start_time || ''}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${SEGMENT_TYPE_LABELS[item.segment_type] ? 'bg-primary/15 text-primary' : 'bg-muted'}`}>
-                    {SEGMENT_TYPE_LABELS[item.segment_type] || item.segment_type}
-                  </span>
+            <div className="space-y-1">
+              {segments.slice(0, 4).map((item) => (
+                <div key={item.id} className="flex min-h-5 items-center gap-2 text-[10px] text-white/75">
+                  <span className="w-10 shrink-0 text-white/35">{item.start_time || ''}</span>
                   <span className="truncate">{item.title}</span>
                 </div>
               ))}
-              <Button size="sm" variant="ghost" asChild className="w-full mt-2">
-                <Link to="/talk/rundown">Open Rundown <ArrowRight className="w-3 h-3 ml-1" /></Link>
-              </Button>
             </div>
           ) : (
-            <EmptyState message="No show rundown has been generated yet." onAction={handleRefresh} actionLabel="Generate" />
+            <p className="text-xs text-white/45">No rundown generated yet.</p>
           )}
-        </div>
+        </StudioPanel>
 
-        {/* AI Assets Widget */}
-        <div className="glass-panel p-5">
-          <div className="!flex items-center justify-between mb-4">
-            <h3 className="font-heading font-semibold !flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> AI Generated Assets</h3>
-            <Link to="/talk/assets" className="text-xs text-primary hover:underline">View all</Link>
-          </div>
+        <StudioPanel className="absolute bottom-[3%] right-[1.5%] w-[22%]" icon={Sparkles} title="AI Assets" actionLabel="Open" onOpen={() => setActivePanel('assets')}>
           {assets.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {assets.slice(0, 8).map(asset => (
-                <div key={asset.id} className="text-xs py-1.5 px-2 rounded bg-white/5 !flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            <div className="grid grid-cols-2 gap-1.5">
+              {assets.slice(0, 6).map((asset) => (
+                <div key={asset.id} className="flex min-w-0 items-center gap-1 rounded-lg bg-white/[0.04] p-1.5 text-[9px] text-white/70">
+                  <CheckCircle2 className={asset.status === 'approved' ? 'w-3 h-3 text-emerald-300' : 'w-3 h-3 text-white/30'} />
                   <span className="truncate">{ASSET_TYPE_LABELS[asset.asset_type] || asset.asset_type}</span>
                 </div>
               ))}
-              <Button size="sm" variant="ghost" asChild className="col-span-2 mt-1">
-                <Link to="/talk/assets">View All Assets <ArrowRight className="w-3 h-3 ml-1" /></Link>
-              </Button>
             </div>
           ) : (
-            <EmptyState message="No AI assets have been generated yet." onAction={handleRefresh} actionLabel="Generate" />
+            <p className="text-xs text-white/45">No AI assets generated yet.</p>
           )}
-        </div>
+        </StudioPanel>
+
+        <section
+          className="absolute bottom-[2.5%] left-1/2 w-[18%] -translate-x-1/2 flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-2 backdrop-blur-sm shadow-lg transition hover:bg-black/50"
+          role="button"
+          tabIndex={0}
+          onClick={() => setActivePanel('export')}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setActivePanel('export');
+            }
+          }}
+        >
+          <Download className="w-5 h-5 text-orange-300" />
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">Final Desk</p>
+            <h3 className="text-sm font-semibold text-white">Finish & Launch</h3>
+          </div>
+          <ArrowRight className="ml-auto h-4 w-4 text-white/45" />
+        </section>
       </div>
 
-      {/* Production Checklist */}
-      <div className="glass-panel p-5">
-        <h3 className="font-heading font-semibold mb-4">Production Checklist</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {checklist.map((item, i) => (
-            <div key={i} className="!flex items-center gap-2 text-sm">
-              {item.done ? (
-                <CheckCircle2 className="w-!4 h-4 text-emerald-400 shrink-0" />
-              ) : (
-                <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-              )}
-              <span className={item.done ? '' : 'text-muted-foreground'}>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+      <Dialog open={!!activePanel} onOpenChange={(open) => !open && setActivePanel(null)}>
+        <DialogContent
+          className="max-h-[92vh] max-w-6xl overflow-hidden border-fuchsia-300/15 bg-[#08040c]/96 p-0 text-white shadow-[0_35px_120px_rgba(0,0,0,.72)] backdrop-blur-2xl"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(168,85,247,.14),transparent_28%),radial-gradient(circle_at_88%_10%,rgba(249,115,22,.1),transparent_24%)]" />
+          <DialogHeader className="relative border-b border-white/10 bg-black/20 px-5 py-4 pr-12">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              {activePanel === 'research' && <Search className="h-5 w-5 text-orange-300" />}
+              {activePanel === 'topics' && <Lightbulb className="h-5 w-5 text-orange-300" />}
+              {activePanel === 'guests' && <Users className="h-5 w-5 text-orange-300" />}
+              {activePanel === 'rundown' && <ClipboardList className="h-5 w-5 text-orange-300" />}
+              {activePanel === 'assets' && <Sparkles className="h-5 w-5 text-orange-300" />}
+              {activePanel === 'export' && <Download className="h-5 w-5 text-orange-300" />}
+              {modalTitles[activePanel] || 'Talk Studio'}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Talk Production Profile workspace popup. Content inside this popup can scroll without moving the studio dashboard.
+            </DialogDescription>
+          </DialogHeader>
 
-function EmptyState({ message, actionLabel, onAction }) {
-  return (
-    <div className="text-center py-6">
-      <AlertCircle className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-      <p className="text-sm text-muted-foreground mb-3">{message}</p>
-      {actionLabel && onAction && (
-        <Button size="sm" variant="outline" onClick={onAction}>{actionLabel}</Button>
-      )}
-    </div>
+          <div className="relative px-3 py-3">
+            {renderModalBody()}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
