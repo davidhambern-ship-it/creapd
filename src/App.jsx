@@ -160,24 +160,24 @@ const AuthenticatedApp = () => {
           <Route path="/podcast" element={<PodcastDashboard />} />
           <Route path="/podcast/dashboard" element={<Navigate to="/podcast" replace />} />
           <Route path="/podcast/setup" element={<TalkConfigure />} />
-          <Route path="/podcast/planner" element={<WeeklyPlanner />} />
-          <Route path="/podcast/research" element={<ResearchDesk />} />
-          <Route path="/podcast/sources" element={<Sources />} />
-          <Route path="/podcast/import" element={<ManualImport />} />
+          <Route path="/podcast/planner" element={<Navigate to="/podcast/setup" replace />} />
+          <Route path="/podcast/research" element={<TalkResearch />} />
+          <Route path="/podcast/sources" element={<Navigate to="/podcast/research" replace />} />
+          <Route path="/podcast/import" element={<Navigate to="/podcast/research" replace />} />
           <Route path="/podcast/assembly" element={<EpisodeAssembly />} />
           <Route path="/podcast/brief" element={<Navigate to="/podcast/assembly" replace />} />
-          <Route path="/podcast/queue" element={<StoryQueue />} />
-          <Route path="/podcast/review" element={<StoryIntelligenceReview />} />
-          <Route path="/podcast/story/:id" element={<StoryDetail />} />
-          <Route path="/podcast/library" element={<StoryLibrary />} />
-          <Route path="/podcast/workspace" element={<StoryManager />} />
+          <Route path="/podcast/queue" element={<Navigate to="/podcast/review" replace />} />
+          <Route path="/podcast/review" element={<TalkTopics />} />
+          <Route path="/podcast/story/:id" element={<Navigate to="/podcast/research" replace />} />
+          <Route path="/podcast/library" element={<Navigate to="/podcast/research" replace />} />
+          <Route path="/podcast/workspace" element={<Navigate to="/podcast/production" replace />} />
           <Route path="/podcast/production" element={<PodcastProduction />} />
           <Route path="/podcast/guests" element={<TalkGuests />} />
           <Route path="/podcast/rundown" element={<TalkRundown />} />
           <Route path="/podcast/assets" element={<TalkAssets />} />
-          <Route path="/podcast/archive" element={<ArchivePage />} />
-          <Route path="/podcast/export" element={<ExportCenter />} />
-          <Route path="/podcast/profile" element={<UserProfile />} />
+          <Route path="/podcast/archive" element={<Navigate to="/podcast" replace />} />
+          <Route path="/podcast/export" element={<TalkExport />} />
+          <Route path="/podcast/profile" element={<Navigate to="/podcast" replace />} />
           <Route path="/podcast/presentations" element={<Presentations />} />
 
           <Route path="/news/dashboard" element={<PodcastDashboard />} />
