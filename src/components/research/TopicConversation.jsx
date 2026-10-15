@@ -10,6 +10,7 @@ import {
 import AnimatedText from '@/components/research/AnimatedText';
 import TopicWizard from '@/components/research/TopicWizard';
 import { buildCreapSystemPrompt, DEFAULT_CREAP_SETTINGS } from '@/lib/creapSettings';
+import { useHumanVoice } from '@/hooks/useHumanVoice';
 
 const STAGE_LABELS = {
   query_expansion: 'Breaking down the query',
@@ -46,7 +47,6 @@ export default function TopicConversation({ config, onClose, embedded = false })
   const [noCount, setNoCount] = useState(0);
   const [showWizard, setShowWizard] = useState(false);
 
-  const audioInstanceRef = useRef(null);
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
   const pollTimerRef = useRef(null);
@@ -71,6 +71,7 @@ export default function TopicConversation({ config, onClose, embedded = false })
 
   const navigate = useNavigate();
   const { user } = useAuth();
+  const humanVoice = useHumanVoice();
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { speakingRef.current = speaking; }, [speaking]);
@@ -83,58 +84,54 @@ export default function TopicConversation({ config, onClose, embedded = false })
   }, [messages]);
 
   const cleanupAudio = () => {
-    if (audioInstanceRef.current) {
-      audioInstanceRef.current.onended = null;
-      audioInstanceRef.current.onerror = null;
-      audioInstanceRef.current.pause();
-      audioInstanceRef.current.src = '';
-      audioInstanceRef.current = null;
-    }
+    humanVoice.stop();
   };
 
   const speak = async (text) => {
     if (!text) return;
-    // Module-level lock — prevents overlapping TTS calls across component instances
     if (_audioLock) return;
+
     _audioLock = true;
     const gen = ++speakGenRef.current;
     cleanupAudio();
     voicePendingRef.current = true;
     setSpeaking(true);
+
     try {
-      const response = await base44.functions.invoke('generateCreapSpeech', {
-        text: text.substring(0, 5000),
-        voice: creapSettingsRef.current.voice_id || 'daniel',
-      });
-      if (gen !== speakGenRef.current || !isMountedRef.current) { _audioLock = false; return; }
-      const url = response?.data?.url;
-      if (!url) { _audioLock = false; voicePendingRef.current = false; setSpeaking(false); return; }
-      const audio = new Audio(url);
-      audio.onended = () => {
-        if (gen !== speakGenRef.current) { _audioLock = false; return; }
-        _audioLock = false;
-        voicePendingRef.current = false;
-        handleAudioEnded();
+      const legacyVoice = String(creapSettingsRef.current.voice_id || 'daniel').toLowerCase();
+      const voiceMap = {
+        daniel: 'am_michael',
+        river: 'af_heart',
+        bella: 'af_bella',
+        michael: 'am_michael',
+        fenrir: 'am_fenrir',
+        emma: 'bf_emma',
       };
-      audio.onerror = () => {
-        if (gen !== speakGenRef.current) { _audioLock = false; return; }
+      const selectedVoice = voiceMap[legacyVoice];
+      if (selectedVoice) humanVoice.setSelectedVoice(selectedVoice);
+
+      await humanVoice.speak(
+        String(text).slice(0, 5000),
+        `creapr-topic-${gen}`,
+      );
+
+      if (gen !== speakGenRef.current || !isMountedRef.current) {
         _audioLock = false;
-        voicePendingRef.current = false;
-        setSpeaking(false);
-      };
-      audioInstanceRef.current = audio;
-      audio.play().catch(() => {
-        if (gen !== speakGenRef.current) { _audioLock = false; return; }
-        _audioLock = false;
-        voicePendingRef.current = false;
-        setSpeaking(false);
-      });
+        return;
+      }
+
+      _audioLock = false;
+      voicePendingRef.current = false;
+      handleAudioEnded();
     } catch (err) {
-      if (gen !== speakGenRef.current) { _audioLock = false; return; }
+      if (gen !== speakGenRef.current) {
+        _audioLock = false;
+        return;
+      }
       _audioLock = false;
       voicePendingRef.current = false;
       setSpeaking(false);
-      console.error('TTS failed:', err);
+      console.error('Local human voice failed:', err);
     }
   };
 
