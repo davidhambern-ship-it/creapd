@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
-import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Loader2, Mic2, Lightbulb, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 
 export default function TalkTopics() {
-  const { config, topics, loading, refresh, source } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, topics, loading, refresh } = useTalkProduction(configurationId);
   const [expanded, setExpanded] = useState(null);
 
   if (loading) {
@@ -30,15 +32,11 @@ export default function TalkTopics() {
 
   const toggleApproved = async (topic) => {
     const newStatus = topic.status === 'approved' ? 'ready' : 'approved';
-    if (source === 'neon') {
-      await creapdApi.post('/talk/production', {
-        action: 'set_topic_status',
-        topic_id: topic.id,
-        status: newStatus,
-      });
-    } else {
-      await base44.entities.TalkTopic.update(topic.id, { status: newStatus });
-    }
+    await creapdApi.post('/talk/production', {
+      action: 'set_topic_status',
+      topic_id: topic.id,
+      status: newStatus,
+    });
     refresh();
   };
 
@@ -60,12 +58,12 @@ export default function TalkTopics() {
         instructions={[
           'Open More on any topic to inspect talking points, verification notes, counter-perspectives, and debate questions.',
           'Approve the topics you want CREAPD to treat as part of the final show. Leave anything you do not want unapproved.',
-          'When your topic lineup feels right, move on to Guests. For panel or interview formats, this is where you set the people CREAPD should plan around.',
+          'When your topic lineup feels right, move to Assembly. CREAPD will use only research tied to approved topics to shape the episode.',
         ]}
         readyText={`${approvedCount} of ${topics.length} topic${topics.length === 1 ? '' : 's'} approved`}
-        nextPath="/talk/guests"
-        nextLabel="Set Up Guests"
-        nextDescription="Guests can be confirmed, added manually, or skipped when your format does not need them."
+        nextPath={config?.id ? `/podcast/assembly?config_id=${encodeURIComponent(config.id)}` : '/podcast/assembly'}
+        nextLabel="Assemble Episode"
+        nextDescription="Assembly turns research tied to your approved topics into the episode blueprint."
         note="You do not have to approve every generated topic. Approval means: use this in my production."
       />
 

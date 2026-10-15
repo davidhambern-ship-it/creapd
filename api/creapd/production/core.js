@@ -8,6 +8,7 @@ import { requireNeonUser } from '../../../server/neonAuth.js';
 import { requireBase44User } from '../../../server/base44Auth.js';
 import { readProductionCore } from '../../../server/productionCore.js';
 import { generateStructuredGatewayResponse } from '../../../server/aiGateway.js';
+import { generateAndStoreGenericImage } from '../../../server/mediaGateway.js';
 import { readTalkStudio, runTalkStudioAction } from '../../../server/talkStudio.js';
 import { readMusicStudio, readMusicStatus, runMusicStudioAction } from '../../../server/musicStudio.js';
 import { readTalkLiveState } from '../../../server/talkLiveState.js';
@@ -40,6 +41,8 @@ import {
 } from '../../../server/presentationStudioActions.js';
 import {
   handoffPackageToPresentationStudio,
+  createResearchAutoBuildPresentation,
+  listPresentationStudioProjects,
   loadPresentationStudioEditor,
   updateEditorPresentation,
   createEditorSlide,
@@ -929,6 +932,55 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
   }
 
   try {
+    if (action === 'generate_structured') {
+      const prompt = String(body.prompt || '').trim();
+      if (!prompt) {
+        return response.status(400).json({ ok: false, error: 'prompt_required' });
+      }
+
+      const schema = body.schema && typeof body.schema === 'object'
+        ? body.schema
+        : {
+            type: 'object',
+            properties: { content: { type: 'string' } },
+            required: ['content'],
+          };
+
+      const result = await generateStructuredGatewayResponse({
+        prompt,
+        schema,
+        schemaName: String(body.schema_name || 'creapd_generic_structured_v1').slice(0, 120),
+        webSearch: body.web_search === true,
+        maxOutputTokens: Math.max(256, Math.min(8000, Number(body.max_output_tokens) || 3000)),
+        timeoutMs: Math.max(5000, Math.min(120000, Number(body.timeout_ms) || 50000)),
+      });
+
+      return success(response, action, {
+        result: result?.data || {},
+        provider: result?.provider || null,
+        model: result?.model || null,
+        web_search_used: Boolean(result?.webSearchUsed),
+      });
+    }
+
+    if (action === 'generate_image') {
+      const prompt = String(body.prompt || '').trim();
+      if (!prompt) {
+        return response.status(400).json({ ok: false, error: 'prompt_required' });
+      }
+
+      const result = await generateAndStoreGenericImage({
+        ownerUserId,
+        prompt,
+        namespace: body.namespace || 'general',
+      });
+
+      return success(response, action, {
+        url: result.url,
+        media: result,
+      });
+    }
+
     if (action === 'director_media_upload_authorize') {
       return authorizeObsMediaUpload(response, ownerUserId, body);
     }
@@ -1112,6 +1164,45 @@ async function handlePost(request, response, sql, ownerUserId, ownerEmail) {
     }
 
     switch (action) {
+      case 'auto_build_research_packet': {
+        const result = await createResearchAutoBuildPresentation({
+          sql,
+          ownerUserId,
+          configurationId: body.configuration_id,
+          presentationTitle: body.presentation_title,
+        });
+        return success(response, action, result);
+      }
+
+      case 'list_presentation_studio': {
+        const presentations = await listPresentationStudioProjects({
+          sql,
+          ownerUserId,
+          limit: body.limit || 100,
+        });
+        return success(response, action, { presentations });
+      }
+
+      case 'share_package_to_creapd': {
+        const handoff = await handoffPackageToPresentationStudio({
+          sql,
+          ownerUserId,
+          packageId: body.package_id || body.source_production_id,
+          approve: true,
+        });
+        const showcase = await sharePresentationStudioProject({
+          sql,
+          ownerUserId,
+          presentationId: handoff.presentation?.id,
+          visibility: body.visibility || 'public',
+        });
+        return success(response, action, {
+          success: true,
+          presentation: handoff.presentation,
+          showcase,
+        });
+      }
+
       case 'approve_package_and_handoff': {
         const result = await handoffPackageToPresentationStudio({
           sql,

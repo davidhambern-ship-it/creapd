@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTalkProduction } from '@/hooks/useTalkProduction';
-import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
 import TalkProducerGuide from '@/components/talk/TalkProducerGuide';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Mic2, Users, Plus, Trash2, UserCircle } from 'lucide-react';
 
 export default function TalkGuests() {
-  const { config, guests, loading, refresh, source } = useTalkProduction();
+  const [searchParams] = useSearchParams();
+  const configurationId = searchParams.get('config_id') || undefined;
+  const { config, guests, loading, refresh } = useTalkProduction(configurationId);
   const [adding, setAdding] = useState(false);
   const [newGuest, setNewGuest] = useState({ guest_name: '', title_role: '', bio: '', talking_points: '' });
 
@@ -35,44 +37,28 @@ export default function TalkGuests() {
 
   const handleAddGuest = async () => {
     if (!newGuest.guest_name.trim()) return;
-    if (source === 'neon') {
-      await creapdApi.post('/talk/production', {
-        action: 'create_guest',
-        configuration_id: config.id,
-        guest: { ...newGuest, status: 'pending' },
-      });
-    } else {
-      await base44.entities.TalkGuest.create({
-        configuration_id: config.id,
-        ...newGuest,
-        status: 'pending'
-      });
-    }
+    await creapdApi.post('/talk/production', {
+      action: 'create_guest',
+      configuration_id: config.id,
+      guest: { ...newGuest, status: 'pending' },
+    });
     setNewGuest({ guest_name: '', title_role: '', bio: '', talking_points: '' });
     setAdding(false);
     refresh();
   };
 
   const handleDelete = async (id) => {
-    if (source === 'neon') {
-      await creapdApi.post('/talk/production', { action: 'delete_guest', guest_id: id });
-    } else {
-      await base44.entities.TalkGuest.delete(id);
-    }
+    await creapdApi.post('/talk/production', { action: 'delete_guest', guest_id: id });
     refresh();
   };
 
   const toggleStatus = async (guest) => {
     const newStatus = guest.status === 'confirmed' ? 'pending' : 'confirmed';
-    if (source === 'neon') {
-      await creapdApi.post('/talk/production', {
-        action: 'update_guest',
-        guest_id: guest.id,
-        patch: { status: newStatus },
-      });
-    } else {
-      await base44.entities.TalkGuest.update(guest.id, { status: newStatus });
-    }
+    await creapdApi.post('/talk/production', {
+      action: 'update_guest',
+      guest_id: guest.id,
+      patch: { status: newStatus },
+    });
     refresh();
   };
 
@@ -104,7 +90,7 @@ export default function TalkGuests() {
           'When the guest list is settled, review the Rundown to make sure the show flow and timing make sense.',
         ]}
         readyText={`${confirmedCount} confirmed · ${guests.length} total guest${guests.length === 1 ? '' : 's'}`}
-        nextPath="/talk/rundown"
+        nextPath={config?.id ? `/podcast/rundown?config_id=${encodeURIComponent(config.id)}` : '/podcast/rundown'}
         nextLabel="Review Show Rundown"
         nextDescription="The rundown is CREAPD's proposed order and timing for the production."
         note={formatNeedsGuests && guests.length === 0 ? `${config.show_format} usually needs at least one participant. Add your panelists/guest(s), or return to Setup if this show is intentionally guest-free.` : 'Guests are optional for formats that do not depend on another participant.'}

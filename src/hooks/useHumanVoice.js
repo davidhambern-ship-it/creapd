@@ -235,7 +235,6 @@ export function useHumanVoice({ onEnd } = {}) {
   }, [getAudio]);
 
   const speak = useCallback(async (text, itemId) => {
-    if (!enabled) return false;
     const chunks = splitForSpeech(text);
     if (!chunks.length) return false;
 
@@ -272,7 +271,7 @@ export function useHumanVoice({ onEnd } = {}) {
     }
 
     return false;
-  }, [enabled, generateChunk, playBlob, prepare, selectedVoice]);
+  }, [generateChunk, playBlob, prepare, selectedVoice]);
 
   const stop = useCallback(() => {
     speechRunRef.current += 1;

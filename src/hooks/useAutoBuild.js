@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { generateFreeLocalVoice } from '@/lib/localVoiceEngine';
 
 const STAGES = [
   { id: 'topics', label: 'Topics', description: 'Interpreting prompt & creating Research Assignment' },
@@ -91,11 +93,11 @@ export function useAutoBuild() {
       if (startIdx <= 0) {
         currentStage = 'topics';
         markStage('topics', 'running', 'CREAPr is interpreting your request...');
-        const res = await base44.functions.invoke('autoBuildTopics', {
+        const data = await creapdApi.post('/research/topic-action', {
+          action: 'auto_build',
           prompt: overridePrompt || promptRef.current,
           skip_confirmation: true,
         });
-        const data = res.data || res;
 
         if (data.requires_confirmation) {
           markStage('topics', 'pending', 'CREAPr needs clarification...');
@@ -123,7 +125,10 @@ export function useAutoBuild() {
       if (startIdx <= 1) {
         currentStage = 'research';
         markStage('research', 'running', 'Gathering facts, sources, references, and statistics...');
-        await base44.functions.invoke('deepResearchV2', { topic_id: tid });
+        await creapdApi.post('/research/topic-action', {
+          action: 'start',
+          topic_id: tid,
+        });
         markStage('research', 'done', 'Research dataset collected');
       }
 
@@ -145,7 +150,10 @@ export function useAutoBuild() {
         let points = await base44.entities.ResearchPoint.filter({ topic_id: tid }, 'order');
         if (!points || points.length === 0) {
           markStage('develop', 'running', 'Extracting research points from dossier...');
-          await base44.functions.invoke('extractResearchPoints', { topic_id: tid, max_points: 8 });
+          await creapdApi.post('/research/topic-action', {
+            action: 'start',
+            topic_id: tid,
+          });
           points = await base44.entities.ResearchPoint.filter({ topic_id: tid }, 'order');
         }
 
@@ -157,14 +165,11 @@ export function useAutoBuild() {
           setDetail(`Generating assets for slide ${i + 1} of ${points.length}: ${(points[i].title || '').substring(0, 50)}...`);
           let pkg = null;
           try {
-            const res = await base44.functions.invoke('buildResearchProduction', {
-              research_point_id: points[i].id,
-              tone: params?.tone || 'educational',
-              reading_style: params?.reading_style || 'documentary',
-              audience: params?.target_audience || 'General Public',
-              target_runtime: '1 Minute',
+            const res = await creapdApi.post('/research/production', {
+              action: 'generate_package',
+              point_id: points[i].id,
             });
-            pkg = res.data || res;
+            pkg = res?.package || res;
           } catch (err) {
             console.error(`Failed to build package for point ${i + 1}:`, err.message);
           }
@@ -177,11 +182,13 @@ export function useAutoBuild() {
               const fullPkg = await base44.entities.ProductionPackage.get(pkgId);
               const script = fullPkg?.teleprompter_script || fullPkg?.story_summary || '';
               if (script) {
-                await base44.functions.invoke('generateVoicePackage', {
-                  script_text: script,
+                await generateFreeLocalVoice({
+                  packageId: pkgId,
+                  script,
                   voice: params?.voice || 'river',
-                  source_type: 'production_package',
-                  source_id: pkgId,
+                  onProgress: stage => setDetail(
+                    `Generating free human voice for slide ${i + 1} of ${points.length}: ${stage || 'working'}`
+                  ),
                 });
               }
             } catch (err) {
@@ -200,11 +207,11 @@ export function useAutoBuild() {
         const presTitle = params?.title
           ? `${params.title} — Auto-Built Presentation`
           : 'Auto-Built Presentation';
-        const res = await base44.functions.invoke('autoBuildPacket', {
+        const data = await creapdApi.post('/production/core', {
+          action: 'auto_build_research_packet',
           configuration_id: cid,
           presentation_title: presTitle,
         });
-        const data = res.data || res;
         if (!data.presentation_id) {
           throw new Error('Packet assembly did not produce a presentation');
         }
@@ -213,10 +220,10 @@ export function useAutoBuild() {
         // ═══ APD Direct ═══
         currentStage = 'direct';
         markStage('direct', 'running', 'APD analyzing stories and directing scene graphs...');
-        const apdRes = await base44.functions.invoke('directPresentation', {
+        const apdData = await creapdApi.post('/production/core', {
+          action: 'direct_presentation_studio',
           presentation_id: data.presentation_id,
         });
-        const apdData = apdRes.data || apdRes;
         markStage('direct', 'done', `Directed ${apdData.directed_slides} slides · Confidence: ${apdData.confidence_score}%`);
 
         // ═══ Editor ═══

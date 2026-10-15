@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { creapdApi } from '@/api/creapdClient';
-import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -77,7 +75,6 @@ function getMetrics(presentation) {
 
 export default function Presentations() {
   const navigate = useNavigate();
-  const ownedPreview = shouldUseNeonAuth();
   const [presentations, setPresentations] = useState([]);
   const [studios, setStudios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,16 +91,9 @@ export default function Presentations() {
     setLoading(true);
     setLoadError(null);
     try {
-      if (ownedPreview) {
-        const data = await creapdApi.get('/production/core?limit=200');
-        setPresentations(data?.presentations || []);
-        setStudios(data?.studios || data?.profiles || []);
-        return;
-      }
-
-      const res = await base44.functions.invoke('listPresentations', {});
-      const data = res.data || res;
-      setPresentations(data.presentations || []);
+      const data = await creapdApi.get('/production/core?limit=200');
+      setPresentations(data?.presentations || []);
+      setStudios(data?.studios || data?.profiles || []);
     } catch (error) {
       console.error('Failed to load presentations:', error);
       setLoadError(error?.data?.diagnostic?.message || error?.message || 'Failed to load Presentation Studio projects.');
@@ -116,21 +106,10 @@ export default function Presentations() {
     if (!confirm('Delete this Presentation Studio project? This removes its editor state and cannot be undone.')) return;
     setDeletingId(presId);
     try {
-      if (ownedPreview) {
-        await creapdApi.post('/production/core', {
-          action: 'delete_presentation_studio',
-          presentation_id: presId,
-        });
-      } else {
-        const slides = await base44.entities.StorySlide.filter({ stories_presentation_id: presId }, 'slide_number', 200);
-        if (slides && slides.length > 0) {
-          await base44.entities.SlideElement.deleteMany({ presentation_id: presId });
-          for (const slide of slides) {
-            await base44.entities.StorySlide.delete(slide.id);
-          }
-        }
-        await base44.entities.StoriesPresentation.delete(presId);
-      }
+      await creapdApi.post('/production/core', {
+        action: 'delete_presentation_studio',
+        presentation_id: presId,
+      });
       setPresentations(prev => prev.filter(p => p.id !== presId));
     } catch (error) {
       console.error('Delete failed:', error);
