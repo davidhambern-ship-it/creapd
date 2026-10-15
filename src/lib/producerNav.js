@@ -1,8 +1,6 @@
 import {
-  LayoutDashboard, FileText, Layers, Search, Radio,
-  CalendarDays, Package, Download, Bookmark, ClipboardList,
-  Film, FlaskConical, Mic2, Users, Sparkles,
-  Settings2, Archive, Rss
+  LayoutDashboard, Layers, Search, Radio, Package, Download,
+  Film, FlaskConical, Mic2, Users, Sparkles, Settings2, ClipboardList
 } from 'lucide-react';
 
 export const PRODUCER_NAV_SECTIONS = [
@@ -12,6 +10,7 @@ export const PRODUCER_NAV_SECTIONS = [
       { icon: LayoutDashboard, label: 'Podcast Home', path: '/podcast' },
       { icon: Settings2, label: '1. Setup', path: '/podcast/setup' },
       { icon: Search, label: '2. Research', path: '/podcast/research' },
+      { icon: Sparkles, label: 'Review Topics', path: '/podcast/review' },
       { icon: Layers, label: '3. Episode Assembly', path: '/podcast/assembly' },
       { icon: Package, label: '4. Episode Production', path: '/podcast/production' },
       { icon: Radio, label: '5. Podcast Studio', path: '/podcast/studio' },
@@ -19,18 +18,11 @@ export const PRODUCER_NAV_SECTIONS = [
     ]
   },
   {
-    label: 'Episode Tools',
+    label: 'Native Podcast Tools',
     items: [
-      { icon: CalendarDays, label: 'Episode Planner', path: '/podcast/planner' },
-      { icon: Rss, label: 'Sources', path: '/podcast/sources' },
-      { icon: Layers, label: 'Content Queue', path: '/podcast/queue' },
-      { icon: Sparkles, label: 'Content Review', path: '/podcast/review' },
-      { icon: ClipboardList, label: 'Episode Workspace', path: '/podcast/workspace' },
-      { icon: Bookmark, label: 'Topic Library', path: '/podcast/library' },
       { icon: Users, label: 'Guests', path: '/podcast/guests' },
-      { icon: Mic2, label: 'Rundown', path: '/podcast/rundown' },
+      { icon: ClipboardList, label: 'Rundown', path: '/podcast/rundown' },
       { icon: Sparkles, label: 'Production Assets', path: '/podcast/assets' },
-      { icon: Archive, label: 'Archive', path: '/podcast/archive' },
       { icon: Film, label: 'Presentations', path: '/presentations' },
     ]
   },
