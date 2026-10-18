@@ -2,10 +2,6 @@ import { getSql, hasDatabaseConfig } from '../../../server/db.js';
 import { requireBase44User } from '../../../server/base44Auth.js';
 import { requireNeonUser } from '../../../server/neonAuth.js';
 
-const CREAPD_NEON_AUTH_URL =
-  process.env.NEON_AUTH_URL ||
-  'https://ep-silent-cell-awl5kkn3.neonauth.c-12.us-east-1.aws.neon.tech/neondb/auth';
-
 const BERNAVERSE_ORIGIN = 'https://bernaverse.hireberna.app';
 
 function setBernaverseCors(request, response) {
@@ -16,71 +12,6 @@ function setBernaverseCors(request, response) {
   }
   response.setHeader('Access-Control-Allow-Headers', 'content-type');
   response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-}
-
-async function provisionCreapdNeonAccount(request, response) {
-  const origin = String(request.headers?.origin || '');
-  if (origin !== BERNAVERSE_ORIGIN) {
-    return response.status(403).json({
-      ok: false,
-      service: 'creapd-auth',
-      error: 'bernaverse_origin_required',
-    });
-  }
-
-  const body =
-    typeof request.body === 'string'
-      ? JSON.parse(request.body || '{}')
-      : (request.body || {});
-  const email = String(body?.email || '').trim().toLowerCase();
-  const password = String(body?.password || '');
-  const name = String(body?.name || email.split('@')[0] || 'Creator').trim();
-
-  if (!email || password.length < 6) {
-    return response.status(400).json({
-      ok: false,
-      service: 'creapd-auth',
-      error: 'valid_email_and_password_required',
-    });
-  }
-
-  const upstream = await fetch(`${CREAPD_NEON_AUTH_URL}/sign-up/email`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password, name }),
-  });
-
-  const payload = await upstream.json().catch(() => ({}));
-  const message = String(
-    payload?.message ||
-    payload?.error?.message ||
-    ''
-  );
-
-  if (!upstream.ok) {
-    if (/already|exist|registered|email/i.test(message)) {
-      return response.status(200).json({
-        ok: true,
-        service: 'creapd-auth',
-        existing: true,
-      });
-    }
-
-    return response.status(upstream.status).json({
-      ok: false,
-      service: 'creapd-auth',
-      error: message || 'CREAPD account provisioning failed.',
-    });
-  }
-
-  return response.status(200).json({
-    ok: true,
-    service: 'creapd-auth',
-    existing: false,
-  });
 }
 
 export const config = {
@@ -131,16 +62,14 @@ export default async function handler(request, response) {
   }
 
   if (request.method === 'POST') {
-    try {
-      return await provisionCreapdNeonAccount(request, response);
-    } catch (error) {
-      console.error('[CREAPD BERNAverse provision]', error);
-      return response.status(503).json({
-        ok: false,
-        service: 'creapd-auth',
-        error: error?.message || 'CREAPD provisioning is unavailable.',
-      });
-    }
+    // Legacy cross-app credential provisioning is retired.
+    // All BERNAverse members now use a short-lived, one-time SSO ticket.
+    return response.status(410).json({
+      ok: false,
+      service: 'creapd-auth',
+      error: 'legacy_password_provisioning_retired',
+      sso_url: 'https://bernaverse.hireberna.app/sso.html?app=creapd',
+    });
   }
 
   if (request.method !== 'GET') {
