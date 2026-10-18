@@ -1,25 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard, Play } from 'lucide-react';
+import { Film, Sparkles, Loader2, CheckCircle2, Clapperboard, Play, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/components/ui/use-toast";
 import ApprovedPackageCard from '@/components/production/ApprovedPackageCard';
 import PresentationTimeline from '@/components/message/PresentationTimeline';
 import PresentationViewer from '@/components/production/PresentationViewer';
 import { logActivity } from '@/lib/activityUtils';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
+import { useTalkProduction } from '@/hooks/useTalkProduction';
+import { assessPodcastMaterialSufficiency } from '@/lib/podcastMaterialSufficiency';
 
 export default function ProductionPackages() {
+  const { config: podcastConfig } = useTalkProduction();
   const [packages, setPackages] = useState([]);
   const [articleMap, setArticleMap] = useState({});
   const [presentationScenes, setPresentationScenes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingPresentation, setGeneratingPresentation] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
+  const [sendingToStudio, setSendingToStudio] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const episodeItems = useMemo(() => packages.map((pkg, index) => {
+    const article = articleMap[pkg.article_id] || {};
+    return {
+      id: article.id || pkg.article_id || pkg.id,
+      approved: true,
+      title: article.title || pkg.story_title || pkg.title || `Episode Topic ${index + 1}`,
+      summary: pkg.story_summary || article.summary || article.description || '',
+      script: pkg.teleprompter_script || pkg.show_script || pkg.script || pkg.story_summary || article.summary || '',
+      talking_points: pkg.talking_points || '',
+      fact_check_notes: pkg.fact_check_notes || '',
+      broll_suggestions: pkg.broll_suggestions || '',
+      key_facts: article.key_facts || '',
+      why_it_matters: article.why_it_matters || '',
+      timeline: article.timeline || '',
+      duplicate_group_id: article.duplicate_group_id || '',
+      source: article.source_name || article.source || '',
+      source_url: article.url || article.source_url || '',
+      duration_seconds: Number(pkg.estimated_duration_seconds || pkg.duration_seconds || 420),
+    };
+  }), [packages, articleMap]);
+
+  const materialAssessment = useMemo(
+    () => assessPodcastMaterialSufficiency(podcastConfig || {}, episodeItems),
+    [podcastConfig, episodeItems],
+  );
 
   const loadData = async () => {
     try {
@@ -57,6 +89,65 @@ export default function ProductionPackages() {
     }
   };
 
+  const handleSendToPodcastStudio = async () => {
+    if (!packages.length) return;
+
+    if (!shouldUseNeonAuth()) {
+      toast({
+        title: 'Podcast Studio Preview',
+        description: 'Send to Podcast Studio is available in the owned CREAPD Preview build.',
+      });
+      return;
+    }
+
+    setSendingToStudio(true);
+    try {
+      const items = episodeItems;
+
+      const result = await creapdApi.post('/talk/production', {
+        action: 'import_episode',
+        configuration_id: podcastConfig?.id || undefined,
+        episode: {
+          configuration_id: podcastConfig?.id || undefined,
+          title: podcastConfig?.production_name || `Podcast Episode — ${new Date().toLocaleDateString()}`,
+          host_name: podcastConfig?.host_name || '',
+          co_host_name: podcastConfig?.co_host_name || '',
+          show_name: podcastConfig?.station_name || '',
+          show_date: String(podcastConfig?.show_date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+          show_start_time: podcastConfig?.show_start_time || '12:00',
+          live_or_recorded: podcastConfig?.live_or_recorded || 'recorded',
+          show_format: podcastConfig?.show_format || 'Podcast Episode',
+          show_tone: podcastConfig?.show_tone || 'Conversational',
+          source: 'podcast-prep',
+          description: podcastConfig?.show_description || `Imported from ${packages.length} producer-approved Podcast research packages.`,
+        },
+        items,
+      });
+
+      const configId = result?.configuration?.id;
+      if (!configId) throw new Error('Podcast Studio did not return a configuration id.');
+
+      toast({
+        title: 'Episode sent to Podcast Studio',
+        description: `${packages.length} approved research items were assembled using your Podcast Setup and are ready in Studio.`,
+      });
+      window.location.href = `/podcast/studio?config_id=${encodeURIComponent(configId)}`;
+    } catch (error) {
+      console.error('Podcast Studio handoff failed:', error);
+      toast({
+        title: 'Studio handoff failed',
+        description:
+          error?.data?.diagnostic?.message ||
+          error?.data?.message ||
+          error?.message ||
+          'CREAPD could not send this episode to the Podcast Studio.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingToStudio(false);
+    }
+  };
+
   const handleGeneratePresentation = async () => {
     setGeneratingPresentation(true);
     try {
@@ -71,7 +162,7 @@ export default function ProductionPackages() {
         await loadPresentationScenes();
         logActivity('generate', {
           entity_type: 'PresentationScene',
-          entity_name: `Full Presentation — ${packages.length} stories`,
+          entity_name: `Full Presentation — ${packages.length} episode items`,
           details: `APD generated presentation from ${packages.length} approved packages`,
         });
       } else {
@@ -103,14 +194,45 @@ export default function ProductionPackages() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Production</h1>
-          <p className="text-xs text-muted-foreground mt-1">Approved story packages ready for presentation generation</p>
+          <h1 className="text-xl font-bold text-white">Episode Production</h1>
+          <p className="text-xs text-muted-foreground mt-1">Producer-approved episode material ready for final assembly and studio handoff</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{packages.length} approved</span>
-          <span className="text-xs text-berna-emerald flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />Ready for APD
+          <span className={`text-xs flex items-center gap-1 ${
+            materialAssessment.state === 'ready' ? 'text-berna-emerald' : 'text-amber-300'
+          }`}>
+            <CheckCircle2 className="w-3 h-3" />
+            {materialAssessment.state === 'ready'
+              ? 'Material Ready'
+              : `${materialAssessment.approved_material_minutes}/${materialAssessment.research_target_minutes} min`}
           </span>
+          <Button
+            size="sm"
+            className="bg-gradient-to-r from-orange-500 to-fuchsia-600 text-white"
+            onClick={handleSendToPodcastStudio}
+            disabled={sendingToStudio || packages.length === 0 || materialAssessment.state !== 'ready'}
+          >
+            {sendingToStudio ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Mic2 className="w-3.5 h-3.5 mr-1.5" />}
+            {sendingToStudio ? 'Sending…' : 'Send to Podcast Studio'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-white/70">
+            Episode material: {materialAssessment.approved_material_minutes} / {materialAssessment.research_target_minutes} min
+          </span>
+          <span className="text-white/45">{materialAssessment.message}</span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+          <div
+            className={`h-full rounded-full transition-all ${
+              materialAssessment.state === 'ready' ? 'bg-emerald-300' : 'bg-fuchsia-400'
+            }`}
+            style={{ width: `${materialAssessment.progress_percent}%` }}
+          />
         </div>
       </div>
 
@@ -124,7 +246,7 @@ export default function ProductionPackages() {
             <div>
               <h2 className="text-sm font-bold text-white">AI Presentation Director</h2>
               <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
-                Generates a full timed presentation from all approved packages. The APD analyzes each story's voiceover timing,
+                Generates a full timed presentation from all approved packages. The APD analyzes each episode item's voiceover timing,
                 scripts, and media to create a synchronized visual presentation with scene transitions, text overlays, and media cues.
               </p>
             </div>
@@ -154,7 +276,7 @@ export default function ProductionPackages() {
         {packages.length < 5 && (
           <p className="text-[10px] text-muted-foreground mt-3 pt-3 border-t border-white/[0.04]">
             {packages.length === 0
-              ? 'No approved packages yet. Approve packages from the Story Manager to generate a presentation.'
+              ? 'No approved episode packages yet. Approve material from the Episode Workspace to generate a presentation.'
               : `${packages.length}/5 approved packages. The APD requires a minimum of 5 approved packages to generate a presentation.`}
           </p>
         )}
@@ -187,7 +309,7 @@ export default function ProductionPackages() {
           <div className="glass-panel p-12 text-center">
             <Film className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No approved packages yet.</p>
-            <p className="text-xs text-muted-foreground mt-1">Approve packages from the Story Manager to see them here.</p>
+            <p className="text-xs text-muted-foreground mt-1">Approve material from the Episode Workspace to see it here.</p>
           </div>
         ) : (
           <div className="space-y-2">

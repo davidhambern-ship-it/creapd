@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { neonAuth, shouldUseNeonAuth } from "@/api/neonAuthClient";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,17 +11,36 @@ import AuthImmersiveLayout from "@/components/AuthImmersiveLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 
 export default function Login() {
+  const { isAuthenticated, authChecked } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const ssoStatus = new URLSearchParams(window.location.search).get("sso");
+  const bernaverseSsoUrl =
+    "https://bernaverse.hireberna.app/sso.html?app=creapd";
+
+  useEffect(() => {
+    if (ssoStatus !== "1" || !authChecked) return;
+
+    if (isAuthenticated) {
+      window.location.replace("/");
+    }
+  }, [ssoStatus, authChecked, isAuthenticated]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
+      if (shouldUseNeonAuth()) {
+        const result = await neonAuth.signIn.email({ email, password });
+        if (result?.error) {
+          throw new Error(result.error.message || "Invalid email or password");
+        }
+      } else {
+        await base44.auth.loginViaEmailPassword(email, password);
+      }
       window.location.href = "/";
     } catch (err) {
       setError(err.message || "Invalid email or password");
@@ -28,15 +49,34 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", "/");
+  const handleGoogle = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      if (shouldUseNeonAuth()) {
+        const result = await neonAuth.signIn.social({
+          provider: "google",
+          callbackURL: `${window.location.origin}/`,
+          errorCallbackURL: `${window.location.origin}/login`,
+        });
+        if (result?.error) {
+          throw new Error(result.error.message || "Google sign-in failed");
+        }
+        return;
+      }
+
+      base44.auth.loginWithProvider("google", "/");
+    } catch (err) {
+      setError(err.message || "Google sign-in failed");
+      setLoading(false);
+    }
   };
 
   return (
     <AuthImmersiveLayout
       icon={LogIn}
       title="Welcome back"
-      subtitle="Log in to your account"
+      subtitle="Use your BERNAverse Passport. Existing Preview accounts can still use their original CREAPD sign-in."
       footer={
         <>
           Don't have an account?{" "}
@@ -46,10 +86,47 @@ export default function Login() {
         </>
       }
     >
+      {ssoStatus === "legacy" && (
+        <div className="mb-4 p-3 rounded-lg border text-sm leading-relaxed" style={{ background: "hsl(45 80% 50% / 0.08)", borderColor: "hsl(45 80% 55% / 0.35)", color: "hsl(45 90% 75%)" }}>
+          <strong>Your existing CREAPD Preview login was preserved.</strong><br />
+          This account predates BERNAverse SSO, so use the original sign-in below.
+        </div>
+      )}
+
+      {["invalid", "setup", "unavailable"].includes(ssoStatus) && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          BERNAverse could not finish the CREAPD Preview handoff. No existing password was changed.
+        </div>
+      )}
+
+      {ssoStatus === "1" && authChecked && !isAuthenticated && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          Your BERNAverse Passport was verified, but CREAPD did not receive a usable Preview session. Try the Passport again; if it returns here again, the SSO session cookie still needs adjustment.
+        </div>
+      )}
+
+      <a
+        href={bernaverseSsoUrl}
+        className="w-full h-12 mb-4 rounded-md font-medium inline-flex items-center justify-center no-underline"
+        style={{
+          background: "linear-gradient(135deg, hsl(45 90% 55% / 0.22), hsl(270 70% 55% / 0.18))",
+          border: "1px solid hsl(45 80% 60% / 0.55)",
+          color: "hsl(45 95% 75%)",
+          boxShadow: "0 0 20px hsl(45 80% 50% / 0.12)",
+        }}
+      >
+        Continue with BERNAverse
+      </a>
+
+      <div className="text-center text-xs uppercase tracking-wider mb-4" style={{ color: "hsl(220 10% 45%)" }}>
+        Existing CREAPD Preview sign-in
+      </div>
+
       <Button
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6 bg-white text-black hover:bg-white/90 border-0"
         onClick={handleGoogle}
+        disabled={loading}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
         Continue with Google

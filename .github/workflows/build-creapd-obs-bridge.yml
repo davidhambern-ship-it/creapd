@@ -1,0 +1,54 @@
+name: Build CREAPD OBS Bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - backend/vercel-foundation
+    paths:
+      - 'bridge/windows/CREAPDBridge/**'
+      - '.github/workflows/build-creapd-obs-bridge.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-bridge:
+    name: Windows x64 bridge
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore bridge/windows/CREAPDBridge/CREAPDBridge.csproj
+
+      - name: Publish single-file bridge
+        run: >
+          dotnet publish bridge/windows/CREAPDBridge/CREAPDBridge.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:PublishTrimmed=false
+          --output bridge-dist
+
+      - name: Show output
+        shell: pwsh
+        run: Get-ChildItem -Path bridge-dist -Recurse | Format-Table FullName, Length
+
+      - name: Upload Windows developer fallback
+        uses: actions/upload-artifact@v4
+        with:
+          name: CREAPD-OBS-Bridge-Windows-x64-DEV-FALLBACK
+          path: |
+            bridge-dist/CREAPDBridge.exe
+            bridge/windows/CREAPDBridge/README.md
+          if-no-files-found: error
+          retention-days: 14

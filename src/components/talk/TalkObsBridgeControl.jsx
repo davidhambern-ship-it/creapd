@@ -1,0 +1,287 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Loader2,
+  Radio,
+  RefreshCw,
+  X,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { creapdApi } from '@/api/creapdClient';
+
+function statusMeta(bridge) {
+  if (bridge?.connected) {
+    return {
+      label: bridge.current_scene ? `OBS · ${bridge.current_scene}` : 'OBS Connected',
+      className: 'border-emerald-500/30 bg-black/70 text-emerald-200',
+      dot: 'bg-emerald-400',
+    };
+  }
+  if (bridge?.online) {
+    return {
+      label: 'OBS Waiting',
+      className: 'border-amber-500/30 bg-black/70 text-amber-200',
+      dot: 'bg-amber-400',
+    };
+  }
+  return {
+    label: bridge ? 'OBS Offline' : 'Connect OBS',
+    className: 'border-white/15 bg-black/70 text-white/80',
+    dot: 'bg-white/30',
+  };
+}
+
+async function downloadBrowserBridge() {
+  const response = await fetch('/creapd-obs-browser-bridge.html', { cache: 'no-store' });
+  if (!response.ok) throw new Error('CREAPD could not prepare the OBS bridge download.');
+
+  const template = await response.text();
+  const studioPath = window.location.pathname === '/music/live' ? '/music/live' : '/podcast/studio';
+  const configured = template
+    .replaceAll('__CREAPD_ORIGIN__', window.location.origin)
+    .replaceAll('__CREAPD_STUDIO_PATH__', studioPath);
+  const blob = new Blob([configured], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'CREAPD-OBS-Bridge.html';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+function TalkObsBridgeControlLive() {
+  const [target, setTarget] = useState(null);
+  const [bridge, setBridge] = useState(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedScene, setSelectedScene] = useState('');
+  const [pendingScene, setPendingScene] = useState('');
+  const [busy, setBusy] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [downloaded, setDownloaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let observer;
+    const locate = () => {
+      const next = document.getElementById('talk-program-monitor-obs-control');
+      if (!cancelled && next) {
+        setTarget(next);
+        return true;
+      }
+      return false;
+    };
+    locate();
+    observer = new MutationObserver(locate);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, []);
+
+  const loadBridge = useCallback(async () => {
+    try {
+      const result = await creapdApi.post('/production/core', { action: 'obs_bridge_get' });
+      const next = result?.bridge || null;
+      setBridge(next);
+      if (next?.current_scene) setSelectedScene(current => current || next.current_scene);
+      if (pendingScene && next?.current_scene === pendingScene) setPendingScene('');
+      setError('');
+    } catch (err) {
+      setError(
+        err?.data?.diagnostic?.message
+        || err?.data?.error
+        || err?.message
+        || 'CREAPD could not read the OBS connection.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [pendingScene]);
+
+  useEffect(() => {
+    loadBridge();
+    const timer = window.setInterval(loadBridge, 1500);
+    return () => window.clearInterval(timer);
+  }, [loadBridge]);
+
+  useEffect(() => {
+    if (!selectedScene && bridge?.current_scene) setSelectedScene(bridge.current_scene);
+  }, [bridge?.current_scene, selectedScene]);
+
+  const enqueue = async (commandType, payload = {}) => {
+    if (!bridge?.id) throw new Error('Connect the CREAPD OBS Bridge first.');
+    return creapdApi.post('/production/core', {
+      action: 'obs_command_enqueue',
+      bridge_id: bridge.id,
+      command_type: commandType,
+      payload,
+    });
+  };
+
+  const takeScene = async () => {
+    if (!selectedScene || busy) return;
+    setBusy('scene');
+    setError('');
+    try {
+      await enqueue('set_scene', { scene_name: selectedScene });
+      setPendingScene(selectedScene);
+      window.setTimeout(loadBridge, 300);
+    } catch (err) {
+      setError(err?.data?.diagnostic?.message || err?.data?.error || err?.message || 'CREAPD could not change the OBS scene.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const refreshObs = async () => {
+    if (busy) return;
+    setBusy('refresh');
+    setError('');
+    try {
+      await enqueue('refresh_state');
+      window.setTimeout(loadBridge, 250);
+    } catch (err) {
+      setError(err?.data?.diagnostic?.message || err?.data?.error || err?.message || 'CREAPD could not refresh OBS state.');
+    } finally {
+      window.setTimeout(() => setBusy(''), 300);
+    }
+  };
+
+  const getBridge = async () => {
+    if (busy) return;
+    setBusy('download');
+    setError('');
+    try {
+      await downloadBrowserBridge();
+      setDownloaded(true);
+    } catch (err) {
+      setError(err?.message || 'CREAPD could not download the OBS bridge.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  if (!target) return null;
+
+  const meta = statusMeta(bridge);
+  const scenes = Array.isArray(bridge?.scenes) ? bridge.scenes : [];
+  const browserBridge = bridge?.capabilities?.bridge === 'browser-direct';
+
+  return createPortal(
+    <>
+      <button
+        type="button"
+        onClick={() => setPanelOpen(open => !open)}
+        className={`h-8 px-2.5 rounded-md border backdrop-blur-xl shadow-lg flex items-center gap-2 text-[11px] font-semibold ${meta.className}`}
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span className={`h-2 w-2 rounded-full ${meta.dot}`} />}
+        {loading ? 'Checking OBS…' : meta.label}
+      </button>
+
+      {panelOpen && (
+        <div className="fixed top-[118px] right-4 md:right-6 z-[110] w-[min(430px,calc(100vw-2rem))] max-h-[calc(100vh-140px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#090b10]/97 backdrop-blur-xl shadow-2xl text-left">
+          <div className="sticky top-0 bg-[#090b10]/97 border-b border-white/10 px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-primary" />
+              <div>
+                <p className="font-heading font-semibold">OBS Connection</p>
+                <p className="text-[11px] text-muted-foreground">Simple local connection to OBS</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => setPanelOpen(false)} className="h-8 w-8 rounded-md border border-white/10 bg-white/5 grid place-items-center hover:bg-white/10" aria-label="Close OBS control">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4">
+            {bridge?.connected ? (
+              <>
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] p-3">
+                  <div className="flex items-center gap-2 text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-sm font-semibold">OBS is under CREAPD control</span>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                    <p>Connection: <span className="text-white">{browserBridge ? 'Browser Bridge' : 'Native Bridge'}</span></p>
+                    <p>Current scene: <span className="text-white">{bridge.current_scene || 'Unknown'}</span></p>
+                    {bridge.obs_studio_version && <p>OBS Studio: {bridge.obs_studio_version}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs uppercase tracking-wider text-muted-foreground">Manual scene fallback</label>
+                  <div className="flex gap-2 mt-2">
+                    <select value={selectedScene} onChange={event => setSelectedScene(event.target.value)} className="min-w-0 flex-1 h-10 rounded-md border border-white/10 bg-black/60 px-3 text-sm text-white">
+                      {scenes.length === 0 && <option value="">No scenes reported</option>}
+                      {scenes.map(scene => <option key={scene} value={scene}>{scene}</option>)}
+                    </select>
+                    <Button onClick={takeScene} disabled={!selectedScene || Boolean(busy)}>
+                      {busy === 'scene' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}Take
+                    </Button>
+                  </div>
+                  {pendingScene && bridge.current_scene !== pendingScene && <p className="text-xs text-amber-300 mt-2">Scene change queued: {pendingScene}</p>}
+                </div>
+
+                <Button variant="outline" size="sm" onClick={refreshObs} disabled={Boolean(busy)}>
+                  {busy === 'refresh' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Refresh OBS State
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl border border-primary/20 bg-primary/[0.06] p-3">
+                  <p className="text-sm font-semibold">One small bridge file. No installation.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Download it once, open it whenever you want to use CREAPD with OBS, and it connects straight to OBS on this computer.</p>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">1</span><p><span className="font-medium">Open OBS → Tools → WebSocket Server Settings.</span><br /><span className="text-xs text-muted-foreground">Enable the server. Keep authentication on.</span></p></div>
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">2</span><p><span className="font-medium">Download the CREAPD OBS Bridge once.</span><br /><span className="text-xs text-muted-foreground">Keep the file somewhere easy to find, like Downloads or your Desktop.</span></p></div>
+                  <div className="flex gap-3"><span className="h-6 w-6 shrink-0 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold">3</span><p><span className="font-medium">Open it and enter your OBS password.</span><br /><span className="text-xs text-muted-foreground">It opens CREAPD Studio for you, remembers the OBS connection if you choose, and automatically reconnects if OBS restarts. No CREAPD token.</span></p></div>
+                </div>
+
+                <Button onClick={getBridge} disabled={Boolean(busy)}>
+                  {busy === 'download' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  Download CREAPD OBS Bridge
+                </Button>
+
+                {downloaded && (
+                  <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.06] p-3 text-xs">
+                    <p className="font-medium text-cyan-100">Downloaded: CREAPD-OBS-Bridge.html</p>
+                    <p className="text-muted-foreground mt-1">Open that file. It will connect to OBS and open CREAPD Studio. Keep the small bridge window open; you can minimize it.</p>
+                  </div>
+                )}
+
+                {bridge?.online && !bridge?.connected && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.07] p-3 flex gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                    <div className="text-xs"><p className="text-amber-200 font-medium">The bridge is open, but OBS is not connected yet.</p><p className="text-muted-foreground mt-1">{bridge.last_error || 'Check the OBS WebSocket setting and password.'}</p></div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {error && <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</div>}
+          </div>
+        </div>
+      )}
+    </>,
+    target,
+  );
+}
+
+export default function TalkObsBridgeControl() {
+  const location = useLocation();
+  if (!['/talk/live', '/podcast/studio', '/music/live'].includes(location.pathname)) return null;
+  return <TalkObsBridgeControlLive />;
+}

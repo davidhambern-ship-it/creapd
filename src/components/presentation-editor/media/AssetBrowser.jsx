@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal, ArrowUpDown, LayoutGrid, List, Sparkles, Upload, Package } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, LayoutGrid, List, Package } from 'lucide-react';
 import { FILTER_CHIPS } from '@/hooks/useMediaLibrary';
 import AssetCard from './AssetCard';
 
@@ -8,7 +8,6 @@ export default function AssetBrowser({
   activeFilters, toggleFilter, sortOrder, setSortOrder,
   viewMode, setViewMode, selectedAssetId,
   onSelect, onPreview, onFavorite, onDuplicate, onDelete, onDragToCanvas,
-  onOpenAI, onImport,
 }) {
   return (
     <div className="cpe-media-browser">
@@ -22,14 +21,6 @@ export default function AssetBrowser({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-
-        <button className="cpe-ai-btn" onClick={onOpenAI}>
-          <Sparkles className="w-3 h-3" /> Generate
-        </button>
-
-        <button className="cpe-ai-btn" onClick={onImport} style={{ background: 'hsl(var(--cpe-surface-3) / 0.5)', borderColor: 'hsl(var(--cpe-border-soft))', color: 'hsl(var(--cpe-text-dim))' }}>
-          <Upload className="w-3 h-3" /> Import
-        </button>
 
         <div className="cpe-media-sort-select" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           <ArrowUpDown className="w-2.5 h-2.5" />
@@ -84,8 +75,8 @@ export default function AssetBrowser({
         ) : (
           <div className="cpe-asset-empty">
             <Package className="w-12 h-12 opacity-30" />
-            <p className="text-sm">{searchQuery || activeFilters.length > 0 ? 'No assets match your filters' : 'No assets in library yet'}</p>
-            <p className="text-xs text-muted-foreground">Generate AI media or import files to get started</p>
+            <p className="text-sm">{searchQuery || activeFilters.length > 0 ? 'No assets match your filters' : 'No assets in this presentation yet'}</p>
+            <p className="text-xs text-muted-foreground">Use Add Media in the room toolbar to create or attach an asset.</p>
           </div>
         )}
       </div>

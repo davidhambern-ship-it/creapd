@@ -62,12 +62,12 @@ export function useCosmoProduction(configId) {
           setters[index](result.value || []);
         } else {
           partialFailure = true;
-          console.error(`Cosmo ${labels[index]} load failed:`, result.reason);
+          console.error(`Beauty ${labels[index]} load failed:`, result.reason);
         }
       });
 
       if (partialFailure) {
-        setError(new Error('Some Cosmo production data could not be loaded. Refresh to retry.'));
+        setError(new Error('Some Beauty production data could not be loaded. Refresh to retry.'));
       }
     } catch (err) {
       console.error('useCosmoProduction load error:', err);

@@ -79,8 +79,8 @@ export const PRODUCTION_PROFILE_THEMES = {
   },
   cosmo: {
     key: 'cosmo',
-    name: 'Modern Creative Agency',
-    description: 'Collaborative creative workspace for beauty and wellness content production',
+    name: 'Beauty Salon & Spa',
+    description: 'Immersive cosmetology studio for hair, nails, skincare, makeup, esthetics, and salon content production',
     atmosphere: 'agency',
     vars: {
       '--env-bg': '340 15% 8%',

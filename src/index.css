@@ -2498,3 +2498,550 @@
 
 .m-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .m-safe-top { padding-top: env(safe-area-inset-top, 0px); }
+
+/* CREAPD NEWS IMMERSIVE STUDIO */
+.news-studio-shell {
+  isolation: isolate;
+  background: #040509;
+}
+
+.news-studio-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, .72);
+}
+
+.news-broadcast-header-bar {
+  position: relative;
+  background:
+    linear-gradient(90deg, rgba(255, 102, 0, .08), transparent 18%, transparent 82%, rgba(0, 200, 190, .08)),
+    rgba(3, 5, 10, .82);
+  backdrop-filter: blur(22px) saturate(125%);
+  -webkit-backdrop-filter: blur(22px) saturate(125%);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, .34),
+    inset 0 -1px 0 rgba(255,255,255,.04);
+}
+
+.news-broadcast-header-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, #ff6a00 0%, #8a2be2 48%, #00c8b4 100%);
+  opacity: .72;
+  box-shadow: 0 0 18px rgba(138, 43, 226, .38);
+}
+
+.news-console-sidebar {
+  background:
+    linear-gradient(180deg, rgba(4,7,13,.94), rgba(6,7,13,.86)),
+    url('/assets/news/NewsPP_Screen_setup.png') center/cover;
+  border-right: 1px solid rgba(255,255,255,.09);
+  box-shadow: 18px 0 50px rgba(0,0,0,.34), inset -1px 0 rgba(0,200,190,.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.news-console-brand {
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .7rem .65rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(90deg, rgba(255,106,0,.08), rgba(138,43,226,.07), rgba(0,200,190,.04));
+}
+
+.news-console-brand-mark {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #00c8b4;
+  border: 1px solid rgba(0,200,180,.26);
+  background: rgba(0,200,180,.08);
+  box-shadow: inset 0 0 18px rgba(0,200,180,.05);
+}
+
+.news-console-onair {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: .2rem .45rem;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: #fff;
+  background: rgba(220,38,38,.82);
+  box-shadow: 0 0 16px rgba(239,68,68,.24);
+}
+
+.news-console-section-label {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: 0 .7rem .45rem;
+  color: rgba(255,255,255,.43);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.news-console-link {
+  position: relative;
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  border-radius: 8px;
+  padding: .55rem .72rem;
+  color: rgba(255,255,255,.63);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .18s ease;
+  border: 1px solid transparent;
+}
+
+.news-console-link:hover {
+  color: white;
+  background: rgba(255,255,255,.045);
+  border-color: rgba(255,255,255,.05);
+}
+
+.news-console-link-active {
+  color: white;
+  background:
+    linear-gradient(90deg, rgba(255,106,0,.12), rgba(138,43,226,.10) 55%, rgba(0,200,180,.07));
+  border-color: rgba(168,85,247,.22);
+  box-shadow: inset 3px 0 0 #ff6a00, 0 0 22px rgba(138,43,226,.07);
+}
+
+.news-console-link-active svg {
+  color: #00c8b4;
+}
+
+.news-console-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  margin-left: auto;
+  background: #ff6a00;
+  box-shadow: 0 0 9px rgba(255,106,0,.9);
+}
+
+.news-studio-main {
+  background:
+    linear-gradient(180deg, rgba(2,4,8,.10), rgba(2,4,8,.20) 52%, rgba(2,4,8,.48));
+}
+
+.news-studio-content {
+  min-height: 100%;
+}
+
+.news-studio-content .glass-panel {
+  background: rgba(7, 10, 18, .73);
+  border-color: rgba(255,255,255,.09);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  box-shadow: 0 14px 32px rgba(0,0,0,.22);
+}
+
+.news-studio-content .glass-panel:hover {
+  border-color: rgba(168,85,247,.20);
+}
+
+.news-desk-ghost {
+  position: fixed;
+  z-index: 12;
+  left: clamp(330px, 29vw, 520px);
+  right: 3vw;
+  bottom: 30px;
+  height: clamp(210px, 27vh, 310px);
+  pointer-events: none;
+  opacity: .74;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 92%, transparent 100%);
+}
+
+.news-desk-ghost img {
+  position: absolute;
+  left: 50%;
+  bottom: -17%;
+  width: min(1240px, 92%);
+  max-width: none;
+  height: auto;
+  transform: translateX(-50%) scale(1.12);
+  transform-origin: center bottom;
+  filter: saturate(1.08) contrast(1.14) brightness(1.08);
+}
+
+.news-studio-lightbar {
+  position: absolute;
+  z-index: 2;
+  top: 64px;
+  bottom: 32px;
+  width: 2px;
+  opacity: .55;
+  pointer-events: none;
+}
+
+.news-studio-lightbar-left {
+  left: 0;
+  background: linear-gradient(180deg, #ff6a00, #8a2be2 52%, transparent);
+  box-shadow: 0 0 18px rgba(255,106,0,.35);
+}
+
+.news-studio-lightbar-right {
+  right: 0;
+  background: linear-gradient(180deg, #00c8b4, #8a2be2 52%, transparent);
+  box-shadow: 0 0 18px rgba(0,200,180,.30);
+}
+
+.news-studio-footer-wrap footer {
+  background: rgba(3,5,10,.88);
+  border-color: rgba(255,255,255,.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+@media (max-width: 1279px) {
+  .news-desk-ghost { display: none; }
+}
+
+@media (max-width: 1023px) {
+  .news-studio-main {
+    background: rgba(2,4,8,.24);
+  }
+}
+
+
+/* CREAPD TALK IMMERSIVE STUDIO */
+.talk-studio-shell {
+  isolation: isolate;
+  background: #09070b;
+}
+
+.talk-studio-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5,3,7,.18), rgba(5,3,7,.36) 50%, rgba(5,3,7,.62)),
+    url('/assets/talk/TalkPP_backdrop.png') center center / cover no-repeat;
+  filter: saturate(1.04) contrast(1.04);
+  transform: scale(1.01);
+}
+
+.talk-studio-shell .env-layer {
+  z-index: 1;
+  opacity: .18;
+  mix-blend-mode: screen;
+}
+
+.talk-studio-shell .env-glass-sidebar,
+.talk-studio-shell .glass-panel {
+  background: rgba(12, 7, 14, .72);
+  border-color: rgba(255,255,255,.09);
+  backdrop-filter: blur(18px) saturate(115%);
+  -webkit-backdrop-filter: blur(18px) saturate(115%);
+}
+
+.talk-studio-main {
+  background: linear-gradient(180deg, rgba(5,3,7,.05), rgba(5,3,7,.24));
+}
+
+/* Talk configuration interview — dashboard stays visible beneath the cards. */
+.talk-config-interview {
+  position: relative;
+  min-height: 100%;
+  padding: clamp(1rem, 2.2vw, 2rem);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.talk-config-interview-embedded {
+  min-height: calc(100vh - 10rem);
+}
+
+.talk-config-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(255,122,46,.08), transparent 36%),
+    linear-gradient(180deg, rgba(2,1,4,.34), rgba(2,1,4,.62));
+  backdrop-filter: blur(12px) saturate(.88);
+  -webkit-backdrop-filter: blur(12px) saturate(.88);
+}
+
+.talk-interview-stage {
+  position: relative;
+  z-index: 2;
+  width: min(900px, 100%);
+  padding: .5rem 0 3rem;
+}
+
+.talk-interview-heading {
+  margin: 0 auto 1rem;
+  width: fit-content;
+  max-width: calc(100% - 2rem);
+  padding: .65rem 1rem;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 999px;
+  background: rgba(7,4,10,.54);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 35px rgba(0,0,0,.22);
+}
+
+.talk-cue-stack {
+  position: relative;
+  width: min(820px, calc(100% - 1rem));
+  margin: 1.5rem auto 0;
+  perspective: 1300px;
+}
+
+.talk-cue-card-back,
+.talk-cue-card {
+  border-radius: 24px;
+}
+
+.talk-cue-card-back {
+  position: absolute;
+  inset: 0;
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.09);
+  background:
+    linear-gradient(135deg, rgba(255,106,0,.06), transparent 35%),
+    linear-gradient(315deg, rgba(138,43,226,.09), transparent 38%),
+    #0e0a11;
+  box-shadow: 0 25px 55px rgba(0,0,0,.32);
+}
+
+.talk-cue-card-back::after {
+  content: 'CREATE. AUTOMATE. PRODUCE. DIRECT.';
+  position: absolute;
+  bottom: 12%;
+  font-size: 9px;
+  letter-spacing: .26em;
+  color: rgba(255,255,255,.22);
+}
+
+.talk-cue-card-back-1 {
+  transform: translateY(12px) rotate(-1.6deg) scale(.985);
+  opacity: .82;
+}
+
+.talk-cue-card-back-2 {
+  transform: translateY(24px) rotate(1.6deg) scale(.965);
+  opacity: .55;
+}
+
+.talk-cue-card {
+  position: relative;
+  z-index: 3;
+  min-height: 520px;
+  padding: clamp(1.35rem, 3vw, 2.35rem);
+  border: 1px solid rgba(255,255,255,.14);
+  background:
+    radial-gradient(circle at 88% 5%, rgba(168,85,247,.12), transparent 24%),
+    radial-gradient(circle at 10% 90%, rgba(255,106,0,.10), transparent 26%),
+    linear-gradient(145deg, rgba(18,12,21,.98), rgba(10,7,13,.99));
+  box-shadow:
+    0 35px 80px rgba(0,0,0,.50),
+    inset 0 1px 0 rgba(255,255,255,.07);
+  color: white;
+  transform-origin: 50% 110%;
+}
+
+.talk-cue-card-enter {
+  animation: talkCueCardIn .34s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.talk-cue-card-exit {
+  animation: talkCueCardOut .24s ease-in both;
+  pointer-events: none;
+}
+
+@keyframes talkCueCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(28px) rotateX(-8deg) rotateZ(-1.2deg) scale(.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0) rotateZ(0) scale(1);
+  }
+}
+
+@keyframes talkCueCardOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(-58px) rotate(2.2deg) scale(1.015);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(28px) translateX(38px) rotate(5deg) scale(.96);
+  }
+}
+
+.talk-cue-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.talk-cue-question {
+  margin-top: .7rem;
+  max-width: 720px;
+  font-family: var(--font-heading, inherit);
+  font-size: clamp(1.55rem, 3vw, 2.5rem);
+  line-height: 1.08;
+  font-weight: 800;
+  color: white;
+}
+
+.talk-cue-divider {
+  height: 2px;
+  margin: 1.15rem 0 1.4rem;
+  background: linear-gradient(90deg, #ff6a00 0%, #a855f7 48%, #ec4899 75%, transparent 100%);
+  opacity: .72;
+}
+
+.talk-cue-form {
+  color: rgba(255,255,255,.90);
+}
+
+.talk-cue-form label,
+.talk-cue-form h3 {
+  color: rgba(255,255,255,.92);
+}
+
+.talk-cue-form .text-muted-foreground {
+  color: rgba(255,255,255,.52);
+}
+
+.talk-cue-form input,
+.talk-cue-form textarea,
+.talk-cue-form [role='combobox'] {
+  background: rgba(255,255,255,.055);
+  border-color: rgba(255,255,255,.12);
+  color: white;
+}
+
+.talk-cue-form input::placeholder,
+.talk-cue-form textarea::placeholder {
+  color: rgba(255,255,255,.32);
+}
+
+.talk-cue-form .glass-panel {
+  background: rgba(255,255,255,.045);
+  border-color: rgba(255,255,255,.09);
+  box-shadow: none;
+}
+
+.talk-cue-actions {
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.talk-cue-next {
+  color: white;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(100deg, #ff6a00, #a855f7 55%, #ec4899);
+  box-shadow: 0 8px 24px rgba(168,85,247,.18);
+}
+
+.talk-cue-next:hover {
+  filter: brightness(1.08);
+}
+
+.talk-interview-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin-top: 1.25rem;
+}
+
+.talk-interview-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  background: rgba(255,255,255,.18);
+  transition: all .2s ease;
+}
+
+.talk-interview-dot.is-complete {
+  background: rgba(255,106,0,.78);
+}
+
+.talk-interview-dot.is-current {
+  width: 28px;
+  background: linear-gradient(90deg, #ff6a00, #a855f7);
+  box-shadow: 0 0 12px rgba(168,85,247,.34);
+}
+
+.talk-build-card {
+  position: relative;
+  z-index: 2;
+  padding: 2rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.11);
+  background: rgba(11,7,14,.90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 25px 65px rgba(0,0,0,.44);
+}
+
+@media (max-width: 767px) {
+  .talk-cue-card,
+  .talk-cue-card-back {
+    min-height: 480px;
+  }
+
+  .talk-cue-card {
+    padding: 1.2rem;
+    border-radius: 18px;
+  }
+
+  .talk-cue-card-back {
+    border-radius: 18px;
+  }
+
+  .talk-cue-actions {
+    flex-direction: column-reverse;
+  }
+
+  .talk-cue-actions > * {
+    width: 100%;
+  }
+}

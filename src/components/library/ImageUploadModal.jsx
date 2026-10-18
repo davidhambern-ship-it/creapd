@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import { base44 } from '@/api/base44Client';
+import { creapdApi } from '@/api/creapdClient';
+import { shouldUseNeonAuth } from '@/api/neonAuthClient';
 import { Upload, Loader2, Tag, Image as ImageIcon, Film } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -38,14 +41,43 @@ export default function ImageUploadModal({ open, onClose, onUploaded }) {
     if (!file || !title) return;
     setSaving(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      let fileUrl = null;
+
+      if (shouldUseNeonAuth()) {
+        const contentType = file.type || (assetType === 'video' ? 'video/mp4' : 'image/png');
+        const authorization = await creapdApi.post('/production/core', {
+          action: 'asset_media_upload_authorize',
+          filename: file.name,
+          content_type: contentType,
+          byte_size: file.size,
+        });
+
+        if (!authorization?.upload_ticket || !authorization?.pathname) {
+          throw new Error('CREAPD could not authorize the asset upload.');
+        }
+
+        const uploaded = await upload(authorization.pathname, file, {
+          access: 'public',
+          handleUploadUrl: '/api/creapd/production/core',
+          clientPayload: JSON.stringify({ ticket: authorization.upload_ticket }),
+          contentType,
+          multipart: file.size > 8 * 1024 * 1024,
+        });
+
+        fileUrl = uploaded?.url || null;
+        if (!fileUrl) throw new Error('CREAPD asset upload returned no file URL.');
+      } else {
+        const legacyUpload = await base44.integrations.Core.UploadFile({ file });
+        fileUrl = legacyUpload?.file_url || null;
+      }
+
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
       const imgFormats = { jpg: 'jpg', jpeg: 'jpeg', png: 'png', webp: 'webp', svg: 'svg' };
       const vidFormats = { mp4: 'mp4', webm: 'webm', mov: 'mov' };
       const formatMap = assetType === 'video' ? vidFormats : imgFormats;
       await base44.entities.ImageAsset.create({
         title,
-        image_url: file_url,
+        image_url: fileUrl,
         asset_type: assetType,
         image_type: imageType,
         tags,

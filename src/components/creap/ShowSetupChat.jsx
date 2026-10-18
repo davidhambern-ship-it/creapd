@@ -1,23 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { X, Send, Mic, Loader2, Sparkles, Newspaper, Church, Mic2, Music, Trophy, ChefHat, Brush } from 'lucide-react';
+import { X, Send, Mic, Loader2, Sparkles, Mic2, Music, FlaskConical } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CreapdMessage from './CreapdMessage';
 
 const AGENT_NAME = 'creapd';
 
 const QUICK_ACTIONS = [
-  { label: 'News', message: 'I want to build a news show', icon: Newspaper },
-  { label: 'Spiritual', message: 'Set up a spiritual production', icon: Church },
-  { label: 'Talk', message: 'I want to create a talk show', icon: Mic2 },
-  { label: 'Music', message: 'Build a music show', icon: Music },
-  { label: 'Sports', message: 'Set up a sports show', icon: Trophy },
-  { label: 'Cooking', message: 'I want a cooking show', icon: ChefHat },
-  { label: 'Cosmo', message: 'Build a cosmo show', icon: Brush },
+  { label: 'Radio', message: 'I want to build a radio show', icon: Music },
+  { label: 'Podcast', message: 'I want to build a podcast', icon: Mic2 },
+  { label: 'Research', message: 'I want to start a research project', icon: FlaskConical },
 ];
 
-const SETUP_CONTEXT = '[SHOW SETUP — The producer is building a new show profile. Help them configure it conversationally. Infer the production domain from their description, ask for show name and host if not provided, create the ShowProfile and a matching ProductionModule when you have enough info. Use sensible defaults for anything not specified.]\n';
+const SETUP_CONTEXT = '[FORMAT SETUP — CREAPD has three production formats: Radio, Podcast, and Research. FORMAT describes how the work is produced; subject matter such as Sports, Beauty, Cooking, Faith/Theology, News, Politics, Entertainment, Technology, etc. is a category/topic inside the chosen format, never a separate Production Profile. Radio uses the music-centered pipeline. Podcast uses the News preparation system plus the Talk production/studio system. Research uses the deep-research/dossier pipeline and can later feed approved findings into Podcast or Radio. Help the producer choose the correct format, then gather the show/project name, host/owner, topic/category, cadence/length, tone, recurring segments, source preferences, and other useful configuration. Reuse ShowProfile/ProductionModule records while the data model migration is in progress.]\n';
 
 export default function ShowSetupChat({ open, onClose, onCreated }) {
   const [conversation, setConversation] = useState(null);
@@ -167,7 +163,7 @@ export default function ShowSetupChat({ open, onClose, onCreated }) {
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <SheetTitle className="text-sm font-heading font-semibold">Build a Show</SheetTitle>
+              <SheetTitle className="text-sm font-heading font-semibold">Build with CREAPD</SheetTitle>
               <p className="text-[10px] text-muted-foreground">Talk to CREAPD — no forms</p>
             </div>
           </div>
@@ -189,7 +185,7 @@ export default function ShowSetupChat({ open, onClose, onCreated }) {
               </div>
               <div>
                 <p className="text-sm font-heading font-semibold mb-1">What are we building?</p>
-                <p className="text-xs text-muted-foreground max-w-[260px]">Tell me about your show. I'll handle the config — name, tone, audience, the works.</p>
+                <p className="text-xs text-muted-foreground max-w-[260px]">Tell me what you want to make. We’ll choose Radio, Podcast, or Research first, then configure the subject and workflow.</p>
               </div>
             </div>
           ) : (
@@ -232,7 +228,7 @@ export default function ShowSetupChat({ open, onClose, onCreated }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Tell CREAPD about your show…"
+              placeholder="Tell CREAPD what you want to create…"
               rows={1}
               className="flex-1 resize-none rounded-lg bg-input border border-border px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring min-h-[38px] max-h-[120px]"
               disabled={!conversation || isSending || isTranscribing || isRecording}

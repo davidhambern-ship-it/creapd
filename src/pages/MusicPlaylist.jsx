@@ -11,7 +11,6 @@ import CyberpunkMusicBg from '@/components/music/CyberpunkMusicBg';
 import YouTubeAddModal from '@/components/music/YouTubeAddModal';
 import CommanderPlayer from '@/components/music/CommanderPlayer';
 import MusicDiscoveryNav from '@/components/music/MusicDiscoveryNav';
-import PPNavBar from '@/components/layout/PPNavBar';
 
 export default function MusicPlaylist() {
   const { config, playlist, loading, refresh } = useMusicProduction();
@@ -71,9 +70,9 @@ export default function MusicPlaylist() {
       youtube_video_id: trackData.youtube_video_id,
       thumbnail_url: trackData.thumbnail_url,
       channel_name: trackData.channel_name,
-      source: 'user_selected',
+      source: 'youtube_radio_verified',
       status: 'suggested',
-      length_seconds: 0,
+      length_seconds: Math.max(75, Number(trackData.length_seconds || 0)),
     });
     refresh();
   };
@@ -101,7 +100,7 @@ export default function MusicPlaylist() {
       <CyberpunkMusicBg variant="eq" />
 
       <div className="relative z-10 p-5 md:p-8 space-y-6">
-        <MusicDiscoveryNav />
+        <MusicDiscoveryNav config={config} />
         {/* Header bar — DJ deck style */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -340,7 +339,6 @@ export default function MusicPlaylist() {
             </div>
           </div>
         )}
-      <PPNavBar />
       </div>
 
       {/* Add Track Modal */}
