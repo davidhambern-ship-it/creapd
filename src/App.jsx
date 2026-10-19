@@ -83,6 +83,7 @@ const ResearchArchive = lazy(() => import('@/pages/ResearchArchive'));
 const DefaultProductionSettings = lazy(() => import('@/pages/DefaultProductionSettings'));
 const Presentations = lazy(() => import('@/pages/Presentations'));
 const PresentationEditor = lazy(() => import('@/pages/PresentationEditor'));
+const PromoStudio = lazy(() => import('@/pages/PromoStudio'));
 // Redirects /news/presentations/:id → /editor/:id (Navigate doesn't interpolate route params)
 const RedirectToEditor = () => {
   const { id } = useParams();
@@ -214,6 +215,9 @@ const AuthenticatedApp = () => {
           {/* ── Unified Presentations — accessible from any production profile ── */}
           <Route path="/presentations" element={<Presentations />} />
           <Route path="/presentations/:id" element={<RedirectToEditor />} />
+
+          {/* Promo Studio private beta reuses the CREAPD editor and media library. */}
+          <Route path="/promo-studio" element={<PromoStudio />} />
 
           {/* CREAPD Presentation Editor — standalone full-screen */}
           <Route path="/editor" element={<PresentationEditor />} />
