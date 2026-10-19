@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ImagePlus, Music2, Sparkles, Clapperboard, Play, Pause, Download, FolderOpen, Trash2, Palette, AlignLeft, MoveRight, RefreshCw, Layers, Video, ChevronRight, ShieldCheck, Save, WandSparkles } from 'lucide-react';
 import { savePromoAsset, listPromoAssets, getPromoAsset, deletePromoAsset, updatePromoAsset, savePromoHandoff } from '@/lib/promoStudioStorage';
-import { apdGetAIDirectorPlan } from '../../apps/promo-studio/src/apd-core.js';
+import { apdGetAIDirectorPlan } from '@/lib/promoStudioAPDCore.js';
 import './promoStudio.css';
 
 const DURATION = 30;
