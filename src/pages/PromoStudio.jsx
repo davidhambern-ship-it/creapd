@@ -150,7 +150,7 @@ export default function PromoStudio() {
     urlRef.current=urls;
     setAssetUrls(urls);
   }
-  useEffect(()=>{refreshAssets().catch(e=>setStatus(e.message));return()=>{Object.values(urlRef.current).forEach(URL.revokeObjectURL)}},[]);
+  useEffect(()=>{refreshAssets().catch(e=>setStatus(e.message));return()=>{Object.values(urlRef.current).forEach(url=>URL.revokeObjectURL(url))}},[]);
   useEffect(()=>()=>{if(rafRef.current)cancelAnimationFrame(rafRef.current);if(stopExportRef.current)stopExportRef.current()},[]);
 
   const filtered=useMemo(()=>assets.filter(a=>{
@@ -221,6 +221,7 @@ export default function PromoStudio() {
     if(typeof HTMLCanvasElement.prototype.captureStream!=='function'||typeof MediaRecorder==='undefined'){setStatus('Your browser does not support local WebM recording. Use a current Chrome or Edge browser.');return}
     setExporting(true);setStatus('Rendering the full 30-second video on your device...');
     let ctxAudio=null;
+    let exportAudio=null;
     try {
       if(output)URL.revokeObjectURL(output.url);
       const available=await loadForExport(scenes);
@@ -229,14 +230,16 @@ export default function PromoStudio() {
       const ctx=canvas.getContext('2d',{alpha:false});
       const stream=canvas.captureStream(30);
       const project={scenes,layout,accent,position};
-      const audioElement=audioRef.current;
-      if(musicId&&audioElement&&audioElement.src){
+      if(musicId&&assetUrls[musicId]){
+        // A new audio element per export avoids MediaElementSource reuse errors.
+        exportAudio=new Audio(assetUrls[musicId]);
+        exportAudio.loop=true;
         ctxAudio=new (window.AudioContext||window.webkitAudioContext)();
-        const source=ctxAudio.createMediaElementSource(audioElement);
+        const source=ctxAudio.createMediaElementSource(exportAudio);
         const dest=ctxAudio.createMediaStreamDestination();
         source.connect(dest);source.connect(ctxAudio.destination);
         dest.stream.getAudioTracks().forEach(track=>stream.addTrack(track));
-        audioElement.currentTime=0;
+        exportAudio.currentTime=0;
       }
       const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')?'video/webm;codecs=vp9,opus':'video/webm';
       const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:3500000});
@@ -258,7 +261,7 @@ export default function PromoStudio() {
       stopExportRef.current=stop;
       recorder.start(300);
       drawFrame(ctx,available,project,0,width,height);
-      if(ctxAudio)await audioElement.play();
+      if(ctxAudio){await ctxAudio.resume();await exportAudio.play();}
       function render(){
         if(stopped)return;
         const elapsed=(performance.now()-begin)/1000;
@@ -269,18 +272,18 @@ export default function PromoStudio() {
       }
       frameId=requestAnimationFrame(render);
       const blob=await saved;
-      if(audioElement)audioElement.pause();
+      if(exportAudio)exportAudio.pause();
       const url=URL.createObjectURL(blob);
       setOutput({url,name:safeName(projectName)+'-'+format+'-30s.webm'});
       setPlayhead(0);
       setStatus('Your 30-second video is ready. Download the WebM to review it.');
     }catch(e){setStatus('Export failed: '+(e.message||e))}
-    finally{stopExportRef.current=null;if(ctxAudio)await ctxAudio.close().catch(()=>{});setExporting(false)}
+    finally{stopExportRef.current=null;if(exportAudio)exportAudio.pause();if(ctxAudio)await ctxAudio.close().catch(()=>{});setExporting(false)}
   }
   function openEditor(){
     if(!scenes.some(s=>s.imageId)){setStatus('Select artwork before opening the layout editor.');return}
     savePromoHandoff({projectName,scenes,brandName,layout,format,position,accent,callToAction,musicId});
-    navigate('/editor');
+    navigate('/editor?promo=1');
   }
   const sceneAtPreview=scenes[activeIndex];
   const previewImage=assetUrls[sceneAtPreview?.imageId];
