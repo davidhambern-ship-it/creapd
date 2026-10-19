@@ -15,7 +15,7 @@ const DEFAULTS = [
   { headline: 'GET STARTED TODAY!', subtitle: 'Your next step starts here.', imageId: null },
 ];
 const LAYOUTS = [
-  { id: 'market', label: 'Full-bleed', description: 'Market Veggies–style cinematic motion' },
+  { id: 'market', label: 'Full-bleed', description: 'Cinematic imagery and smooth motion' },
   { id: 'clean', label: 'Clean Title', description: 'Minimal text and open space' },
   { id: 'split', label: 'Split Focus', description: 'Image on one side, message opposite' },
   { id: 'poster', label: 'Bold Poster', description: 'Large text over dramatic imagery' },
