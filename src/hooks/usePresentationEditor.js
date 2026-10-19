@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
 import { ensureTitleBodyElements } from '@/lib/canvasUtils';
+import { loadPromoEditorDraft, storePromoEditorDraft } from '@/lib/promoStudioEditorHandoff';
 
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
@@ -440,6 +441,22 @@ export function usePresentationEditor(presentationId) {
 
   const loadPresentation = useCallback(async () => {
     if (!presentationId) {
+      // Promo Studio hands off a local, 30-second five-scene draft.
+      // Never send local artwork blobs through the legacy CREAPD save path.
+      if (new URLSearchParams(window.location.search).get('promo') === '1') {
+        const promo = await loadPromoEditorDraft();
+        if (promo) {
+          const firstSlide = promo.slides[0];
+          setPresentation(promo.presentation);
+          setSlides(promo.slides);
+          setActiveIndex(0);
+          setElements(promo.elementsBySlide[firstSlide.id] || []);
+          setSavedElements([]);
+          setTransientElements(promo.elementsBySlide);
+          setLoading(false);
+          return;
+        }
+      }
       // ── Transient / blank editor ──
       const ppId = generatePpId();
       const blankSlide = {
@@ -909,6 +926,15 @@ export function usePresentationEditor(presentationId) {
     setSaving(true);
     try {
       if (isTransient) {
+        if (presentation?.production_profile === 'promo_studio') {
+          // Persist only serialized draft references. Images remain in IndexedDB,
+          // never copied to shared Base44/Neon entities from the beta editor.
+          const allElements = { ...transientElements, [activeSlide.id]: elements };
+          storePromoEditorDraft(presentation, slides, allElements);
+          setDirty(false);
+          toast.success('Promo Studio layout saved locally in this browser');
+          return;
+        }
         // ── Commit transient workspace to DB ──
         const created = await base44.entities.StoriesPresentation.create({
           title: presentation.title || 'Untitled Presentation',
